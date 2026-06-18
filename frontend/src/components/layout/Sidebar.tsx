@@ -185,8 +185,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <div className={cn('px-2 py-3 border-t border-border-subtle', collapsed ? 'flex justify-center' : '')}>
         <div className={cn('flex items-center gap-2.5 rounded-xl p-2 hover:bg-white/[0.03] transition-all cursor-pointer', collapsed && 'justify-center')}>
           <div className="relative flex-shrink-0">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-accent-primary flex items-center justify-center">
-              <span className="text-xs font-bold text-white">{displayName[0]?.toUpperCase() ?? 'T'}</span>
+            <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-orange-500 to-accent-primary flex items-center justify-center">
+              {effectiveUser?.avatar_url ? (
+                <img src={effectiveUser.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xs font-bold text-white">{displayName[0]?.toUpperCase() ?? 'T'}</span>
+              )}
             </div>
             <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-bullish border-2 border-bg-secondary" />
           </div>

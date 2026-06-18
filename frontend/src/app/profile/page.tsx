@@ -6,10 +6,22 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { useAuth } from '@/lib/auth-context';
 import { updateProfile, changePassword } from '@/lib/api';
 
+const PRESET_AVATARS = [
+  { name: 'Trader 1', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80' },
+  { name: 'Trader 2', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80' },
+  { name: 'Trader 3', url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&h=120&q=80' },
+  { name: 'Trader 4', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80' },
+  { name: 'AI Cat', url: 'https://robohash.org/trader1?set=set4' },
+  { name: 'AI Dog', url: 'https://robohash.org/trader2?set=set4' },
+  { name: 'AI Bear', url: 'https://robohash.org/trader3?set=set4' },
+  { name: 'AI Owl', url: 'https://robohash.org/trader4?set=set4' },
+];
+
 export default function ProfilePage() {
   const { user, refresh } = useAuth();
 
   const [fullName, setFullName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -22,14 +34,17 @@ export default function ProfilePage() {
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
-    if (user) setFullName(user.full_name ?? '');
+    if (user) {
+      setFullName(user.full_name ?? '');
+      setAvatarUrl(user.avatar_url ?? '');
+    }
   }, [user]);
 
   const saveProfile = async () => {
     setSavingProfile(true);
     setProfileMsg(null);
     try {
-      await updateProfile({ full_name: fullName });
+      await updateProfile({ full_name: fullName, avatar_url: avatarUrl });
       await refresh();
       setProfileMsg({ ok: true, text: 'Profil güncellendi.' });
     } catch (e: any) {
@@ -86,8 +101,12 @@ export default function ProfilePage() {
       {/* Identity */}
       <GlassCard>
         <div className="flex items-center gap-4 mb-5">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-accent-primary flex items-center justify-center text-2xl font-bold text-white shadow-glow-sm">
-            {initials}
+          <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-orange-500 to-accent-primary flex items-center justify-center text-2xl font-bold text-white shadow-glow-sm flex-shrink-0">
+            {user.avatar_url ? (
+              <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              initials
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-bold text-text-primary truncate">{user.full_name ?? user.email.split('@')[0]}</h2>
@@ -139,6 +158,45 @@ export default function ProfilePage() {
               className="w-full mt-1 px-3 py-2.5 text-sm bg-bg-secondary border border-border-subtle rounded-xl text-text-primary outline-none focus:border-accent-primary/40 transition-colors"
               placeholder="Adınız Soyadınız"
             />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-text-muted uppercase">Profil Fotoğrafı</label>
+            
+            {/* Presets Grid */}
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mt-2">
+              {PRESET_AVATARS.map((preset, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => setAvatarUrl(preset.url)}
+                  className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
+                    avatarUrl === preset.url
+                      ? 'border-accent-primary scale-95 shadow-glow-sm'
+                      : 'border-border-subtle hover:border-border-medium'
+                  }`}
+                  title={preset.name}
+                >
+                  <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" />
+                  {avatarUrl === preset.url && (
+                    <div className="absolute inset-0 bg-accent-primary/20 flex items-center justify-center">
+                      <Check className="w-4 h-4 text-white bg-accent-primary rounded-full p-0.5" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom URL Input */}
+            <div className="mt-3">
+              <label className="text-[11px] font-semibold text-text-muted uppercase">Veya Özel Fotoğraf URL'si</label>
+              <input
+                type="text"
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+                className="w-full mt-1 px-3 py-2 text-xs bg-bg-secondary border border-border-subtle rounded-xl text-text-primary outline-none focus:border-accent-primary/40 transition-colors"
+                placeholder="https://example.com/resim.png"
+              />
+            </div>
           </div>
           <div>
             <label className="text-xs font-semibold text-text-muted uppercase">E-posta</label>

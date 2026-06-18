@@ -235,8 +235,12 @@ export default function Header() {
                 showUserMenu && 'bg-white/[0.04]'
               )}
             >
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center flex-shrink-0">
-                <User className="w-3.5 h-3.5 text-white" />
+              <div className="w-7 h-7 rounded-full overflow-hidden bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center flex-shrink-0">
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-3.5 h-3.5 text-white" />
+                )}
               </div>
               <ChevronDown
                 className={cn(
