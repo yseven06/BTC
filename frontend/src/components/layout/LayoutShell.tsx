@@ -25,12 +25,20 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
     return <>{children}</>;
   }
 
-  if (loading || !user) {
+  // Initial auth probe still in flight → spinner
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg-primary">
         <div className="w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
+  }
+
+  // Probe finished but no user → useEffect above is redirecting to /login.
+  // Render nothing so the user sees an immediate transition rather than a
+  // spinner that never resolves while waiting for the redirect.
+  if (!user) {
+    return null;
   }
 
   return <MainLayout>{children}</MainLayout>;

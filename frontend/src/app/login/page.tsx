@@ -29,7 +29,14 @@ export default function LoginPage() {
       await login(email, password);
       router.replace(redirect);
     } catch (err: any) {
-      setError(err?.message?.includes('401') ? 'E-posta veya şifre hatalı.' : 'Giriş yapılamadı.');
+      const msg = err?.message ?? '';
+      if (msg.includes('401') || msg.includes('Invalid')) {
+        setError('E-posta veya şifre hatalı.');
+      } else if (msg.includes('Backend')) {
+        setError('Backend kapalı. Lütfen start-backend.ps1 çalıştır.');
+      } else {
+        setError('Giriş yapılamadı: ' + msg);
+      }
     } finally {
       setLoading(false);
     }

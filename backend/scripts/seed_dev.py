@@ -89,15 +89,27 @@ ASSETS = [
     {"symbol": "ALGOUSDT",  "name": "Algorand",       "asset_type": AssetType.CRYPTO, "market": "binance"},
     {"symbol": "FTMUSDT",   "name": "Fantom",         "asset_type": AssetType.CRYPTO, "market": "binance"},
     {"symbol": "PEPEUSDT",  "name": "Pepe",           "asset_type": AssetType.CRYPTO, "market": "binance"},
-    # ── BIST stocks ──
+    # ── BIST stocks — Türkiye'nin en büyük 20 şirketi ──
     {"symbol": "THYAO.IS",  "name": "Türk Hava Yolları","asset_type": AssetType.STOCK, "market": "bist"},
     {"symbol": "GARAN.IS",  "name": "Garanti BBVA",     "asset_type": AssetType.STOCK, "market": "bist"},
     {"symbol": "AKBNK.IS",  "name": "Akbank",           "asset_type": AssetType.STOCK, "market": "bist"},
     {"symbol": "ISCTR.IS",  "name": "İş Bankası C",     "asset_type": AssetType.STOCK, "market": "bist"},
+    {"symbol": "YKBNK.IS",  "name": "Yapı Kredi",       "asset_type": AssetType.STOCK, "market": "bist"},
+    {"symbol": "HALKB.IS",  "name": "Halkbank",         "asset_type": AssetType.STOCK, "market": "bist"},
+    {"symbol": "VAKBN.IS",  "name": "Vakıfbank",        "asset_type": AssetType.STOCK, "market": "bist"},
     {"symbol": "SISE.IS",   "name": "Şişe Cam",         "asset_type": AssetType.STOCK, "market": "bist"},
     {"symbol": "EREGL.IS",  "name": "Ereğli Demir",     "asset_type": AssetType.STOCK, "market": "bist"},
     {"symbol": "BIMAS.IS",  "name": "BİM Mağazalar",    "asset_type": AssetType.STOCK, "market": "bist"},
     {"symbol": "TUPRS.IS",  "name": "Tüpraş",           "asset_type": AssetType.STOCK, "market": "bist"},
+    {"symbol": "ASELS.IS",  "name": "Aselsan",          "asset_type": AssetType.STOCK, "market": "bist"},
+    {"symbol": "KCHOL.IS",  "name": "Koç Holding",      "asset_type": AssetType.STOCK, "market": "bist"},
+    {"symbol": "SAHOL.IS",  "name": "Sabancı Holding",  "asset_type": AssetType.STOCK, "market": "bist"},
+    {"symbol": "PETKM.IS",  "name": "Petkim",           "asset_type": AssetType.STOCK, "market": "bist"},
+    {"symbol": "TCELL.IS",  "name": "Turkcell",         "asset_type": AssetType.STOCK, "market": "bist"},
+    {"symbol": "TTKOM.IS",  "name": "Türk Telekom",     "asset_type": AssetType.STOCK, "market": "bist"},
+    {"symbol": "FROTO.IS",  "name": "Ford Otosan",      "asset_type": AssetType.STOCK, "market": "bist"},
+    {"symbol": "TOASO.IS",  "name": "Tofaş Oto",        "asset_type": AssetType.STOCK, "market": "bist"},
+    {"symbol": "ENKAI.IS",  "name": "Enka İnşaat",      "asset_type": AssetType.STOCK, "market": "bist"},
 ]
 
 # ── synthetic OHLCV fallback ───────────────────────────────────────────────────

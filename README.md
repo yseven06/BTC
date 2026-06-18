@@ -126,6 +126,94 @@ See `.env.example` files in both `backend/` and `frontend/` directories.
 
 ---
 
+## 🖥️ Running Locally (Windows / PowerShell)
+
+Three helper scripts live at the repo root to make day-to-day development
+painless on Windows. They assume the backend venv already exists at
+`backend/venv` and `node_modules` is installed under `frontend/`.
+
+| Script | What it does |
+|--------|--------------|
+| `start-backend.ps1`  | Activates the bundled venv and starts uvicorn on **http://localhost:8000** |
+| `start-frontend.ps1` | Starts the Next.js dev server on **http://localhost:3000** (runs `npm install` automatically if `node_modules` is missing) |
+| `start-dev.ps1`      | Opens **two** new PowerShell windows — one running the backend, one running the frontend |
+
+### One-time setup
+
+```powershell
+# Allow running local PowerShell scripts (only needed once per machine):
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+### Daily use
+
+From the repo root:
+
+```powershell
+.\start-dev.ps1
+```
+
+Two PowerShell windows pop up. **Leave both open** while you work. Closing
+a window stops that service. To stop everything, close both windows or
+press `Ctrl+C` in each.
+
+If you want to run them individually (e.g., backend only):
+
+```powershell
+.\start-backend.ps1     # in one terminal
+.\start-frontend.ps1    # in another terminal
+```
+
+### Login
+
+Once both servers are up, open <http://localhost:3000/login> and sign in:
+
+| Field | Value |
+|-------|-------|
+| E-posta | `dev@trademinds.io` |
+| Şifre   | `devpass123` |
+
+This dev account is seeded as **admin** so all gated features (Pro/Premium
+panels, PDF reports, etc.) are unlocked.
+
+### Operational requirements
+
+- **Backend MUST stay running on `localhost:8000`** — the frontend, scheduler,
+  signal generation, and live price WebSockets all depend on it. If the
+  backend window is closed, the UI will silently fall back to placeholders
+  and login will fail with *"Giriş yapılamadı"*.
+- **Frontend MUST stay running on `localhost:3000`** — Next.js dev server
+  hot-reloads your code edits. If you close it, the browser tab shows
+  `ERR_CONNECTION_REFUSED`.
+- **Verify backend health quickly:** open <http://localhost:8000/docs>.
+  If Swagger UI loads, the backend is fine. If you get
+  `ERR_CONNECTION_REFUSED`, restart `start-backend.ps1`.
+
+### Troubleshooting checklist
+
+If the dashboard shows **all zeros** or the Signal Center is **empty**, work
+through these in order:
+
+1. **Is the backend window open?**
+   Visit <http://localhost:8000/health>. If it doesn't load, the backend is
+   down — restart `start-backend.ps1` and watch the log for errors.
+2. **Did the scheduler finish its startup sweep?**
+   On boot the backend regenerates stale signals for every active asset.
+   With 38 assets × 3 timeframes this can take a couple of minutes. Watch
+   for log lines like `[Scheduler] Signal saved: BTCUSDT → BUY (...)`.
+3. **Is the frontend pointing at the right backend?**
+   `frontend/.env.local` must contain
+   `NEXT_PUBLIC_API_URL=http://localhost:8000`.
+4. **Hard-refresh the browser** (`Ctrl+Shift+R`) to drop any stale build
+   chunks after restarting the frontend.
+
+A common surprise: closing the PowerShell window that's running
+`start-backend.ps1` kills the backend immediately, even though the
+browser tab stays open. The login screen still renders, but every API
+call fails — that's the "Giriş yapılamadı" you see.
+
+---
+
 ## 📁 Project Structure
 
 ```

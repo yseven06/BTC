@@ -152,3 +152,7 @@ class YahooCollector(BaseCollector):
     async def fetch_orderbook(self, symbol: str) -> Dict[str, Any]:
         """Yahoo Finance does not serve orderbook depth. Return empty."""
         return {"bids": [], "asks": []}
+
+    async def close(self) -> None:
+        """No-op: yfinance manages its own session per call, nothing to close."""
+        return None

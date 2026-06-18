@@ -77,7 +77,8 @@ export default function NewsPage() {
 
   const load = () => {
     setLoading(true);
-    fetch('/api/news')
+    // Cache-busting query param forces fresh fetch each time
+    fetch(`/api/news?t=${Date.now()}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => setData(d))
       .catch(() => {})
@@ -85,6 +86,12 @@ export default function NewsPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Auto-refresh every 5 minutes in the background
+  useEffect(() => {
+    const id = setInterval(load, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode; sources: string }[] = [
     {

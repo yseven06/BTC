@@ -80,16 +80,16 @@ def generate_signal(
         composite_score = min(50.0, composite_score + disagreement_penalty)
 
     # 3. Determine Signal Type and Direction — tuned for actionable signals
-    if composite_score >= 72.0:
+    if composite_score >= 68.0:
         signal_type = "STRONG_BUY"
         direction = "bullish"
-    elif composite_score >= 58.0:
+    elif composite_score >= 54.0:
         signal_type = "BUY"
         direction = "bullish"
-    elif composite_score >= 42.0:
+    elif composite_score >= 46.0:
         signal_type = "HOLD"
         direction = "neutral"
-    elif composite_score >= 28.0:
+    elif composite_score >= 32.0:
         signal_type = "SELL"
         direction = "bearish"
     else:
@@ -275,14 +275,29 @@ def generate_signal(
         invalidation_conditions = f"Close above stop loss level {stop_loss:.4f} on a 1-hour candle basis, or failure to break support level {tp1:.4f} within 48 hours."
 
     else:
-        # Neutral HOLD signal
-        entry_zone_low = current_price
-        entry_zone_high = current_price
-        stop_loss = 0.0
-        tp1 = 0.0
-        tp2 = 0.0
-        tp3 = 0.0
-        invalidation_conditions = "No active trade plan. Neutral market posture."
+        # Neutral HOLD — still surface indicative levels so the user can read the
+        # nearest reference price action, just clearly marked as informational.
+        # We bias by the raw composite_score (above/below 50 = which side wins).
+        if composite_score >= 50:
+            # Lean bullish — show what would-be BUY targets look like
+            entry_zone_low  = current_price * 0.998
+            entry_zone_high = current_price
+            stop_loss = current_price - (atr * 1.5)
+            tp1 = current_price + (atr * 1.5)
+            tp2 = current_price + (atr * 3.0)
+            tp3 = current_price + (atr * 5.0)
+        else:
+            # Lean bearish — show what would-be SELL targets look like
+            entry_zone_low  = current_price
+            entry_zone_high = current_price * 1.002
+            stop_loss = current_price + (atr * 1.5)
+            tp1 = current_price - (atr * 1.5)
+            tp2 = current_price - (atr * 3.0)
+            tp3 = current_price - (atr * 5.0)
+        invalidation_conditions = (
+            "Bilgi amaçlıdır. Net AL/SAT sinyali yok — motorlar arasında uzlaşı sağlanamadı. "
+            "Pozisyon açmadan önce daha güçlü onay bekleyin."
+        )
 
     # Return structured data
     return GeneratedSignalData(

@@ -16,12 +16,31 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(init?.headers as Record<string, string> | undefined),
   };
-  const res = await fetch(`${BASE}${path}`, { ...init, headers });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`API ${res.status}: ${body}`);
+  // Abort after 8s so a dead backend doesn't make the UI hang for 30+s
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(`${BASE}${path}`, {
+      ...init,
+      headers,
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`API ${res.status}: ${body}`);
+    }
+    return res.json() as Promise<T>;
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      throw new Error('Backend yanıt vermiyor. Lütfen backend\'in çalıştığından emin ol (localhost:8000).');
+    }
+    if (err?.message?.includes('Failed to fetch') || err?.message?.includes('NetworkError')) {
+      throw new Error('Backend\'e bağlanılamıyor. localhost:8000 çalışıyor mu?');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return res.json() as Promise<T>;
 }
 
 async function cgFetch<T>(path: string): Promise<T> {
@@ -104,6 +123,7 @@ export async function fetchActiveSignals(params?: {
   direction?: string;
   signal_type?: string;
   timeframe?: string;
+  only_actionable?: boolean;
   page?: number;
   page_size?: number;
 }): Promise<SignalListResponse> {
@@ -111,6 +131,7 @@ export async function fetchActiveSignals(params?: {
   if (params?.direction) q.set('direction', params.direction);
   if (params?.signal_type) q.set('signal_type', params.signal_type);
   if (params?.timeframe) q.set('timeframe', params.timeframe);
+  if (params?.only_actionable !== undefined) q.set('only_actionable', String(params.only_actionable));
   if (params?.page) q.set('page', String(params.page));
   if (params?.page_size) q.set('page_size', String(params.page_size));
   const qs = q.toString() ? `?${q}` : '';

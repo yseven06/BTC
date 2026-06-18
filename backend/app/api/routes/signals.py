@@ -54,7 +54,7 @@ async def list_signals(
     timeframe: Optional[str] = Query(None, description="Filter by timeframe."),
     only_actionable: bool = Query(True, description="If True, hide HOLD signals (only BUY/SELL shown)."),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=300),
     tier: SubscriptionTier = Depends(get_user_tier_optional),
     db: AsyncSession = Depends(get_db),
 ) -> SignalListResponse:

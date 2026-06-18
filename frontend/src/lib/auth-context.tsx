@@ -26,6 +26,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
+      // If no token, don't even try (avoid useless network round-trip)
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+      if (!token) {
+        setUser(null);
+        return;
+      }
       const u = await fetchCurrentUser();
       setUser(u);
     } catch {
@@ -34,7 +40,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    refresh().finally(() => setLoading(false));
+    // Hard timeout so we never get stuck in spinner if backend hangs
+    const timeoutId = setTimeout(() => setLoading(false), 4000);
+    refresh().finally(() => {
+      clearTimeout(timeoutId);
+      setLoading(false);
+    });
   }, [refresh]);
 
   const storeTokens = (access: string, refreshTok: string) => {

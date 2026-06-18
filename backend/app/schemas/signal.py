@@ -43,7 +43,9 @@ class SignalResponse(BaseModel):
     invalidation_conditions: Optional[str] = None
     explanation_tr: Optional[str] = None
     explanation_en: Optional[str] = None
-    engines_data: Optional[Dict[str, Any]] = None
+    # engines_data may be a dict {engine_name: result} or a list [result, ...]
+    # depending on how the AI orchestrator serialized it.
+    engines_data: Optional[Any] = None
     timeframe: str
     is_active: bool
     generated_at: datetime
@@ -71,7 +73,7 @@ class SignalDetailResponse(BaseModel):
     tp2: Optional[float] = None
     tp3: Optional[float] = None
     invalidation_conditions: Optional[str] = None
-    engines_data: Optional[Dict[str, Any]] = None
+    engines_data: Optional[Any] = None
     explanation_tr: Optional[str] = None
     explanation_en: Optional[str] = None
     is_active: bool
