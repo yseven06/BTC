@@ -1,0 +1,599 @@
+"""
+Signal API routes.
+
+Provides endpoints for listing active signals, viewing signal details,
+history, performance metrics, and triggering signal generation.
+"""
+
+import logging
+from typing import Optional, Dict, Any, List
+from uuid import UUID
+from datetime import datetime, timezone, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
+
+from app.auth.dependencies import get_current_user
+from app.database import get_db
+from app.models.asset import Asset
+from app.models.signal import Signal, SignalOutcome, SignalPerformance, SignalType, Direction, RiskLevel
+from app.models.user import User
+from app.schemas.signal import (
+    SignalDetailResponse,
+    SignalListResponse,
+    SignalPerformanceResponse,
+    SignalPerformanceSummary,
+    SignalResponse,
+    BacktestRequest,
+    BacktestResponse,
+)
+from app.collectors.binance_collector import BinanceCollector
+from app.collectors.yahoo_collector import YahooCollector
+from app.engines.ai_decision.engine import AIDecisionEngine
+from app.backtesting.engine import BacktestEngine
+from app.backtesting.tracker import track_and_resolve_active_signals
+from app.subscriptions.gating import (
+    TIER_LIMITS, SubscriptionTier, get_user_tier_optional, require_feature,
+)
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+
+@router.get(
+    "",
+    response_model=SignalListResponse,
+    summary="List active signals",
+)
+async def list_signals(
+    asset_id: Optional[UUID] = Query(None, description="Filter by asset ID."),
+    direction: Optional[str] = Query(None, description="Filter by direction (bullish, bearish, neutral)."),
+    signal_type: Optional[str] = Query(None, description="Filter by signal type."),
+    timeframe: Optional[str] = Query(None, description="Filter by timeframe."),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    tier: SubscriptionTier = Depends(get_user_tier_optional),
+    db: AsyncSession = Depends(get_db),
+) -> SignalListResponse:
+    """
+    List active trading signals with optional filters and pagination.
+    Free users are limited to the most recent N signals (daily_signal_limit).
+    """
+    # ── Tier-based signal limit ──
+    free_cap = TIER_LIMITS[tier].daily_signal_limit
+    if free_cap > 0:
+        # Cap how many they can ask for and how many we surface in total.
+        page_size = min(page_size, free_cap)
+    query = select(Signal).where(Signal.is_active == True)
+
+    if asset_id is not None:
+        query = query.where(Signal.asset_id == asset_id)
+    if direction is not None:
+        query = query.where(Signal.direction == direction)
+    if signal_type is not None:
+        query = query.where(Signal.signal_type == signal_type)
+    if timeframe is not None:
+        query = query.where(Signal.timeframe == timeframe)
+
+    # Count total
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar_one()
+
+    # Free users see at most `free_cap` total (most recent N).
+    if free_cap > 0:
+        total = min(total, free_cap)
+
+    # Paginate — joinedload asset so signal.asset is populated for serialization
+    offset = (page - 1) * page_size
+    query = (
+        query
+        .options(joinedload(Signal.asset))
+        .order_by(Signal.generated_at.desc())
+        .offset(offset)
+        .limit(page_size)
+    )
+    result = await db.execute(query)
+    signals = result.unique().scalars().all()
+
+    total_pages = max(1, (total + page_size - 1) // page_size)
+
+    return SignalListResponse(
+        items=[SignalResponse.model_validate(s) for s in signals],
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+        has_next=page < total_pages,
+        has_previous=page > 1,
+    )
+
+
+@router.get(
+    "/history",
+    response_model=SignalListResponse,
+    summary="List historical signals",
+)
+async def signal_history(
+    asset_id: Optional[UUID] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> SignalListResponse:
+    """
+    List all signals including inactive/expired ones.
+    """
+    query = select(Signal)
+
+    if asset_id is not None:
+        query = query.where(Signal.asset_id == asset_id)
+
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar_one()
+
+    offset = (page - 1) * page_size
+    query = query.order_by(Signal.generated_at.desc()).offset(offset).limit(page_size)
+    result = await db.execute(query)
+    signals = result.scalars().all()
+
+    total_pages = max(1, (total + page_size - 1) // page_size)
+
+    return SignalListResponse(
+        items=[SignalResponse.model_validate(s) for s in signals],
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+        has_next=page < total_pages,
+        has_previous=page > 1,
+    )
+
+
+@router.get(
+    "/performance",
+    response_model=SignalPerformanceSummary,
+    summary="Get aggregate signal performance",
+)
+async def signal_performance_summary(
+    asset_id: Optional[UUID] = Query(None),
+    db: AsyncSession = Depends(get_db),
+) -> SignalPerformanceSummary:
+    """
+    Return aggregate performance statistics across all resolved signals,
+    including strategy-specific and asset-specific performance breakdowns.
+    """
+    query = (
+        select(SignalPerformance)
+        .join(Signal)
+        .join(Asset)
+        .options(joinedload(SignalPerformance.signal).joinedload(Signal.asset))
+    )
+
+    if asset_id is not None:
+        query = query.where(Signal.asset_id == asset_id)
+
+    result = await db.execute(query)
+    performances = result.scalars().all()
+
+    if not performances:
+        return SignalPerformanceSummary()
+
+    total = len(performances)
+    win = sum(1 for p in performances if p.outcome == SignalOutcome.WIN)
+    loss = sum(1 for p in performances if p.outcome == SignalOutcome.LOSS)
+    breakeven = sum(1 for p in performances if p.outcome == SignalOutcome.BREAKEVEN)
+    active = sum(1 for p in performances if p.outcome == SignalOutcome.ACTIVE)
+    expired = sum(1 for p in performances if p.outcome == SignalOutcome.EXPIRED)
+
+    resolved = win + loss + breakeven
+    win_rate = (win / resolved * 100) if resolved > 0 else 0.0
+
+    returns = [float(p.actual_return) for p in performances if p.actual_return is not None]
+    avg_return = sum(returns) / len(returns) if returns else None
+
+    drawdowns = [float(p.max_drawdown) for p in performances if p.max_drawdown is not None]
+    avg_drawdown = sum(drawdowns) / len(drawdowns) if drawdowns else None
+
+    tp1_hits = sum(1 for p in performances if p.hit_tp1)
+    tp2_hits = sum(1 for p in performances if p.hit_tp2)
+    tp3_hits = sum(1 for p in performances if p.hit_tp3)
+
+    # 1. Win rate by direction
+    win_rate_by_direction = {}
+    for d in ["bullish", "bearish", "neutral"]:
+        d_perfs = [p for p in performances if p.signal.direction.value == d]
+        d_res = sum(1 for p in d_perfs if p.outcome in [SignalOutcome.WIN, SignalOutcome.LOSS, SignalOutcome.BREAKEVEN])
+        d_win = sum(1 for p in d_perfs if p.outcome == SignalOutcome.WIN)
+        win_rate_by_direction[d] = round((d_win / d_res * 100.0), 2) if d_res > 0 else 0.0
+
+    # 2. Win rate by asset
+    win_rate_by_asset = {}
+    assets_set = set(p.signal.asset.symbol for p in performances)
+    for sym in assets_set:
+        a_perfs = [p for p in performances if p.signal.asset.symbol == sym]
+        a_res = sum(1 for p in a_perfs if p.outcome in [SignalOutcome.WIN, SignalOutcome.LOSS, SignalOutcome.BREAKEVEN])
+        a_win = sum(1 for p in a_perfs if p.outcome == SignalOutcome.WIN)
+        win_rate_by_asset[sym] = round((a_win / a_res * 100.0), 2) if a_res > 0 else 0.0
+
+    # 3. Performance by signal type
+    performance_by_signal_type = {}
+    for st in ["strong_buy", "buy", "sell", "strong_sell"]:
+        st_perfs = [p for p in performances if p.signal.signal_type.value == st]
+        st_res = sum(1 for p in st_perfs if p.outcome in [SignalOutcome.WIN, SignalOutcome.LOSS, SignalOutcome.BREAKEVEN])
+        st_win = sum(1 for p in st_perfs if p.outcome == SignalOutcome.WIN)
+        st_avg_ret = sum(float(p.actual_return) for p in st_perfs if p.actual_return is not None) / len([p for p in st_perfs if p.actual_return is not None]) if [p for p in st_perfs if p.actual_return is not None] else 0.0
+        performance_by_signal_type[st] = {
+            "total": len(st_perfs),
+            "win_rate": round((st_win / st_res * 100.0), 2) if st_res > 0 else 0.0,
+            "average_return": round(float(st_avg_ret), 4)
+        }
+
+    # 4. Historical equity curve (compiles a hypothetical 10% risk curve chronologically)
+    sorted_perfs = sorted(performances, key=lambda x: x.closed_at or x.signal.generated_at)
+    equity = 10000.0
+    historical_equity_curve = [{"time": "Start", "capital": equity}]
+    for p in sorted_perfs:
+        if p.actual_return is not None:
+            trade_return = float(p.actual_return) / 100.0
+            impact = equity * 0.1 * trade_return
+            equity += impact
+            closed_time = (p.closed_at or p.signal.generated_at).isoformat()
+            historical_equity_curve.append({
+                "time": closed_time,
+                "capital": round(equity, 2)
+            })
+
+    # 5. Drawdown analysis
+    max_dd = max(drawdowns) if drawdowns else 0.0
+    drawdown_analysis = {
+        "max_drawdown": round(max_dd, 2),
+        "average_drawdown": round(avg_drawdown, 2) if avg_drawdown is not None else 0.0
+    }
+
+    return SignalPerformanceSummary(
+        total_signals=total,
+        win_count=win,
+        loss_count=loss,
+        breakeven_count=breakeven,
+        active_count=active,
+        expired_count=expired,
+        win_rate=round(win_rate, 2),
+        average_return=round(avg_return, 4) if avg_return is not None else None,
+        average_drawdown=round(avg_drawdown, 4) if avg_drawdown is not None else None,
+        tp1_hit_rate=round(tp1_hits / total * 100, 2) if total > 0 else 0.0,
+        tp2_hit_rate=round(tp2_hits / total * 100, 2) if total > 0 else 0.0,
+        tp3_hit_rate=round(tp3_hits / total * 100, 2) if total > 0 else 0.0,
+        win_rate_by_direction=win_rate_by_direction,
+        win_rate_by_asset=win_rate_by_asset,
+        performance_by_signal_type=performance_by_signal_type,
+        historical_equity_curve=historical_equity_curve,
+        drawdown_analysis=drawdown_analysis,
+    )
+
+
+@router.get(
+    "/{signal_id}",
+    response_model=SignalDetailResponse,
+    summary="Get signal details",
+)
+async def get_signal(
+    signal_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> SignalDetailResponse:
+    """
+    Retrieve full details of a specific signal including performance data.
+    """
+    query = (
+        select(Signal)
+        .options(joinedload(Signal.performance))
+        .where(Signal.id == signal_id)
+    )
+    result = await db.execute(query)
+    signal = result.unique().scalar_one_or_none()
+
+    if signal is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Signal not found.",
+        )
+
+    return SignalDetailResponse.model_validate(signal)
+
+
+@router.post(
+    "/generate-batch",
+    summary="Generate signals for all active assets",
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def generate_batch(
+    tier: SubscriptionTier = Depends(get_user_tier_optional),
+) -> dict:
+    """
+    Trigger signal generation for all active assets in the background.
+    Free users have a daily cap; Pro/Premium are unlimited.
+    """
+    # Free users can trigger only if they have remaining quota — simplified
+    # to "Pro or above" here.
+    if tier == SubscriptionTier.FREE:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail={
+                "error": "upgrade_required",
+                "feature": "manual_batch_generation",
+                "message": "Toplu sinyal üretimi Pro veya üzeri abonelik gerektirir.",
+            },
+        )
+    from app.services.scheduler import _run_all_signals
+    import asyncio
+    asyncio.create_task(_run_all_signals("1h"))
+    return {"status": "accepted", "message": "Signal generation started for all active assets."}
+
+
+@router.post(
+    "/generate/{symbol}",
+    response_model=SignalDetailResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Trigger signal generation for an asset",
+)
+async def generate_signal(
+    symbol: str,
+    timeframe: str = Query("1h", description="Timeframe to analyze (e.g. 15m, 1h, 4h, 1d)"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SignalDetailResponse:
+    """
+    Trigger analysis and signal generation for a specific asset.
+    Runs the multi-engine AI decision suite synchronously and saves the resulting signal.
+    """
+    # Find the asset
+    asset_query = select(Asset).where(func.upper(Asset.symbol) == symbol.upper())
+    asset_result = await db.execute(asset_query)
+    asset = asset_result.scalar_one_or_none()
+
+    if asset is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Asset with symbol '{symbol}' not found.",
+        )
+
+    from app.models.price_data import Timeframe as DBTimeframe
+
+    # Map timeframe string to DB enum
+    tf_enum_map = {
+        "1m": DBTimeframe.M1,
+        "5m": DBTimeframe.M5,
+        "15m": DBTimeframe.M15,
+        "1h": DBTimeframe.H1,
+        "4h": DBTimeframe.H4,
+        "1d": DBTimeframe.D1,
+        "1w": DBTimeframe.W1,
+    }
+    db_tf = tf_enum_map.get(timeframe.lower(), DBTimeframe.H1)
+
+    binance = BinanceCollector()
+    yahoo = YahooCollector()
+    try:
+        if asset.asset_type.value == "stock" or symbol.upper().endswith(".IS"):
+            df = await yahoo.fetch_ohlcv(symbol, timeframe, limit=100)
+        else:
+            df = await binance.fetch_ohlcv(symbol, timeframe, limit=100)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to fetch market data from data feed: {str(e)}",
+        )
+    finally:
+        await binance.close()
+        await yahoo.close()
+
+    try:
+        # Run orchestrator
+        engine = AIDecisionEngine()
+        decision = await engine.analyze_and_decide(
+            symbol=symbol,
+            timeframe=timeframe,
+            ohlcv_data=df,
+            asset_type=asset.asset_type.value,
+        )
+    except Exception as e:
+        logger.error(f"Decision Engine execution failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Analysis engine execution failed: {str(e)}",
+        )
+
+    # Deactivate any previous active signals for this asset on this timeframe
+    deactivate_query = (
+        select(Signal)
+        .where(Signal.asset_id == asset.id)
+        .where(Signal.timeframe == db_tf)
+        .where(Signal.is_active == True)
+    )
+    deactivate_res = await db.execute(deactivate_query)
+    for old_sig in deactivate_res.scalars().all():
+        old_sig.is_active = False
+
+    sig_type_map = {
+        "STRONG_BUY": SignalType.STRONG_BUY,
+        "BUY": SignalType.BUY,
+        "HOLD": SignalType.HOLD,
+        "SELL": SignalType.SELL,
+        "STRONG_SELL": SignalType.STRONG_SELL,
+    }
+
+    dir_map = {
+        "bullish": Direction.BULLISH,
+        "bearish": Direction.BEARISH,
+        "neutral": Direction.NEUTRAL,
+    }
+
+    risk_map = {
+        "low": RiskLevel.LOW,
+        "medium": RiskLevel.MEDIUM,
+        "high": RiskLevel.HIGH,
+        "very_high": RiskLevel.VERY_HIGH,
+    }
+
+    generated_at = datetime.now(timezone.utc)
+    expires_at = generated_at + timedelta(hours=48)
+
+    new_signal = Signal(
+        asset_id=asset.id,
+        signal_type=sig_type_map.get(decision["signal_type"], SignalType.HOLD),
+        confidence_score=decision["confidence_score"],
+        probability_score=decision["probability_score"],
+        risk_score=decision["risk_score"],
+        risk_level=risk_map.get(decision["risk_level"].lower(), RiskLevel.MEDIUM),
+        direction=dir_map.get(decision["direction"], Direction.NEUTRAL),
+        entry_zone_low=decision["entry_zone_low"],
+        entry_zone_high=decision["entry_zone_high"],
+        stop_loss=decision["stop_loss"],
+        tp1=decision["tp1"],
+        tp2=decision["tp2"],
+        tp3=decision["tp3"],
+        invalidation_conditions=decision["invalidation_conditions"],
+        engines_data=decision["engine_results"],
+        explanation_tr=decision["explanation_tr"],
+        explanation_en=decision["explanation_en"],
+        is_active=True,
+        timeframe=db_tf,
+        generated_at=generated_at,
+        expires_at=expires_at,
+    )
+
+    db.add(new_signal)
+    await db.flush()
+    
+    perf = SignalPerformance(
+        signal_id=new_signal.id,
+        outcome=SignalOutcome.ACTIVE,
+    )
+    db.add(perf)
+    
+    await db.commit()
+
+    logger.info(
+        "Signal successfully generated and saved for %s (%s). Type: %s",
+        symbol,
+        timeframe,
+        new_signal.signal_type.value,
+    )
+
+    # Re-fetch with joined relations
+    final_query = (
+        select(Signal)
+        .options(joinedload(Signal.performance))
+        .where(Signal.id == new_signal.id)
+    )
+    final_res = await db.execute(final_query)
+    signal_detail = final_res.unique().scalar_one()
+
+    return SignalDetailResponse.model_validate(signal_detail)
+
+
+@router.post(
+    "/backtest",
+    response_model=BacktestResponse,
+    summary="Run walk-forward historical backtest for an asset",
+)
+async def backtest_endpoint(
+    req: BacktestRequest,
+    current_user: User = Depends(get_current_user),
+    _gate = Depends(require_feature("can_use_backtest")),
+) -> BacktestResponse:
+    """
+    Run historical backtest simulation candle-by-candle.
+    Supports walk-forward testing with zero look-ahead bias.
+    """
+    binance = BinanceCollector()
+    yahoo = YahooCollector()
+
+    try:
+        # Fetch longer history (e.g. 300 bars) for backtesting
+        if req.symbol.upper().endswith(".IS") or len(req.symbol) == 5:
+            df = await yahoo.fetch_ohlcv(req.symbol, req.timeframe, limit=300)
+        else:
+            df = await binance.fetch_ohlcv(req.symbol, req.timeframe, limit=300)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to fetch historical candles for backtesting: {str(e)}",
+        )
+    finally:
+        await binance.close()
+        await yahoo.close()
+
+    if df.empty or len(df) < 80:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Insufficient candle history ({len(df)} bars) to run backtest. Need at least 80 bars.",
+        )
+
+    try:
+        engine = BacktestEngine()
+        report = await engine.run_backtest(
+            symbol=req.symbol,
+            timeframe=req.timeframe,
+            df=df,
+            initial_capital=req.initial_capital,
+            risk_pct=req.risk_pct,
+            max_age=req.max_age,
+            execution_model=req.execution_model,
+        )
+    except Exception as e:
+        logger.error(f"Backtesting engine failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Backtest simulation failed: {str(e)}",
+        )
+
+    return BacktestResponse(
+        total_trades=report.total_trades,
+        wins=report.wins,
+        losses=report.losses,
+        breakevens=report.breakevens,
+        expired=report.expired,
+        win_rate=report.win_rate,
+        loss_rate=report.loss_rate,
+        profit_factor=report.profit_factor,
+        sharpe_ratio=report.sharpe_ratio,
+        sortino_ratio=report.sortino_ratio,
+        max_drawdown_pct=report.max_drawdown_pct,
+        average_return_pct=report.average_return_pct,
+        average_rr=report.average_rr,
+        expectancy_pct=report.expectancy_pct,
+        max_consecutive_wins=report.max_consecutive_wins,
+        max_consecutive_losses=report.max_consecutive_losses,
+        equity_curve=report.equity_curve,
+        trades_log=report.trades_log,
+    )
+
+
+@router.post(
+    "/track-performance",
+    summary="Manually trigger performance tracking check",
+)
+async def manual_track_performance(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """
+    Trigger performance tracking sweep across active signals.
+    Checks subsequent price action to resolve active signals as WIN, LOSS, etc.
+    """
+    try:
+        summary = await track_and_resolve_active_signals(db)
+        return {
+            "status": "success",
+            "message": f"Processed {summary['processed']} active signals. Resolved {summary['resolved']}.",
+            "details": summary["details"],
+        }
+    except Exception as e:
+        logger.error(f"Error during manual performance tracking sweep: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Performance tracking sweep failed: {str(e)}",
+        )

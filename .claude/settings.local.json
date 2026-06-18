@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/c/Users/Wolrider/AppData/Local/Microsoft/WindowsApps/python3.exe -c \"import sys; print\\(sys.version\\)\")",
+      "Bash(python -m pip install numpy --quiet)",
+      "Bash(venv\\\\Scripts\\\\python.exe -m scripts.seed_dev)"
+    ]
+  }
+}
