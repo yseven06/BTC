@@ -75,6 +75,13 @@ app.add_middleware(
 # Include API Router
 app.include_router(api_router, prefix="/api/v1")
 
+from fastapi.staticfiles import StaticFiles
+import os
+
+# Ensure static/uploads directory exists
+os.makedirs("static/uploads", exist_ok=True)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 @app.get("/health", tags=["System"])
 async def health_check():

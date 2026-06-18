@@ -52,6 +52,7 @@ async def list_signals(
     direction: Optional[str] = Query(None, description="Filter by direction (bullish, bearish, neutral)."),
     signal_type: Optional[str] = Query(None, description="Filter by signal type."),
     timeframe: Optional[str] = Query(None, description="Filter by timeframe."),
+    only_actionable: bool = Query(True, description="If True, hide HOLD signals (only BUY/SELL shown)."),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     tier: SubscriptionTier = Depends(get_user_tier_optional),
@@ -76,6 +77,9 @@ async def list_signals(
         query = query.where(Signal.signal_type == signal_type)
     if timeframe is not None:
         query = query.where(Signal.timeframe == timeframe)
+    # Hide HOLD by default — user wants actionable BUY/SELL signals
+    if only_actionable:
+        query = query.where(Signal.signal_type != SignalType.HOLD)
 
     # Count total
     count_query = select(func.count()).select_from(query.subquery())
@@ -86,11 +90,11 @@ async def list_signals(
     if free_cap > 0:
         total = min(total, free_cap)
 
-    # Paginate — joinedload asset so signal.asset is populated for serialization
+    # Paginate — joinedload asset + performance so frontend can show outcome badges
     offset = (page - 1) * page_size
     query = (
         query
-        .options(joinedload(Signal.asset))
+        .options(joinedload(Signal.asset), joinedload(Signal.performance))
         .order_by(Signal.generated_at.desc())
         .offset(offset)
         .limit(page_size)
@@ -100,8 +104,13 @@ async def list_signals(
 
     total_pages = max(1, (total + page_size - 1) // page_size)
 
+    def _to_resp(s: Signal) -> SignalResponse:
+        d = SignalResponse.model_validate(s)
+        d.outcome = s.performance.outcome.value if s.performance else "active"
+        return d
+
     return SignalListResponse(
-        items=[SignalResponse.model_validate(s) for s in signals],
+        items=[_to_resp(s) for s in signals],
         total=total,
         page=page,
         page_size=page_size,
@@ -135,14 +144,24 @@ async def signal_history(
     total = total_result.scalar_one()
 
     offset = (page - 1) * page_size
-    query = query.order_by(Signal.generated_at.desc()).offset(offset).limit(page_size)
+    query = (
+        query
+        .options(joinedload(Signal.asset), joinedload(Signal.performance))
+        .order_by(Signal.generated_at.desc())
+        .offset(offset).limit(page_size)
+    )
     result = await db.execute(query)
-    signals = result.scalars().all()
+    signals = result.unique().scalars().all()
 
     total_pages = max(1, (total + page_size - 1) // page_size)
 
+    def _hist_to_resp(s: Signal) -> SignalResponse:
+        d = SignalResponse.model_validate(s)
+        d.outcome = s.performance.outcome.value if s.performance else "active"
+        return d
+
     return SignalListResponse(
-        items=[SignalResponse.model_validate(s) for s in signals],
+        items=[_hist_to_resp(s) for s in signals],
         total=total,
         page=page,
         page_size=page_size,

@@ -43,10 +43,12 @@ class SignalResponse(BaseModel):
     invalidation_conditions: Optional[str] = None
     explanation_tr: Optional[str] = None
     explanation_en: Optional[str] = None
+    engines_data: Optional[Dict[str, Any]] = None
     timeframe: str
     is_active: bool
     generated_at: datetime
     expires_at: Optional[datetime] = None
+    outcome: Optional[str] = None  # active / win / loss / breakeven / expired
 
     model_config = {"from_attributes": True}
 

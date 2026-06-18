@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Mail, Shield, Calendar, Save, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useAuth } from '@/lib/auth-context';
-import { updateProfile, changePassword } from '@/lib/api';
+import { updateProfile, changePassword, uploadAvatar } from '@/lib/api';
 
 const PRESET_AVATARS = [
   { name: 'Trader 1', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80' },
@@ -25,6 +25,9 @@ export default function ProfilePage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
@@ -39,6 +42,22 @@ export default function ProfilePage() {
       setAvatarUrl(user.avatar_url ?? '');
     }
   }, [user]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadError('');
+    try {
+      const res = await uploadAvatar(file);
+      setAvatarUrl(res.avatar_url);
+    } catch (err: any) {
+      setUploadError('Yükleme başarısız oldu: ' + (err?.message ?? 'hata'));
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const saveProfile = async () => {
     setSavingProfile(true);
@@ -197,6 +216,31 @@ export default function ProfilePage() {
                 placeholder="https://example.com/resim.png"
               />
             </div>
+
+            {/* PC Upload */}
+            <div className="mt-3 bg-bg-secondary/30 rounded-xl p-3 border border-border-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold text-text-primary">Bilgisayardan Fotoğraf Yükle</p>
+                <p className="text-[10px] text-text-muted mt-0.5">PNG, JPG, WEBP veya GIF formatında dosya seçin.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="cursor-pointer px-3 py-1.5 rounded-lg bg-bg-tertiary border border-border-subtle hover:border-accent-primary/50 text-xs font-semibold text-text-primary transition-all flex items-center gap-1.5">
+                  Dosya Seç
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </label>
+                {uploading && (
+                  <span className="text-[10px] text-text-muted animate-pulse">Yükleniyor...</span>
+                )}
+              </div>
+            </div>
+            {uploadError && (
+              <p className="text-[10px] text-bearish mt-1">{uploadError}</p>
+            )}
           </div>
           <div>
             <label className="text-xs font-semibold text-text-muted uppercase">E-posta</label>

@@ -79,17 +79,17 @@ def generate_signal(
     elif composite_score < 50.0:
         composite_score = min(50.0, composite_score + disagreement_penalty)
 
-    # 3. Determine Signal Type and Direction
-    if composite_score >= 80.0:
+    # 3. Determine Signal Type and Direction — tuned for actionable signals
+    if composite_score >= 72.0:
         signal_type = "STRONG_BUY"
         direction = "bullish"
-    elif composite_score >= 65.0:
+    elif composite_score >= 58.0:
         signal_type = "BUY"
         direction = "bullish"
-    elif composite_score >= 40.0:
+    elif composite_score >= 42.0:
         signal_type = "HOLD"
         direction = "neutral"
-    elif composite_score >= 25.0:
+    elif composite_score >= 28.0:
         signal_type = "SELL"
         direction = "bearish"
     else:
@@ -114,48 +114,32 @@ def generate_signal(
         crt_score = crt_res.score if crt_res else 50.0
 
         if direction == "bullish":
-            # Check for conflicting bearish engines (score below 48)
-            conflicts = (
-                (ta_score < 48) or 
-                (ms_score < 48) or 
-                (vol_score < 48) or 
-                (smc_score < 48) or 
-                (crt_score < 48)
-            )
-            # Require at least 3 confirming engines (score strictly bullish > 52)
-            confirmations = sum(1 for s in [ta_score, ms_score, vol_score, smc_score, crt_score] if s > 52)
-            
-            # Risk check: only block on EXTREME risk (>= 9.0 on a 1-10 scale).
-            # The previous threshold of 8.0 was causing every crypto asset
-            # (base_risk 6.0 + medium volatility 1.0 + any drawdown) to be
-            # blocked, meaning no BUY/SELL signals ever fired for crypto.
+            # Loosened: only STRONG opposite engines (score < 40) count as conflict
+            strong_conflicts = sum(1 for s in [ta_score, ms_score, vol_score, smc_score, crt_score] if s < 40)
+            # Only need 2 confirming engines mildly bullish (> 53)
+            confirmations = sum(1 for s in [ta_score, ms_score, vol_score, smc_score, crt_score] if s > 53)
+
             risk_too_high = False
             if risk_res and "risk_score_raw" in risk_res.supporting_data:
-                risk_too_high = risk_res.supporting_data["risk_score_raw"] >= 9.0
+                risk_too_high = risk_res.supporting_data["risk_score_raw"] >= 9.5
 
-            if conflicts or confirmations < 3 or risk_too_high:
-                logger.info(f"Signal downgraded to HOLD for {symbol} due to failed consensus (Conflicts: {conflicts}, Confirmations: {confirmations}/3, Extreme Risk: {risk_too_high})")
+            # Allow signal if: <=1 strong conflicts AND >=2 confirmations AND not extreme risk
+            if strong_conflicts >= 2 or confirmations < 2 or risk_too_high:
+                logger.info(f"Signal downgraded to HOLD for {symbol} (StrongConflicts: {strong_conflicts}, Confirmations: {confirmations}, ExtremeRisk: {risk_too_high})")
                 signal_type = "HOLD"
                 direction = "neutral"
 
         elif direction == "bearish":
-            # Check for conflicting bullish engines (score above 52)
-            conflicts = (
-                (ta_score > 52) or
-                (ms_score > 52) or
-                (vol_score > 52) or
-                (smc_score > 52) or
-                (crt_score > 52)
-            )
-            # Require at least 3 confirming engines (score strictly bearish < 48)
-            confirmations = sum(1 for s in [ta_score, ms_score, vol_score, smc_score, crt_score] if s < 48)
+            # Loosened: only STRONG opposite engines (score > 60) count as conflict
+            strong_conflicts = sum(1 for s in [ta_score, ms_score, vol_score, smc_score, crt_score] if s > 60)
+            confirmations = sum(1 for s in [ta_score, ms_score, vol_score, smc_score, crt_score] if s < 47)
 
             risk_too_high = False
             if risk_res and "risk_score_raw" in risk_res.supporting_data:
-                risk_too_high = risk_res.supporting_data["risk_score_raw"] >= 9.0
+                risk_too_high = risk_res.supporting_data["risk_score_raw"] >= 9.5
 
-            if conflicts or confirmations < 3 or risk_too_high:
-                logger.info(f"Signal downgraded to HOLD for {symbol} due to failed consensus (Conflicts: {conflicts}, Confirmations: {confirmations}/3, Extreme Risk: {risk_too_high})")
+            if strong_conflicts >= 2 or confirmations < 2 or risk_too_high:
+                logger.info(f"Signal downgraded to HOLD for {symbol} (StrongConflicts: {strong_conflicts}, Confirmations: {confirmations}, ExtremeRisk: {risk_too_high})")
                 signal_type = "HOLD"
                 direction = "neutral"
 

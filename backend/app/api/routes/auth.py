@@ -270,6 +270,46 @@ async def update_me(
     return UserResponse.model_validate(current_user)
 
 
+from fastapi import File, UploadFile
+import uuid
+import os
+
+@router.post(
+    "/upload-avatar",
+    summary="Upload profile avatar image",
+)
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Upload user profile picture and return the public URL."""
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in [".png", ".jpg", ".jpeg", ".gif", ".webp"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid image format. Allowed: PNG, JPG, JPEG, GIF, WEBP."
+        )
+
+    upload_dir = os.path.join("static", "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+
+    filename = f"{uuid.uuid4()}{ext}"
+    file_path = os.path.join(upload_dir, filename)
+
+    try:
+        content = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(content)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save image: {str(e)}"
+        )
+
+    avatar_url = f"http://localhost:8000/static/uploads/{filename}"
+    return {"avatar_url": avatar_url}
+
+
 from pydantic import BaseModel, Field
 
 

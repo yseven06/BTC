@@ -149,6 +149,25 @@ function PurgeBadge({ label, low }: { label: string; low: boolean }) {
   );
 }
 
+function OutcomeBadge({ outcome }: { outcome: string }) {
+  const config: Record<string, { label: string; cls: string }> = {
+    active:    { label: 'AKTİF',     cls: 'bg-accent-primary/15 text-accent-primary border-accent-primary/30' },
+    win:       { label: 'KAZANDI ✓', cls: 'bg-bullish/15 text-bullish border-bullish/30' },
+    loss:      { label: 'PATLADI ✗', cls: 'bg-bearish/15 text-bearish border-bearish/30' },
+    breakeven: { label: 'BERABERE',  cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
+    expired:   { label: 'GEÇERSİZ',  cls: 'bg-text-muted/15 text-text-muted border-text-muted/30' },
+  };
+  const c = config[outcome] ?? config.active;
+  return (
+    <span className={cn(
+      'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wide border',
+      c.cls
+    )}>
+      {c.label}
+    </span>
+  );
+}
+
 function DirectionBadge({ label, long }: { label: string; long: boolean }) {
   return (
     <span className={cn(
@@ -316,6 +335,8 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+type TfFilter = 'all' | '1h' | '4h' | '1d';
+
 export default function SignalsPage() {
   const [signals, setSignals]     = useState<ApiSignal[]>([]);
   const [total, setTotal]         = useState(0);
@@ -323,14 +344,16 @@ export default function SignalsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [selected, setSelected]   = useState<ApiSignal | null>(null);
+  const [tfFilter, setTfFilter]   = useState<TfFilter>('all');
 
-  const symbols  = signals.map((s) => s.asset?.symbol ?? '').filter(Boolean);
+  const filtered = tfFilter === 'all' ? signals : signals.filter((s) => (s.timeframe ?? '').toLowerCase() === tfFilter);
+  const symbols  = filtered.map((s) => s.asset?.symbol ?? '').filter(Boolean);
   const livePrices = useLivePrices(symbols);
 
   const load = async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true); else setLoading(true);
     try {
-      const res = await fetchActiveSignals({ page_size: 100 });
+      const res = await fetchActiveSignals({ page_size: 200 });
       setSignals(res.items);
       setTotal(res.total);
     } catch { /**/ } finally {
@@ -384,11 +407,38 @@ export default function SignalsPage() {
         </div>
       </div>
 
+      {/* Timeframe filter */}
+      <div className="flex items-center gap-1 p-1 bg-bg-secondary border border-border-subtle rounded-xl w-fit">
+        {(['all', '1h', '4h', '1d'] as TfFilter[]).map((tf) => {
+          const cnt = tf === 'all' ? signals.length : signals.filter((s) => s.timeframe?.toLowerCase() === tf).length;
+          return (
+            <button
+              key={tf}
+              onClick={() => setTfFilter(tf)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all',
+                tfFilter === tf
+                  ? 'bg-accent-primary text-white shadow-glow-sm'
+                  : 'text-text-muted hover:text-text-primary'
+              )}
+            >
+              {tf === 'all' ? 'TÜMÜ' : tf.toUpperCase()}
+              <span className={cn(
+                'text-[10px] font-mono px-1.5 py-0.5 rounded',
+                tfFilter === tf ? 'bg-white/20' : 'bg-bg-tertiary/60'
+              )}>
+                {cnt}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Table */}
       <div className="glass-panel border border-border-subtle rounded-2xl overflow-hidden">
         {/* Table head */}
-        <div className="grid grid-cols-[2fr_1fr_1.5fr_1.5fr_1.5fr_1fr_auto] gap-4 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
-          {['SEMBOL', 'YÖN', 'ANLIK FİYAT', 'KALİTE SKORU', 'HTF HIZALAMA', 'PURGE', 'ANALİZ'].map((h) => (
+        <div className="grid grid-cols-[2fr_1fr_1.2fr_1.5fr_1.3fr_1.5fr_auto] gap-4 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
+          {['SEMBOL · TF', 'YÖN', 'ANLIK FİYAT', 'KALİTE SKORU', 'DURUM', 'HTF / PURGE', 'ANALİZ'].map((h) => (
             <span key={h} className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{h}</span>
           ))}
         </div>
@@ -409,7 +459,7 @@ export default function SignalsPage() {
         )}
 
         <div className="divide-y divide-border-subtle">
-          {signals.map((sig) => {
+          {filtered.map((sig) => {
             const sym    = sig.asset?.symbol ?? '';
             const live   = livePrices[sym];
             const qScore = qualityScore(sig.confidence_score);
@@ -417,31 +467,43 @@ export default function SignalsPage() {
             const purge  = getPurgeType(sig.engines_data);
             const dir    = directionLabel(sig);
             const up     = (live?.changePct24h ?? 0) >= 0;
+            const outcome = sig.outcome ?? 'active';
+            const invalid = outcome === 'loss';
 
             return (
               <div
                 key={sig.id}
-                className="grid grid-cols-[2fr_1fr_1.5fr_1.5fr_1.5fr_1fr_auto] gap-4 items-center px-5 py-3.5 hover:bg-white/[0.02] transition-colors"
+                className={cn(
+                  "grid grid-cols-[2fr_1fr_1.2fr_1.5fr_1.3fr_1.5fr_auto] gap-4 items-center px-5 py-3.5 transition-colors",
+                  invalid ? 'bg-bearish/[0.04] opacity-70' : 'hover:bg-white/[0.02]'
+                )}
               >
-                {/* Symbol */}
+                {/* Symbol + Timeframe */}
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-xs text-accent-primary flex-shrink-0">
                     {sym.slice(0, 2)}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-text-primary truncate">{sym}</p>
+                    <p className="text-sm font-bold text-text-primary truncate flex items-center gap-1.5">
+                      {sym}
+                      <span className="text-[9px] font-bold text-accent-primary bg-accent-primary/10 border border-accent-primary/30 px-1.5 py-0.5 rounded uppercase">
+                        {sig.timeframe}
+                      </span>
+                    </p>
                     <p className="text-[10px] text-text-muted truncate">{sig.asset?.name}</p>
                   </div>
                 </div>
 
                 {/* Direction */}
-                <div><DirectionBadge {...dir} /></div>
+                <div className={invalid ? 'line-through opacity-60' : ''}>
+                  <DirectionBadge {...dir} />
+                </div>
 
                 {/* Live Price */}
                 <div>
                   {live ? (
                     <div>
-                      <p className="text-sm font-bold font-mono text-text-primary">
+                      <p className={cn('text-sm font-bold font-mono', invalid ? 'text-text-muted line-through' : 'text-text-primary')}>
                         {live.price.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
                       </p>
                       <p className={cn('text-[10px] font-mono font-semibold', up ? 'text-bullish' : 'text-bearish')}>
@@ -456,12 +518,15 @@ export default function SignalsPage() {
                 {/* Quality Score */}
                 <div><QualityBar score={qScore} /></div>
 
-                {/* HTF Alignment */}
-                <div><HtfBadge {...htf} /></div>
-
-                {/* Purge Type */}
+                {/* Outcome status */}
                 <div>
-                  {purge ? <PurgeBadge {...purge} /> : <span className="text-[10px] text-text-muted">—</span>}
+                  <OutcomeBadge outcome={outcome} />
+                </div>
+
+                {/* HTF + Purge stacked */}
+                <div className="flex flex-col gap-1">
+                  <HtfBadge {...htf} />
+                  {purge && <PurgeBadge {...purge} />}
                 </div>
 
                 {/* Action */}

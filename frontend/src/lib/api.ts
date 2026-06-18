@@ -67,6 +67,7 @@ export interface ApiSignal {
   generated_at: string;
   expires_at?: string;
   is_active: boolean;
+  outcome?: 'active' | 'win' | 'loss' | 'breakeven' | 'expired';
 }
 
 export interface SignalListResponse {
@@ -212,6 +213,25 @@ export async function updateProfile(payload: {
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
+}
+
+export async function uploadAvatar(file: File): Promise<{ avatar_url: string }> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await fetch(`${BASE}/api/v1/auth/upload-avatar`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Upload failed: ${body}`);
+  }
+
+  return res.json() as Promise<{ avatar_url: string }>;
 }
 
 export async function changePassword(

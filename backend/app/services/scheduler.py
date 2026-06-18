@@ -167,16 +167,56 @@ async def _run_performance_tracking() -> None:
 
 
 async def _startup_generate_if_empty() -> None:
-    """On startup: if no active signals exist, generate them immediately."""
-    async with async_session_factory() as db:
-        res = await db.execute(select(Signal).where(Signal.is_active == True).limit(1))
-        has_active = res.scalar_one_or_none() is not None
+    """
+    On startup, ensure each timeframe (1h, 4h, 1d) has fresh signals.
+    For each TF, regenerate if no active signal exists OR the newest one
+    is older than the timeframe's expected refresh interval.
+    """
+    from sqlalchemy import func
 
-    if not has_active:
-        logger.info("[Scheduler] No active signals found on startup — generating now...")
-        await _run_all_signals("1h")
-    else:
-        logger.info("[Scheduler] Active signals exist — skipping startup generation.")
+    # Refresh threshold per timeframe (seconds)
+    THRESHOLDS = {
+        "1h": 90 * 60,        # > 1.5 hours old = stale
+        "4h": 5 * 3600,       # > 5 hours old = stale
+        "1d": 26 * 3600,      # > 26 hours old = stale
+    }
+
+    for tf, max_age in THRESHOLDS.items():
+        async with async_session_factory() as db:
+            res = await db.execute(
+                select(func.max(Signal.generated_at))
+                .where(Signal.is_active == True)
+                .where(Signal.timeframe == DBTimeframe(tf.replace("1d", "1d").upper().replace("1H", "H1").replace("4H", "H4").replace("1D", "D1")) if False else None)
+            )
+            # Simpler: just check newest of any active signal per tf
+            # We'll match by string comparison since Timeframe is an enum
+            from app.models.price_data import Timeframe as _Tf
+            tf_enum_map = {"1h": _Tf.H1, "4h": _Tf.H4, "1d": _Tf.D1}
+            tf_enum = tf_enum_map[tf]
+            res2 = await db.execute(
+                select(func.max(Signal.generated_at))
+                .where(Signal.is_active == True)
+                .where(Signal.timeframe == tf_enum)
+            )
+            newest = res2.scalar_one_or_none()
+
+        needs_refresh = newest is None
+        if newest is not None:
+            now = datetime.now(timezone.utc)
+            if newest.tzinfo is None:
+                newest = newest.replace(tzinfo=timezone.utc)
+            age_sec = (now - newest).total_seconds()
+            needs_refresh = age_sec > max_age
+            if needs_refresh:
+                logger.info("[Scheduler] %s signals are %.1f hours old (>%.1fh threshold) — regenerating.",
+                            tf, age_sec / 3600, max_age / 3600)
+            else:
+                logger.info("[Scheduler] %s signals fresh (%.1fh old) — skipping.", tf, age_sec / 3600)
+        else:
+            logger.info("[Scheduler] No active %s signals — generating now.", tf)
+
+        if needs_refresh:
+            await _run_all_signals(tf)
 
 
 def start_scheduler() -> AsyncIOScheduler:
@@ -225,10 +265,20 @@ def start_scheduler() -> AsyncIOScheduler:
         name="15m signal refresh",
     )
 
-    # Performance tracking: every 15 minutes
+    # 1d signals: regenerate once a day at 00:03 UTC
+    _scheduler.add_job(
+        _run_all_signals,
+        CronTrigger(hour=0, minute=3),
+        kwargs={"timeframe": "1d"},
+        id="signals_1d",
+        replace_existing=True,
+        name="Daily 1d signal refresh",
+    )
+
+    # Performance tracking: every 5 minutes (fast invalidation detection)
     _scheduler.add_job(
         _run_performance_tracking,
-        CronTrigger(minute="5,20,35,50"),
+        CronTrigger(minute="*/5"),
         id="perf_tracking",
         replace_existing=True,
         name="Performance tracking sweep",
