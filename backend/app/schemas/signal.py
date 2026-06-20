@@ -51,6 +51,12 @@ class SignalResponse(BaseModel):
     generated_at: datetime
     expires_at: Optional[datetime] = None
     outcome: Optional[str] = None  # active / win / loss / breakeven / expired
+    actual_return: Optional[float] = None
+    max_drawdown: Optional[float] = None
+    hit_tp1: bool = False
+    hit_tp2: bool = False
+    hit_tp3: bool = False
+    closed_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -136,6 +142,24 @@ class SignalPerformanceSummary(BaseModel):
     performance_by_signal_type: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
     historical_equity_curve: List[Dict[str, Any]] = Field(default_factory=list)
     drawdown_analysis: Dict[str, Any] = Field(default_factory=dict)
+
+
+class SignalHistoryStats(BaseModel):
+    """Summary statistics for the Signal History panel (closed signals only)."""
+
+    total_signals: int = 0
+    win_count: int = 0
+    loss_count: int = 0
+    breakeven_count: int = 0
+    expired_count: int = 0
+    active_count: int = 0
+    win_rate: float = 0.0
+    tp_hit_rate: float = 0.0       # any of TP1/TP2/TP3 hit
+    sl_rate: float = 0.0           # loss rate
+    average_return: Optional[float] = None
+    profit_factor: Optional[float] = None  # gross profit / abs(gross loss)
+    best_signal: Optional[Dict[str, Any]] = None
+    worst_signal: Optional[Dict[str, Any]] = None
 
 
 class BacktestRequest(BaseModel):

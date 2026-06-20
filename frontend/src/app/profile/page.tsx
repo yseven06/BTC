@@ -157,7 +157,7 @@ export default function ProfilePage() {
                 <Calendar className="w-3 h-3" /> Üyelik Tarihi
               </p>
               <p className="text-sm font-semibold text-text-primary mt-0.5">
-                {new Date(createdAt).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                {new Date(createdAt).toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
           )}

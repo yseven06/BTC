@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import MainLayout from './MainLayout';
 import { useAuth } from '@/lib/auth-context';
 
-const PUBLIC_ROUTES = ['/login', '/register'];
+const PUBLIC_ROUTES = ['/', '/login', '/register'];
 
 export default function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

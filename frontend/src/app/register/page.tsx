@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Brain, Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
 export default function RegisterPage() {
@@ -17,7 +17,7 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) router.replace('/');
+    if (user) router.replace('/dashboard');
   }, [user, router]);
 
   const submit = async (e: React.FormEvent) => {
@@ -30,7 +30,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(email, password, fullName || undefined);
-      router.replace('/');
+      router.replace('/dashboard');
     } catch (err: any) {
       const msg = err?.message ?? '';
       if (msg.includes('409')) setError('Bu e-posta zaten kayıtlı.');
@@ -44,8 +44,8 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-bg-primary px-4 py-10">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl gradient-bg-brand shadow-glow-sm mb-3">
-            <Brain className="w-7 h-7 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-3">
+            <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl font-extrabold gradient-text-brand">TradeMinds</h1>
           <p className="text-sm text-text-secondary mt-1">Yeni Hesap Oluştur</p>

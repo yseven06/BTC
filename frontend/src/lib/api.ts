@@ -6,11 +6,76 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 const COINGECKO = 'https://api.coingecko.com/api/v3';
 
 // ---------------------------------------------------------------------------
+// Token storage — "Beni Hatırla" determines which storage survives a closed
+// browser. localStorage persists across restarts (remembered); sessionStorage
+// clears when the tab/browser closes (not remembered). Access tokens expire
+// after 30 minutes either way — apiFetch transparently refreshes them below
+// so the user is never bounced to /login just because 30 minutes passed.
+// ---------------------------------------------------------------------------
+
+function getStoredToken(name: string): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(name) ?? sessionStorage.getItem(name);
+}
+
+export function storeAuthTokens(access: string, refresh: string, remember: boolean): void {
+  if (typeof window === 'undefined') return;
+  const store = remember ? localStorage : sessionStorage;
+  const other = remember ? sessionStorage : localStorage;
+  store.setItem('access_token', access);
+  store.setItem('refresh_token', refresh);
+  other.removeItem('access_token');
+  other.removeItem('refresh_token');
+}
+
+function clearAuthTokens(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  sessionStorage.removeItem('access_token');
+  sessionStorage.removeItem('refresh_token');
+}
+
+// Dedupe concurrent refresh attempts — if 3 requests 401 at the same moment,
+// only one POST /auth/refresh fires; the rest await the same promise.
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function tryRefreshToken(): Promise<boolean> {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    const refreshToken = getStoredToken('refresh_token');
+    if (!refreshToken) return false;
+    try {
+      const res = await fetch(`${BASE}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      // Preserve whichever storage tier was already in use (remember-me choice).
+      const remembered = typeof window !== 'undefined' && !!localStorage.getItem('refresh_token');
+      storeAuthTokens(data.access_token, data.refresh_token, remembered);
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+async function apiFetch<T>(path: string, init?: RequestInit, _isRetry = false): Promise<T> {
+  const token = getStoredToken('access_token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -25,11 +90,22 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
       headers,
       signal: controller.signal,
     });
+    // Access token expired mid-session — silently refresh and retry once
+    // instead of surfacing a 401 that would bounce the user to /login.
+    if (res.status === 401 && !_isRetry && !path.includes('/auth/refresh') && !path.includes('/auth/login')) {
+      const refreshed = await tryRefreshToken();
+      if (refreshed) return apiFetch<T>(path, init, true);
+      clearAuthTokens();
+    }
     if (!res.ok) {
       const body = await res.text();
       throw new Error(`API ${res.status}: ${body}`);
     }
-    return res.json() as Promise<T>;
+    // 204 No Content (and any other empty body) has nothing for res.json()
+    // to parse — it throws "Unexpected end of JSON input" otherwise.
+    if (res.status === 204) return undefined as T;
+    const text = await res.text();
+    return (text ? JSON.parse(text) : undefined) as T;
   } catch (err: any) {
     if (err?.name === 'AbortError') {
       throw new Error('Backend yanıt vermiyor. Lütfen backend\'in çalıştığından emin ol (localhost:8000).');
@@ -87,6 +163,12 @@ export interface ApiSignal {
   expires_at?: string;
   is_active: boolean;
   outcome?: 'active' | 'win' | 'loss' | 'breakeven' | 'expired';
+  actual_return?: number | null;
+  max_drawdown?: number | null;
+  hit_tp1?: boolean;
+  hit_tp2?: boolean;
+  hit_tp3?: boolean;
+  closed_at?: string | null;
 }
 
 export interface SignalListResponse {
@@ -140,6 +222,66 @@ export async function fetchActiveSignals(params?: {
 
 export async function fetchPerformanceSummary(): Promise<PerformanceSummary> {
   return apiFetch<PerformanceSummary>('/api/v1/signals/performance');
+}
+
+export interface SignalHistoryFilters {
+  asset_id?: string;
+  market?: 'crypto' | 'stock';
+  signal_type?: string;
+  outcome?: 'active' | 'win' | 'loss' | 'breakeven' | 'expired';
+  min_confidence?: number;
+  max_confidence?: number;
+  date_from?: string;
+  date_to?: string;
+  only_resolved?: boolean;
+  page?: number;
+  page_size?: number;
+}
+
+export async function fetchSignalHistory(params?: SignalHistoryFilters): Promise<SignalListResponse> {
+  const q = new URLSearchParams();
+  if (params?.asset_id) q.set('asset_id', params.asset_id);
+  if (params?.market) q.set('market', params.market);
+  if (params?.signal_type) q.set('signal_type', params.signal_type);
+  if (params?.outcome) q.set('outcome', params.outcome);
+  if (params?.min_confidence !== undefined) q.set('min_confidence', String(params.min_confidence));
+  if (params?.max_confidence !== undefined) q.set('max_confidence', String(params.max_confidence));
+  if (params?.date_from) q.set('date_from', params.date_from);
+  if (params?.date_to) q.set('date_to', params.date_to);
+  if (params?.only_resolved !== undefined) q.set('only_resolved', String(params.only_resolved));
+  if (params?.page) q.set('page', String(params.page));
+  if (params?.page_size) q.set('page_size', String(params.page_size));
+  const qs = q.toString() ? `?${q}` : '';
+  return apiFetch<SignalListResponse>(`/api/v1/signals/history${qs}`);
+}
+
+export interface SignalHistoryStats {
+  total_signals: number;
+  win_count: number;
+  loss_count: number;
+  breakeven_count: number;
+  expired_count: number;
+  active_count: number;
+  win_rate: number;
+  tp_hit_rate: number;
+  sl_rate: number;
+  average_return: number | null;
+  profit_factor: number | null;
+  best_signal: { symbol: string; return: number; outcome: string; closed_at: string | null } | null;
+  worst_signal: { symbol: string; return: number; outcome: string; closed_at: string | null } | null;
+}
+
+export async function fetchSignalHistoryStats(params?: {
+  market?: 'crypto' | 'stock';
+  date_from?: string;
+  date_to?: string;
+}): Promise<SignalHistoryStats> {
+  const q = new URLSearchParams();
+  if (params?.market) q.set('market', params.market);
+  if (params?.date_from) q.set('date_from', params.date_from);
+  if (params?.date_to) q.set('date_to', params.date_to);
+  const qs = q.toString() ? `?${q}` : '';
+  return apiFetch<SignalHistoryStats>(`/api/v1/signals/history/stats${qs}`);
 }
 
 export async function triggerSignalGeneration(symbol: string, timeframe = '1h'): Promise<void> {
@@ -204,8 +346,131 @@ export interface ApiAlert {
   created_at: string;
 }
 
-export async function fetchAlerts(): Promise<ApiAlert[]> {
-  return apiFetch<ApiAlert[]>('/api/v1/alerts');
+export async function fetchAlerts(isActive?: boolean): Promise<ApiAlert[]> {
+  const qs = isActive === undefined ? '' : `?is_active=${isActive}`;
+  return apiFetch<ApiAlert[]>(`/api/v1/alerts${qs}`);
+}
+
+export async function createAlert(payload: {
+  asset_id: string; alert_type: 'price' | 'signal' | 'custom'; conditions: Record<string, unknown>;
+}): Promise<ApiAlert> {
+  return apiFetch<ApiAlert>('/api/v1/alerts', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateAlert(alert_id: string, payload: {
+  conditions?: Record<string, unknown>; is_active?: boolean;
+}): Promise<ApiAlert> {
+  return apiFetch<ApiAlert>(`/api/v1/alerts/${alert_id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export async function deleteAlert(alert_id: string): Promise<void> {
+  await apiFetch(`/api/v1/alerts/${alert_id}`, { method: 'DELETE' });
+}
+
+// ---------------------------------------------------------------------------
+// Watchlists
+// ---------------------------------------------------------------------------
+
+export interface ApiWatchlist {
+  id: string;
+  user_id: string;
+  name: string;
+  asset_ids: string[];
+  created_at: string;
+}
+
+export async function fetchWatchlists(): Promise<ApiWatchlist[]> {
+  return apiFetch<ApiWatchlist[]>('/api/v1/watchlists');
+}
+
+export async function createWatchlist(name: string, asset_ids: string[] = []): Promise<ApiWatchlist> {
+  return apiFetch<ApiWatchlist>('/api/v1/watchlists', { method: 'POST', body: JSON.stringify({ name, asset_ids }) });
+}
+
+export async function updateWatchlist(id: string, payload: { name?: string; asset_ids?: string[] }): Promise<ApiWatchlist> {
+  return apiFetch<ApiWatchlist>(`/api/v1/watchlists/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export async function deleteWatchlist(id: string): Promise<void> {
+  await apiFetch(`/api/v1/watchlists/${id}`, { method: 'DELETE' });
+}
+
+// ---------------------------------------------------------------------------
+// Portfolios
+// ---------------------------------------------------------------------------
+
+export interface ApiHolding {
+  id: string;
+  portfolio_id: string;
+  asset_id: string | null;
+  quantity: number;
+  average_entry_price: number;
+  current_price: number | null;
+  total_cost: number | null;
+  current_value: number | null;
+  unrealized_pnl: number | null;
+  unrealized_pnl_pct: number | null;
+  notes: string | null;
+  is_closed: boolean;
+  exit_price: number | null;
+  realized_pnl: number | null;
+  realized_pnl_pct: number | null;
+  closed_at: string | null;
+}
+
+export interface ApiPortfolioListItem {
+  id: string; user_id: string; name: string; description: string | null;
+  initial_capital: number; currency: string;
+}
+
+export interface ApiPortfolio extends ApiPortfolioListItem {
+  holdings: ApiHolding[];
+}
+
+export async function fetchPortfolios(): Promise<ApiPortfolioListItem[]> {
+  return apiFetch<ApiPortfolioListItem[]>('/api/v1/portfolios');
+}
+
+export async function fetchPortfolio(id: string): Promise<ApiPortfolio> {
+  return apiFetch<ApiPortfolio>(`/api/v1/portfolios/${id}`);
+}
+
+export async function createPortfolio(payload: {
+  name: string; description?: string; initial_capital?: number; currency?: string;
+}): Promise<ApiPortfolio> {
+  return apiFetch<ApiPortfolio>('/api/v1/portfolios', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updatePortfolio(id: string, payload: {
+  name?: string; description?: string; initial_capital?: number; currency?: string;
+}): Promise<ApiPortfolio> {
+  return apiFetch<ApiPortfolio>(`/api/v1/portfolios/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export async function deletePortfolio(id: string): Promise<void> {
+  await apiFetch(`/api/v1/portfolios/${id}`, { method: 'DELETE' });
+}
+
+export async function addHolding(portfolioId: string, payload: {
+  asset_id: string; quantity: number; average_entry_price: number; notes?: string;
+}): Promise<ApiHolding> {
+  return apiFetch<ApiHolding>(`/api/v1/portfolios/${portfolioId}/holdings`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateHolding(portfolioId: string, holdingId: string, payload: {
+  quantity?: number; average_entry_price?: number; current_price?: number; notes?: string;
+}): Promise<ApiHolding> {
+  return apiFetch<ApiHolding>(`/api/v1/portfolios/${portfolioId}/holdings/${holdingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export async function deleteHolding(portfolioId: string, holdingId: string): Promise<void> {
+  await apiFetch(`/api/v1/portfolios/${portfolioId}/holdings/${holdingId}`, { method: 'DELETE' });
+}
+
+export async function closeHolding(portfolioId: string, holdingId: string, exit_price: number): Promise<ApiHolding> {
+  return apiFetch<ApiHolding>(`/api/v1/portfolios/${portfolioId}/holdings/${holdingId}/close`, {
+    method: 'POST', body: JSON.stringify({ exit_price }),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -221,6 +486,7 @@ export interface UserProfile {
   language?: string;
   is_active?: boolean;
   is_admin?: boolean;
+  role?: 'user' | 'admin' | 'super_admin';
 }
 
 export async function fetchCurrentUser(): Promise<UserProfile> {
@@ -237,7 +503,7 @@ export async function updateProfile(payload: {
 }
 
 export async function uploadAvatar(file: File): Promise<{ avatar_url: string }> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  const token = getStoredToken('access_token');
   const formData = new FormData();
   formData.append('file', file);
 
@@ -399,22 +665,18 @@ export async function loginUser(
 }
 
 export async function loginWithGoogle(idToken: string): Promise<TokenResponse> {
-  return apiFetch<TokenResponse>('/api/v1/auth/google', {
+  return apiFetch<TokenResponse>('/api/v1/auth/google-login', {
     method: 'POST',
-    body: JSON.stringify({ id_token: idToken }),
+    body: JSON.stringify({ token: idToken }),
   });
 }
 
 export function logout(): void {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-  }
+  clearAuthTokens();
 }
 
 export function isLoggedIn(): boolean {
-  if (typeof window === 'undefined') return false;
-  return !!localStorage.getItem('access_token');
+  return !!getStoredToken('access_token');
 }
 
 // ---------------------------------------------------------------------------
@@ -479,6 +741,8 @@ export interface AdminStats {
   total_revenue_usd:  number;
   win_rate:           number;
 }
+export type UserRole = 'user' | 'admin' | 'super_admin';
+
 export interface AdminUserRow {
   id:              string;
   email:           string;
@@ -486,6 +750,7 @@ export interface AdminUserRow {
   provider:        string;
   is_active:       boolean;
   is_admin:        boolean;
+  role:            UserRole;
   created_at:      string;
   tier:            string;
   sub_status:      string | null;
@@ -503,7 +768,7 @@ export async function fetchAdminUsers(
 }
 export async function updateAdminUser(
   user_id: string,
-  payload: { is_admin?: boolean; is_active?: boolean; tier?: SubscriptionTier },
+  payload: { role?: UserRole; is_active?: boolean; tier?: SubscriptionTier },
 ): Promise<void> {
   await apiFetch(`/api/v1/admin/users/${user_id}`, {
     method: 'PATCH',
@@ -514,13 +779,128 @@ export async function deleteAdminUser(user_id: string): Promise<void> {
   await apiFetch(`/api/v1/admin/users/${user_id}`, { method: 'DELETE' });
 }
 
+// ── Admin: signal moderation ──────────────────────────────────────────────
+
+export interface AdminSignalRow {
+  id: string;
+  symbol: string;
+  signal_type: string;
+  confidence_score: number;
+  timeframe: string;
+  is_active: boolean;
+  admin_invalidated: boolean;
+  generated_at: string;
+  outcome: string;
+}
+
+export async function fetchAdminSignals(params?: {
+  q?: string; only_active?: boolean; min_confidence?: number; max_confidence?: number;
+  page?: number; page_size?: number;
+}): Promise<{ items: AdminSignalRow[]; total: number; page: number; page_size: number }> {
+  const q = new URLSearchParams();
+  if (params?.q) q.set('q', params.q);
+  if (params?.only_active !== undefined) q.set('only_active', String(params.only_active));
+  if (params?.min_confidence !== undefined) q.set('min_confidence', String(params.min_confidence));
+  if (params?.max_confidence !== undefined) q.set('max_confidence', String(params.max_confidence));
+  if (params?.page) q.set('page', String(params.page));
+  if (params?.page_size) q.set('page_size', String(params.page_size));
+  const qs = q.toString() ? `?${q}` : '';
+  return apiFetch(`/api/v1/admin/signals${qs}`);
+}
+
+export async function invalidateAdminSignal(signal_id: string): Promise<void> {
+  await apiFetch(`/api/v1/admin/signals/${signal_id}/invalidate`, { method: 'POST' });
+}
+
+export async function bulkCleanSignals(payload: { min_confidence: number; market?: string }): Promise<{ invalidated_count: number }> {
+  return apiFetch(`/api/v1/admin/signals/bulk-clean`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function adminGenerateSignal(symbol: string, timeframe = '1h'): Promise<void> {
+  await apiFetch(`/api/v1/admin/signals/generate`, {
+    method: 'POST', body: JSON.stringify({ symbol, timeframe }),
+  });
+}
+
+export async function deleteAdminSignal(signal_id: string): Promise<void> {
+  await apiFetch(`/api/v1/admin/signals/${signal_id}`, { method: 'DELETE' });
+}
+
+export async function bulkDeleteClosedSignals(payload: {
+  outcome?: string; signal_type?: string; older_than_days?: number; market?: string;
+}): Promise<{ deleted_count: number }> {
+  return apiFetch(`/api/v1/admin/signals/bulk-delete-closed`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+// ── Admin: asset management ───────────────────────────────────────────────
+
+export interface AdminAssetRow {
+  id: string; symbol: string; name: string; asset_type: string;
+  market: string | null; is_active: boolean;
+}
+
+export async function fetchAdminAssets(params?: { q?: string; page?: number; page_size?: number }):
+  Promise<{ items: AdminAssetRow[]; total: number; page: number; page_size: number }> {
+  const q = new URLSearchParams();
+  if (params?.q) q.set('q', params.q);
+  if (params?.page) q.set('page', String(params.page));
+  if (params?.page_size) q.set('page_size', String(params.page_size));
+  const qs = q.toString() ? `?${q}` : '';
+  return apiFetch(`/api/v1/admin/assets${qs}`);
+}
+
+export async function createAdminAsset(payload: { symbol: string; name: string; asset_type: string; market?: string }): Promise<void> {
+  await apiFetch(`/api/v1/admin/assets`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateAdminAsset(asset_id: string, payload: { name?: string; market?: string; is_active?: boolean }): Promise<void> {
+  await apiFetch(`/api/v1/admin/assets/${asset_id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export async function deleteAdminAsset(asset_id: string): Promise<void> {
+  await apiFetch(`/api/v1/admin/assets/${asset_id}`, { method: 'DELETE' });
+}
+
+// ── Admin: system & scheduler ─────────────────────────────────────────────
+
+export interface AdminJobStatus {
+  label: string; running: boolean; last_run_at: string | null;
+  last_status: 'ok' | 'error' | null; last_error: string | null; last_result: any;
+}
+
+export async function fetchAdminJobStatus(): Promise<{ jobs: Record<string, AdminJobStatus> }> {
+  return apiFetch(`/api/v1/admin/system/jobs`);
+}
+
+export async function triggerAdminJob(job_id: string): Promise<void> {
+  await apiFetch(`/api/v1/admin/system/jobs/${job_id}/trigger`, { method: 'POST' });
+}
+
+// ── Admin: audit log ───────────────────────────────────────────────────────
+
+export interface AdminAuditLogRow {
+  id: string; actor_email: string; action: string;
+  target_type: string | null; target_id: string | null;
+  detail: Record<string, any>; created_at: string;
+}
+
+export async function fetchAdminAuditLog(params?: { action?: string; page?: number; page_size?: number }):
+  Promise<{ items: AdminAuditLogRow[]; total: number; page: number; page_size: number }> {
+  const q = new URLSearchParams();
+  if (params?.action) q.set('action', params.action);
+  if (params?.page) q.set('page', String(params.page));
+  if (params?.page_size) q.set('page_size', String(params.page_size));
+  const qs = q.toString() ? `?${q}` : '';
+  return apiFetch(`/api/v1/admin/audit-log${qs}`);
+}
+
 // ---------------------------------------------------------------------------
 // PDF Reports
 // ---------------------------------------------------------------------------
 
 /** Download a PDF blob and trigger browser save dialog. */
 async function downloadPdf(path: string, filename: string): Promise<void> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  const token = getStoredToken('access_token');
   const res = await fetch(`${BASE}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });

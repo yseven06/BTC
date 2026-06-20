@@ -7,12 +7,35 @@ import {
 } from 'lightweight-charts';
 
 export interface ChartCandle {
-  time:   number;   // unix seconds
+  time:   number;   // unix seconds (UTC, from backend)
   open:   number;
   high:   number;
   low:    number;
   close:  number;
   volume: number;
+}
+
+// ─── Europe/Istanbul timezone helpers ────────────────────────────────────────
+const TR_TZ = 'Europe/Istanbul';
+
+const trDateTimeFmt = new Intl.DateTimeFormat('tr-TR', {
+  timeZone: TR_TZ,
+  day: '2-digit', month: '2-digit', year: 'numeric',
+  hour: '2-digit', minute: '2-digit',
+});
+const trTimeFmt = new Intl.DateTimeFormat('tr-TR', {
+  timeZone: TR_TZ, hour: '2-digit', minute: '2-digit',
+});
+const trDateFmt = new Intl.DateTimeFormat('tr-TR', {
+  timeZone: TR_TZ, day: '2-digit', month: 'short',
+});
+const trMonthFmt = new Intl.DateTimeFormat('tr-TR', {
+  timeZone: TR_TZ, month: 'short', year: 'numeric',
+});
+
+/** Format unix seconds → human-friendly Istanbul-local label. */
+function formatTRTime(unixSeconds: number): string {
+  return trDateTimeFmt.format(new Date(unixSeconds * 1000));
 }
 
 export interface SignalLevels {
@@ -66,20 +89,38 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
       rightPriceScale: {
         borderColor: 'rgba(148, 163, 184, 0.15)',
       },
+      // Crosshair tooltip + bottom-edge time label: Türkiye saati (Europe/Istanbul)
+      localization: {
+        locale: 'tr-TR',
+        timeFormatter: (time: any) => {
+          const sec = typeof time === 'number' ? time : Number(time);
+          return formatTRTime(sec);
+        },
+      },
       timeScale: {
         borderColor: 'rgba(148, 163, 184, 0.15)',
         timeVisible: true,
         secondsVisible: false,
+        // X-axis tick labels: gün/saat formatları Türkiye saatine göre
+        tickMarkFormatter: (time: any, tickMarkType: number) => {
+          const sec = typeof time === 'number' ? time : Number(time);
+          const d = new Date(sec * 1000);
+          // tickMarkType: 0=Year, 1=Month, 2=DayOfMonth, 3=Time, 4=TimeWithSeconds
+          if (tickMarkType === 0) return trMonthFmt.format(d).split(' ')[1] ?? '';
+          if (tickMarkType === 1) return trMonthFmt.format(d);
+          if (tickMarkType === 2) return trDateFmt.format(d);
+          return trTimeFmt.format(d);
+        },
       },
     });
 
     const candleSeries = chart.addCandlestickSeries({
-      upColor:        '#00e676',
-      downColor:      '#ff5252',
-      borderUpColor:  '#00e676',
-      borderDownColor: '#ff5252',
-      wickUpColor:    '#00e676',
-      wickDownColor:  '#ff5252',
+      upColor:        '#10B981',
+      downColor:      '#EF4444',
+      borderUpColor:  '#10B981',
+      borderDownColor: '#EF4444',
+      wickUpColor:    '#10B981',
+      wickDownColor:  '#EF4444',
     });
 
     chartRef.current = chart;
@@ -108,6 +149,16 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
       time: c.time as any,
       open: c.open, high: c.high, low: c.low, close: c.close,
     }));
+
+    // Price axis + price-line labels (TP/SL/Giriş) default to too few decimals
+    // for sub-$1 assets — match the Trade Plan ladder's precision (4 decimals
+    // there) by sizing precision to the asset's actual price magnitude.
+    const lastPrice = candles[candles.length - 1].close;
+    const precision = lastPrice >= 100 ? 2 : lastPrice >= 1 ? 4 : lastPrice >= 0.01 ? 4 : 6;
+    candleSeriesRef.current.applyOptions({
+      priceFormat: { type: 'price', precision, minMove: 1 / 10 ** precision },
+    });
+
     candleSeriesRef.current.setData(data);
     chartRef.current?.timeScale().fitContent();
   }, [candles]);
@@ -135,10 +186,10 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
 
     addLine(signal.entryLow,  { color: '#f97316', title: 'Giriş ↓', lineStyle: LineStyle.Dotted });
     addLine(signal.entryHigh, { color: '#f97316', title: 'Giriş ↑', lineStyle: LineStyle.Dotted });
-    addLine(signal.stopLoss,  { color: '#ff5252', title: 'SL' });
-    addLine(signal.tp1,       { color: '#00e676', title: 'TP1' });
-    addLine(signal.tp2,       { color: '#00e676', title: 'TP2' });
-    addLine(signal.tp3,       { color: '#00e676', title: 'TP3' });
+    addLine(signal.stopLoss,  { color: '#EF4444', title: 'SL' });
+    addLine(signal.tp1,       { color: '#10B981', title: 'TP1' });
+    addLine(signal.tp2,       { color: '#10B981', title: 'TP2' });
+    addLine(signal.tp3,       { color: '#10B981', title: 'TP3' });
 
     return () => {
       for (const line of created) series.removePriceLine(line);

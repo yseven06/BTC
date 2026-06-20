@@ -5,13 +5,16 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Zap, TrendingUp, Star, PieChart, Bell,
-  BarChart3, BarChart2, Settings, ChevronLeft, ChevronRight, Brain,
+  BarChart3, BarChart2, Settings, ChevronLeft, ChevronRight,
   LogOut, User, Newspaper, FlaskConical, Crown, Microscope, CreditCard,
-  Globe, Shield,
+  Globe, Shield, History,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
 import { cn } from '@/lib/utils';
-import { fetchCurrentUser, fetchMySubscription, type UserProfile, type SubscriptionResponse } from '@/lib/api';
+import {
+  fetchCurrentUser, fetchMySubscription, fetchActiveSignals, fetchAlerts,
+  type UserProfile, type SubscriptionResponse,
+} from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 
 interface NavItem {
@@ -23,8 +26,9 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard',   label: 'Gösterge Paneli', icon: LayoutDashboard, href: '/' },
-  { id: 'signals',     label: 'Sinyal Merkezi',  icon: Zap,             href: '/signals',     badge: 3 },
+  { id: 'dashboard',   label: 'Gösterge Paneli', icon: LayoutDashboard, href: '/dashboard' },
+  { id: 'signals',     label: 'Sinyal Merkezi',  icon: Zap,             href: '/signals' },
+  { id: 'signal-history', label: 'Sinyal Geçmişi', icon: History,       href: '/signal-history' },
   { id: 'markets',     label: 'Piyasalar',       icon: TrendingUp,      href: '/markets' },
   { id: 'portfolio',   label: 'Portföy',         icon: PieChart,        href: '/portfolio' },
   { id: 'backtest',        label: 'Backtest',         icon: FlaskConical,  href: '/backtest' },
@@ -32,7 +36,7 @@ const navItems: NavItem[] = [
   { id: 'strategy-lab',   label: 'Strategy Lab',     icon: Microscope,    href: '/strategy-lab' },
   { id: 'symbol-analysis', label: 'Sembol Analizi',  icon: BarChart2,     href: '/symbol-analysis' },
   { id: 'macro',          label: 'Makro Görünüm',     icon: Globe,         href: '/macro' },
-  { id: 'alerts',      label: 'Alarmlar',         icon: Bell,            href: '/alerts', badge: 5 },
+  { id: 'alerts',      label: 'Alarmlar',         icon: Bell,            href: '/alerts' },
   { id: 'watchlist',   label: 'İzleme Listesi',  icon: Star,            href: '/watchlist' },
   { id: 'news',        label: 'Haberler',         icon: Newspaper,       href: '/news' },
   { id: 'pricing',     label: 'Fiyatlandırma',    icon: CreditCard,      href: '/pricing' },
@@ -53,11 +57,17 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { user: authUser, logout: doLogout } = useAuth();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [sub, setSub] = useState<SubscriptionResponse | null>(null);
+  const [signalBadge, setSignalBadge] = useState(0);
+  const [alertBadge, setAlertBadge] = useState(0);
 
   useEffect(() => {
     fetchCurrentUser().then(setUser).catch(() => {});
     fetchMySubscription().then(setSub).catch(() => {});
+    fetchActiveSignals({ only_actionable: true, page_size: 1 }).then((r) => setSignalBadge(r.total)).catch(() => {});
+    fetchAlerts().then((a) => setAlertBadge(a.filter((x) => !x.triggered_at).length)).catch(() => {});
   }, []);
+
+  const navBadges: Record<string, number> = { signals: signalBadge, alerts: alertBadge };
 
   // Prefer auth context (has is_admin) but fall back to direct fetch
   const effectiveUser = authUser ?? user;
@@ -90,8 +100,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     >
       {/* Logo */}
       <div className={cn('flex items-center h-16 px-4 border-b border-border-subtle', collapsed ? 'justify-center' : 'gap-3')}>
-        <div className="relative flex items-center justify-center w-9 h-9 rounded-xl gradient-bg-brand shadow-glow-sm flex-shrink-0">
-          <Brain className="w-5 h-5 text-white" />
+        <div className="relative flex items-center justify-center w-9 h-9 flex-shrink-0">
+          <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-full h-full object-contain" />
         </div>
         {!collapsed && (
           <div className="animate-fade-in overflow-hidden">
@@ -106,6 +116,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {[...navItems, ...(effectiveUser?.is_admin ? [adminNavItem] : [])].map((item) => {
           const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
           const Icon = item.icon;
+          const badge = navBadges[item.id] ?? 0;
           return (
             <Link
               key={item.id}
@@ -121,12 +132,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               {!collapsed && (
                 <span className="text-sm animate-fade-in whitespace-nowrap flex-1">{item.label}</span>
               )}
-              {!collapsed && item.badge && item.badge > 0 && (
+              {!collapsed && badge > 0 && (
                 <span className="flex items-center justify-center min-w-[18px] h-4.5 px-1 text-[10px] font-bold font-mono rounded-full bg-accent-primary/20 text-accent-primary">
-                  {item.badge}
+                  {badge}
                 </span>
               )}
-              {collapsed && item.badge && item.badge > 0 && (
+              {collapsed && badge > 0 && (
                 <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-accent-primary" />
               )}
             </Link>

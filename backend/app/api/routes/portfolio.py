@@ -5,6 +5,7 @@ Full CRUD for portfolios and portfolio holdings with authentication.
 """
 
 import logging
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
@@ -59,6 +60,11 @@ class HoldingUpdate(BaseModel):
     notes: Optional[str] = None
 
 
+class HoldingClose(BaseModel):
+    """Close an open holding at a realized exit price."""
+    exit_price: float = Field(..., gt=0)
+
+
 class HoldingResponse(BaseModel):
     """Portfolio holding response."""
     id: UUID
@@ -72,6 +78,11 @@ class HoldingResponse(BaseModel):
     unrealized_pnl: Optional[float] = None
     unrealized_pnl_pct: Optional[float] = None
     notes: Optional[str] = None
+    is_closed: bool = False
+    exit_price: Optional[float] = None
+    realized_pnl: Optional[float] = None
+    realized_pnl_pct: Optional[float] = None
+    closed_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -356,6 +367,63 @@ async def update_holding(
             holding.unrealized_pnl_pct = Decimal(
                 str(round(float(holding.unrealized_pnl) / float(holding.total_cost) * 100, 4))
             )
+
+    await db.flush()
+    await db.refresh(holding)
+    return HoldingResponse.model_validate(holding)
+
+
+@router.post(
+    "/{portfolio_id}/holdings/{holding_id}/close",
+    response_model=HoldingResponse,
+    summary="Close a position at a realized exit price",
+)
+async def close_holding(
+    portfolio_id: UUID,
+    holding_id: UUID,
+    payload: HoldingClose,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> HoldingResponse:
+    """
+    Lock in the realized P&L for a long-only spot holding (exit_price - avg
+    entry, times quantity) and mark it closed. Closed holdings stay in the
+    portfolio as history — they aren't deleted — so the user has a permanent
+    record to share a "closed trade" result card from, same as the live
+    "open position" card they can already generate from an unclosed holding.
+    """
+    pf_query = select(Portfolio).where(
+        Portfolio.id == portfolio_id,
+        Portfolio.user_id == current_user.id,
+    )
+    pf_result = await db.execute(pf_query)
+    if pf_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portfolio not found.")
+
+    h_query = select(PortfolioHolding).where(
+        PortfolioHolding.id == holding_id,
+        PortfolioHolding.portfolio_id == portfolio_id,
+    )
+    h_result = await db.execute(h_query)
+    holding = h_result.scalar_one_or_none()
+    if holding is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Holding not found.")
+    if holding.is_closed:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Pozisyon zaten kapatılmış.")
+
+    qty = float(holding.quantity or 0)
+    entry = float(holding.average_entry_price or 0)
+    exit_price = payload.exit_price
+    cost = qty * entry
+
+    realized_pnl = qty * (exit_price - entry)
+    realized_pnl_pct = round((realized_pnl / cost) * 100, 4) if cost > 0 else 0.0
+
+    holding.is_closed = True
+    holding.exit_price = Decimal(str(exit_price))
+    holding.realized_pnl = Decimal(str(realized_pnl))
+    holding.realized_pnl_pct = Decimal(str(realized_pnl_pct))
+    holding.closed_at = datetime.now(timezone.utc)
 
     await db.flush()
     await db.refresh(holding)

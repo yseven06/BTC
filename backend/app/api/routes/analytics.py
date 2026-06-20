@@ -41,14 +41,24 @@ def _win_rate(wins: int, resolved: int) -> float:
     return round(wins / resolved * 100, 1) if resolved > 0 else 0.0
 
 
-def _htf_type(engines_data: Optional[Dict]) -> str:
-    """Derive 'OB' or 'FVG' from engine results."""
+def _htf_type(engines_data: Any) -> str:
+    """Derive 'OB' or 'FVG' from engine results.
+    engines_data may be a dict {engine_name: result} or a list of result dicts."""
     if not engines_data:
         return "UNKNOWN"
-    smc = engines_data.get("smart_money_concepts", {})
-    findings: List[str] = smc.get("key_findings", [])
+
+    smc: Dict[str, Any] = {}
+    if isinstance(engines_data, dict):
+        smc = engines_data.get("smart_money_concepts", {}) or {}
+    elif isinstance(engines_data, list):
+        for e in engines_data:
+            if isinstance(e, dict) and (e.get("engine_name") == "smart_money_concepts" or e.get("name") == "smart_money_concepts"):
+                smc = e
+                break
+
+    findings: List[str] = smc.get("key_findings", []) if isinstance(smc, dict) else []
     for f in findings:
-        fl = f.lower()
+        fl = str(f).lower()
         if "order block" in fl:
             return "OB"
         if "fair value" in fl or "fvg" in fl:

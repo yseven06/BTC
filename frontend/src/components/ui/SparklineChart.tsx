@@ -21,7 +21,7 @@ export const SparklineChart: React.FC<SparklineChartProps> = ({
 
   // Fallback color logic
   const isUp = data.length > 1 ? data[data.length - 1] >= data[0] : true;
-  const strokeColor = color || (isUp ? "#00e676" : "#ff5252");
+  const strokeColor = color || (isUp ? "#10B981" : "#EF4444");
 
   return (
     <div style={{ width, height }}>

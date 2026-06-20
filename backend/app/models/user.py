@@ -36,6 +36,21 @@ class Language(str, enum.Enum):
     EN = "en"
 
 
+class UserRole(str, enum.Enum):
+    """
+    Granular admin role, layered on top of the legacy `is_admin` flag.
+
+    `is_admin` stays in sync (True for ADMIN and SUPER_ADMIN) so existing
+    gating/dependency code that reads `is_admin` keeps working unchanged.
+    `role` is what new admin-panel permission checks should use when an
+    action needs to be restricted to the founder tier (e.g. granting admin
+    rights, deleting users, role changes).
+    """
+    USER = "user"
+    ADMIN = "admin"
+    SUPER_ADMIN = "super_admin"
+
+
 class User(Base):
     """
     User account model.
@@ -74,6 +89,12 @@ class User(Base):
     )
     is_active = Column(Boolean, nullable=False, default=True)
     is_admin = Column(Boolean, nullable=False, default=False, server_default="false")
+    role = Column(
+        Enum(UserRole, name="user_role", create_constraint=True),
+        nullable=False,
+        default=UserRole.USER,
+        server_default=UserRole.USER.value,
+    )
     created_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

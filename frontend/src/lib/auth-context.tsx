@@ -4,13 +4,14 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { useRouter } from 'next/navigation';
 import {
   fetchCurrentUser, loginUser, registerUser, loginWithGoogle, logout as apiLogout,
+  storeAuthTokens, isLoggedIn,
   type UserProfile,
 } from '@/lib/api';
 
 interface AuthContextValue {
   user: UserProfile | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, remember?: boolean) => Promise<void>;
   register: (email: string, password: string, full_name?: string) => Promise<void>;
   googleLogin: (idToken: string) => Promise<void>;
   logout: () => void;
@@ -27,8 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       // If no token, don't even try (avoid useless network round-trip)
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-      if (!token) {
+      if (!isLoggedIn()) {
         setUser(null);
         return;
       }
@@ -48,26 +48,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [refresh]);
 
-  const storeTokens = (access: string, refreshTok: string) => {
-    localStorage.setItem('access_token', access);
-    localStorage.setItem('refresh_token', refreshTok);
-  };
-
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, remember = true) => {
     const res = await loginUser(email, password);
-    storeTokens(res.access_token, res.refresh_token);
+    storeAuthTokens(res.access_token, res.refresh_token, remember);
     await refresh();
   };
 
   const register = async (email: string, password: string, full_name?: string) => {
     const res = await registerUser({ email, password, full_name });
-    storeTokens(res.access_token, res.refresh_token);
+    storeAuthTokens(res.access_token, res.refresh_token, true);
     await refresh();
   };
 
   const googleLogin = async (idToken: string) => {
     const res = await loginWithGoogle(idToken);
-    storeTokens(res.access_token, res.refresh_token);
+    storeAuthTokens(res.access_token, res.refresh_token, true);
     await refresh();
   };
 

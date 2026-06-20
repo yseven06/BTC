@@ -7,6 +7,7 @@ from Binance and Yahoo Finance collectors, and resolves trade outcomes in the DB
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List
@@ -51,27 +52,80 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
     details = []
 
     try:
+        # ── Pass 1: Live ticker check ────────────────────────────────────────
+        # Mum kapanışını beklemeden anlık SL kırılmasını yakala. Bu sayede
+        # kullanıcı saatlerce "AKTİF SL altında" görmek yerine birkaç saniye
+        # içinde "PATLADI" durumunu görür.
+        live_tasks = [
+            _check_live_sl_hit(signal, binance, yahoo)
+            for signal in active_signals
+        ]
+        live_results = await asyncio.gather(*live_tasks, return_exceptions=True)
+        live_hit_by_sig: Dict[Any, Dict[str, Any]] = {}
+        for res in live_results:
+            if isinstance(res, dict) and res.get("hit"):
+                live_hit_by_sig[res["signal_id"]] = res
+
+        # Fetch pricing history for all active signals concurrently (for TP/SL bar checks)
+        tasks = [
+            _fetch_market_data_for_signal(signal, binance, yahoo)
+            for signal in active_signals
+        ]
+        results = await asyncio.gather(*tasks)
+        dfs_by_signal_id = dict(results)
+
         for signal in active_signals:
             processed_count += 1
             asset: Asset = signal.asset
-            
-            # Fetch pricing history since signal generation
             symbol = asset.symbol
-            timeframe_str = _map_db_timeframe(signal.timeframe)
-            
-            logger.info(f"Checking performance for signal {signal.id} - {symbol} ({signal.timeframe.value})")
 
-            # Choose corresponding data collector
-            try:
-                if asset.asset_type.value == "stock" or symbol.endswith(".IS"):
-                    df = await yahoo.fetch_ohlcv(symbol, timeframe_str, limit=100)
-                else:
-                    df = await binance.fetch_ohlcv(symbol, timeframe_str, limit=100)
-            except Exception as e:
-                logger.error(f"Failed to fetch market data for {symbol} during tracking: {str(e)}")
+            # ── Live SL hit shortcut: anlık fiyat zaten SL'yi geçti ──
+            live_hit = live_hit_by_sig.get(signal.id)
+            if live_hit:
+                entry = float(signal.entry_zone_high + signal.entry_zone_low) / 2.0
+                sl = float(signal.stop_loss)
+                ret_sl = ((sl - entry) / entry) if signal.direction.value == "bullish" else ((entry - sl) / entry)
+                pnl_pct = ret_sl * 100.0
+                perf = signal.performance
+                if not perf:
+                    perf = SignalPerformance(signal_id=signal.id, outcome=SignalOutcome.ACTIVE)
+                    db.add(perf)
+                signal.is_active = False
+                perf.outcome = SignalOutcome.LOSS if pnl_pct < -0.5 else SignalOutcome.BREAKEVEN
+                perf.actual_return = pnl_pct
+                perf.closed_at = datetime.now(timezone.utc)
+                resolved_count += 1
+                details.append({
+                    "signal_id": str(signal.id),
+                    "symbol": symbol,
+                    "outcome": perf.outcome.value,
+                    "return": round(pnl_pct, 2),
+                    "trigger": "live_sl",
+                    "live_price": live_hit["live_price"],
+                })
+                logger.info(
+                    "Signal %s (%s) PATLADI via live ticker — live=%.6f SL=%.6f PnL=%.2f%%",
+                    signal.id, symbol, live_hit["live_price"], sl, pnl_pct,
+                )
                 continue
 
-            if df.empty:
+            entry = float(signal.entry_zone_high + signal.entry_zone_low) / 2.0
+            if signal.signal_type.value == "HOLD" or entry <= 0:
+                # Silently handle expiration/deactivation for HOLD signals
+                now_utc = datetime.now(timezone.utc)
+                expires = signal.expires_at.replace(tzinfo=timezone.utc) if signal.expires_at else None
+                if expires and now_utc >= expires:
+                    signal.is_active = False
+                    perf = signal.performance
+                    if perf:
+                        perf.outcome = SignalOutcome.EXPIRED
+                        perf.is_expired = True
+                        perf.closed_at = now_utc
+                    resolved_count += 1
+                continue
+
+            df = dfs_by_signal_id.get(signal.id)
+            if df is None or df.empty:
                 logger.warning(f"No price data returned for {symbol}")
                 continue
 
@@ -108,6 +162,13 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
             hit_tp3 = False
             
             closed_at = None
+
+            def _aware(ts: Any) -> Any:
+                """times[] entries are tz-naive (we stripped tz to compare against
+                sig_time) but the DB column is TIMESTAMP WITH TIME ZONE — asyncpg
+                rejects naive datetimes outright. Re-attach UTC before saving."""
+                ts = pd.Timestamp(ts)
+                return ts.tz_localize(timezone.utc) if ts.tzinfo is None else ts
 
             opens = df_after["open"].values
             highs = df_after["high"].values
@@ -160,7 +221,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                     realized_pnl_capital += remaining_share * ret_sl
                     remaining_share = 0.0
                     resolved = True
-                    closed_at = bar_time
+                    closed_at = _aware(bar_time)
                     break
                 elif tp_hit:
                     if tp1_triggered:
@@ -185,7 +246,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                         realized_pnl_capital += portion * ret_tp3
                         remaining_share = 0.0
                         resolved = True
-                        closed_at = bar_time
+                        closed_at = _aware(bar_time)
                         break
 
                     # After TP hit, check if same candle hits the new SL (BE)
@@ -196,7 +257,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                             realized_pnl_capital += remaining_share * ret_sl
                             remaining_share = 0.0
                             resolved = True
-                            closed_at = bar_time
+                            closed_at = _aware(bar_time)
                             break
 
             # If not resolved by high/low, check for signal expiration
@@ -208,7 +269,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                     resolved = True
                     is_expired_flag = True
                     last_close = float(closes[-1])
-                    closed_at = times[-1]
+                    closed_at = _aware(times[-1])
                     
                     ret_close = ((last_close - entry) / entry) if signal.direction.value == "bullish" else ((entry - last_close) / entry)
                     realized_pnl_capital += remaining_share * ret_close
@@ -249,6 +310,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 # Update partial target hits
                 perf.hit_tp1 = hit_tp1
                 perf.hit_tp2 = hit_tp2
+                perf.hit_tp3 = hit_tp3
                 perf.max_drawdown = max(0.0, max_drawdown)
 
         # Commit DB updates
@@ -256,6 +318,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
 
     finally:
         await binance.close()
+        await yahoo.close()
 
     return {
         "processed": processed_count,
@@ -276,4 +339,63 @@ def _map_db_timeframe(db_tf: Timeframe) -> str:
         Timeframe.W1: "1w",
     }
     return mapping.get(db_tf, "1h")
+
+
+async def _check_live_sl_hit(
+    signal: Signal, binance: BinanceCollector, yahoo: YahooCollector,
+) -> Dict[str, Any] | None:
+    """
+    Fetch the current ticker price and immediately resolve the signal as LOSS
+    if the live price has already breached the stop-loss. This catches mid-candle
+    invalidations that the bar-close tracker would otherwise miss.
+    """
+    if signal.signal_type.value == "HOLD":
+        return {"signal_id": signal.id, "hit": False}
+    if not signal.stop_loss or not signal.entry_zone_low or not signal.entry_zone_high:
+        return {"signal_id": signal.id, "hit": False}
+
+    asset: Asset = signal.asset
+    symbol = asset.symbol
+    try:
+        if asset.asset_type.value == "stock" or symbol.endswith(".IS"):
+            ticker = await yahoo.fetch_ticker(symbol)
+        else:
+            ticker = await binance.fetch_ticker(symbol)
+        live_price = float(ticker.get("current_price", 0))
+    except Exception as exc:
+        logger.debug("Live ticker fetch failed for %s: %s", symbol, exc)
+        return {"signal_id": signal.id, "hit": False}
+
+    if live_price <= 0:
+        return {"signal_id": signal.id, "hit": False}
+
+    sl = float(signal.stop_loss)
+    direction = signal.direction.value
+    # LONG: anlık fiyat SL'nin altındaysa stop kırıldı
+    # SHORT: anlık fiyat SL'nin üstündeyse stop kırıldı
+    hit = (direction == "bullish" and live_price <= sl) or \
+          (direction == "bearish" and live_price >= sl)
+    return {"signal_id": signal.id, "hit": hit, "live_price": live_price}
+
+
+async def _fetch_market_data_for_signal(
+    signal: Signal, binance: BinanceCollector, yahoo: YahooCollector
+) -> tuple[Any, pd.DataFrame | None]:
+    entry = float(signal.entry_zone_high + signal.entry_zone_low) / 2.0
+    if signal.signal_type.value == "HOLD" or entry <= 0:
+        return signal.id, None
+
+    asset: Asset = signal.asset
+    symbol = asset.symbol
+    timeframe_str = _map_db_timeframe(signal.timeframe)
+    logger.info(f"Checking performance for signal {signal.id} - {symbol} ({signal.timeframe.value})")
+    try:
+        if asset.asset_type.value == "stock" or symbol.endswith(".IS"):
+            df = await yahoo.fetch_ohlcv(symbol, timeframe_str, limit=100)
+        else:
+            df = await binance.fetch_ohlcv(symbol, timeframe_str, limit=100)
+        return signal.id, df
+    except Exception as e:
+        logger.error(f"Failed to fetch market data for {symbol} during tracking: {str(e)}")
+        return signal.id, None
 

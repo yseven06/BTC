@@ -55,6 +55,7 @@ class UserResponse(BaseModel):
     preferences: Optional[Dict[str, Any]] = None
     is_active: bool
     is_admin: bool = False
+    role: str = "user"
     created_at: datetime
     updated_at: datetime
 

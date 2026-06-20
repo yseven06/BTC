@@ -15,6 +15,7 @@ from app.models.portfolio import Portfolio, PortfolioHolding
 from app.models.alert import Alert
 from app.models.notification import NotificationSettings
 from app.models.subscription import Subscription, Payment
+from app.models.admin_audit import AdminAuditLog
 
 __all__ = [
     "User",
@@ -30,4 +31,5 @@ __all__ = [
     "NotificationSettings",
     "Subscription",
     "Payment",
+    "AdminAuditLog",
 ]

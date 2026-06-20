@@ -89,10 +89,10 @@ export function getSignalBgClass(signal: SignalType): string {
  */
 export function getRiskColor(level: RiskLevel): string {
   const colors: Record<RiskLevel, string> = {
-    low: '#4caf50',
-    medium: '#ffc107',
-    high: '#ff9800',
-    very_high: '#ff5252',
+    low: '#34D399',
+    medium: '#F59E0B',
+    high: '#F59E0B',
+    very_high: '#EF4444',
   };
   return colors[level];
 }
@@ -120,7 +120,8 @@ export function getPriceChangeClass(change: number): string {
 }
 
 /**
- * Format relative time
+ * Format relative time. Compares two epoch moments — timezone independent
+ * since getTime() returns UTC ms. Sub-day labels still mean what users expect.
  */
 export function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
@@ -134,6 +135,16 @@ export function formatRelativeTime(dateString: string): string {
   if (diffMinutes < 60) return `${diffMinutes} dakika önce`;
   if (diffHours < 24) return `${diffHours} saat önce`;
   return `${diffDays} gün önce`;
+}
+
+/** Absolute time formatter: backend UTC → Europe/Istanbul human label. */
+export function formatAbsoluteTimeTR(dateString: string | Date, includeTime = true): string {
+  const d = typeof dateString === 'string' ? new Date(dateString) : dateString;
+  return d.toLocaleString('tr-TR', {
+    timeZone: 'Europe/Istanbul',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    ...(includeTime ? { hour: '2-digit', minute: '2-digit' } : {}),
+  });
 }
 
 /**

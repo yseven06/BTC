@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { ScoreRing } from '@/components/ui/ScoreRing';
 import {
   TrendingUp, Play, Activity, CheckCircle,
-  TrendingDown, PieChart as ChartIcon, Briefcase, FileDown,
+  TrendingDown, PieChart as ChartIcon, Briefcase, FileDown, AlertTriangle,
 } from 'lucide-react';
 import { fetchPerformanceSummary, runBacktest, downloadPerformancePdf, type PerformanceSummary, type BacktestResult } from '@/lib/api';
 import {
@@ -31,6 +31,7 @@ export default function PerformancePage() {
   
   const [stats, setStats] = useState<PerformanceSummary | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [timeframe, setTimeframe] = useState('1h');
@@ -44,61 +45,17 @@ export default function PerformancePage() {
 
   const fetchStats = async () => {
     setLoadingStats(true);
+    setStatsError(null);
     try {
       const data = await fetchPerformanceSummary();
       setStats(data);
-    } catch (err) {
-      console.warn('Backend offline, using mock stats:', err);
-      // Fallback premium mock data matching requirements
-      setStats({
-        total_signals: 145,
-        win_count: 84,
-        loss_count: 31,
-        breakeven_count: 15,
-        active_count: 10,
-        expired_count: 5,
-        win_rate: 64.62,
-        average_return: 4.85,
-        average_drawdown: 1.95,
-        tp1_hit_rate: 85.5,
-        tp2_hit_rate: 62.1,
-        tp3_hit_rate: 41.2,
-        win_rate_by_direction: {
-          bullish: 68.4,
-          bearish: 59.2,
-          neutral: 0.0
-        },
-        win_rate_by_asset: {
-          'BTCUSDT': 72.5,
-          'ETHUSDT': 65.4,
-          'THYAO.IS': 76.2,
-          'SOLUSDT': 58.9,
-          'GARAN.IS': 70.5
-        },
-        performance_by_signal_type: {
-          strong_buy: { total: 35, win_rate: 78.5, average_return: 8.42 },
-          buy: { total: 55, win_rate: 65.4, average_return: 4.15 },
-          sell: { total: 40, win_rate: 58.2, average_return: 3.22 },
-          strong_sell: { total: 15, win_rate: 73.1, average_return: 6.95 }
-        },
-        historical_equity_curve: [
-          { time: 'Start', capital: 10000.0 },
-          { time: '06-01', capital: 10245.5 },
-          { time: '06-03', capital: 10115.0 },
-          { time: '06-05', capital: 10580.2 },
-          { time: '06-08', capital: 10892.4 },
-          { time: '06-10', capital: 10740.0 },
-          { time: '06-12', capital: 11150.5 },
-          { time: '06-14', capital: 11425.2 },
-          { time: '06-15', capital: 11310.0 },
-          { time: '06-16', capital: 11842.1 },
-          { time: '06-17', capital: 12150.6 }
-        ],
-        drawdown_analysis: {
-          max_drawdown: 3.82,
-          average_drawdown: 1.25
-        }
-      });
+    } catch (err: any) {
+      // No fake fallback — if the backend is unreachable, say so plainly
+      // instead of showing invented numbers that look like real platform stats.
+      setStats(null);
+      setStatsError(err?.message?.includes('Failed to fetch') || err?.message?.includes('NetworkError')
+        ? 'Backend çalışmıyor. BAŞLAT.bat dosyasını çift tıklayarak backend\'i açın.'
+        : 'Performans verileri yüklenemedi.');
     } finally {
       setLoadingStats(false);
     }
@@ -126,59 +83,20 @@ export default function PerformancePage() {
       setBacktestResult(data);
     } catch (err: any) {
       console.error(err);
-      setBacktestError(err.message || 'An error occurred during backtest execution.');
-      
-      // Load sample backtest result as fallback for demonstration/development
-      setTimeout(() => {
-        setBacktestResult({
-          total_trades: 28,
-          wins: 19,
-          losses: 7,
-          breakevens: 2,
-          expired: 3,
-          win_rate: 67.86,
-          loss_rate: 25.0,
-          profit_factor: 2.84,
-          sharpe_ratio: 1.85,
-          sortino_ratio: 2.14,
-          max_drawdown_pct: 4.15,
-          average_return_pct: 3.92,
-          average_rr: 2.25,
-          expectancy_pct: 2.15,
-          max_consecutive_wins: 6,
-          max_consecutive_losses: 2,
-          equity_curve: [
-            { time: 'Start', capital: 10000.0 },
-            { time: 'Trade 1', capital: 10250.0 },
-            { time: 'Trade 2', capital: 10100.0 },
-            { time: 'Trade 3', capital: 10520.0 },
-            { time: 'Trade 4', capital: 10450.0 },
-            { time: 'Trade 5', capital: 10840.0 },
-            { time: 'Trade 6', capital: 11150.0 },
-            { time: 'Trade 7', capital: 10980.0 },
-            { time: 'Trade 8', capital: 11420.0 },
-            { time: 'Trade 9', capital: 11840.0 }
-          ],
-          trades_log: [
-            { trade_id: 'T-1', direction: 'bullish', entry_price: 64200.0, exit_price: 66800.0, stop_loss: 62800.0, tp1: 65800.0, tp2: 66800.0, tp3: 68500.0, return_pct: 4.05, capital_impact: 405.0, entry_time: '2026-06-10T12:00:00', exit_time: '2026-06-11T04:00:00', outcome: 'win', max_drawdown: 0.85, age: 16 },
-            { trade_id: 'T-2', direction: 'bearish', entry_price: 66500.0, exit_price: 67800.0, stop_loss: 67800.0, tp1: 64200.0, tp2: 63000.0, tp3: 61500.0, return_pct: -1.95, capital_impact: -195.0, entry_time: '2026-06-12T08:00:00', exit_time: '2026-06-13T01:00:00', outcome: 'loss', max_drawdown: 1.95, age: 17 },
-            { trade_id: 'T-3', direction: 'bullish', entry_price: 65100.0, exit_price: 68500.0, stop_loss: 63900.0, tp1: 66800.0, tp2: 68500.0, tp3: 70000.0, return_pct: 5.22, capital_impact: 522.0, entry_time: '2026-06-14T02:00:00', exit_time: '2026-06-15T09:00:00', outcome: 'win', max_drawdown: 1.15, age: 31 }
-          ]
-        });
-        setRunningBacktest(false);
-      }, 1500);
+      // No fake fallback — a failed backtest must show an error, not an
+      // invented result that looks like a real simulation outcome.
+      setBacktestError(err.message || 'Backtest çalıştırılamadı.');
+      setBacktestResult(null);
     } finally {
-      if (backtestError === null) {
-        setRunningBacktest(false);
-      }
+      setRunningBacktest(false);
     }
   };
 
   const chartColors = {
-    bullish: '#00e676',
-    bearish: '#ff5252',
-    accent: '#6366f1',
-    accentSecondary: '#8b5cf6',
+    bullish: '#10B981',
+    bearish: '#EF4444',
+    accent: '#3B82F6',
+    accentSecondary: '#06B6D4',
     neutral: '#64748b'
   };
 
@@ -229,11 +147,19 @@ export default function PerformancePage() {
 
       {activeTab === 'analytics' ? (
         <>
-          {loadingStats || !stats ? (
+          {loadingStats ? (
             <div className="flex flex-col items-center justify-center p-20 space-y-4">
               <div className="w-10 h-10 border-4 border-accent-primary border-t-transparent rounded-full animate-spin" />
               <p className="text-sm text-text-secondary">Yükleniyor...</p>
             </div>
+          ) : statsError || !stats ? (
+            <GlassCard className="flex flex-col items-center justify-center p-20 text-center">
+              <AlertTriangle className="w-12 h-12 text-bearish/60 mb-3" />
+              <h4 className="text-sm font-bold text-text-secondary">{statsError ?? 'Veri bulunamadı'}</h4>
+              <button onClick={fetchStats} className="mt-4 text-xs font-semibold text-accent-primary hover:underline">
+                Yeniden dene →
+              </button>
+            </GlassCard>
           ) : (
             <div className="space-y-6">
               {/* Analytics Summary Cards */}
@@ -303,9 +229,9 @@ export default function PerformancePage() {
                       <XAxis dataKey="time" stroke="#64748b" fontSize={10} tickLine={false} />
                       <YAxis stroke="#64748b" fontSize={10} domain={['dataMin - 500', 'dataMax + 500']} tickLine={false} />
                       <Tooltip
-                        contentStyle={{ backgroundColor: '#111827', borderColor: 'rgba(148, 163, 184, 0.1)', borderRadius: '8px' }}
+                        contentStyle={{ backgroundColor: '#071126', borderColor: 'rgba(148, 163, 184, 0.1)', borderRadius: '8px' }}
                         labelStyle={{ color: '#94a3b8' }}
-                        itemStyle={{ color: '#f1f5f9', fontWeight: 'bold' }}
+                        itemStyle={{ color: '#F8FAFC', fontWeight: 'bold' }}
                       />
                       <Area type="monotone" dataKey="capital" stroke={chartColors.accent} strokeWidth={2} fillOpacity={1} fill="url(#colorCapital)" />
                     </AreaChart>
@@ -578,9 +504,9 @@ export default function PerformancePage() {
                         <XAxis dataKey="time" stroke="#64748b" fontSize={10} tickLine={false} />
                         <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
                         <Tooltip
-                          contentStyle={{ backgroundColor: '#111827', borderColor: 'rgba(148, 163, 184, 0.1)', borderRadius: '8px' }}
+                          contentStyle={{ backgroundColor: '#071126', borderColor: 'rgba(148, 163, 184, 0.1)', borderRadius: '8px' }}
                           labelStyle={{ color: '#94a3b8' }}
-                          itemStyle={{ color: '#f1f5f9', fontWeight: 'bold' }}
+                          itemStyle={{ color: '#F8FAFC', fontWeight: 'bold' }}
                         />
                         <Area type="monotone" dataKey="capital" stroke={chartColors.accentSecondary} strokeWidth={2} fillOpacity={1} fill="url(#colorBacktest)" />
                       </AreaChart>

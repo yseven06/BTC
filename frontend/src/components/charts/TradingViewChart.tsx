@@ -84,7 +84,7 @@ export default function TradingViewChart({
           theme: 'dark',
           style: '1', // candlesticks
           locale: 'tr',
-          toolbar_bg: '#0a0e1a',
+          toolbar_bg: '#020817',
           enable_publishing: false,
           allow_symbol_change: !compact,
           hide_side_toolbar: compact,
@@ -92,7 +92,7 @@ export default function TradingViewChart({
           withdateranges: !compact,
           studies: compact ? [] : studies,
           autosize: true,
-          backgroundColor: '#0a0e1a',
+          backgroundColor: '#020817',
           gridColor: 'rgba(148, 163, 184, 0.06)',
         });
       })

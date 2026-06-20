@@ -12,11 +12,10 @@ free API key set via the FRED_API_KEY environment variable; if missing,
 the collector returns None for FRED-sourced fields.
 """
 
-from __future__ import annotations
-
 import asyncio
 import logging
 import os
+import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 from xml.etree import ElementTree as ET
@@ -26,6 +25,11 @@ import httpx
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+_MACRO_CACHE: Dict[str, Any] = {}
+_MACRO_CACHE_EXPIRY: Dict[str, float] = {}
+
+MACRO_CACHE_TTL = 900  # 15 minutes
 
 
 class MacroCollector:
@@ -47,6 +51,12 @@ class MacroCollector:
         USD/TRY effective selling rate from TCMB today.csv (no auth).
         Returns latest rate or None on failure.
         """
+        now = time.time()
+        cache_key = "usd_try"
+        if cache_key in _MACRO_CACHE and now < _MACRO_CACHE_EXPIRY.get(cache_key, 0.0):
+            logger.info("[MacroCollector] Using cached USD/TRY rate")
+            return _MACRO_CACHE[cache_key]
+
         try:
             r = await self.client.get("https://www.tcmb.gov.tr/kurlar/today.xml")
             r.raise_for_status()
@@ -54,12 +64,22 @@ class MacroCollector:
             for currency in root.findall("Currency"):
                 if currency.get("Kod") == "USD":
                     fx = currency.findtext("ForexSelling")
-                    return float(fx) if fx else None
+                    val = float(fx) if fx else None
+                    if val is not None:
+                        _MACRO_CACHE[cache_key] = val
+                        _MACRO_CACHE_EXPIRY[cache_key] = now + MACRO_CACHE_TTL
+                    return val
         except Exception as exc:
             logger.debug("TCMB USD/TRY fetch failed: %s", exc)
         return None
 
     async def fetch_tcmb_eur_try(self) -> Optional[float]:
+        now = time.time()
+        cache_key = "eur_try"
+        if cache_key in _MACRO_CACHE and now < _MACRO_CACHE_EXPIRY.get(cache_key, 0.0):
+            logger.info("[MacroCollector] Using cached EUR/TRY rate")
+            return _MACRO_CACHE[cache_key]
+
         try:
             r = await self.client.get("https://www.tcmb.gov.tr/kurlar/today.xml")
             r.raise_for_status()
@@ -67,7 +87,11 @@ class MacroCollector:
             for currency in root.findall("Currency"):
                 if currency.get("Kod") == "EUR":
                     fx = currency.findtext("ForexSelling")
-                    return float(fx) if fx else None
+                    val = float(fx) if fx else None
+                    if val is not None:
+                        _MACRO_CACHE[cache_key] = val
+                        _MACRO_CACHE_EXPIRY[cache_key] = now + MACRO_CACHE_TTL
+                    return val
         except Exception:
             return None
         return None
@@ -87,6 +111,13 @@ class MacroCollector:
         """
         if not self._fred_key:
             return None
+
+        now = time.time()
+        cache_key = f"fred_{series_id}"
+        if cache_key in _MACRO_CACHE and now < _MACRO_CACHE_EXPIRY.get(cache_key, 0.0):
+            logger.info(f"[MacroCollector] Using cached FRED series {series_id}")
+            return _MACRO_CACHE[cache_key]
+
         try:
             r = await self.client.get(
                 "https://api.stlouisfed.org/fred/series/observations",
@@ -105,7 +136,10 @@ class MacroCollector:
             val = obs[0].get("value")
             if val in (None, ".", ""):
                 return None
-            return float(val)
+            result_val = float(val)
+            _MACRO_CACHE[cache_key] = result_val
+            _MACRO_CACHE_EXPIRY[cache_key] = now + MACRO_CACHE_TTL
+            return result_val
         except Exception as exc:
             logger.debug("FRED %s fetch failed: %s", series_id, exc)
             return None

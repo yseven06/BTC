@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Any, Awaitable, Dict
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -30,6 +31,100 @@ from app.notifications.service import notify_signal
 logger = logging.getLogger(__name__)
 
 _scheduler: AsyncIOScheduler | None = None
+
+# Job-status board for the admin "Sistem & Scheduler" panel. Without this,
+# a job silently failing every run (as perf_tracking did for days due to the
+# tz-naive closed_at bug) is invisible until someone notices stale data —
+# this surfaces last-run time/result/error directly.
+_JOB_LABELS: Dict[str, str] = {
+    "signals_1h": "1 Saatlik Sinyal Üretimi",
+    "signals_4h": "4 Saatlik Sinyal Üretimi",
+    "signals_15m": "15 Dakikalık Sinyal Üretimi",
+    "signals_1d": "Günlük Sinyal Üretimi",
+    "perf_tracking": "Performans Takibi",
+    "startup_check": "Başlangıç Kontrolü",
+}
+_JOB_STATUS: Dict[str, Dict[str, Any]] = {}
+
+
+def get_job_status() -> Dict[str, Dict[str, Any]]:
+    """Snapshot of every tracked job's last run — used by the admin API."""
+    out: Dict[str, Dict[str, Any]] = {}
+    for job_id, label in _JOB_LABELS.items():
+        out[job_id] = {"label": label, "running": False, "last_run_at": None,
+                        "last_status": None, "last_error": None, "last_result": None,
+                        **_JOB_STATUS.get(job_id, {})}
+    return out
+
+
+async def _run_tracked(job_id: str, coro: Awaitable[Any]) -> Any:
+    """Await `coro` while recording start/end/result/error for `job_id`."""
+    _JOB_STATUS[job_id] = {
+        **_JOB_STATUS.get(job_id, {}),
+        "label": _JOB_LABELS.get(job_id, job_id),
+        "running": True,
+        "started_at": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        result = await coro
+        _JOB_STATUS[job_id].update({
+            "running": False,
+            "last_run_at": datetime.now(timezone.utc).isoformat(),
+            "last_status": "ok",
+            "last_result": result if isinstance(result, (dict, list, str, int, float, type(None))) else str(result),
+            "last_error": None,
+        })
+        return result
+    except Exception as exc:
+        logger.error("[Scheduler] Job %s failed: %s", job_id, exc, exc_info=True)
+        _JOB_STATUS[job_id].update({
+            "running": False,
+            "last_run_at": datetime.now(timezone.utc).isoformat(),
+            "last_status": "error",
+            "last_error": str(exc),
+        })
+        raise
+
+
+async def _job_signals_1h() -> None:
+    await _run_tracked("signals_1h", _run_all_signals(timeframe="1h"))
+
+
+async def _job_signals_4h() -> None:
+    await _run_tracked("signals_4h", _run_all_signals(timeframe="4h"))
+
+
+async def _job_signals_15m() -> None:
+    await _run_tracked("signals_15m", _run_all_signals(timeframe="15m"))
+
+
+async def _job_signals_1d() -> None:
+    await _run_tracked("signals_1d", _run_all_signals(timeframe="1d"))
+
+
+async def _job_perf_tracking() -> None:
+    await _run_tracked("perf_tracking", _run_performance_tracking())
+
+
+async def trigger_job_now(job_id: str) -> bool:
+    """
+    Fire a job immediately in the background (admin "Şimdi Çalıştır" button).
+    Returns False for an unknown job_id. Signal sweeps can take minutes
+    (90+ assets, throttled), so this doesn't block the HTTP request — the
+    caller polls get_job_status() for completion.
+    """
+    job_map: Dict[str, Awaitable[Any]] = {
+        "signals_1h": _run_all_signals(timeframe="1h"),
+        "signals_4h": _run_all_signals(timeframe="4h"),
+        "signals_15m": _run_all_signals(timeframe="15m"),
+        "signals_1d": _run_all_signals(timeframe="1d"),
+        "perf_tracking": _run_performance_tracking(),
+    }
+    coro = job_map.get(job_id)
+    if coro is None:
+        return False
+    asyncio.create_task(_run_tracked(job_id, coro))
+    return True
 
 # Timeframe → DB enum
 TF_ENUM = {
@@ -88,17 +183,27 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 logger.warning("[Scheduler] Asset not found: %s", symbol)
                 return
 
-            # Deactivate old signals for this asset+timeframe
+            now = datetime.now(timezone.utc)
+
+            # Deactivate old signals for this asset+timeframe. A fresh signal
+            # supersedes the old trade plan, so its performance must be closed
+            # here too — otherwise it stays "ACTIVE" forever since the tracker
+            # only scans is_active=True signals (this caused thousands of
+            # zombie "active" signals inflating the dashboard count).
             old_res = await db.execute(
                 select(Signal)
                 .where(Signal.asset_id == asset.id)
                 .where(Signal.timeframe == db_tf)
                 .where(Signal.is_active == True)
+                .options(joinedload(Signal.performance))
             )
-            for old in old_res.scalars().all():
+            for old in old_res.unique().scalars().all():
                 old.is_active = False
-
-            now = datetime.now(timezone.utc)
+                old_perf = old.performance
+                if old_perf and old_perf.outcome == SignalOutcome.ACTIVE:
+                    old_perf.outcome = SignalOutcome.EXPIRED
+                    old_perf.is_expired = True
+                    old_perf.closed_at = now
             new_sig = Signal(
                 asset_id=asset.id,
                 signal_type=SIG_TYPE_MAP.get(decision["signal_type"], SignalType.HOLD),
@@ -137,6 +242,12 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
     await notify_signal(decision, symbol, timeframe)
 
 
+async def generate_signal_now(symbol: str, asset_type: str, timeframe: str = "1h") -> None:
+    """Public wrapper so the admin panel can force-regenerate a single
+    symbol's signal on demand, outside the regular cron cadence."""
+    await _generate_signal(symbol, asset_type, timeframe)
+
+
 async def _run_all_signals(timeframe: str = "1h") -> None:
     """Regenerate signals for all active assets, with rate-limit spacing."""
     async with async_session_factory() as db:
@@ -156,14 +267,16 @@ async def _run_all_signals(timeframe: str = "1h") -> None:
     logger.info("[Scheduler] %s sweep complete", timeframe)
 
 
-async def _run_performance_tracking() -> None:
-    """Resolve active signals that hit TP/SL."""
-    try:
-        async with async_session_factory() as db:
-            summary = await track_and_resolve_active_signals(db)
-            logger.info("[Scheduler] Performance sweep: %s", summary)
-    except Exception as exc:
-        logger.error("[Scheduler] Performance sweep failed: %s", exc)
+async def _run_performance_tracking() -> Dict[str, Any]:
+    """Resolve active signals that hit TP/SL. Raises on failure — the cron
+    wrapper and trigger_job_now() both route through _run_tracked, which is
+    what actually records/logs the error; swallowing it here would hide
+    failures from the admin job-status panel, which is exactly how the
+    tz-naive closed_at bug went unnoticed for days."""
+    async with async_session_factory() as db:
+        summary = await track_and_resolve_active_signals(db)
+        logger.info("[Scheduler] Performance sweep: %s", summary)
+        return summary
 
 
 async def _startup_generate_if_empty() -> None:
@@ -237,9 +350,8 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # 1h signals: regenerate at minute 1 of every hour
     _scheduler.add_job(
-        _run_all_signals,
+        _job_signals_1h,
         CronTrigger(minute=1),
-        kwargs={"timeframe": "1h"},
         id="signals_1h",
         replace_existing=True,
         name="Hourly 1h signal refresh",
@@ -247,9 +359,8 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # 4h signals: regenerate at minute 2 of every 4th hour
     _scheduler.add_job(
-        _run_all_signals,
+        _job_signals_4h,
         CronTrigger(hour="0,4,8,12,16,20", minute=2),
-        kwargs={"timeframe": "4h"},
         id="signals_4h",
         replace_existing=True,
         name="4h signal refresh",
@@ -257,9 +368,8 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # 15m signals: every 15 minutes at minute 2
     _scheduler.add_job(
-        _run_all_signals,
+        _job_signals_15m,
         CronTrigger(minute="2,17,32,47"),
-        kwargs={"timeframe": "15m"},
         id="signals_15m",
         replace_existing=True,
         name="15m signal refresh",
@@ -267,18 +377,17 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # 1d signals: regenerate once a day at 00:03 UTC
     _scheduler.add_job(
-        _run_all_signals,
+        _job_signals_1d,
         CronTrigger(hour=0, minute=3),
-        kwargs={"timeframe": "1d"},
         id="signals_1d",
         replace_existing=True,
         name="Daily 1d signal refresh",
     )
 
-    # Performance tracking: every 5 minutes (fast invalidation detection)
+    # Performance tracking: every 2 minutes (fast invalidation detection)
     _scheduler.add_job(
-        _run_performance_tracking,
-        CronTrigger(minute="*/5"),
+        _job_perf_tracking,
+        CronTrigger(minute="*/2"),
         id="perf_tracking",
         replace_existing=True,
         name="Performance tracking sweep",

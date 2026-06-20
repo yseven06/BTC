@@ -9,6 +9,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -116,6 +117,11 @@ class PortfolioHolding(Base):
     unrealized_pnl = Column(Numeric(precision=20, scale=8), nullable=True)
     unrealized_pnl_pct = Column(Numeric(precision=10, scale=4), nullable=True)
     notes = Column(Text, nullable=True)
+    is_closed = Column(Boolean, nullable=False, default=False, server_default="false")
+    exit_price = Column(Numeric(precision=20, scale=8), nullable=True)
+    realized_pnl = Column(Numeric(precision=20, scale=8), nullable=True)
+    realized_pnl_pct = Column(Numeric(precision=10, scale=4), nullable=True)
+    closed_at = Column(DateTime(timezone=True), nullable=True)
     added_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

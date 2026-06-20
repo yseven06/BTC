@@ -13,26 +13,26 @@
    ============================================ */
 @layer base {
   :root {
-    --bg-primary: #0a0e1a;
-    --bg-secondary: #111827;
-    --bg-tertiary: #1a2332;
-    --bg-glass: rgba(17, 24, 39, 0.7);
-    --bg-glass-light: rgba(17, 24, 39, 0.4);
-    --accent-primary: #6366f1;
-    --accent-secondary: #8b5cf6;
-    --accent-glow: rgba(99, 102, 241, 0.3);
-    --text-primary: #f1f5f9;
+    --bg-primary: #020817;
+    --bg-secondary: #071126;
+    --bg-tertiary: #0B1730;
+    --bg-glass: rgba(7, 17, 38, 0.7);
+    --bg-glass-light: rgba(7, 17, 38, 0.4);
+    --accent-primary: #3B82F6;
+    --accent-secondary: #06B6D4;
+    --accent-glow: rgba(59, 130, 246, 0.3);
+    --text-primary: #F8FAFC;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
     --border-subtle: rgba(148, 163, 184, 0.1);
     --border-medium: rgba(148, 163, 184, 0.2);
-    --bullish: #00e676;
-    --bearish: #ff5252;
-    --signal-strong-buy: #00e676;
-    --signal-buy: #4caf50;
-    --signal-hold: #ffc107;
-    --signal-sell: #ff5252;
-    --signal-strong-sell: #d50000;
+    --bullish: #10B981;
+    --bearish: #EF4444;
+    --signal-strong-buy: #10B981;
+    --signal-buy: #34D399;
+    --signal-hold: #F59E0B;
+    --signal-sell: #EF4444;
+    --signal-strong-sell: #DC2626;
   }
 
   * {
@@ -101,7 +101,7 @@
    ============================================ */
 @layer components {
   .glass-card {
-    background: rgba(17, 24, 39, 0.7);
+    background: rgba(7, 17, 38, 0.7);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid rgba(148, 163, 184, 0.1);
@@ -117,7 +117,7 @@
   }
 
   .glass-card-static {
-    background: rgba(17, 24, 39, 0.7);
+    background: rgba(7, 17, 38, 0.7);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid rgba(148, 163, 184, 0.1);
@@ -126,30 +126,30 @@
   }
 
   .glass-card-accent {
-    background: rgba(17, 24, 39, 0.7);
+    background: rgba(7, 17, 38, 0.7);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.2);
     border-radius: 16px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 0 15px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 0 15px rgba(59, 130, 246, 0.1);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .glass-card-accent:hover {
-    border-color: rgba(99, 102, 241, 0.35);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 0 25px rgba(99, 102, 241, 0.15);
+    border-color: rgba(59, 130, 246, 0.35);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 0 25px rgba(59, 130, 246, 0.15);
     transform: translateY(-1px);
   }
 
   .glass-panel {
-    background: rgba(17, 24, 39, 0.5);
+    background: rgba(7, 17, 38, 0.5);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(148, 163, 184, 0.08);
   }
 
   .glass-surface {
-    background: rgba(17, 24, 39, 0.35);
+    background: rgba(7, 17, 38, 0.35);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border: 1px solid rgba(148, 163, 184, 0.06);
@@ -162,7 +162,7 @@
 @layer components {
   .signal-strong-buy {
     color: var(--signal-strong-buy);
-    text-shadow: 0 0 10px rgba(0, 230, 118, 0.3);
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
   }
 
   .signal-buy {
@@ -179,34 +179,34 @@
 
   .signal-strong-sell {
     color: var(--signal-strong-sell);
-    text-shadow: 0 0 10px rgba(213, 0, 0, 0.3);
+    text-shadow: 0 0 10px rgba(220, 38, 38, 0.3);
   }
 
   .signal-bg-strong-buy {
-    background: rgba(0, 230, 118, 0.12);
-    border-color: rgba(0, 230, 118, 0.3);
-    box-shadow: 0 0 15px rgba(0, 230, 118, 0.1);
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
   }
 
   .signal-bg-buy {
-    background: rgba(76, 175, 80, 0.12);
-    border-color: rgba(76, 175, 80, 0.3);
+    background: rgba(52, 211, 153, 0.12);
+    border-color: rgba(52, 211, 153, 0.3);
   }
 
   .signal-bg-hold {
-    background: rgba(255, 193, 7, 0.12);
-    border-color: rgba(255, 193, 7, 0.3);
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.3);
   }
 
   .signal-bg-sell {
-    background: rgba(255, 82, 82, 0.12);
-    border-color: rgba(255, 82, 82, 0.3);
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.3);
   }
 
   .signal-bg-strong-sell {
-    background: rgba(213, 0, 0, 0.12);
-    border-color: rgba(213, 0, 0, 0.3);
-    box-shadow: 0 0 15px rgba(213, 0, 0, 0.1);
+    background: rgba(220, 38, 38, 0.12);
+    border-color: rgba(220, 38, 38, 0.3);
+    box-shadow: 0 0 15px rgba(220, 38, 38, 0.1);
   }
 }
 
@@ -215,32 +215,32 @@
    ============================================ */
 @layer components {
   .gradient-text-brand {
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+    background: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .gradient-text-bullish {
-    background: linear-gradient(135deg, #00e676 0%, #69f0ae 100%);
+    background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .gradient-text-bearish {
-    background: linear-gradient(135deg, #ff5252 0%, #ff8a80 100%);
+    background: linear-gradient(135deg, #EF4444 0%, #F87171 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .gradient-bg-brand {
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    background: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%);
   }
 
   .gradient-bg-brand-subtle {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%);
   }
 
   .gradient-border {
@@ -253,7 +253,7 @@
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(139, 92, 246, 0.2), transparent);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(6, 182, 212, 0.2), transparent);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
@@ -263,9 +263,9 @@
 
   .gradient-mesh {
     background:
-      radial-gradient(at 20% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
-      radial-gradient(at 80% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
-      radial-gradient(at 50% 50%, rgba(99, 102, 241, 0.03) 0%, transparent 70%);
+      radial-gradient(at 20% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+      radial-gradient(at 80% 80%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
+      radial-gradient(at 50% 50%, rgba(59, 130, 246, 0.03) 0%, transparent 70%);
   }
 }
 
@@ -314,7 +314,7 @@
   }
 
   .hover-glow:hover {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
   }
 
   .transition-default {
@@ -388,8 +388,8 @@
 
   .nav-item.active {
     color: var(--accent-primary);
-    background: rgba(99, 102, 241, 0.1);
-    box-shadow: 0 0 15px rgba(99, 102, 241, 0.1);
+    background: rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
   }
 
   .nav-item.active::before {
@@ -458,11 +458,11 @@
    Selection Colors
    ============================================ */
 ::selection {
-  background: rgba(99, 102, 241, 0.3);
-  color: #f1f5f9;
+  background: rgba(59, 130, 246, 0.3);
+  color: #F8FAFC;
 }
 
 ::-moz-selection {
-  background: rgba(99, 102, 241, 0.3);
-  color: #f1f5f9;
+  background: rgba(59, 130, 246, 0.3);
+  color: #F8FAFC;
 }

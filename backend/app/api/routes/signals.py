@@ -22,6 +22,7 @@ from app.models.signal import Signal, SignalOutcome, SignalPerformance, SignalTy
 from app.models.user import User
 from app.schemas.signal import (
     SignalDetailResponse,
+    SignalHistoryStats,
     SignalListResponse,
     SignalPerformanceResponse,
     SignalPerformanceSummary,
@@ -120,24 +121,63 @@ async def list_signals(
     )
 
 
+def _hist_to_resp(s: Signal) -> SignalResponse:
+    d = SignalResponse.model_validate(s)
+    perf = s.performance
+    d.outcome = perf.outcome.value if perf else "active"
+    if perf:
+        d.actual_return = float(perf.actual_return) if perf.actual_return is not None else None
+        d.max_drawdown = float(perf.max_drawdown) if perf.max_drawdown is not None else None
+        d.hit_tp1 = perf.hit_tp1
+        d.hit_tp2 = perf.hit_tp2
+        d.hit_tp3 = perf.hit_tp3
+        d.closed_at = perf.closed_at
+    return d
+
+
 @router.get(
     "/history",
     response_model=SignalListResponse,
-    summary="List historical signals",
+    summary="List historical signals with filters",
 )
 async def signal_history(
     asset_id: Optional[UUID] = Query(None),
+    market: Optional[str] = Query(None, description="crypto or stock"),
+    signal_type: Optional[str] = Query(None),
+    outcome: Optional[str] = Query(None, description="win, loss, breakeven, expired, active"),
+    min_confidence: Optional[float] = Query(None, ge=0, le=100),
+    max_confidence: Optional[float] = Query(None, ge=0, le=100),
+    date_from: Optional[datetime] = Query(None),
+    date_to: Optional[datetime] = Query(None),
+    only_resolved: bool = Query(False, description="If True, only show closed signals (exclude active)."),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
 ) -> SignalListResponse:
     """
-    List all signals including inactive/expired ones.
+    List all signals including inactive/expired ones, with rich filtering
+    so users can audit how past signals actually played out.
     """
-    query = select(Signal)
+    query = select(Signal).join(Asset).outerjoin(SignalPerformance)
 
     if asset_id is not None:
         query = query.where(Signal.asset_id == asset_id)
+    if market is not None:
+        query = query.where(Asset.asset_type == market)
+    if signal_type is not None:
+        query = query.where(Signal.signal_type == signal_type)
+    if min_confidence is not None:
+        query = query.where(Signal.confidence_score >= min_confidence)
+    if max_confidence is not None:
+        query = query.where(Signal.confidence_score <= max_confidence)
+    if date_from is not None:
+        query = query.where(Signal.generated_at >= date_from)
+    if date_to is not None:
+        query = query.where(Signal.generated_at <= date_to)
+    if outcome is not None:
+        query = query.where(SignalPerformance.outcome == outcome)
+    elif only_resolved:
+        query = query.where(SignalPerformance.outcome != SignalOutcome.ACTIVE)
 
     count_query = select(func.count()).select_from(query.subquery())
     total_result = await db.execute(count_query)
@@ -155,11 +195,6 @@ async def signal_history(
 
     total_pages = max(1, (total + page_size - 1) // page_size)
 
-    def _hist_to_resp(s: Signal) -> SignalResponse:
-        d = SignalResponse.model_validate(s)
-        d.outcome = s.performance.outcome.value if s.performance else "active"
-        return d
-
     return SignalListResponse(
         items=[_hist_to_resp(s) for s in signals],
         total=total,
@@ -168,6 +203,96 @@ async def signal_history(
         total_pages=total_pages,
         has_next=page < total_pages,
         has_previous=page > 1,
+    )
+
+
+@router.get(
+    "/history/stats",
+    response_model=SignalHistoryStats,
+    summary="Summary statistics for the Signal History panel",
+)
+async def signal_history_stats(
+    market: Optional[str] = Query(None, description="crypto or stock"),
+    date_from: Optional[datetime] = Query(None),
+    date_to: Optional[datetime] = Query(None),
+    db: AsyncSession = Depends(get_db),
+) -> SignalHistoryStats:
+    """
+    Aggregate stats over closed signals: win/TP/SL rates, profit factor,
+    best/worst signal. Powers the summary cards on the Signal History page.
+    """
+    query = (
+        select(SignalPerformance)
+        .join(Signal)
+        .join(Asset)
+        .options(joinedload(SignalPerformance.signal).joinedload(Signal.asset))
+    )
+    if market is not None:
+        query = query.where(Asset.asset_type == market)
+    if date_from is not None:
+        query = query.where(Signal.generated_at >= date_from)
+    if date_to is not None:
+        query = query.where(Signal.generated_at <= date_to)
+
+    result = await db.execute(query)
+    perfs = result.scalars().all()
+
+    if not perfs:
+        return SignalHistoryStats()
+
+    total = len(perfs)
+    win = sum(1 for p in perfs if p.outcome == SignalOutcome.WIN)
+    loss = sum(1 for p in perfs if p.outcome == SignalOutcome.LOSS)
+    breakeven = sum(1 for p in perfs if p.outcome == SignalOutcome.BREAKEVEN)
+    expired = sum(1 for p in perfs if p.outcome == SignalOutcome.EXPIRED)
+    active = sum(1 for p in perfs if p.outcome == SignalOutcome.ACTIVE)
+    resolved = win + loss + breakeven
+
+    win_rate = round(win / resolved * 100, 2) if resolved > 0 else 0.0
+    tp_hits = sum(1 for p in perfs if p.hit_tp1 or p.hit_tp2 or p.hit_tp3)
+    tp_hit_rate = round(tp_hits / resolved * 100, 2) if resolved > 0 else 0.0
+    sl_rate = round(loss / resolved * 100, 2) if resolved > 0 else 0.0
+
+    returns = [float(p.actual_return) for p in perfs if p.actual_return is not None]
+    avg_return = round(sum(returns) / len(returns), 4) if returns else None
+
+    gross_profit = sum(r for r in returns if r > 0)
+    gross_loss = abs(sum(r for r in returns if r < 0))
+    profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else None
+
+    closed = [p for p in perfs if p.actual_return is not None]
+    best_signal = None
+    worst_signal = None
+    if closed:
+        best = max(closed, key=lambda p: float(p.actual_return))
+        worst = min(closed, key=lambda p: float(p.actual_return))
+        best_signal = {
+            "symbol": best.signal.asset.symbol,
+            "return": round(float(best.actual_return), 2),
+            "outcome": best.outcome.value,
+            "closed_at": best.closed_at.isoformat() if best.closed_at else None,
+        }
+        worst_signal = {
+            "symbol": worst.signal.asset.symbol,
+            "return": round(float(worst.actual_return), 2),
+            "outcome": worst.outcome.value,
+            "closed_at": worst.closed_at.isoformat() if worst.closed_at else None,
+        }
+
+    return SignalHistoryStats(
+        total_signals=total,
+        win_count=win,
+        loss_count=loss,
+        breakeven_count=breakeven,
+        expired_count=expired,
+        active_count=active,
+        win_rate=win_rate,
+        tp_hit_rate=tp_hit_rate,
+        sl_rate=sl_rate,
+        average_return=avg_return,
+        profit_factor=profit_factor,
+        best_signal=best_signal,
+        worst_signal=worst_signal,
     )
 
 

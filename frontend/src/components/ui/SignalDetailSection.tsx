@@ -1,0 +1,519 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { ScoreRing } from './ScoreRing';
+import { GlassCard } from './GlassCard';
+import { cn } from '@/lib/utils';
+import { ApiSignal } from '@/lib/api';
+import {
+  Target, TrendingUp, TrendingDown, Activity, ShieldAlert,
+  Info, X, Scale, FileText, BarChart3,
+} from 'lucide-react';
+
+// ─── i18n / label maps ──────────────────────────────────────────────────────
+const ENGINE_LABELS: Record<string, string> = {
+  technical_analysis:     'Teknik Analiz',
+  market_structure:       'Piyasa Yapısı',
+  smart_money_concepts:   'SMC (Akıllı Para)',
+  candle_range_theory:    'CRT (Mum Aralığı)',
+  volume_analysis:        'Hacim Analizi',
+  risk_management:        'Risk Yönetimi',
+  fundamental_analysis:   'Temel Analiz',
+  onchain_analysis:       'On-Chain & Sentiment',
+  macro_analysis:         'Makro Görünüm',
+};
+
+// ─── EN→TR finding translator (kept from previous file) ─────────────────────
+const FINDING_PATTERNS: [RegExp, string | ((m: RegExpMatchArray) => string)][] = [
+  [/Trend indicators lean bearish \((\d+)\/(\d+) bearish\)/i, (m) => `Trend göstergeleri AYI yönlü (${m[1]}/${m[2]} ayı)`],
+  [/Trend indicators lean bullish \((\d+)\/(\d+) bullish\)/i, (m) => `Trend göstergeleri BOĞA yönlü (${m[1]}/${m[2]} boğa)`],
+  [/MACD:\s*MACD=(-?[\d.]+)\s+Signal=(-?[\d.]+)\s+Hist=(-?[\d.]+)\s*→?\s*bearish/i, (m) => `MACD: MACD=${m[1]} Sinyal=${m[2]} Hist=${m[3]} → AYI`],
+  [/MACD:\s*MACD=(-?[\d.]+)\s+Signal=(-?[\d.]+)\s+Hist=(-?[\d.]+)\s*→?\s*bullish/i, (m) => `MACD: MACD=${m[1]} Sinyal=${m[2]} Hist=${m[3]} → BOĞA`],
+  [/Market structure:\s*(Uptrend|Downtrend|Range)/i, (m) => `Piyasa yapısı: ${m[1] === 'Uptrend' ? 'Yükseliş Trendi' : m[1] === 'Downtrend' ? 'Düşüş Trendi' : 'Yatay Band'}`],
+  [/Swing counts\s*[–-]?\s*HH:(\d+)\s+HL:(\d+)\s+LH:(\d+)\s+LL:(\d+)/i, (m) => `Salınım: HH:${m[1]} HL:${m[2]} LH:${m[3]} LL:${m[4]}`],
+  [/Price is in (DISCOUNT|PREMIUM|EQUILIBRIUM) zone/i, (m) => `Fiyat ${m[1] === 'DISCOUNT' ? 'İSKONTO' : m[1] === 'PREMIUM' ? 'PRİM' : 'DENGE'} bölgesinde`],
+  [/Range position:\s*([\d.]+)%/i, (m) => `Aralık konumu: %${m[1]}`],
+  [/Detected (\d+) unfilled Bearish Fair Value Gap/i, (m) => `${m[1]} doldurulmamış AYI FVG`],
+  [/Detected (\d+) unfilled Bullish Fair Value Gap/i, (m) => `${m[1]} doldurulmamış BOĞA FVG`],
+  [/Expected range state:\s*Contracting \(Ratio:\s*([\d.]+)\)/i, (m) => `Aralık daralmakta (${m[1]})`],
+  [/Expected range state:\s*Expanding \(Ratio:\s*([\d.]+)\)/i, (m) => `Aralık genişlemekte (${m[1]})`],
+  [/Bullish exhaustion/i, 'BOĞA tükenmesi'],
+  [/Bearish exhaustion/i, 'AYI tükenmesi'],
+  [/Smart Money distribution phase/i, 'Akıllı Para DAĞITIM fazı'],
+  [/Smart Money accumulation phase/i, 'Akıllı Para BİRİKİM fazı'],
+  [/Volatility level:\s*LOW/i, 'Volatilite: DÜŞÜK'],
+  [/Volatility level:\s*MEDIUM/i, 'Volatilite: ORTA'],
+  [/Volatility level:\s*HIGH/i, 'Volatilite: YÜKSEK'],
+  [/Recommended Position Size:\s*([\d.]+)% of portfolio/i, (m) => `Önerilen pozisyon: %${m[1]} portföy`],
+  [/Reasonable supply distribution \(([\d.]+)% circulating\)/i, (m) => `Makul arz dağılımı (%${m[1]} dolaşımda)`],
+];
+
+function translateFinding(s: string): string {
+  if (!s) return s;
+  let out = s;
+  for (const [pat, rep] of FINDING_PATTERNS) {
+    if (typeof rep === 'function') {
+      out = out.replace(pat, (...args) => rep(args.slice(0, args.length - 2) as unknown as RegExpMatchArray));
+    } else {
+      out = out.replace(pat, rep);
+    }
+  }
+  return out
+    .replace(/\bDowntrend\b/g, 'Düşüş trendi')
+    .replace(/\bUptrend\b/g, 'Yükseliş trendi')
+    .replace(/\bbullish\b/gi, 'boğa')
+    .replace(/\bbearish\b/gi, 'ayı')
+    .replace(/\bneutral\b/gi, 'nötr');
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+interface EngineRow {
+  name: string;
+  label: string;
+  score: number;
+  bias: 'bullish' | 'bearish' | 'neutral';
+  findings: string[];
+}
+
+function parseEngines(enginesData: any): EngineRow[] {
+  if (!enginesData) return [];
+  const list: any[] = Array.isArray(enginesData) ? enginesData : Object.values(enginesData);
+  return list
+    .filter((e) => e && typeof e === 'object')
+    .map((e) => ({
+      name:     e.engine_name ?? e.name ?? '—',
+      label:    ENGINE_LABELS[e.engine_name ?? ''] ?? (e.engine_name ?? '—').replace(/_/g, ' '),
+      score:    Number(e.score ?? 50),
+      bias:     String(e.bias ?? 'neutral').toLowerCase().includes('bull') ? 'bullish'
+              : String(e.bias ?? 'neutral').toLowerCase().includes('bear') ? 'bearish'
+              : 'neutral',
+      findings: Array.isArray(e.key_findings) ? e.key_findings : [],
+    }));
+}
+
+function calculateRR(signal: ApiSignal): string {
+  const entryLow = signal.entry_zone_low;
+  const entryHigh = signal.entry_zone_high;
+  const sl = signal.stop_loss;
+  const tp = signal.tp3 || signal.tp2 || signal.tp1;
+  if (!entryLow || !entryHigh || !sl || !tp) return '—';
+  const entryAvg = (entryLow + entryHigh) / 2;
+  const isLong = signal.direction === 'bullish' || signal.signal_type.toLowerCase().includes('buy');
+  try {
+    if (isLong) {
+      const risk = entryAvg - sl, reward = tp - entryAvg;
+      if (risk <= 0 || reward <= 0) return '—';
+      return (reward / risk).toFixed(2);
+    } else {
+      const risk = sl - entryAvg, reward = entryAvg - tp;
+      if (risk <= 0 || reward <= 0) return '—';
+      return (reward / risk).toFixed(2);
+    }
+  } catch { return '—'; }
+}
+
+function stripMd(raw: string): string {
+  return raw
+    .replace(/^#+\s*/gm, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/—/g, '·')
+    .trim();
+}
+
+// ─── Sub-components ─────────────────────────────────────────────────────────
+
+/** Engine card — horizontal compact layout, score + bias, click for full detail */
+function EngineCard({ engine, onClick }: { engine: EngineRow; onClick: () => void }) {
+  const biasConfig = {
+    bullish: { label: 'AL',    bg: 'bg-bullish/10',   text: 'text-bullish',   border: 'border-bullish/30   hover:border-bullish/60' },
+    bearish: { label: 'SAT',   bg: 'bg-bearish/10',   text: 'text-bearish',   border: 'border-bearish/30   hover:border-bearish/60' },
+    neutral: { label: 'BEKLE', bg: 'bg-bg-tertiary',  text: 'text-text-muted',border: 'border-border-subtle hover:border-border-medium' },
+  }[engine.bias];
+
+  return (
+    <button
+      onClick={onClick}
+      title={`${engine.label} — Detayları görmek için tıkla`}
+      className={cn(
+        'group relative bg-bg-secondary/40 rounded-2xl p-4',
+        'border transition-all duration-200',
+        'hover:bg-bg-secondary/60 hover:shadow-glow-sm',
+        biasConfig.border,
+        'text-left w-full'
+      )}
+    >
+      {/* Info icon top-right (only visible on hover) */}
+      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-60 transition-opacity">
+        <Info className="w-3.5 h-3.5 text-text-muted" />
+      </div>
+
+      {/* Engine label + bias chip */}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <span className="text-[11px] font-bold text-text-primary uppercase tracking-wide leading-tight line-clamp-2 flex-1">
+          {engine.label}
+        </span>
+        <span className={cn(
+          'flex-shrink-0 text-[10px] font-extrabold px-2 py-0.5 rounded',
+          biasConfig.bg, biasConfig.text
+        )}>
+          {biasConfig.label}
+        </span>
+      </div>
+
+      {/* Score ring centered */}
+      <div className="flex items-center justify-center py-1">
+        <ScoreRing score={engine.score} size={70} strokeWidth={6} />
+      </div>
+    </button>
+  );
+}
+
+/** Modal showing the engine's key findings */
+function EngineDetailModal({ engine, onClose }: { engine: EngineRow; onClose: () => void }) {
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
+  const biasColor = engine.bias === 'bullish' ? 'text-bullish'
+                  : engine.bias === 'bearish' ? 'text-bearish'
+                  : 'text-text-muted';
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md glass-panel border border-border-medium rounded-2xl p-6 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-1">
+              Motor Analizi
+            </p>
+            <h3 className="text-lg font-extrabold text-text-primary">{engine.label}</h3>
+          </div>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary p-1">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-bg-secondary/60 rounded-xl p-3 border border-border-subtle text-center">
+            <p className="text-[10px] text-text-muted uppercase font-bold mb-1">Skor</p>
+            <p className="text-2xl font-extrabold font-mono text-text-primary">{engine.score.toFixed(1)}<span className="text-sm text-text-muted">/100</span></p>
+          </div>
+          <div className="bg-bg-secondary/60 rounded-xl p-3 border border-border-subtle text-center">
+            <p className="text-[10px] text-text-muted uppercase font-bold mb-1">Yön</p>
+            <p className={cn('text-lg font-extrabold uppercase', biasColor)}>
+              {engine.bias === 'bullish' ? 'ALIM' : engine.bias === 'bearish' ? 'SATIM' : 'NÖTR'}
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-2">
+            Bulgular
+          </p>
+          {engine.findings.length === 0 ? (
+            <p className="text-xs text-text-muted text-center py-4">Detaylı bulgu yok.</p>
+          ) : (
+            <ul className="space-y-2">
+              {engine.findings.map((f, i) => (
+                <li key={i} className="flex gap-2 text-xs text-text-secondary leading-relaxed bg-bg-secondary/40 rounded-lg px-3 py-2 border border-border-subtle">
+                  <span className="text-accent-primary flex-shrink-0">•</span>
+                  <span>{translateFinding(f)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Vertical price ladder — TP3 on top, SL at bottom */
+function PriceLadder({ signal }: { signal: ApiSignal }) {
+  const isLong = signal.direction === 'bullish' || signal.signal_type.toLowerCase().includes('buy');
+  const entry  = signal.entry_zone_low && signal.entry_zone_high
+                 ? (signal.entry_zone_low + signal.entry_zone_high) / 2
+                 : null;
+
+  // For LONG: TP3 > TP2 > TP1 > ENTRY > SL  (descending visual order)
+  // For SHORT: SL > ENTRY > TP1 > TP2 > TP3
+  const items: { key: string; label: string; value: number | null; color: string; emphasize?: boolean }[] = isLong
+    ? [
+        { key: 'tp3',   label: 'TP3',   value: signal.tp3 ?? null,        color: 'bullish' },
+        { key: 'tp2',   label: 'TP2',   value: signal.tp2 ?? null,        color: 'bullish' },
+        { key: 'tp1',   label: 'TP1',   value: signal.tp1 ?? null,        color: 'bullish' },
+        { key: 'entry', label: 'GİRİŞ', value: entry,                     color: 'accent', emphasize: true },
+        { key: 'sl',    label: 'SL',    value: signal.stop_loss ?? null,  color: 'bearish' },
+      ]
+    : [
+        { key: 'sl',    label: 'SL',    value: signal.stop_loss ?? null,  color: 'bearish' },
+        { key: 'entry', label: 'GİRİŞ', value: entry,                     color: 'accent', emphasize: true },
+        { key: 'tp1',   label: 'TP1',   value: signal.tp1 ?? null,        color: 'bullish' },
+        { key: 'tp2',   label: 'TP2',   value: signal.tp2 ?? null,        color: 'bullish' },
+        { key: 'tp3',   label: 'TP3',   value: signal.tp3 ?? null,        color: 'bullish' },
+      ];
+
+  return (
+    <div className="bg-bg-secondary/30 border border-border-subtle rounded-2xl p-5">
+      <div className="space-y-0">
+        {items.map((item, idx) => {
+          const colorClass = item.color === 'bullish' ? 'bg-bullish text-black border-bullish'
+                            : item.color === 'bearish' ? 'bg-bearish text-white border-bearish'
+                            : 'bg-accent-primary text-white border-accent-primary';
+          const lineColor  = item.color === 'bullish' ? 'bg-bullish/40'
+                            : item.color === 'bearish' ? 'bg-bearish/40'
+                            : 'bg-accent-primary/40';
+          return (
+            <div key={item.key}>
+              <div className="flex items-center gap-4">
+                {/* Left label badge */}
+                <div className={cn(
+                  'w-16 text-center text-[11px] font-extrabold py-1.5 rounded-lg border-2',
+                  colorClass,
+                  item.emphasize && 'shadow-glow-sm scale-110'
+                )}>
+                  {item.label}
+                </div>
+                {/* Dashed connector */}
+                <div className="flex-1 border-t-2 border-dashed border-border-subtle/60" />
+                {/* Value */}
+                <div className={cn(
+                  'text-sm font-bold font-mono min-w-[100px] text-right',
+                  item.color === 'bullish' ? 'text-bullish'
+                  : item.color === 'bearish' ? 'text-bearish'
+                  : 'text-accent-primary',
+                  item.emphasize && 'text-base'
+                )}>
+                  {item.value != null ? item.value.toLocaleString('tr-TR', { maximumFractionDigits: 4 }) : '—'}
+                </div>
+              </div>
+              {/* Vertical bridge to next item */}
+              {idx < items.length - 1 && (
+                <div className="flex pl-8 my-0.5">
+                  <div className={cn('w-0.5 h-3', lineColor)} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Compact horizontal risk badge */
+function RiskBadge({ level }: { level: string | undefined }) {
+  const config = {
+    low:        { label: 'DÜŞÜK',       cls: 'bg-bullish/15 text-bullish border-bullish/40' },
+    medium:     { label: 'ORTA',        cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/40' },
+    high:       { label: 'YÜKSEK',      cls: 'bg-orange-500/15 text-orange-400 border-orange-500/40' },
+    very_high:  { label: 'ÇOK YÜKSEK',  cls: 'bg-bearish/15 text-bearish border-bearish/40' },
+  }[(level ?? 'medium').toLowerCase()] ?? { label: 'BİLİNMİYOR', cls: 'bg-bg-tertiary text-text-muted border-border-subtle' };
+
+  return (
+    <div className={cn('flex items-center gap-2 px-3 py-2 rounded-xl border whitespace-nowrap', config.cls)}>
+      <ShieldAlert className="w-4 h-4 flex-shrink-0" />
+      <div className="flex flex-col leading-none">
+        <span className="text-[9px] uppercase font-bold tracking-wider opacity-70">Risk</span>
+        <span className="text-xs font-extrabold uppercase tracking-wide mt-0.5">{config.label}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab content extractors ─────────────────────────────────────────────────
+function extractSection(text: string, header: RegExp): string {
+  const m = text.match(new RegExp(`${header.source}([\\s\\S]+?)(?=\\n#+\\s|$)`, 'i'));
+  return m ? m[1].trim() : '';
+}
+
+interface ExplanationTabs {
+  summary: string;
+  marketStructure: string;
+  risk: string;
+  tradePlan: string;
+  full: string;
+}
+
+function buildTabs(raw: string | null | undefined): ExplanationTabs {
+  if (!raw) return { summary: '', marketStructure: '', risk: '', tradePlan: '', full: '' };
+  const clean = stripMd(raw);
+  return {
+    summary:         extractSection(clean, /Özet Analiz[:\s]+/i) || clean.split('\n\n')[0]?.slice(0, 400) || '',
+    marketStructure: extractSection(clean, /Piyasa Yapısı ve Hacim Yorumu[:\s]+/i)
+                  || extractSection(clean, /Smart Money.*CRT.*Analizi[:\s]+/i),
+    risk:            extractSection(clean, /Risk Değerlendirmesi(?:\s+ve\s+İşlem Planı)?[:\s]+/i),
+    tradePlan:       extractSection(clean, /İşlem Planı[:\s]+/i)
+                  || extractSection(clean, /Risk Değerlendirmesi ve İşlem Planı[:\s]+/i),
+    full:            clean,
+  };
+}
+
+// ─── Main Component ─────────────────────────────────────────────────────────
+
+interface SignalDetailSectionProps {
+  signal: ApiSignal;
+}
+
+export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal }) => {
+  const [openEngine, setOpenEngine]   = useState<EngineRow | null>(null);
+  const [activeTab, setActiveTab]     = useState<keyof ExplanationTabs>('summary');
+
+  const rrRatio  = calculateRR(signal);
+  const engines  = parseEngines(signal.engines_data);
+  const tabs     = buildTabs(signal.explanation_tr);
+
+  const dir = (signal.direction ?? '').toLowerCase();
+  const direction = dir === 'bullish' ? { label: 'LONG · AL',  cls: 'text-bullish', icon: TrendingUp }
+                  : dir === 'bearish' ? { label: 'SHORT · SAT', cls: 'text-bearish', icon: TrendingDown }
+                  : { label: 'BEKLE', cls: 'text-text-muted', icon: Activity };
+
+  const DirIcon = direction.icon;
+
+  // Available tabs (skip empty sections)
+  const ALL_TABS: { key: keyof ExplanationTabs; label: string }[] = [
+    { key: 'summary',         label: 'Özet' },
+    { key: 'marketStructure', label: 'Piyasa Yapısı' },
+    { key: 'risk',            label: 'Risk' },
+    { key: 'tradePlan',       label: 'İşlem Planı' },
+    { key: 'full',            label: 'Tam AI Analizi' },
+  ];
+  const availableTabs = ALL_TABS.filter((t) => tabs[t.key]);
+
+  // Ensure activeTab is valid
+  useEffect(() => {
+    if (availableTabs.length > 0 && !availableTabs.find((t) => t.key === activeTab)) {
+      setActiveTab(availableTabs[0].key);
+    }
+  }, [signal.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="space-y-6">
+      {/* ─── 1. Hero — full width, premium ────────────────────────────── */}
+      <GlassCard className="p-6">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          {/* Left: Symbol + Direction */}
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 rounded-2xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-base text-accent-primary flex-shrink-0">
+              {signal.asset?.symbol.slice(0, 2)}
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-2xl font-extrabold text-text-primary">{signal.asset?.symbol}</span>
+                <span className="text-[10px] font-bold text-accent-primary bg-accent-primary/10 border border-accent-primary/30 px-2 py-0.5 rounded uppercase">
+                  {signal.timeframe}
+                </span>
+              </div>
+              <div className={cn('flex items-center gap-2 text-3xl font-black tracking-wide', direction.cls)}>
+                <DirIcon className="w-7 h-7" />
+                {direction.label}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Risk + Scores */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <RiskBadge level={signal.risk_level} />
+            <div className="flex items-center gap-5 pl-4 border-l border-border-subtle">
+              <div className="flex flex-col items-center">
+                <ScoreRing score={signal.confidence_score} size={76} strokeWidth={6} />
+                <span className="text-[10px] text-text-muted mt-1 font-bold uppercase tracking-wider">Güven</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <ScoreRing score={signal.probability_score} size={76} strokeWidth={6} />
+                <span className="text-[10px] text-text-muted mt-1 font-bold uppercase tracking-wider">Olasılık</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </GlassCard>
+
+      {/* ─── 2. Side-by-side: Trade Plan (sol) + Engine Scores (sağ) ─── */}
+      <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-6">
+        {/* Trade Plan column */}
+        <div>
+          <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5 mb-3">
+            <Target className="w-3.5 h-3.5 text-accent-primary" /> İşlem Planı
+            {rrRatio !== '—' && (
+              <span className="ml-auto flex items-center gap-1.5 text-[10px] text-text-secondary normal-case font-normal">
+                <Scale className="w-3 h-3" />
+                R:R
+                <span className={cn(
+                  'font-mono font-bold uppercase',
+                  parseFloat(rrRatio) >= 2 ? 'text-bullish' : 'text-text-primary'
+                )}>{rrRatio}</span>
+              </span>
+            )}
+          </h3>
+          <PriceLadder signal={signal} />
+        </div>
+
+        {/* Engine Scores column */}
+        {engines.length > 0 && (
+          <div>
+            <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5 mb-3">
+              <BarChart3 className="w-3.5 h-3.5 text-accent-primary" /> Motor Skorları
+              <span className="ml-auto text-[10px] text-text-muted normal-case font-normal hidden sm:inline">
+                Detay için karta tıkla
+              </span>
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {engines.map((engine) => (
+                <EngineCard
+                  key={engine.name}
+                  engine={engine}
+                  onClick={() => setOpenEngine(engine)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ─── 3. AI Explanation (Tabbed, full width) ────────────────────── */}
+      {availableTabs.length > 0 && (
+        <div>
+          <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5 mb-3">
+            <FileText className="w-3.5 h-3.5 text-accent-primary" /> AI Açıklaması
+          </h3>
+
+          <div className="flex gap-1 mb-0 overflow-x-auto border-b border-border-subtle">
+            {availableTabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  'px-4 py-2.5 text-xs font-bold whitespace-nowrap transition-all',
+                  activeTab === tab.key
+                    ? 'bg-accent-primary text-white rounded-t-lg'
+                    : 'text-text-muted hover:text-text-primary hover:bg-bg-secondary/40'
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-bg-secondary/30 border border-t-0 border-border-subtle rounded-b-xl p-5 min-h-[140px]">
+            <div className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
+              {translateFinding(tabs[activeTab] || 'Bu bölüm için bilgi yok.')}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Engine Detail Modal ───────────────────────────────────────── */}
+      {openEngine && <EngineDetailModal engine={openEngine} onClose={() => setOpenEngine(null)} />}
+    </div>
+  );
+};

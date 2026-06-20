@@ -6,7 +6,8 @@ import { Zap, RefreshCw, TrendingUp, TrendingDown, Eye, LineChart, FileDown } fr
 import { fetchActiveSignals, triggerBatchGeneration, downloadSignalPdf, type ApiSignal } from '@/lib/api';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { SignalType } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, formatAbsoluteTimeTR } from '@/lib/utils';
+import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -229,11 +230,11 @@ function parseEngines(enginesData: any): EngineRow[] {
 
 function biasInfo(bias: string): { color: string; label: string; ring: string } {
   const b = bias.toLowerCase();
-  if (b.includes('strong_bullish'))  return { color: 'text-bullish',   label: 'Güçlü Alım', ring: 'bg-bullish' };
-  if (b.includes('bullish'))         return { color: 'text-bullish',   label: 'Alım',       ring: 'bg-bullish/70' };
-  if (b.includes('strong_bearish'))  return { color: 'text-bearish',   label: 'Güçlü Satım',ring: 'bg-bearish' };
-  if (b.includes('bearish'))         return { color: 'text-bearish',   label: 'Satım',      ring: 'bg-bearish/70' };
-  return { color: 'text-text-muted', label: 'Nötr', ring: 'bg-text-muted/70' };
+  if (b.includes('strong_bullish'))  return { color: 'text-bullish',   label: 'GÜÇLÜ ALIM', ring: 'bg-bullish' };
+  if (b.includes('bullish'))         return { color: 'text-bullish',   label: 'ALIM',       ring: 'bg-bullish/70' };
+  if (b.includes('strong_bearish'))  return { color: 'text-bearish',   label: 'GÜÇLÜ SATIM',ring: 'bg-bearish' };
+  if (b.includes('bearish'))         return { color: 'text-bearish',   label: 'SATIM',      ring: 'bg-bearish/70' };
+  return { color: 'text-text-muted', label: 'NÖTR', ring: 'bg-text-muted/70' };
 }
 
 function scoreColor(score: number): string {
@@ -253,6 +254,139 @@ function stripMd(raw: string): string {
     .replace(/`([^`]+)`/g, '$1')     // `code`
     .replace(/—/g, '·')
     .trim();
+}
+
+/** Translate English engine findings → Türkçe. Pattern-based for safety. */
+type Pat = [RegExp, string | ((m: RegExpMatchArray) => string)];
+const FINDING_PATTERNS: Pat[] = [
+  // ── Trend / Technical ──
+  [/Trend indicators lean bearish \((\d+)\/(\d+) bearish\)/i, (m) => `Trend göstergeleri AYI yönlü (${m[1]}/${m[2]} ayı)`],
+  [/Trend indicators lean bullish \((\d+)\/(\d+) bullish\)/i, (m) => `Trend göstergeleri BOĞA yönlü (${m[1]}/${m[2]} boğa)`],
+  [/MACD:\s*MACD=(-?[\d.]+)\s+Signal=(-?[\d.]+)\s+Hist=(-?[\d.]+)\s*→?\s*bearish/i,
+    (m) => `MACD: MACD=${m[1]} Sinyal=${m[2]} Histogram=${m[3]} → AYI`],
+  [/MACD:\s*MACD=(-?[\d.]+)\s+Signal=(-?[\d.]+)\s+Hist=(-?[\d.]+)\s*→?\s*bullish/i,
+    (m) => `MACD: MACD=${m[1]} Sinyal=${m[2]} Histogram=${m[3]} → BOĞA`],
+  [/RSI:\s*([\d.]+)\s*\(overbought\)/i, (m) => `RSI: ${m[1]} (aşırı alım)`],
+  [/RSI:\s*([\d.]+)\s*\(oversold\)/i, (m) => `RSI: ${m[1]} (aşırı satım)`],
+  [/RSI:\s*([\d.]+)\s*\(neutral\)/i, (m) => `RSI: ${m[1]} (nötr)`],
+
+  // ── Market Structure ──
+  [/Market structure:\s*Downtrend/i, 'Piyasa yapısı: DÜŞÜŞ trendi'],
+  [/Market structure:\s*Uptrend/i,   'Piyasa yapısı: YÜKSELİŞ trendi'],
+  [/Market structure:\s*Sideways/i,  'Piyasa yapısı: YATAY'],
+  [/Swing counts\s*[–-]\s*/i, 'Swing sayıları: '],
+  [/HH:(\d+)\s+HL:(\d+)\s+LH:(\d+)\s+LL:(\d+)/i,
+    (m) => `Yüksek Tepe:${m[1]} Yüksek Dip:${m[2]} Düşük Tepe:${m[3]} Düşük Dip:${m[4]}`],
+  [/EMA crossover bullish/i, 'EMA kesişimi BOĞA yönlü'],
+  [/EMA crossover bearish/i, 'EMA kesişimi AYI yönlü'],
+  [/Bollinger Bands? squeeze detected/i, 'Bollinger Bantları sıkışması tespit edildi'],
+  [/Price above EMA[\s_]?50/i, 'Fiyat EMA50 üstünde'],
+  [/Price below EMA[\s_]?50/i, 'Fiyat EMA50 altında'],
+  [/Price above EMA[\s_]?200/i, 'Fiyat EMA200 üstünde'],
+  [/Price below EMA[\s_]?200/i, 'Fiyat EMA200 altında'],
+  [/Doji candle detected/i, 'Doji mum tespit edildi'],
+  [/Hammer pattern/i, 'Çekiç formasyonu'],
+  [/Shooting star pattern/i, 'Kayan yıldız formasyonu'],
+  [/Engulfing\s+bullish/i, 'BOĞA engulfing (yutan mum)'],
+  [/Engulfing\s+bearish/i, 'AYI engulfing (yutan mum)'],
+  [/Break of Structure \(BOS\) detected/i, 'Yapı Kırılımı (BOS) tespit edildi'],
+  [/Change of Character \(CHoCH\) detected/i, 'Karakter Değişimi (CHoCH) tespit edildi'],
+
+  // ── SMC ──
+  [/Price is in DISCOUNT zone \(Range position:\s*([\d.]+)%\)/i,
+    (m) => `Fiyat İSKONTO (alım) bölgesinde (aralık konumu: %${m[1]})`],
+  [/Price is in PREMIUM zone \(Range position:\s*([\d.]+)%\)/i,
+    (m) => `Fiyat PRİM (satım) bölgesinde (aralık konumu: %${m[1]})`],
+  [/Price is in EQUILIBRIUM \(Range position:\s*([\d.]+)%\)/i,
+    (m) => `Fiyat dengede (aralık konumu: %${m[1]})`],
+  [/Detected (\d+) unfilled Bearish Fair Value Gap\(?s?\)?/i,
+    (m) => `${m[1]} adet doldurulmamış AYI FVG tespit edildi`],
+  [/Detected (\d+) unfilled Bullish Fair Value Gap\(?s?\)?/i,
+    (m) => `${m[1]} adet doldurulmamış BOĞA FVG tespit edildi`],
+  [/Detected (\d+) Bearish Order Block\(?s?\)?/i,
+    (m) => `${m[1]} adet AYI Order Block tespit edildi`],
+  [/Detected (\d+) Bullish Order Block\(?s?\)?/i,
+    (m) => `${m[1]} adet BOĞA Order Block tespit edildi`],
+
+  // ── CRT (Candle Range Theory) ──
+  [/Expected range state:\s*Contracting \(Ratio:\s*([\d.]+)\)/i,
+    (m) => `Aralık durumu: DARALMAKTA (oran ${m[1]})`],
+  [/Expected range state:\s*Expanding \(Ratio:\s*([\d.]+)\)/i,
+    (m) => `Aralık durumu: GENİŞLEMEKTE (oran ${m[1]})`],
+  [/Expected range state:\s*Normal \(Ratio:\s*([\d.]+)\)/i,
+    (m) => `Aralık durumu: NORMAL (oran ${m[1]})`],
+  [/Price sits at ([\d.]+)% of HTF range \(Discount\)/i,
+    (m) => `Fiyat üst aralığın %${m[1]}'inde (İskonto)`],
+  [/Price sits at ([\d.]+)% of HTF range \(Premium\)/i,
+    (m) => `Fiyat üst aralığın %${m[1]}'inde (Prim)`],
+  [/Price sits at ([\d.]+)% of HTF range \(Upper Mid\)/i,
+    (m) => `Fiyat üst aralığın %${m[1]}'inde (Üst orta)`],
+  [/Price sits at ([\d.]+)% of HTF range \(Lower Mid\)/i,
+    (m) => `Fiyat üst aralığın %${m[1]}'inde (Alt orta)`],
+  [/Detected (\d+) recent sweep/i,
+    (m) => `${m[1]} adet likidite süpürmesi tespit edildi`],
+
+  // ── Volume ──
+  [/Bullish exhaustion:\s*Price falling on declining volume/i,
+    'BOĞA tükenmesi: Fiyat azalan hacimle düşüyor'],
+  [/Bearish exhaustion:\s*Price rising on declining volume/i,
+    'AYI tükenmesi: Fiyat azalan hacimle yükseliyor'],
+  [/Smart Money distribution phase \(Distribution score:\s*([\d.]+)\)/i,
+    (m) => `Akıllı Para DAĞITIM fazı (skor: ${m[1]})`],
+  [/Smart Money accumulation phase \(Accumulation score:\s*([\d.]+)\)/i,
+    (m) => `Akıllı Para BİRİKİM fazı (skor: ${m[1]})`],
+  [/Climax Volume detected \(([\d.]+)x average volume\)/i,
+    (m) => `Doruk hacim (ortalamanın ${m[1]}x'i)`],
+  [/Price is trading below Volume POC \(([\d.,]+)\)/i,
+    (m) => `Fiyat hacim POC'nin ALTINDA (${m[1]})`],
+  [/Price is trading above Volume POC \(([\d.,]+)\)/i,
+    (m) => `Fiyat hacim POC'nin ÜSTÜNDE (${m[1]})`],
+
+  // ── Risk ──
+  [/Volatility level:\s*LOW \(ATR is ([\d.]+)% of price\)/i,
+    (m) => `Volatilite: DÜŞÜK (ATR fiyatın %${m[1]}'i)`],
+  [/Volatility level:\s*MEDIUM \(ATR is ([\d.]+)% of price\)/i,
+    (m) => `Volatilite: ORTA (ATR fiyatın %${m[1]}'i)`],
+  [/Volatility level:\s*HIGH \(ATR is ([\d.]+)% of price\)/i,
+    (m) => `Volatilite: YÜKSEK (ATR fiyatın %${m[1]}'i)`],
+  [/Recommended Position Size:\s*([\d.]+)% of portfolio \(risking ([\d.]+)% on trade\)/i,
+    (m) => `Önerilen pozisyon: portföyün %${m[1]}'i (%${m[2]} risk)`],
+  [/Max drawdown:\s*([\d.]+)%/i, (m) => `Maksimum drawdown: %${m[1]}`],
+
+  // ── Fundamental ──
+  [/Reasonable supply distribution \(([\d.]+)% circulating\)/i,
+    (m) => `Makul arz dağılımı (%${m[1]} dolaşımda)`],
+  [/High supply dilution risk/i, 'Yüksek arz seyreltme riski'],
+  [/Strong ROE \(([\d.]+)%\)/i, (m) => `Güçlü Özsermaye Karlılığı: %${m[1]}`],
+  [/Weak ROE \(([\d.]+)%\)/i,   (m) => `Zayıf Özsermaye Karlılığı: %${m[1]}`],
+];
+
+function translateFinding(s: string): string {
+  if (!s) return s;
+  let out = s;
+  // Apply each pattern as a *replace* (not full-match) so partial phrases
+  // like "Swing counts" only swap the prefix and keep "HH:2 HL:2 LH:2 LL:0".
+  for (const [pat, rep] of FINDING_PATTERNS) {
+    if (typeof rep === 'function') {
+      out = out.replace(pat, (...args) => {
+        // args = [full, ...groups, offset, fullString]
+        const match = args.slice(0, args.length - 2) as unknown as RegExpMatchArray;
+        return rep(match);
+      });
+    } else {
+      out = out.replace(pat, rep);
+    }
+  }
+  // Final word-level cleanup for any leftover English bias words
+  return out
+    .replace(/\bDowntrend\b/g, 'Düşüş trendi')
+    .replace(/\bUptrend\b/g,   'Yükseliş trendi')
+    .replace(/\bSideways\b/g,  'Yatay')
+    .replace(/\bDiscount\b/g,  'İskonto')
+    .replace(/\bPremium\b/g,   'Prim')
+    .replace(/\bbullish\b/gi,  'boğa')
+    .replace(/\bbearish\b/gi,  'ayı')
+    .replace(/\bneutral\b/gi,  'nötr');
 }
 
 /** Extract just the first "Özet" section as a clean summary. */
@@ -571,7 +705,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
                       <ul className="space-y-0.5">
                         {e.findings.slice(0, 2).map((f, i) => (
                           <li key={i} className="text-[10.5px] text-text-secondary leading-relaxed flex gap-1.5">
-                            <span className="text-text-muted flex-shrink-0">·</span> {f}
+                            <span className="text-text-muted flex-shrink-0">·</span> {translateFinding(f)}
                           </li>
                         ))}
                       </ul>
@@ -582,146 +716,9 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
             </div>
           )}
 
-          {tab === 'explanation' && (() => {
-            const parsed = parseExplanation(sig.explanation_tr);
-            const hasAny = parsed.summary || parsed.marketStructure.trend || parsed.volumeProfile.exhaustion || parsed.smcCrt.zone || parsed.riskPlan.level;
-            if (!hasAny) {
-              return (
-                <div className="text-xs text-text-muted bg-bg-secondary/40 rounded-xl p-4 border border-border-subtle text-center">
-                  AI açıklaması mevcut değil.
-                </div>
-              );
-            }
-            return (
-              <div className="space-y-3">
-
-                {/* 1. Özet */}
-                {parsed.summary && (
-                  <div className="bg-accent-primary/5 border border-accent-primary/20 rounded-xl p-3">
-                    <p className="text-[10px] text-accent-primary uppercase font-bold tracking-wider mb-1.5">📋 Özet</p>
-                    <p className="text-xs text-text-primary leading-relaxed">{parsed.summary}</p>
-                  </div>
-                )}
-
-                {/* 2. Piyasa Yapısı */}
-                {(parsed.marketStructure.trend || parsed.marketStructure.support) && (
-                  <div className="bg-bg-secondary/40 border border-border-subtle rounded-xl p-3 space-y-2">
-                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">📊 Piyasa Yapısı</p>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      {parsed.marketStructure.trend && (
-                        <InfoCell label="Trend" value={parsed.marketStructure.trend}
-                          accent={parsed.marketStructure.trend.toLowerCase().includes('düşüş') || parsed.marketStructure.trend.toLowerCase().includes('downtrend') ? 'text-bearish' :
-                                  parsed.marketStructure.trend.toLowerCase().includes('yükseliş') || parsed.marketStructure.trend.toLowerCase().includes('uptrend') ? 'text-bullish' : 'text-text-primary'} />
-                      )}
-                      {parsed.marketStructure.swing && (
-                        <InfoCell label="Swing" value={parsed.marketStructure.swing} accent="text-text-primary mono" />
-                      )}
-                      {parsed.marketStructure.support && (
-                        <InfoCell label="Destek" value={parsed.marketStructure.support} accent="text-bullish mono" />
-                      )}
-                      {parsed.marketStructure.resistance && (
-                        <InfoCell label="Direnç" value={parsed.marketStructure.resistance} accent="text-bearish mono" />
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* 3. Hacim Profili */}
-                {(parsed.volumeProfile.exhaustion || parsed.volumeProfile.poc) && (
-                  <div className="bg-bg-secondary/40 border border-border-subtle rounded-xl p-3 space-y-2">
-                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider">📈 Hacim Profili</p>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      {parsed.volumeProfile.exhaustion && (
-                        <InfoCell label="Durum" value={parsed.volumeProfile.exhaustion}
-                          accent={parsed.volumeProfile.exhaustion.toLowerCase().includes('bullish') ? 'text-bullish' :
-                                  parsed.volumeProfile.exhaustion.toLowerCase().includes('bearish') ? 'text-bearish' : 'text-text-primary'} />
-                      )}
-                      {parsed.volumeProfile.volumeRatio && (
-                        <InfoCell label="Hacim Oranı" value={parsed.volumeProfile.volumeRatio} accent="text-accent-primary mono" />
-                      )}
-                      {parsed.volumeProfile.poc && (
-                        <InfoCell label="POC" value={parsed.volumeProfile.poc} accent="text-text-primary mono" />
-                      )}
-                      {parsed.volumeProfile.phase && (
-                        <InfoCell label="Faz" value={parsed.volumeProfile.phase}
-                          accent={parsed.volumeProfile.phase.toLowerCase().includes('accumulation') ? 'text-bullish' : 'text-bearish'} />
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* 4. SMC + CRT */}
-                {(parsed.smcCrt.zone || parsed.smcCrt.sweeps || parsed.smcCrt.fvg) && (
-                  <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-3 space-y-2">
-                    <p className="text-[10px] text-purple-400 uppercase font-bold tracking-wider">🧠 Smart Money & CRT</p>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      {parsed.smcCrt.zone && (
-                        <InfoCell label="Değer Bölgesi" value={parsed.smcCrt.zone}
-                          accent={parsed.smcCrt.zone.toLowerCase().includes('discount') || parsed.smcCrt.zone.toLowerCase().includes('iskonto') ? 'text-bullish' : 'text-bearish'} />
-                      )}
-                      {parsed.smcCrt.sweeps && (
-                        <InfoCell label="Likidite Süpürme" value={parsed.smcCrt.sweeps} accent="text-purple-400" />
-                      )}
-                      {parsed.smcCrt.range && (
-                        <InfoCell label="Range Durumu" value={parsed.smcCrt.range} accent="text-text-primary" />
-                      )}
-                      {parsed.smcCrt.fvg && (
-                        <InfoCell label="FVG" value={parsed.smcCrt.fvg}
-                          accent={parsed.smcCrt.fvg.toLowerCase().includes('bullish') ? 'text-bullish' : 'text-bearish'} />
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* 5. Risk & İşlem Planı */}
-                {(parsed.riskPlan.entry || parsed.riskPlan.sl) && (
-                  <div className="bg-orange-500/5 border border-orange-500/20 rounded-xl p-3 space-y-2">
-                    <p className="text-[10px] text-orange-400 uppercase font-bold tracking-wider">⚠️ Risk & İşlem Planı</p>
-
-                    {/* Risk + position size summary row */}
-                    <div className="flex items-center justify-between bg-bg-tertiary/40 rounded-lg p-2">
-                      {parsed.riskPlan.level && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-text-muted">RİSK</span>
-                          <span className={cn('text-xs font-bold',
-                            parsed.riskPlan.level === 'VERY_HIGH' ? 'text-bearish' :
-                            parsed.riskPlan.level === 'HIGH' ? 'text-orange-400' :
-                            parsed.riskPlan.level === 'MEDIUM' ? 'text-yellow-400' :
-                            'text-bullish')}>
-                            {parsed.riskPlan.level.replace('_', ' ')}
-                          </span>
-                        </div>
-                      )}
-                      {parsed.riskPlan.positionSize && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-text-muted">POZİSYON</span>
-                          <span className="text-xs font-bold font-mono text-accent-primary">{parsed.riskPlan.positionSize}</span>
-                          <span className="text-[10px] text-text-muted">portföy</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Trade levels — visual ladder */}
-                    <div className="space-y-1.5">
-                      {parsed.riskPlan.tp3 && <LevelRow label="TP3" value={parsed.riskPlan.tp3} color="bg-bullish" textColor="text-bullish" />}
-                      {parsed.riskPlan.tp2 && <LevelRow label="TP2" value={parsed.riskPlan.tp2} color="bg-bullish/70" textColor="text-bullish" />}
-                      {parsed.riskPlan.tp1 && <LevelRow label="TP1" value={parsed.riskPlan.tp1} color="bg-bullish/50" textColor="text-bullish" />}
-                      {parsed.riskPlan.entry && <LevelRow label="GİRİŞ" value={parsed.riskPlan.entry} color="bg-accent-primary" textColor="text-accent-primary" bold />}
-                      {parsed.riskPlan.sl && <LevelRow label="STOP" value={parsed.riskPlan.sl} color="bg-bearish" textColor="text-bearish" />}
-                    </div>
-                  </div>
-                )}
-
-                {/* 6. Geçersizlik */}
-                {parsed.invalidation && (
-                  <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-3">
-                    <p className="text-[10px] text-yellow-400 uppercase font-bold tracking-wider mb-1.5">⛔ Geçersizlik Koşulu</p>
-                    <p className="text-[11px] text-text-secondary leading-relaxed">{parsed.invalidation}</p>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+          {tab === 'explanation' && (
+            <SignalDetailSection signal={sig} />
+          )}
         </div>
 
         {/* ── Sticky Action Bar ── */}
@@ -787,6 +784,7 @@ function LevelCard({ label, value, color }: { label: string; value: number | nul
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 type TfFilter = 'all' | '1h' | '4h' | '1d';
+type DirFilter = 'all' | 'long' | 'short';
 
 export default function SignalsPage() {
   const [signals, setSignals]     = useState<ApiSignal[]>([]);
@@ -794,11 +792,77 @@ export default function SignalsPage() {
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [genMsg, setGenMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [selected, setSelected]   = useState<ApiSignal | null>(null);
   const [tfFilter, setTfFilter]   = useState<TfFilter>('all');
-  const [actionableOnly, setActionableOnly] = useState(false);
+  const [dirFilter, setDirFilter] = useState<DirFilter>('all');
+  const [actionableOnly, setActionableOnly] = useState(true);
+  const [minQuality, setMinQuality] = useState(5);
+  // Aynı sembol için en kaliteli timeframe'i göster, diğerlerini gizle.
+  // Kullanıcı her timeframe'i ayrı görmek istiyorsa bunu kapatabilir.
+  const [dedupBySymbol, setDedupBySymbol] = useState(true);
 
-  const filtered = tfFilter === 'all' ? signals : signals.filter((s) => (s.timeframe ?? '').toLowerCase() === tfFilter);
+  // Timeframe önceliği (büyük TF daha güvenilir): 1d > 4h > 1h > 15m
+  const TF_PRIORITY: Record<string, number> = { '1d': 4, '4h': 3, '1h': 2, '15m': 1 };
+
+  // Apply filters → dedup → sort
+  const filtered = (() => {
+    // 1) TF + minQuality filtreleri
+    let arr = signals
+      .filter((s) => tfFilter === 'all' || (s.timeframe ?? '').toLowerCase() === tfFilter)
+      .filter((s) => qualityScore(s.confidence_score) >= minQuality)
+      .filter((s) => dirFilter === 'all' || (dirFilter === 'long' ? s.direction === 'bullish' : s.direction === 'bearish'));
+
+    // 2) Dedup: aynı sembol için en kaliteli (eşitse en büyük TF) tek sinyal
+    if (dedupBySymbol) {
+      const bestPerSymbol = new Map<string, ApiSignal>();
+      for (const s of arr) {
+        const sym = (s.asset?.symbol ?? '').toUpperCase();
+        if (!sym) continue;
+        const existing = bestPerSymbol.get(sym);
+        if (!existing) {
+          bestPerSymbol.set(sym, s);
+          continue;
+        }
+        // Önce kalite skoruna bak, eşitse timeframe önceliğine
+        const a = s.confidence_score, b = existing.confidence_score;
+        if (a > b) bestPerSymbol.set(sym, s);
+        else if (a === b) {
+          const pa = TF_PRIORITY[(s.timeframe ?? '').toLowerCase()] ?? 0;
+          const pb = TF_PRIORITY[(existing.timeframe ?? '').toLowerCase()] ?? 0;
+          if (pa > pb) bestPerSymbol.set(sym, s);
+        }
+      }
+      arr = Array.from(bestPerSymbol.values());
+    }
+
+    // 3) Sıralama: kalite skoru DESC → TF önceliği DESC → sembol ASC
+    arr.sort((a, b) => {
+      if (b.confidence_score !== a.confidence_score) return b.confidence_score - a.confidence_score;
+      const pa = TF_PRIORITY[(a.timeframe ?? '').toLowerCase()] ?? 0;
+      const pb = TF_PRIORITY[(b.timeframe ?? '').toLowerCase()] ?? 0;
+      if (pb !== pa) return pb - pa;
+      return (a.asset?.symbol ?? '').localeCompare(b.asset?.symbol ?? '');
+    });
+
+    return arr;
+  })();
+
+  // Same-symbol siblings (other TFs) — for showing "+2 TF" hint
+  const tfSiblingsBySym = (() => {
+    const map = new Map<string, string[]>();
+    if (!dedupBySymbol) return map;
+    for (const s of signals.filter((x) => qualityScore(x.confidence_score) >= minQuality)) {
+      const sym = (s.asset?.symbol ?? '').toUpperCase();
+      const tf = (s.timeframe ?? '').toLowerCase();
+      if (!sym || !tf) continue;
+      const list = map.get(sym) ?? [];
+      if (!list.includes(tf)) list.push(tf);
+      map.set(sym, list);
+    }
+    return map;
+  })();
+
   const symbols  = filtered.map((s) => s.asset?.symbol ?? '').filter(Boolean);
   const livePrices = useLivePrices(symbols);
 
@@ -815,14 +879,34 @@ export default function SignalsPage() {
 
   const generateAll = async () => {
     setGenerating(true);
+    setGenMsg(null);
     try {
       await triggerBatchGeneration();
-      for (let i = 0; i < 24; i++) {
+      setGenMsg({ ok: true, text: 'Tarama başlatıldı. ~5-10 dakika sürer, sonuçlar otomatik düşecek...' });
+      const startCount = signals.length;
+      for (let i = 0; i < 60; i++) { // up to 5 min polling
         await new Promise((r) => setTimeout(r, 5000));
-        const res = await fetchActiveSignals({ page_size: 100 });
-        if (res.total > 0) { setSignals(res.items); setTotal(res.total); break; }
+        const res = await fetchActiveSignals({ page_size: 100, only_actionable: actionableOnly });
+        if (res.total > startCount || res.total > 0) {
+          setSignals(res.items);
+          setTotal(res.total);
+          setGenMsg({ ok: true, text: `Tarama devam ediyor — şimdiye kadar ${res.total} sinyal üretildi.` });
+        }
       }
-    } catch { /**/ } finally { setGenerating(false); }
+      setGenMsg({ ok: true, text: 'Tarama tamamlandı.' });
+    } catch (e: any) {
+      const msg = e?.message ?? '';
+      if (msg.includes('Backend') || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setGenMsg({ ok: false, text: 'Backend çalışmıyor. BAŞLAT.bat dosyasını çift tıklayarak backend\'i aç.' });
+      } else if (msg.includes('402') || msg.includes('upgrade_required')) {
+        setGenMsg({ ok: false, text: 'Pro veya üzeri abonelik gerekiyor.' });
+      } else {
+        setGenMsg({ ok: false, text: 'Tarama başlatılamadı: ' + msg });
+      }
+    } finally {
+      setGenerating(false);
+      setTimeout(() => setGenMsg(null), 8000);
+    }
   };
 
   useEffect(() => { load(); }, [actionableOnly]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -859,13 +943,28 @@ export default function SignalsPage() {
         </div>
       </div>
 
+      {/* Generation status banner */}
+      {genMsg && (
+        <div className={cn(
+          'flex items-start gap-2 px-4 py-3 rounded-xl border text-sm',
+          genMsg.ok
+            ? 'bg-bullish/5 border-bullish/30 text-bullish'
+            : 'bg-bearish/10 border-bearish/30 text-bearish'
+        )}>
+          <span className="text-base flex-shrink-0">{genMsg.ok ? '✓' : '✗'}</span>
+          <span className="flex-1">{genMsg.text}</span>
+        </div>
+      )}
+
       {/* Filters row */}
       <div className="flex items-center gap-3 flex-wrap">
 
       {/* Timeframe filter */}
       <div className="flex items-center gap-1 p-1 bg-bg-secondary border border-border-subtle rounded-xl w-fit">
         {(['all', '1h', '4h', '1d'] as TfFilter[]).map((tf) => {
-          const cnt = tf === 'all' ? signals.length : signals.filter((s) => s.timeframe?.toLowerCase() === tf).length;
+          // Count respects the minQuality filter so the badge matches what user sees
+          const qualified = signals.filter((s) => qualityScore(s.confidence_score) >= minQuality);
+          const cnt = tf === 'all' ? qualified.length : qualified.filter((s) => s.timeframe?.toLowerCase() === tf).length;
           return (
             <button
               key={tf}
@@ -889,6 +988,44 @@ export default function SignalsPage() {
         })}
       </div>
 
+      {/* Direction filter: AL / SAT */}
+      <div className="flex items-center gap-1 p-1 bg-bg-secondary border border-border-subtle rounded-xl w-fit">
+        {([
+          { id: 'all',   label: 'TÜMÜ' },
+          { id: 'long',  label: 'AL' },
+          { id: 'short', label: 'SAT' },
+        ] as { id: DirFilter; label: string }[]).map((d) => {
+          const qualified = signals.filter((s) => qualityScore(s.confidence_score) >= minQuality);
+          const cnt = d.id === 'all'
+            ? qualified.length
+            : qualified.filter((s) => (d.id === 'long' ? s.direction === 'bullish' : s.direction === 'bearish')).length;
+          return (
+            <button
+              key={d.id}
+              onClick={() => setDirFilter(d.id)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all',
+                dirFilter === d.id
+                  ? d.id === 'long'
+                    ? 'bg-bullish text-white shadow-glow-sm'
+                    : d.id === 'short'
+                      ? 'bg-bearish text-white shadow-glow-sm'
+                      : 'bg-accent-primary text-white shadow-glow-sm'
+                  : 'text-text-muted hover:text-text-primary'
+              )}
+            >
+              {d.label}
+              <span className={cn(
+                'text-[10px] font-mono px-1.5 py-0.5 rounded',
+                dirFilter === d.id ? 'bg-white/20' : 'bg-bg-tertiary/60'
+              )}>
+                {cnt}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Actionable-only toggle */}
       <button
         onClick={() => setActionableOnly(!actionableOnly)}
@@ -902,13 +1039,32 @@ export default function SignalsPage() {
       >
         {actionableOnly ? '✓ SADECE AL/SAT' : 'TÜMÜ (BEKLE DAHİL)'}
       </button>
+
+      {/* Min quality slider */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border border-border-subtle rounded-xl">
+        <span className="text-[10px] text-text-muted font-bold uppercase">MİN. KALİTE</span>
+        <input
+          type="range" min={0} max={10} step={1}
+          value={minQuality}
+          onChange={(e) => setMinQuality(Number(e.target.value))}
+          className="w-24 accent-accent-primary cursor-pointer"
+        />
+        <span className={cn(
+          'text-xs font-bold font-mono min-w-[40px] text-center',
+          minQuality >= 7 ? 'text-bullish' :
+          minQuality >= 5 ? 'text-yellow-400' :
+          minQuality >= 3 ? 'text-orange-400' : 'text-text-muted'
+        )}>
+          {minQuality}/10
+        </span>
+      </div>
       </div>
 
       {/* Table */}
       <div className="glass-panel border border-border-subtle rounded-2xl overflow-hidden">
         {/* Table head */}
         <div className="grid grid-cols-[2fr_1fr_1.2fr_1.5fr_1.3fr_1.5fr_auto] gap-4 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
-          {['SEMBOL · TF', 'YÖN', 'ANLIK FİYAT', 'KALİTE SKORU', 'DURUM', 'HTF / PURGE', 'ANALİZ'].map((h) => (
+          {['SEMBOL · TF', 'YÖN', 'ANLIK FİYAT', 'KALİTE SKORU', 'DURUM', 'ÜRETİLDİ', 'ANALİZ'].map((h) => (
             <span key={h} className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{h}</span>
           ))}
         </div>
@@ -933,8 +1089,6 @@ export default function SignalsPage() {
             const sym    = sig.asset?.symbol ?? '';
             const live   = livePrices[sym];
             const qScore = qualityScore(sig.confidence_score);
-            const htf    = getHtfAlignment(sig.engines_data);
-            const purge  = getPurgeType(sig.engines_data);
             const dir    = directionLabel(sig);
             const up     = (live?.changePct24h ?? 0) >= 0;
             const outcome = sig.outcome ?? 'active';
@@ -993,10 +1147,9 @@ export default function SignalsPage() {
                   <OutcomeBadge outcome={outcome} />
                 </div>
 
-                {/* HTF + Purge stacked */}
-                <div className="flex flex-col gap-1">
-                  <HtfBadge {...htf} />
-                  {purge && <PurgeBadge {...purge} />}
+                {/* Generation time (TR saati) */}
+                <div className="text-[11px] font-mono text-text-muted">
+                  {formatAbsoluteTimeTR(sig.generated_at)}
                 </div>
 
                 {/* Action */}

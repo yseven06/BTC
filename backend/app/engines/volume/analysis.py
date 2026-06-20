@@ -111,12 +111,14 @@ def calculate_volume_profile(
         prev_vol_lower = bin_volumes[lower_idx - 1] if lower_idx > 0 else 0
         prev_vol_upper = bin_volumes[upper_idx + 1] if upper_idx < bins_count - 1 else 0
 
-        if prev_vol_lower >= prev_vol_upper:
+        if lower_idx > 0 and (upper_idx == bins_count - 1 or prev_vol_lower >= prev_vol_upper):
             current_vol += prev_vol_lower
             lower_idx -= 1
-        else:
+        elif upper_idx < bins_count - 1:
             current_vol += prev_vol_upper
             upper_idx += 1
+        else:
+            break
 
     vah = bins[upper_idx + 1] if upper_idx < bins_count - 1 else high
     val = bins[lower_idx]

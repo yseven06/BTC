@@ -127,6 +127,7 @@ class Signal(Base):
     explanation_tr = Column(Text, nullable=True)
     explanation_en = Column(Text, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True, index=True)
+    admin_invalidated = Column(Boolean, nullable=False, default=False, server_default="false")
     timeframe = Column(
         Enum(Timeframe, name="timeframe", create_constraint=True, create_type=False),
         nullable=False,

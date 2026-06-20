@@ -1,561 +1,251 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
-  TrendingUp, TrendingDown, Zap, CheckCircle, AlertTriangle,
-  LineChart as ChartIcon, ArrowRight, RefreshCw, Activity,
+  Brain, TrendingUp, Shield, BarChart3, Microscope, History, Zap, Wallet,
+  ArrowRight, CheckCircle, Activity, Target, Globe, FileDown, Bell,
 } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
 import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
-  Tooltip, PieChart, Pie, Cell,
-} from 'recharts';
-import { GlassCard } from '@/components/ui/GlassCard';
-import { SignalBadge } from '@/components/ui/SignalBadge';
-import { ScoreRing } from '@/components/ui/ScoreRing';
-import {
-  fetchActiveSignals, fetchPerformanceSummary,
-  fetchGlobalMarket, fetchFearGreed, fetchTopGainers,
-  buildMarketCapChart,
-  type ApiSignal, type PerformanceSummary, type GlobalMarketData,
-  type FearGreedData, type CoinMarket, type MarketCapPoint,
+  fetchPerformanceSummary, fetchSignalHistory, fetchPlans,
+  type PerformanceSummary, type ApiSignal, type Plan,
 } from '@/lib/api';
-import { formatLargeNumber, formatPercentage, cn } from '@/lib/utils';
-import { SignalType, RiskLevel } from '@/types';
-import { useLivePrices } from '@/hooks/useLivePrices';
-import { useTierLimits } from '@/hooks/useTierLimits';
-import { Crown, Lock } from 'lucide-react';
-import TradingViewChart from '@/components/charts/TradingViewChart';
+import { cn } from '@/lib/utils';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+const ENGINES = [
+  { icon: Microscope, title: 'Teknik Analiz', desc: 'Klasik indikatörler + trend/momentum birleşimiyle çok katmanlı teknik puanlama.' },
+  { icon: BarChart3, title: 'Piyasa Yapısı', desc: 'HTF trend, swing yapısı ve piyasa rejimi tespiti.' },
+  { icon: Target, title: 'SMC (Akıllı Para)', desc: 'Order Block, Fair Value Gap ve likidite süpürmelerini otomatik tarar.' },
+  { icon: Activity, title: 'CRT (Mum Aralığı)', desc: 'Candle Range Theory tabanlı giriş/çıkış bölgesi tespiti.' },
+  { icon: TrendingUp, title: 'Hacim Analizi', desc: 'Hacim anomalileri ve teyit sinyalleri.' },
+  { icon: Shield, title: 'Risk Yönetimi', desc: 'Her sinyal için otomatik risk skoru, R:R ve pozisyon büyüklüğü önerisi.' },
+  { icon: FileDown, title: 'Temel Analiz', desc: 'Varlığa özgü temel veriler ve makro bağlam.' },
+  { icon: Globe, title: 'On-Chain & Sentiment', desc: 'Fear & Greed, ağ aktivitesi ve coin metadata sinyalleri.' },
+  { icon: Bell, title: 'Makro Görünüm', desc: 'FED faizi, TCMB kuru ve küresel risk ortamı.' },
+];
 
-const PIE_COLORS = ['#f97316', '#6366f1', '#8b5cf6', '#64748b'];
+const STEPS = [
+  { n: '1', title: 'Ücretsiz Kaydol', desc: '30 saniyede hesap aç, kredi kartı gerekmez.' },
+  { n: '2', title: '97 Varlığı Canlı İzle', desc: '9 AI motoru kripto ve BIST\'i 7/24 tarayıp sinyal üretir.' },
+  { n: '3', title: 'Akıllı Takip Et', desc: 'Telegram\'dan anında haberdar ol, performansını Sinyal Geçmişi\'nde gör.' },
+];
 
-function fngLabel(v: number): string {
-  if (v >= 75) return 'AŞIRI AÇGÖZLÜLÜK';
-  if (v >= 55) return 'AÇGÖZLÜLÜK (GREED)';
-  if (v >= 45) return 'NÖTR';
-  if (v >= 25) return 'KORKU (FEAR)';
-  return 'AŞIRI KORKU';
+function StatBlock({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="text-center">
+      <div className={cn('text-3xl md:text-4xl font-extrabold font-mono', accent ? 'text-bullish' : 'text-text-primary')}>{value}</div>
+      <div className="text-xs text-text-muted uppercase font-semibold tracking-wide mt-1">{label}</div>
+    </div>
+  );
 }
 
-function fngColor(v: number): string {
-  if (v >= 75) return '#00e676';
-  if (v >= 55) return '#69f0ae';
-  if (v >= 45) return '#ffc107';
-  if (v >= 25) return '#ff9800';
-  return '#ff5252';
-}
+export default function LandingPage() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
 
-function LiveClock() {
-  const [time, setTime] = useState('');
+  const [stats, setStats] = useState<PerformanceSummary | null>(null);
+  const [winSignals, setWinSignals] = useState<ApiSignal[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
+
   useEffect(() => {
-    const update = () => {
-      const now = new Date();
-      setTime(now.toLocaleString('tr-TR', {
-        day: '2-digit', month: 'long', year: 'numeric',
-        hour: '2-digit', minute: '2-digit', second: '2-digit',
-      }));
-    };
-    update();
-    const id = setInterval(update, 1000);
-    return () => clearInterval(id);
-  }, []);
-  return <span className="text-sm text-text-muted font-mono">{time}</span>;
-}
+    if (!loading && user) router.replace('/dashboard');
+  }, [user, loading, router]);
 
-// ---------------------------------------------------------------------------
-// Main Dashboard
-// ---------------------------------------------------------------------------
-
-export default function DashboardPage() {
-  const [timeRange, setTimeRange] = useState<'24s' | '7g' | '30g'>('24s');
-  const [marketTab, setMarketTab] = useState<'genel' | 'kripto' | 'hisse' | 'forex'>('genel');
-
-  const [signals, setSignals] = useState<ApiSignal[]>([]);
-  const [perf, setPerf] = useState<PerformanceSummary | null>(null);
-  const [global, setGlobal] = useState<GlobalMarketData | null>(null);
-  const [fng, setFng] = useState<FearGreedData | null>(null);
-  const [gainers, setGainers] = useState<CoinMarket[]>([]);
-  const [chartData, setChartData] = useState<MarketCapPoint[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const signalSymbols = signals.map((s) => s.asset?.symbol ?? '').filter(Boolean);
-  const livePrices = useLivePrices(signalSymbols);
-  const limits = useTierLimits();
-  const isFreeTier = limits.tier === 'free';
-
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-
-    const [signalsRes, perfRes, globalRes, fngRes, gainersRes] = await Promise.allSettled([
-      fetchActiveSignals({ page_size: 6 }),
-      fetchPerformanceSummary(),
-      fetchGlobalMarket(),
-      fetchFearGreed(),
-      fetchTopGainers(5),
-    ]);
-
-    if (signalsRes.status === 'fulfilled') setSignals(signalsRes.value.items);
-    if (perfRes.status === 'fulfilled') setPerf(perfRes.value);
-    if (globalRes.status === 'fulfilled') {
-      const g = globalRes.value;
-      setGlobal(g);
-      setChartData(buildMarketCapChart(g.total_market_cap_usd, g.market_cap_change_24h));
-    }
-    if (fngRes.status === 'fulfilled') setFng(fngRes.value);
-    if (gainersRes.status === 'fulfilled') setGainers(gainersRes.value);
-
-    setLoading(false);
-    setRefreshing(false);
+  useEffect(() => {
+    fetchPerformanceSummary().then(setStats).catch(() => {});
+    fetchSignalHistory({ outcome: 'win', page_size: 4 }).then((r) => setWinSignals(r.items)).catch(() => {});
+    fetchPlans().then((r) => setPlans(r.plans.filter((p) => p.tier !== 'free'))).catch(() => {});
   }, []);
 
-  useEffect(() => { load(); }, [load]);
-
-  // Derived stats
-  const totalSignals = perf?.total_signals ?? 0;
-  const activeCount = perf?.active_count ?? 0;
-  const winRate = perf?.win_rate ?? 0;
-  const avgReturn = perf?.average_return ?? 0;
-  const fngValue = fng?.value ?? 50;
-
-  // Pie chart: asset distribution from active signals
-  const assetCounts: Record<string, number> = {};
-  signals.forEach((s) => {
-    const sym = s.asset?.symbol ?? 'Other';
-    assetCounts[sym] = (assetCounts[sym] ?? 0) + 1;
-  });
-  const pieData = Object.entries(assetCounts).map(([name, value]) => ({ name, value }));
-  if (pieData.length === 0) {
-    pieData.push({ name: 'Veri Yok', value: 1 });
+  if (loading || user) {
+    return <div className="min-h-screen flex items-center justify-center bg-bg-primary"><div className="w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
 
-  // Performance sparklines (mock mini data)
-  const perfCards = [
-    { label: 'Toplam Getiri', value: `+${(avgReturn * (totalSignals || 1)).toFixed(2)}%`, color: 'text-bullish' },
-    { label: 'Kazanılan İşlemler', value: `${perf?.win_count ?? 0}`, sub: `↗ ${winRate.toFixed(0)}%`, color: 'text-bullish' },
-    { label: 'Kaybedilen İşlemler', value: `${perf?.loss_count ?? 0}`, sub: `↘ ${(100 - winRate).toFixed(0)}%`, color: 'text-bearish' },
-    { label: 'Ortalama Getiri', value: `+${avgReturn.toFixed(2)}%`, color: 'text-accent-secondary' },
-  ];
+  const resolved = (stats?.win_count ?? 0) + (stats?.loss_count ?? 0) + (stats?.breakeven_count ?? 0);
 
   return (
-    <div className="space-y-5">
-      {/* Free tier banner */}
-      {isFreeTier && (
-        <Link
-          href="/pricing"
-          className="block bg-gradient-to-r from-orange-500/15 via-accent-primary/15 to-orange-500/15 border border-orange-500/30 rounded-2xl p-4 hover:border-orange-500/50 transition-all"
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center flex-shrink-0">
-                <Lock className="w-5 h-5 text-orange-400" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-text-primary">
-                  Ücretsiz plandasın — günde {limits.daily_signal_limit} sinyal görüntülüyorsun.
-                </p>
-                <p className="text-[11px] text-text-secondary mt-0.5">
-                  Sınırsız sinyal, Telegram bildirimleri, backtest ve daha fazlası için Pro plana yükselt.
-                </p>
-              </div>
-            </div>
-            <span className="flex items-center gap-1.5 text-xs font-bold text-orange-400 whitespace-nowrap bg-orange-500/10 border border-orange-500/30 px-3 py-1.5 rounded-xl">
-              <Crown className="w-3.5 h-3.5" /> Yükselt
-            </span>
+    <div className="min-h-screen bg-bg-primary">
+      {/* Nav */}
+      <header className="border-b border-border-subtle">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-8 h-8" />
+            <span className="text-base font-bold gradient-text-brand">TradeMinds AI</span>
           </div>
-        </Link>
-      )}
-
-      {/* ── Title Row ── */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-text-primary">Gösterge Paneli</h1>
-          <p className="text-sm text-text-secondary mt-0.5">Piyasaları yapay zekâ ile analiz edin, avantaj yakalayın.</p>
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="text-sm font-semibold text-text-secondary hover:text-text-primary transition-colors">Giriş Yap</Link>
+            <Link href="/register" className="text-sm font-bold bg-accent-primary hover:bg-accent-secondary text-white px-4 py-2 rounded-xl transition-colors">
+              Ücretsiz Başla
+            </Link>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <LiveClock />
-          <div className="flex bg-bg-secondary border border-border-subtle p-0.5 rounded-lg">
-            {(['24s', '7g', '30g'] as const).map((r) => (
-              <button
-                key={r}
-                onClick={() => setTimeRange(r)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  timeRange === r ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary'
-                }`}
-              >
-                {r === '24s' ? '24 Saat' : r === '7g' ? '7 Gün' : '30 Gün'}
-              </button>
+      </header>
+
+      {/* Hero */}
+      <section className="max-w-6xl mx-auto px-6 pt-16 pb-12 text-center">
+        <h1 className="text-3xl md:text-5xl font-extrabold text-text-primary leading-tight max-w-3xl mx-auto">
+          Kurumsal Düzeyde <span className="gradient-text-brand">Yapay Zekâ Trading İstihbaratı</span>
+        </h1>
+        <p className="text-base md:text-lg text-text-secondary mt-5 max-w-2xl mx-auto">
+          9 ayrı AI motoru kripto ve BIST'i 7/24 tarıyor; Akıllı Para (SMC), risk skorlaması ve
+          gerçek zamanlı performans takibiyle herkese kurumsal düzeyde sinyal altyapısı.
+        </p>
+        <div className="flex items-center justify-center gap-3 mt-7">
+          <Link href="/register" className="flex items-center gap-2 text-sm font-bold bg-accent-primary hover:bg-accent-secondary text-white px-6 py-3 rounded-xl shadow-glow-sm transition-colors">
+            Ücretsiz Başla <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link href="/pricing" className="text-sm font-bold text-text-secondary hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-6 py-3 rounded-xl transition-colors">
+            Fiyatlandırmayı Gör
+          </Link>
+        </div>
+
+        {/* Live stats strip — real data, no placeholders */}
+        {stats && resolved > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto mt-14 p-6 glass-panel border border-border-subtle rounded-2xl">
+            <StatBlock label="Başarı Oranı" value={`${stats.win_rate}%`} accent />
+            <StatBlock label="Kapanan Sinyal" value={resolved.toLocaleString('tr-TR')} />
+            <StatBlock label="Ort. Getiri" value={`${(stats.average_return ?? 0) >= 0 ? '+' : ''}${(stats.average_return ?? 0).toFixed(2)}%`} accent={(stats.average_return ?? 0) >= 0} />
+            <StatBlock label="TP1 Vuruş" value={`${stats.tp1_hit_rate}%`} />
+          </div>
+        )}
+      </section>
+
+      {/* Latest winning signals — only real, resolved WIN signals */}
+      {winSignals.length > 0 && (
+        <section className="max-w-6xl mx-auto px-6 py-12">
+          <h2 className="text-2xl font-extrabold text-text-primary text-center">Son Kazanan Sinyaller</h2>
+          <p className="text-sm text-text-secondary text-center mt-2 max-w-xl mx-auto">
+            Sistemin gerçek zamanlı ürettiği ve TP'ye ulaşmış kapanmış sinyallerden bir kesit.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+            {winSignals.map((s) => (
+              <div key={s.id} className="glass-panel border border-border-subtle rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-bold text-text-primary">{s.asset?.symbol}</span>
+                  <span className="text-[10px] font-bold uppercase bg-bullish/15 text-bullish px-2 py-0.5 rounded">
+                    {s.direction === 'bullish' ? 'LONG' : 'SHORT'}
+                  </span>
+                </div>
+                <div className="text-2xl font-extrabold font-mono text-bullish">
+                  +{(s.actual_return ?? 0).toFixed(2)}%
+                </div>
+                <div className="text-[11px] text-text-muted mt-1.5 font-mono">
+                  Giriş: {s.entry_zone_low?.toFixed(4)} → TP: {s.tp1?.toFixed(4)}
+                </div>
+                <div className="text-[10px] text-text-muted uppercase mt-1">{s.timeframe} · {s.signal_type.replace('_', ' ')}</div>
+              </div>
             ))}
           </div>
-          <button
-            onClick={() => load(true)}
-            disabled={refreshing}
-            className="p-2 rounded-lg bg-bg-secondary border border-border-subtle text-text-muted hover:text-text-primary transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
+        </section>
+      )}
+
+      {/* Engines */}
+      <section className="max-w-6xl mx-auto px-6 py-16">
+        <h2 className="text-2xl font-extrabold text-text-primary text-center">İhtiyacın Olan Her Şey, Tek Platformda</h2>
+        <p className="text-sm text-text-secondary text-center mt-2 max-w-xl mx-auto">
+          9 bağımsız AI motoru birlikte çalışıp profesyonel düzeyde bir trading kokpiti sunar.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-10">
+          {ENGINES.map((e) => (
+            <div key={e.title} className="glass-panel border border-border-subtle rounded-2xl p-5">
+              <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3">
+                <e.icon className="w-5 h-5 text-accent-primary" />
+              </div>
+              <h3 className="text-sm font-bold text-text-primary">{e.title}</h3>
+              <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">{e.desc}</p>
+            </div>
+          ))}
         </div>
-      </div>
 
-      {/* ── 5 Stat Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        {/* Total Signals */}
-        <GlassCard className="flex items-center justify-between p-4">
-          <div>
-            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Toplam Sinyal</span>
-            <h3 className="text-3xl font-bold font-mono mt-1 text-text-primary">{totalSignals}</h3>
-            <span className="text-[10px] text-bullish font-semibold flex items-center mt-1">
-              <TrendingUp className="w-3 h-3 mr-0.5" />%100 son 24s
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-            <Activity className="w-5 h-5 text-orange-500" />
-          </div>
-        </GlassCard>
-
-        {/* Active Signals */}
-        <GlassCard className="flex items-center justify-between p-4">
-          <div>
-            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Aktif Sinyaller</span>
-            <h3 className="text-3xl font-bold font-mono mt-1 text-text-primary">{activeCount}</h3>
-            <span className="text-[10px] text-text-muted font-semibold mt-1 block">
-              %{totalSignals > 0 ? Math.round((activeCount / totalSignals) * 100) : 0} şu anda
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-accent-primary/10 border border-accent-primary/20 flex items-center justify-center">
-            <Zap className="w-5 h-5 text-accent-primary" />
-          </div>
-        </GlassCard>
-
-        {/* Win Rate */}
-        <GlassCard className="flex items-center justify-between p-4">
-          <div>
-            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Başarı Oranı</span>
-            <h3 className="text-3xl font-bold font-mono mt-1 text-bullish">{winRate.toFixed(0)}%</h3>
-            <span className="text-[10px] text-bullish font-semibold flex items-center mt-1">
-              <TrendingUp className="w-3 h-3 mr-0.5" />son 7 gün
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-bullish/10 border border-bullish/20 flex items-center justify-center">
-            <CheckCircle className="w-5 h-5 text-bullish" />
-          </div>
-        </GlassCard>
-
-        {/* Avg Return */}
-        <GlassCard className="flex items-center justify-between p-4">
-          <div>
-            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Ortalama Getiri</span>
-            <h3 className="text-3xl font-bold font-mono mt-1 text-accent-secondary">+{avgReturn.toFixed(2)}%</h3>
-            <span className="text-[10px] text-bullish font-semibold flex items-center mt-1">
-              <TrendingUp className="w-3 h-3 mr-0.5" />son 7 gün
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-accent-secondary/10 border border-accent-secondary/20 flex items-center justify-center">
-            <ChartIcon className="w-5 h-5 text-accent-secondary" />
-          </div>
-        </GlassCard>
-
-        {/* Fear & Greed */}
-        <GlassCard className="flex items-center justify-between p-4">
-          <div>
-            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Piyasa Greed Index</span>
-            <h3 className="text-3xl font-bold font-mono mt-1" style={{ color: fngColor(fngValue) }}>
-              {fngValue}
-            </h3>
-            <span className="text-[10px] font-semibold mt-1 block" style={{ color: fngColor(fngValue) }}>
-              {fngLabel(fngValue)}
-            </span>
-          </div>
-          {/* Mini gauge */}
-          <div className="relative w-12 h-12 flex-shrink-0">
-            <svg viewBox="0 0 44 44" className="w-full h-full -rotate-90">
-              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" />
-              <circle
-                cx="22" cy="22" r="18" fill="none"
-                stroke={fngColor(fngValue)} strokeWidth="4"
-                strokeDasharray={`${(fngValue / 100) * 113} 113`}
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-        </GlassCard>
-      </div>
-
-      {/* ── Main Grid ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Market Overview — left 2/3 */}
-        <div className="lg:col-span-2 space-y-5">
-          <GlassCard className="p-5">
-            {/* Card header */}
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-accent-primary" />
-                Piyasa Genel Bakış
-              </h2>
-              <div className="flex bg-bg-secondary border border-border-subtle p-0.5 rounded-lg">
-                {(['genel', 'kripto', 'hisse', 'forex'] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setMarketTab(t)}
-                    className={`px-2.5 py-1 text-[11px] font-semibold rounded-md capitalize transition-all ${
-                      marketTab === t ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary'
-                    }`}
-                  >
-                    {t.charAt(0).toUpperCase() + t.slice(1)}
-                  </button>
-                ))}
-              </div>
+        {/* Beyond signals: platform tools */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+          {[
+            { icon: History, label: 'Sinyal Geçmişi' },
+            { icon: Microscope, label: 'Strategy Lab' },
+            { icon: BarChart3, label: 'Sembol Analizi' },
+            { icon: Wallet, label: 'Portföy Takibi' },
+          ].map((f) => (
+            <div key={f.label} className="flex items-center gap-2 text-sm font-semibold text-text-secondary">
+              <CheckCircle className="w-4 h-4 text-bullish flex-shrink-0" /> {f.label}
             </div>
+          ))}
+        </div>
+      </section>
 
-            {/* Market stats row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
-              <div>
-                <p className="text-[10px] text-text-muted uppercase font-semibold">Toplam Piyasa Değeri</p>
-                <p className="text-base font-bold font-mono text-text-primary mt-0.5">
-                  {global ? formatLargeNumber(global.total_market_cap_usd) : '—'}
-                </p>
-                <p className={`text-[11px] font-semibold ${(global?.market_cap_change_24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish'}`}>
-                  {global ? formatPercentage(global.market_cap_change_24h) : '—'}
-                </p>
+      {/* How it works */}
+      <section className="max-w-4xl mx-auto px-6 py-16">
+        <h2 className="text-2xl font-extrabold text-text-primary text-center">Dakikalar İçinde Başla</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+          {STEPS.map((s) => (
+            <div key={s.n} className="text-center">
+              <div className="w-12 h-12 rounded-2xl gradient-bg-brand flex items-center justify-center text-white font-extrabold text-lg mx-auto mb-3">
+                {s.n}
               </div>
-              <div>
-                <p className="text-[10px] text-text-muted uppercase font-semibold">24s Hacim</p>
-                <p className="text-base font-bold font-mono text-text-primary mt-0.5">
-                  {global ? formatLargeNumber(global.total_volume_usd) : '—'}
-                </p>
-                <p className="text-[11px] text-text-muted">-6.12%</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-text-muted uppercase font-semibold">BTC Dominance</p>
-                <p className="text-base font-bold font-mono text-text-primary mt-0.5">
-                  {global ? `${global.btc_dominance.toFixed(2)}%` : '—'}
-                </p>
-                <p className="text-[11px] text-bullish">+0.35%</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-text-muted uppercase font-semibold">ETH Dominance</p>
-                <p className="text-base font-bold font-mono text-text-primary mt-0.5">
-                  {global ? `${global.eth_dominance.toFixed(2)}%` : '—'}
-                </p>
-                <p className="text-[11px] text-bearish">-0.42%</p>
-              </div>
+              <h3 className="text-sm font-bold text-text-primary">{s.title}</h3>
+              <p className="text-xs text-text-secondary mt-1.5">{s.desc}</p>
             </div>
+          ))}
+        </div>
+      </section>
 
-            {/* Area chart */}
-            <div className="h-52">
-              {loading ? (
-                <div className="h-full flex items-center justify-center">
-                  <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+      {/* Pricing teaser */}
+      {plans.length > 0 && (
+        <section className="max-w-6xl mx-auto px-6 py-16">
+          <h2 className="text-2xl font-extrabold text-text-primary text-center">Basit, Şeffaf Fiyatlandırma</h2>
+          <p className="text-sm text-text-secondary text-center mt-2">USDT ile öde, dilediğin an yükselt.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-10 max-w-3xl mx-auto">
+            {plans.map((p) => {
+              const monthly = p.pricing.find((pr) => pr.cycle === 'monthly');
+              return (
+                <div key={p.tier} className={cn('glass-panel border rounded-2xl p-6', p.recommended ? 'border-accent-primary/40 shadow-glow-sm' : 'border-border-subtle')}>
+                  <h3 className="text-base font-bold text-text-primary">{p.name}</h3>
+                  <p className="text-xs text-text-secondary mt-1">{p.description}</p>
+                  <div className="text-3xl font-extrabold font-mono text-text-primary mt-3">
+                    ${monthly?.amount_usd ?? 0}<span className="text-sm text-text-muted font-normal">/ay</span>
+                  </div>
+                  <ul className="space-y-1.5 mt-4">
+                    {p.features.filter((f) => f.included).slice(0, 5).map((f) => (
+                      <li key={f.label} className="flex items-center gap-2 text-xs text-text-secondary">
+                        <CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0" /> {f.label}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="capGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#f97316" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="time" stroke="#334155" fontSize={10} tickLine={false} interval={3} />
-                    <YAxis
-                      stroke="#334155" fontSize={10} tickLine={false}
-                      tickFormatter={(v) => formatLargeNumber(v)}
-                    />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#0f172a', borderColor: 'rgba(148,163,184,0.1)', borderRadius: 8, fontSize: 11 }}
-                      formatter={(v: number) => [formatLargeNumber(v), 'Market Cap']}
-                    />
-                    <Area
-                      type="monotone" dataKey="cap" stroke="#f97316" strokeWidth={2}
-                      fillOpacity={1} fill="url(#capGrad)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </GlassCard>
+              );
+            })}
+          </div>
+          <div className="text-center mt-8">
+            <Link href="/pricing" className="text-sm font-bold text-accent-primary hover:text-accent-secondary">
+              Tüm planları ve süre seçeneklerini gör →
+            </Link>
+          </div>
+        </section>
+      )}
 
-          {/* Featured Live Chart */}
-          <GlassCard className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
-                <ChartIcon className="w-4 h-4 text-accent-primary" />
-                Canlı Grafik — BTC/USDT
-              </h2>
-              <Link href="/markets/BTCUSDT" className="text-xs text-accent-primary hover:text-accent-secondary flex items-center gap-1">
-                Detay <ArrowRight className="w-3 h-3" />
-              </Link>
-            </div>
-            <TradingViewChart symbol="BTCUSDT" timeframe="1h" height={360} compact />
-          </GlassCard>
+      {/* Final CTA */}
+      <section className="max-w-4xl mx-auto px-6 py-20 text-center">
+        <h2 className="text-2xl md:text-3xl font-extrabold text-text-primary">Trading Avantajını Bugün İnşa Et</h2>
+        <p className="text-sm text-text-secondary mt-3">Kayıt sonrası dashboard'a anında erişim — kredi kartı gerekmez.</p>
+        <Link href="/register" className="inline-flex items-center gap-2 text-sm font-bold bg-accent-primary hover:bg-accent-secondary text-white px-7 py-3.5 rounded-xl shadow-glow-sm transition-colors mt-6">
+          Ücretsiz Hesap Oluştur <ArrowRight className="w-4 h-4" />
+        </Link>
+      </section>
 
-          {/* Performance Summary */}
-          <GlassCard className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
-                <Activity className="w-4 h-4 text-accent-primary" />
-                Performans Özeti
-              </h2>
-              <Link href="/performance" className="text-xs text-accent-primary hover:text-accent-secondary flex items-center gap-1">
-                Tümünü Gör <ArrowRight className="w-3 h-3" />
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {perfCards.map((c, i) => (
-                <div key={i} className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
-                  <p className="text-[10px] text-text-muted uppercase font-semibold">{c.label}</p>
-                  <p className={`text-xl font-bold font-mono mt-1 ${c.color}`}>{c.value}</p>
-                  {c.sub && <p className="text-[10px] text-text-muted mt-0.5">{c.sub}</p>}
-                </div>
-              ))}
-            </div>
-          </GlassCard>
+      {/* Footer */}
+      <footer className="border-t border-border-subtle py-10">
+        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-6 h-6" />
+            <span className="text-sm font-bold text-text-primary">TradeMinds AI</span>
+          </div>
+          <p className="text-xs text-text-muted text-center md:text-left">
+            Kurumsal düzeyde sinyal istihbaratı, performans analitiği ve risk araçları — disiplinli işlem icrası için.
+          </p>
+          <p className="text-xs text-text-muted">© {new Date().getFullYear()} TradeMinds AI</p>
         </div>
-
-        {/* Right column — Signals + extras */}
-        <div className="space-y-5">
-          {/* Recent Signals */}
-          <GlassCard className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
-                <Zap className="w-4 h-4 text-accent-primary" />
-                Son Sinyaller
-              </h2>
-              <Link href="/signals" className="text-xs text-accent-primary hover:text-accent-secondary flex items-center gap-1">
-                Tümünü Gör <ArrowRight className="w-3 h-3" />
-              </Link>
-            </div>
-
-            {loading ? (
-              <div className="py-8 flex justify-center">
-                <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : signals.length === 0 ? (
-              <p className="text-xs text-text-muted text-center py-8">Sinyal bulunamadı.</p>
-            ) : (
-              <div className="space-y-3">
-                {signals.map((sig) => (
-                  <div
-                    key={sig.id}
-                    className="flex items-center gap-3 p-3 bg-bg-secondary/40 border border-border-subtle rounded-xl hover:border-border-medium transition-colors"
-                  >
-                    {/* Icon */}
-                    <div className="w-8 h-8 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-xs text-accent-primary flex-shrink-0">
-                      {sig.asset?.symbol?.slice(0, 2) ?? '??'}
-                    </div>
-
-                    {/* Symbol + badge */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-text-primary">{sig.asset?.symbol}</span>
-                        <SignalBadge type={sig.signal_type as SignalType} />
-                      </div>
-                      <div className="flex gap-3 mt-0.5">
-                        {livePrices[sig.asset?.symbol ?? ''] ? (
-                          <>
-                            <span className="text-[10px] font-mono text-text-primary font-bold">
-                              {livePrices[sig.asset?.symbol ?? ''].price.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}
-                            </span>
-                            <span className={cn('text-[10px] font-mono font-semibold',
-                              (livePrices[sig.asset?.symbol ?? ''].changePct24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
-                              {(livePrices[sig.asset?.symbol ?? ''].changePct24h ?? 0) >= 0 ? '+' : ''}
-                              {livePrices[sig.asset?.symbol ?? ''].changePct24h?.toFixed(2)}%
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-[10px] text-text-muted">
-                              TP: <span className="text-bullish font-mono">{sig.tp1 ? sig.tp1.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—'}</span>
-                            </span>
-                            <span className="text-[10px] text-text-muted">
-                              SL: <span className="text-bearish font-mono">{sig.stop_loss ? sig.stop_loss.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—'}</span>
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Score ring */}
-                    <ScoreRing score={sig.confidence_score} size={36} strokeWidth={3} />
-                  </div>
-                ))}
-              </div>
-            )}
-          </GlassCard>
-
-          {/* Asset Distribution Pie */}
-          <GlassCard className="p-5">
-            <h2 className="text-base font-bold text-text-primary mb-4 flex items-center gap-2">
-              <ChartIcon className="w-4 h-4 text-accent-primary" />
-              Varlık Dağılımı
-            </h2>
-            <div className="flex items-center gap-4">
-              <div className="w-28 h-28 flex-shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={28} outerRadius={52} dataKey="value" paddingAngle={3}>
-                      {pieData.map((_, i) => (
-                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex-1 space-y-1.5">
-                {pieData.map((entry, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                      <span className="text-xs text-text-secondary">{entry.name}</span>
-                    </div>
-                    <span className="text-xs font-semibold text-text-primary">
-                      {((entry.value / pieData.reduce((a, b) => a + b.value, 0)) * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </GlassCard>
-
-          {/* Top Gainers */}
-          <GlassCard className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-bullish" />
-                En Çok Kazananlar
-              </h2>
-              <span className="text-[10px] text-text-muted bg-bg-secondary px-2 py-0.5 rounded">24 Saat</span>
-            </div>
-            {gainers.length === 0 ? (
-              <p className="text-xs text-text-muted text-center py-4">Yükleniyor...</p>
-            ) : (
-              <div className="space-y-2">
-                {gainers.map((coin) => (
-                  <div key={coin.id} className="flex items-center justify-between py-1.5 border-b border-border-subtle last:border-none">
-                    <div className="flex items-center gap-2">
-                      {coin.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={coin.image} alt={coin.symbol} className="w-5 h-5 rounded-full" />
-                      ) : (
-                        <div className="w-5 h-5 rounded-full bg-bg-tertiary border border-border-subtle" />
-                      )}
-                      <span className="text-xs font-bold text-text-primary uppercase">{coin.symbol}/USDT</span>
-                    </div>
-                    <span className={`text-xs font-bold font-mono ${(coin.price_change_percentage_24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish'}`}>
-                      {(coin.price_change_percentage_24h ?? 0) >= 0 ? '+' : ''}{(coin.price_change_percentage_24h ?? 0).toFixed(2)}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </GlassCard>
-        </div>
-      </div>
+      </footer>
     </div>
   );
 }
