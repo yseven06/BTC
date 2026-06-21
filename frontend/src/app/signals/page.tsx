@@ -490,8 +490,13 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
   const engines = parseEngines(sig.engines_data);
   const summary = summaryFrom(sig.explanation_tr);
 
-  const longestBullish = engines.filter((e) => e.score > 55).sort((a, b) => b.score - a.score).slice(0, 2);
-  const longestBearish = engines.filter((e) => e.score < 45).sort((a, b) => a.score - b.score).slice(0, 2);
+  // Risk Yönetimi'nin skoru yön değil "bu kurulum ne kadar güvenli"
+  // ölçüyor (yüksek=güvenli, düşük=riskli) — bullish/bearish filtresine
+  // dahil edilirse düşük güvenlik skoru "SHORT'u destekliyor" gibi
+  // yanlış okunur. LONG/SHORT lehine listelerinden hariç tutuluyor.
+  const directionalEngines = engines.filter((e) => e.name !== 'risk_management');
+  const longestBullish = directionalEngines.filter((e) => e.score > 55).sort((a, b) => b.score - a.score).slice(0, 2);
+  const longestBearish = directionalEngines.filter((e) => e.score < 45).sort((a, b) => a.score - b.score).slice(0, 2);
 
   return (
     <div
@@ -603,7 +608,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-bullish/5 border border-bullish/20 rounded-xl p-3">
                     <p className="text-[10px] text-bullish uppercase font-semibold mb-2 flex items-center gap-1.5">
-                      <TrendingUp className="w-3 h-3" /> Alım Lehine
+                      <TrendingUp className="w-3 h-3" /> LONG Lehine
                     </p>
                     {longestBullish.length > 0 ? (
                       <ul className="space-y-1">
@@ -620,7 +625,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
                   </div>
                   <div className="bg-bearish/5 border border-bearish/20 rounded-xl p-3">
                     <p className="text-[10px] text-bearish uppercase font-semibold mb-2 flex items-center gap-1.5">
-                      <TrendingDown className="w-3 h-3" /> Satım Lehine
+                      <TrendingDown className="w-3 h-3" /> SHORT Lehine
                     </p>
                     {longestBearish.length > 0 ? (
                       <ul className="space-y-1">
