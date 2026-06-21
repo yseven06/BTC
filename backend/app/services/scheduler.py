@@ -195,6 +195,18 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
             new_type = SIG_TYPE_MAP.get(decision["signal_type"], SignalType.HOLD)
             new_is_actionable = new_type != SignalType.HOLD
 
+            # Quality gate: an actionable (BUY/SELL) call below 65% confidence
+            # ("7/10" on the UI's confidence/10 quality bar) isn't worth
+            # surfacing as a trade idea — demote it to HOLD so it falls
+            # through the same skip/reversal handling below as any other
+            # non-actionable scan, rather than persisting a low-conviction
+            # signal users would otherwise act on.
+            MIN_ACTIONABLE_CONFIDENCE = 65.0
+            if new_is_actionable and decision["confidence_score"] < MIN_ACTIONABLE_CONFIDENCE:
+                new_type = SignalType.HOLD
+                new_direction = Direction.NEUTRAL
+                new_is_actionable = False
+
             # A regen cycle should NOT blindly replace a still-running trade
             # idea every time the clock ticks — a 15m signal realistically
             # can't reach TP in 15 minutes, so wiping it every cycle just
@@ -259,18 +271,21 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
 
             new_sig = Signal(
                 asset_id=asset.id,
-                signal_type=SIG_TYPE_MAP.get(decision["signal_type"], SignalType.HOLD),
+                signal_type=new_type,
                 confidence_score=decision["confidence_score"],
                 probability_score=decision["probability_score"],
                 risk_score=decision["risk_score"],
                 risk_level=RISK_MAP.get(decision["risk_level"].lower(), RiskLevel.MEDIUM),
-                direction=DIR_MAP.get(decision["direction"], Direction.NEUTRAL),
-                entry_zone_low=decision["entry_zone_low"],
-                entry_zone_high=decision["entry_zone_high"],
-                stop_loss=decision["stop_loss"],
-                tp1=decision["tp1"],
-                tp2=decision["tp2"],
-                tp3=decision["tp3"],
+                direction=new_direction,
+                # A signal demoted to HOLD by the quality gate above has no
+                # real trade idea behind it — clearing these prevents a
+                # confusing "HOLD but here's an entry/TP/SL anyway" display.
+                entry_zone_low=decision["entry_zone_low"] if new_is_actionable else None,
+                entry_zone_high=decision["entry_zone_high"] if new_is_actionable else None,
+                stop_loss=decision["stop_loss"] if new_is_actionable else None,
+                tp1=decision["tp1"] if new_is_actionable else None,
+                tp2=decision["tp2"] if new_is_actionable else None,
+                tp3=decision["tp3"] if new_is_actionable else None,
                 invalidation_conditions=decision["invalidation_conditions"],
                 engines_data=decision["engine_results"],
                 explanation_tr=decision["explanation_tr"],
