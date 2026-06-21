@@ -153,7 +153,7 @@ function EngineCard({ engine, onClick, compact }: { engine: EngineRow; onClick: 
         'hover:bg-bg-secondary/60 hover:shadow-glow-sm',
         biasConfig.border,
         'text-left w-full',
-        compact ? 'p-2.5' : 'p-4'
+        compact ? 'p-3' : 'p-4'
       )}
     >
       {/* Info icon top-right (only visible on hover) */}
@@ -164,16 +164,16 @@ function EngineCard({ engine, onClick, compact }: { engine: EngineRow; onClick: 
       )}
 
       {/* Engine label + bias chip */}
-      <div className={cn('flex items-center justify-between gap-1.5', compact ? 'mb-1.5' : 'mb-3')}>
+      <div className={cn('flex items-center justify-between gap-1.5', compact ? 'mb-2' : 'mb-3')}>
         <span className={cn(
           'font-bold text-text-primary uppercase tracking-wide leading-tight line-clamp-2 flex-1',
-          compact ? 'text-[9px]' : 'text-[11px]'
+          compact ? 'text-[10px]' : 'text-[11px]'
         )}>
           {engine.label}
         </span>
         <span className={cn(
           'flex-shrink-0 font-extrabold rounded',
-          compact ? 'text-[8px] px-1.5 py-0.5' : 'text-[10px] px-2 py-0.5',
+          compact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-0.5',
           biasConfig.bg, biasConfig.text
         )}>
           {biasConfig.label}
@@ -182,7 +182,7 @@ function EngineCard({ engine, onClick, compact }: { engine: EngineRow; onClick: 
 
       {/* Score ring centered */}
       <div className="flex items-center justify-center py-1">
-        <ScoreRing score={engine.score} size={compact ? 46 : 70} strokeWidth={compact ? 4 : 6} />
+        <ScoreRing score={engine.score} size={compact ? 60 : 70} strokeWidth={compact ? 5 : 6} />
       </div>
     </button>
   );
