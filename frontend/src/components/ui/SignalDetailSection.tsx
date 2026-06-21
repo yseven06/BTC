@@ -10,6 +10,7 @@ import {
   Info, X, Scale, FileText, BarChart3,
 } from 'lucide-react';
 import { EngineMiniChart } from '@/components/charts/EngineMiniChart';
+import { CoinIcon } from '@/components/ui/CoinIcon';
 
 // Engines whose supporting_data carries real chart-able coordinates (S/R
 // levels, premium/discount zones, OB/FVG boxes, pattern indices). The rest
@@ -503,10 +504,10 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
           {/* Left: Symbol + Direction */}
           <div className={cn('flex items-center', compact ? 'gap-3' : 'gap-5')}>
             <div className={cn(
-              'rounded-2xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-accent-primary flex-shrink-0',
+              'rounded-2xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-accent-primary flex-shrink-0 overflow-hidden',
               compact ? 'w-11 h-11 text-sm' : 'w-16 h-16 text-base'
             )}>
-              {signal.asset?.symbol.slice(0, 2)}
+              {signal.asset?.symbol && <CoinIcon symbol={signal.asset.symbol} assetType={signal.asset.asset_type} />}
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">

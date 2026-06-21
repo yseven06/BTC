@@ -16,6 +16,7 @@ import {
 import { useLanguage } from '@/lib/language-context';
 import { cn } from '@/lib/utils';
 import TickerBand from './TickerBand';
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import { fetchAlerts, fetchCurrentUser, searchAssets, type ApiAlert, type UserProfile, type ApiAsset } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { formatRelativeTime } from '@/lib/utils';
@@ -107,8 +108,8 @@ export default function Header() {
                   key={asset.id}
                   className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.04] cursor-pointer border-b border-border-subtle last:border-none"
                 >
-                  <div className="w-7 h-7 rounded-md bg-bg-tertiary border border-border-subtle flex items-center justify-center text-[10px] font-bold font-mono text-accent-primary">
-                    {asset.symbol.slice(0, 2)}
+                  <div className="w-7 h-7 rounded-md bg-bg-tertiary border border-border-subtle flex items-center justify-center text-[10px] font-bold font-mono text-accent-primary overflow-hidden">
+                    <CoinIcon symbol={asset.symbol} assetType={asset.asset_type} />
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-text-primary">{asset.symbol}</p>

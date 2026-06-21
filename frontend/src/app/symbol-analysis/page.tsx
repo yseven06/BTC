@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, TrendingDown, Search } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import { LockedOverlay } from '@/components/ui/LockedOverlay';
 import { useTierLimits } from '@/hooks/useTierLimits';
 import { fetchSymbolAnalysis } from '@/lib/api';
@@ -184,8 +185,8 @@ export default function SymbolAnalysisPage() {
               >
                 {/* Symbol */}
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-xs text-accent-primary flex-shrink-0">
-                    {sym.symbol.slice(0, 2)}
+                  <div className="w-9 h-9 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-xs text-accent-primary flex-shrink-0 overflow-hidden">
+                    <CoinIcon symbol={sym.symbol} assetType={sym.asset_type} />
                   </div>
                   <div>
                     <p className="text-sm font-bold text-text-primary">{sym.symbol}</p>

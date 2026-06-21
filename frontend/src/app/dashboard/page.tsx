@@ -11,6 +11,7 @@ import {
   Tooltip, PieChart, Pie, Cell,
 } from 'recharts';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import { SignalBadge } from '@/components/ui/SignalBadge';
 import { ScoreRing } from '@/components/ui/ScoreRing';
 import {
@@ -501,8 +502,8 @@ export default function DashboardPage() {
                     className="flex items-center gap-3 p-3 bg-bg-secondary/40 border border-border-subtle rounded-xl hover:border-border-medium transition-colors"
                   >
                     {/* Icon */}
-                    <div className="w-8 h-8 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-xs text-accent-primary flex-shrink-0">
-                      {sig.asset?.symbol?.slice(0, 2) ?? '??'}
+                    <div className="w-8 h-8 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-xs text-accent-primary flex-shrink-0 overflow-hidden">
+                      {sig.asset?.symbol ? <CoinIcon symbol={sig.asset.symbol} assetType={sig.asset.asset_type} /> : '??'}
                     </div>
 
                     {/* Symbol + badge */}

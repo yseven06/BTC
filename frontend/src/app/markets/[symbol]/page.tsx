@@ -14,6 +14,7 @@ import { useLivePrices } from '@/hooks/useLivePrices';
 import { SignalType } from '@/types';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
+import { CoinIcon } from '@/components/ui/CoinIcon';
 
 /**
  * Builds a Pine Script v5 indicator that draws the signal's entry/SL/TP
@@ -260,8 +261,8 @@ export default function AssetDetailPage() {
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <div className="w-11 h-11 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-base text-accent-primary">
-          {symbol.slice(0, 2)}
+        <div className="w-11 h-11 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-base text-accent-primary overflow-hidden">
+          <CoinIcon symbol={symbol} assetType={assetType} />
         </div>
         <div>
           <h1 className="text-xl font-extrabold text-text-primary">{symbol}</h1>

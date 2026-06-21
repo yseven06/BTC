@@ -8,6 +8,7 @@ import { useLivePrices } from '@/hooks/useLivePrices';
 import { SignalType } from '@/types';
 import { cn, formatAbsoluteTimeTR } from '@/lib/utils';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
+import { CoinIcon } from '@/components/ui/CoinIcon';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -510,8 +511,8 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
         {/* ── Sticky Header ── */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-sm text-accent-primary flex-shrink-0">
-              {sig.asset?.symbol.slice(0, 2)}
+            <div className="w-10 h-10 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-sm text-accent-primary flex-shrink-0 overflow-hidden">
+              {sig.asset?.symbol && <CoinIcon symbol={sig.asset.symbol} assetType={sig.asset.asset_type} />}
             </div>
             <div className="min-w-0">
               <h3 className="font-bold text-text-primary flex items-center gap-2 truncate">

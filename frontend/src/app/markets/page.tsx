@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, BarChart3, Bitcoin, Building2, Search } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import { fetchAssets, type ApiAsset } from '@/lib/api';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { cn } from '@/lib/utils';
@@ -114,12 +115,12 @@ export default function MarketsPage() {
             <Link key={asset.id} href={`/markets/${encodeURIComponent(asset.symbol)}`}>
               <GlassCard hoverEffect className="flex items-center gap-4 cursor-pointer group">
                 <div className={cn(
-                  'w-10 h-10 rounded-lg border flex items-center justify-center font-bold font-mono text-sm flex-shrink-0 group-hover:border-accent-primary/40 transition-colors',
+                  'w-10 h-10 rounded-lg border flex items-center justify-center font-bold font-mono text-sm flex-shrink-0 overflow-hidden group-hover:border-accent-primary/40 transition-colors',
                   isStock
                     ? 'bg-purple-500/10 border-purple-500/30 text-purple-400'
                     : 'bg-bg-tertiary border-border-subtle text-accent-primary'
                 )}>
-                  {asset.symbol.slice(0, 2)}
+                  <CoinIcon symbol={asset.symbol} assetType={asset.asset_type} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="font-bold text-text-primary text-sm flex items-center gap-1.5">
