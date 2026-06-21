@@ -133,7 +133,11 @@ function parseRSS(xml: string, sourceName: string, limit = 8): NewsItem[] {
     if (!title || !link) continue;
 
     items.push({
-      id: `${sourceName}-${Buffer.from(link).toString('base64').slice(0, 16)}`,
+      // Full link encoded (not truncated) — most articles from the same RSS
+      // source share an identical URL prefix ("https://www...."), so slicing
+      // the first N base64 chars collided across different articles and
+      // produced duplicate React keys.
+      id: `${sourceName}-${Buffer.from(link).toString('base64url')}`,
       title,
       source: sourceName,
       url: link,

@@ -107,7 +107,15 @@ async def list_signals(
 
     def _to_resp(s: Signal) -> SignalResponse:
         d = SignalResponse.model_validate(s)
-        d.outcome = s.performance.outcome.value if s.performance else "active"
+        perf = s.performance
+        d.outcome = perf.outcome.value if perf else "active"
+        if perf:
+            d.hit_tp1 = perf.hit_tp1
+            d.hit_tp2 = perf.hit_tp2
+            d.hit_tp3 = perf.hit_tp3
+            d.tp1_hit_at = perf.tp1_hit_at
+            d.tp2_hit_at = perf.tp2_hit_at
+            d.tp3_hit_at = perf.tp3_hit_at
         return d
 
     return SignalListResponse(
@@ -131,6 +139,9 @@ def _hist_to_resp(s: Signal) -> SignalResponse:
         d.hit_tp1 = perf.hit_tp1
         d.hit_tp2 = perf.hit_tp2
         d.hit_tp3 = perf.hit_tp3
+        d.tp1_hit_at = perf.tp1_hit_at
+        d.tp2_hit_at = perf.tp2_hit_at
+        d.tp3_hit_at = perf.tp3_hit_at
         d.closed_at = perf.closed_at
     return d
 
@@ -220,71 +231,98 @@ async def signal_history_stats(
     """
     Aggregate stats over closed signals: win/TP/SL rates, profit factor,
     best/worst signal. Powers the summary cards on the Signal History page.
+
+    Computed entirely in SQL (COUNT/SUM/AVG + ORDER BY ... LIMIT 1) instead of
+    hydrating every SignalPerformance+Signal+Asset row into Python and
+    looping — with thousands of resolved signals that previously took 6+
+    seconds and could exceed the frontend's request timeout, silently
+    presenting as "no history" even though the data existed.
     """
-    query = (
-        select(SignalPerformance)
-        .join(Signal)
-        .join(Asset)
-        .options(joinedload(SignalPerformance.signal).joinedload(Signal.asset))
+    from sqlalchemy import case
+
+    def _filters(q):
+        if market is not None:
+            q = q.where(Asset.asset_type == market)
+        if date_from is not None:
+            q = q.where(Signal.generated_at >= date_from)
+        if date_to is not None:
+            q = q.where(Signal.generated_at <= date_to)
+        return q
+
+    agg_query = _filters(
+        select(
+            func.count().label("total"),
+            func.sum(case((SignalPerformance.outcome == SignalOutcome.WIN, 1), else_=0)).label("win"),
+            func.sum(case((SignalPerformance.outcome == SignalOutcome.LOSS, 1), else_=0)).label("loss"),
+            func.sum(case((SignalPerformance.outcome == SignalOutcome.BREAKEVEN, 1), else_=0)).label("breakeven"),
+            func.sum(case((SignalPerformance.outcome == SignalOutcome.EXPIRED, 1), else_=0)).label("expired"),
+            func.sum(case((SignalPerformance.outcome == SignalOutcome.INVALIDATED, 1), else_=0)).label("invalidated"),
+            func.sum(case((SignalPerformance.outcome == SignalOutcome.ACTIVE, 1), else_=0)).label("active"),
+            func.sum(case(
+                (((SignalPerformance.hit_tp1 == True) | (SignalPerformance.hit_tp2 == True) | (SignalPerformance.hit_tp3 == True)), 1),
+                else_=0,
+            )).label("tp_hits"),
+            func.avg(SignalPerformance.actual_return).label("avg_return"),
+            func.sum(case((SignalPerformance.actual_return > 0, SignalPerformance.actual_return), else_=0)).label("gross_profit"),
+            func.sum(case((SignalPerformance.actual_return < 0, SignalPerformance.actual_return), else_=0)).label("gross_loss_neg"),
+        )
+        .select_from(SignalPerformance)
+        .join(Signal, SignalPerformance.signal_id == Signal.id)
+        .join(Asset, Signal.asset_id == Asset.id)
     )
-    if market is not None:
-        query = query.where(Asset.asset_type == market)
-    if date_from is not None:
-        query = query.where(Signal.generated_at >= date_from)
-    if date_to is not None:
-        query = query.where(Signal.generated_at <= date_to)
+    row = (await db.execute(agg_query)).one()
 
-    result = await db.execute(query)
-    perfs = result.scalars().all()
-
-    if not perfs:
+    total = row.total or 0
+    if total == 0:
         return SignalHistoryStats()
 
-    total = len(perfs)
-    win = sum(1 for p in perfs if p.outcome == SignalOutcome.WIN)
-    loss = sum(1 for p in perfs if p.outcome == SignalOutcome.LOSS)
-    breakeven = sum(1 for p in perfs if p.outcome == SignalOutcome.BREAKEVEN)
-    expired = sum(1 for p in perfs if p.outcome == SignalOutcome.EXPIRED)
-    active = sum(1 for p in perfs if p.outcome == SignalOutcome.ACTIVE)
+    win = row.win or 0
+    loss = row.loss or 0
+    breakeven = row.breakeven or 0
+    expired = row.expired or 0
+    invalidated = row.invalidated or 0
+    active = row.active or 0
+    closed = total - active
     resolved = win + loss + breakeven
 
     win_rate = round(win / resolved * 100, 2) if resolved > 0 else 0.0
-    tp_hits = sum(1 for p in perfs if p.hit_tp1 or p.hit_tp2 or p.hit_tp3)
-    tp_hit_rate = round(tp_hits / resolved * 100, 2) if resolved > 0 else 0.0
+    tp_hit_rate = round((row.tp_hits or 0) / resolved * 100, 2) if resolved > 0 else 0.0
     sl_rate = round(loss / resolved * 100, 2) if resolved > 0 else 0.0
+    avg_return = round(float(row.avg_return), 4) if row.avg_return is not None else None
 
-    returns = [float(p.actual_return) for p in perfs if p.actual_return is not None]
-    avg_return = round(sum(returns) / len(returns), 4) if returns else None
-
-    gross_profit = sum(r for r in returns if r > 0)
-    gross_loss = abs(sum(r for r in returns if r < 0))
+    gross_profit = float(row.gross_profit or 0)
+    gross_loss = abs(float(row.gross_loss_neg or 0))
     profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else None
 
-    closed = [p for p in perfs if p.actual_return is not None]
-    best_signal = None
-    worst_signal = None
-    if closed:
-        best = max(closed, key=lambda p: float(p.actual_return))
-        worst = min(closed, key=lambda p: float(p.actual_return))
-        best_signal = {
-            "symbol": best.signal.asset.symbol,
-            "return": round(float(best.actual_return), 2),
-            "outcome": best.outcome.value,
-            "closed_at": best.closed_at.isoformat() if best.closed_at else None,
+    best_base = _filters(
+        select(SignalPerformance, Asset.symbol)
+        .select_from(SignalPerformance)
+        .join(Signal, SignalPerformance.signal_id == Signal.id)
+        .join(Asset, Signal.asset_id == Asset.id)
+        .where(SignalPerformance.actual_return.isnot(None))
+    )
+
+    def _to_dict(perf: SignalPerformance, symbol: str) -> Dict[str, Any]:
+        return {
+            "symbol": symbol,
+            "return": round(float(perf.actual_return), 2),
+            "outcome": perf.outcome.value,
+            "closed_at": perf.closed_at.isoformat() if perf.closed_at else None,
         }
-        worst_signal = {
-            "symbol": worst.signal.asset.symbol,
-            "return": round(float(worst.actual_return), 2),
-            "outcome": worst.outcome.value,
-            "closed_at": worst.closed_at.isoformat() if worst.closed_at else None,
-        }
+
+    best_row = (await db.execute(best_base.order_by(SignalPerformance.actual_return.desc()).limit(1))).first()
+    worst_row = (await db.execute(best_base.order_by(SignalPerformance.actual_return.asc()).limit(1))).first()
+    best_signal = _to_dict(best_row[0], best_row[1]) if best_row else None
+    worst_signal = _to_dict(worst_row[0], worst_row[1]) if worst_row else None
 
     return SignalHistoryStats(
         total_signals=total,
+        closed_count=closed,
         win_count=win,
         loss_count=loss,
         breakeven_count=breakeven,
         expired_count=expired,
+        invalidated_count=invalidated,
         active_count=active,
         win_rate=win_rate,
         tp_hit_rate=tp_hit_rate,

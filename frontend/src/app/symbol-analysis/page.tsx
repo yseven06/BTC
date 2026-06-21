@@ -5,9 +5,8 @@ import { BarChart3, TrendingUp, TrendingDown, Search } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { LockedOverlay } from '@/components/ui/LockedOverlay';
 import { useTierLimits } from '@/hooks/useTierLimits';
+import { fetchSymbolAnalysis } from '@/lib/api';
 import { cn } from '@/lib/utils';
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 interface SymbolData {
   symbol: string; name: string; asset_type: string;
@@ -19,14 +18,15 @@ interface SymbolData {
 interface AnalysisData { symbols: SymbolData[]; total_symbols: number; }
 
 function QualityBar({ score }: { score: number }) {
-  const color = score >= 8 ? 'bg-bullish' : score >= 6 ? 'bg-yellow-400' : score >= 4 ? 'bg-orange-400' : 'bg-bearish';
-  const text  = score >= 8 ? 'text-bullish' : score >= 6 ? 'text-yellow-400' : score >= 4 ? 'text-orange-400' : 'text-bearish';
+  const safeScore = Number.isFinite(Number(score)) ? Number(score) : 0;
+  const color = safeScore >= 8 ? 'bg-bullish' : safeScore >= 6 ? 'bg-yellow-400' : safeScore >= 4 ? 'bg-orange-400' : 'bg-bearish';
+  const text  = safeScore >= 8 ? 'text-bullish' : safeScore >= 6 ? 'text-yellow-400' : safeScore >= 4 ? 'text-orange-400' : 'text-bearish';
   return (
     <div className="flex items-center gap-2">
       <div className="w-16 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-        <div className={cn('h-full rounded-full', color)} style={{ width: `${score * 10}%` }} />
+        <div className={cn('h-full rounded-full', color)} style={{ width: `${safeScore * 10}%` }} />
       </div>
-      <span className={cn('text-xs font-bold font-mono', text)}>{score.toFixed(1)}/10</span>
+      <span className={cn('text-xs font-bold font-mono', text)}>{safeScore.toFixed(1)}/10</span>
     </div>
   );
 }
@@ -74,8 +74,7 @@ export default function SymbolAnalysisPage() {
   const isLocked = !limits.can_view_symbol_analysis;
 
   useEffect(() => {
-    fetch(`${API}/api/v1/analytics/symbol-analysis`)
-      .then((r) => r.json())
+    fetchSymbolAnalysis()
       .then(setData)
       .catch(() => {})
       .finally(() => setLoading(false));

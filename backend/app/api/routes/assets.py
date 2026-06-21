@@ -30,7 +30,7 @@ async def list_assets(
     market: Optional[str] = Query(None, description="Filter by market (binance, bist, etc.)."),
     is_active: Optional[bool] = Query(None, description="Filter by active status."),
     page: int = Query(1, ge=1, description="Page number."),
-    page_size: int = Query(20, ge=1, le=100, description="Items per page."),
+    page_size: int = Query(20, ge=1, le=200, description="Items per page."),
     db: AsyncSession = Depends(get_db),
 ) -> AssetListResponse:
     """

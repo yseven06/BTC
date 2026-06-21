@@ -42,6 +42,7 @@ _JOB_LABELS: Dict[str, str] = {
     "signals_15m": "15 Dakikalık Sinyal Üretimi",
     "signals_1d": "Günlük Sinyal Üretimi",
     "perf_tracking": "Performans Takibi",
+    "price_alerts": "Fiyat Alarmları Kontrolü",
     "startup_check": "Başlangıç Kontrolü",
 }
 _JOB_STATUS: Dict[str, Dict[str, Any]] = {}
@@ -106,6 +107,10 @@ async def _job_perf_tracking() -> None:
     await _run_tracked("perf_tracking", _run_performance_tracking())
 
 
+async def _job_price_alerts() -> None:
+    await _run_tracked("price_alerts", _check_price_alerts())
+
+
 async def trigger_job_now(job_id: str) -> bool:
     """
     Fire a job immediately in the background (admin "Şimdi Çalıştır" button).
@@ -119,6 +124,8 @@ async def trigger_job_now(job_id: str) -> bool:
         "signals_15m": _run_all_signals(timeframe="15m"),
         "signals_1d": _run_all_signals(timeframe="1d"),
         "perf_tracking": _run_performance_tracking(),
+        "price_alerts": _check_price_alerts(),
+        "startup_check": _startup_generate_if_empty(),
     }
     coro = job_map.get(job_id)
     if coro is None:
@@ -184,12 +191,25 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 return
 
             now = datetime.now(timezone.utc)
+            new_direction = DIR_MAP.get(decision["direction"], Direction.NEUTRAL)
+            new_type = SIG_TYPE_MAP.get(decision["signal_type"], SignalType.HOLD)
+            new_is_actionable = new_type != SignalType.HOLD
 
-            # Deactivate old signals for this asset+timeframe. A fresh signal
-            # supersedes the old trade plan, so its performance must be closed
-            # here too — otherwise it stays "ACTIVE" forever since the tracker
-            # only scans is_active=True signals (this caused thousands of
-            # zombie "active" signals inflating the dashboard count).
+            # A regen cycle should NOT blindly replace a still-running trade
+            # idea every time the clock ticks — a 15m signal realistically
+            # can't reach TP in 15 minutes, so wiping it every cycle just
+            # because a fresh scan ran is meaningless churn. Instead:
+            #   - thesis still consistent (same direction, or the new scan is
+            #     merely HOLD/unclear) → leave the existing signal exactly as
+            #     is, don't create a new one;
+            #   - genuine reversal (old was bullish, new scan is a real
+            #     actionable bearish call, or vice versa) → close the old one
+            #     with a real, explainable outcome (INVALIDATED) and let the
+            #     new opposite-direction signal start fresh;
+            #   - old was HOLD (no real position to defend) → always replace;
+            #   - old already resolved by the live tracker (TP/SL/breakeven/
+            #     real 48h expiry) before this cycle ran → just deactivate,
+            #     it's already real history.
             old_res = await db.execute(
                 select(Signal)
                 .where(Signal.asset_id == asset.id)
@@ -197,13 +217,46 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 .where(Signal.is_active == True)
                 .options(joinedload(Signal.performance))
             )
+            skip_new_signal = False
+            last_close = float(df["close"].iloc[-1]) if len(df) > 0 else None
+
             for old in old_res.unique().scalars().all():
-                old.is_active = False
                 old_perf = old.performance
-                if old_perf and old_perf.outcome == SignalOutcome.ACTIVE:
-                    old_perf.outcome = SignalOutcome.EXPIRED
-                    old_perf.is_expired = True
+                if not (old_perf and old_perf.outcome == SignalOutcome.ACTIVE):
+                    old.is_active = False
+                    continue
+
+                if old.direction == Direction.NEUTRAL:
+                    await db.delete(old)
+                    continue
+
+                is_reversal = new_is_actionable and (
+                    (old.direction == Direction.BULLISH and new_direction == Direction.BEARISH)
+                    or (old.direction == Direction.BEARISH and new_direction == Direction.BULLISH)
+                )
+
+                if is_reversal:
+                    old.is_active = False
+                    old_perf.outcome = SignalOutcome.INVALIDATED
                     old_perf.closed_at = now
+                    if last_close is not None and old.entry_zone_low and old.entry_zone_high:
+                        entry = float(old.entry_zone_high + old.entry_zone_low) / 2.0
+                        if entry > 0:
+                            ret = (
+                                (last_close - entry) / entry
+                                if old.direction == Direction.BULLISH
+                                else (entry - last_close) / entry
+                            )
+                            old_perf.actual_return = round(ret * 100.0, 4)
+                    logger.info("[Scheduler] %s %s signal INVALIDATED by reversal.", symbol, timeframe)
+                else:
+                    skip_new_signal = True
+
+            if skip_new_signal:
+                await db.commit()
+                logger.info("[Scheduler] %s %s signal confirmed consistent — no change.", symbol, timeframe)
+                return
+
             new_sig = Signal(
                 asset_id=asset.id,
                 signal_type=SIG_TYPE_MAP.get(decision["signal_type"], SignalType.HOLD),
@@ -277,6 +330,92 @@ async def _run_performance_tracking() -> Dict[str, Any]:
         summary = await track_and_resolve_active_signals(db)
         logger.info("[Scheduler] Performance sweep: %s", summary)
         return summary
+
+
+async def _check_price_alerts() -> Dict[str, Any]:
+    """Evaluate every active PRICE alert against the asset's current price.
+
+    Previously alerts could be created via the UI but nothing ever checked
+    them — they just sat "Aktif" forever with no way to actually fire. This
+    fetches one ticker per distinct asset (not per-alert) to stay cheap,
+    fires (deactivates + Telegram-notifies) any alert whose target crosses,
+    and leaves signal/custom alert types untouched (not implemented yet).
+    """
+    from app.models.alert import Alert, AlertType
+    from app.notifications.telegram import send_telegram_message
+    from app.notifications.service import get_or_create_settings
+
+    checked = 0
+    triggered = 0
+    binance = BinanceCollector()
+    yahoo = YahooCollector()
+    try:
+        async with async_session_factory() as db:
+            res = await db.execute(
+                select(Alert)
+                .join(Asset, Alert.asset_id == Asset.id)
+                .options(joinedload(Alert.asset))
+                .where(Alert.is_active == True)
+                .where(Alert.alert_type == AlertType.PRICE)
+            )
+            alerts = res.unique().scalars().all()
+            if not alerts:
+                return {"checked": 0, "triggered": 0}
+
+            price_cache: Dict[str, float] = {}
+            settings = await get_or_create_settings(db)
+
+            for alert in alerts:
+                asset = alert.asset
+                if asset is None:
+                    continue
+                checked += 1
+                symbol = asset.symbol
+                if symbol not in price_cache:
+                    try:
+                        if asset.asset_type.value == "stock" or symbol.upper().endswith(".IS"):
+                            ticker = await yahoo.fetch_ticker(symbol)
+                        else:
+                            ticker = await binance.fetch_ticker(symbol)
+                        price_cache[symbol] = float(ticker.get("current_price", 0) or 0)
+                    except Exception as exc:
+                        logger.warning("[Alerts] Ticker fetch failed for %s: %s", symbol, exc)
+                        continue
+
+                price = price_cache.get(symbol, 0)
+                if price <= 0:
+                    continue
+
+                direction = (alert.conditions or {}).get("direction")
+                target = (alert.conditions or {}).get("target_price")
+                if target is None:
+                    continue
+                target = float(target)
+
+                fired = (direction == "above" and price >= target) or (direction == "below" and price <= target)
+                if not fired:
+                    continue
+
+                alert.is_active = False
+                alert.triggered_at = datetime.now(timezone.utc)
+                triggered += 1
+
+                if settings.telegram_enabled and settings.telegram_bot_token and settings.telegram_chat_id:
+                    arrow = "≥" if direction == "above" else "≤"
+                    text = (
+                        f"🔔 <b>Alarm Tetiklendi</b>\n"
+                        f"{symbol}: fiyat {arrow} {target:,.4f} hedefine ulaştı\n"
+                        f"Anlık fiyat: {price:,.4f}"
+                    )
+                    await send_telegram_message(settings.telegram_bot_token, settings.telegram_chat_id, text)
+
+            await db.commit()
+    finally:
+        await binance.close()
+        await yahoo.close()
+
+    logger.info("[Scheduler] Price alerts: checked=%d triggered=%d", checked, triggered)
+    return {"checked": checked, "triggered": triggered}
 
 
 async def _startup_generate_if_empty() -> None:
@@ -391,6 +530,15 @@ def start_scheduler() -> AsyncIOScheduler:
         id="perf_tracking",
         replace_existing=True,
         name="Performance tracking sweep",
+    )
+
+    # Price alerts: check every minute so a fired alert notifies promptly
+    _scheduler.add_job(
+        _job_price_alerts,
+        CronTrigger(minute="*"),
+        id="price_alerts",
+        replace_existing=True,
+        name="Price alert check",
     )
 
     # Run startup check as a one-time job 5 seconds after start

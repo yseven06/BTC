@@ -56,6 +56,9 @@ class SignalResponse(BaseModel):
     hit_tp1: bool = False
     hit_tp2: bool = False
     hit_tp3: bool = False
+    tp1_hit_at: Optional[datetime] = None
+    tp2_hit_at: Optional[datetime] = None
+    tp3_hit_at: Optional[datetime] = None
     closed_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
@@ -102,6 +105,9 @@ class SignalPerformanceResponse(BaseModel):
     hit_tp1: bool = False
     hit_tp2: bool = False
     hit_tp3: bool = False
+    tp1_hit_at: Optional[datetime] = None
+    tp2_hit_at: Optional[datetime] = None
+    tp3_hit_at: Optional[datetime] = None
     closed_at: Optional[datetime] = None
     is_expired: bool = False
 
@@ -147,11 +153,13 @@ class SignalPerformanceSummary(BaseModel):
 class SignalHistoryStats(BaseModel):
     """Summary statistics for the Signal History panel (closed signals only)."""
 
-    total_signals: int = 0
+    total_signals: int = 0  # all signals matching filters, including still-active ones
+    closed_count: int = 0   # total_signals - active_count — matches the table below, which only ever lists closed signals
     win_count: int = 0
     loss_count: int = 0
     breakeven_count: int = 0
     expired_count: int = 0
+    invalidated_count: int = 0
     active_count: int = 0
     win_rate: float = 0.0
     tp_hit_rate: float = 0.0       # any of TP1/TP2/TP3 hit

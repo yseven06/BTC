@@ -57,6 +57,7 @@ class SignalOutcome(str, enum.Enum):
     BREAKEVEN = "breakeven"
     ACTIVE = "active"
     EXPIRED = "expired"
+    INVALIDATED = "invalidated"  # superseded by a genuine reversal signal before TP/SL/expiry
 
 
 class Signal(Base):
@@ -189,6 +190,13 @@ class SignalPerformance(Base):
     hit_tp1 = Column(Boolean, nullable=False, default=False)
     hit_tp2 = Column(Boolean, nullable=False, default=False)
     hit_tp3 = Column(Boolean, nullable=False, default=False)
+    # Exact moment each target was crossed — distinct from closed_at, which
+    # marks full resolution (e.g. TP1 hits but the position stays open at
+    # breakeven until TP2/TP3 or a later stop-out closes it; closed_at would
+    # then be much later than the actual TP1 hit).
+    tp1_hit_at = Column(DateTime(timezone=True), nullable=True)
+    tp2_hit_at = Column(DateTime(timezone=True), nullable=True)
+    tp3_hit_at = Column(DateTime(timezone=True), nullable=True)
     closed_at = Column(DateTime(timezone=True), nullable=True)
     is_expired = Column(Boolean, nullable=False, default=False)
 

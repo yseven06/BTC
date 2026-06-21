@@ -13,13 +13,14 @@ type CategoryFilter = 'all' | 'crypto' | 'stock';
 export default function MarketsPage() {
   const [assets, setAssets] = useState<ApiAsset[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<CategoryFilter>('all');
   const [query, setQuery] = useState('');
 
   useEffect(() => {
     fetchAssets({ page_size: 200 })
-      .then((res) => setAssets(res.items))
-      .catch(() => {})
+      .then((res) => { setAssets(res.items); setError(null); })
+      .catch((e: any) => setError(e?.message ?? 'Varlıklar yüklenemedi.'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -97,6 +98,11 @@ export default function MarketsPage() {
       </div>
 
       {loading && <p className="text-text-muted text-sm">Yükleniyor...</p>}
+      {error && (
+        <div className="text-sm text-bearish bg-bearish/10 border border-bearish/20 rounded-xl px-4 py-3">
+          {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((asset) => {

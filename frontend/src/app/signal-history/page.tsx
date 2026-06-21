@@ -26,7 +26,8 @@ const OUTCOME_LABEL: Record<string, string> = {
   win: 'TP — Kazandı',
   loss: 'Stop Oldu',
   breakeven: 'Başabaş',
-  expired: 'Süresi Doldu',
+  expired: 'Süresi Doldu (48sa)',
+  invalidated: 'İptal Edildi (Tersine Sinyal)',
   active: 'Hâlâ Aktif',
 };
 
@@ -35,6 +36,7 @@ const OUTCOME_COLOR: Record<string, string> = {
   loss: 'text-bearish bg-bearish/10 border-bearish/20',
   breakeven: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
   expired: 'text-text-muted bg-bg-tertiary border-border-subtle',
+  invalidated: 'text-orange-400 bg-orange-400/10 border-orange-400/20',
   active: 'text-accent-primary bg-accent-primary/10 border-accent-primary/20',
 };
 
@@ -48,13 +50,32 @@ function outcomeDetail(s: ApiSignal): string {
   return OUTCOME_LABEL[s.outcome ?? 'active'] ?? s.outcome ?? '-';
 }
 
-function timeToOutcome(s: ApiSignal): string {
-  if (!s.closed_at) return '-';
-  const ms = new Date(s.closed_at).getTime() - new Date(s.generated_at).getTime();
+function formatDuration(ms: number): string {
   if (ms <= 0) return '-';
+  const minutes = ms / 60000;
+  if (minutes < 60) return `${Math.round(minutes)} dk`;
   const hours = ms / 3600000;
   if (hours < 24) return `${hours.toFixed(1)} saat`;
   return `${(hours / 24).toFixed(1)} gün`;
+}
+
+function timeToOutcome(s: ApiSignal): string {
+  if (!s.closed_at) return '-';
+  const ms = new Date(s.closed_at).getTime() - new Date(s.generated_at).getTime();
+  return formatDuration(ms);
+}
+
+/** Per-target "sinyal verildikten kaç dakika/saat sonra TP geldi" breakdown.
+ * Distinct from timeToOutcome() — closed_at marks full resolution, which for
+ * a scaled exit (TP1 hit, then rides to TP2/TP3/SL) lands well after TP1
+ * actually triggered. Each tpN_hit_at is the real moment that target crossed. */
+function tpTimings(s: ApiSignal): { label: string; ms: number }[] {
+  const gen = new Date(s.generated_at).getTime();
+  const out: { label: string; ms: number }[] = [];
+  if (s.tp1_hit_at) out.push({ label: 'TP1', ms: new Date(s.tp1_hit_at).getTime() - gen });
+  if (s.tp2_hit_at) out.push({ label: 'TP2', ms: new Date(s.tp2_hit_at).getTime() - gen });
+  if (s.tp3_hit_at) out.push({ label: 'TP3', ms: new Date(s.tp3_hit_at).getTime() - gen });
+  return out;
 }
 
 const TIME_PERIODS = [
@@ -64,7 +85,7 @@ const TIME_PERIODS = [
   { id: '90d', label: '90 Gün', days: 90 },
 ] as const;
 
-const PIE_COLORS = { win: '#10B981', loss: '#EF4444', breakeven: '#F59E0B', expired: '#64748b' };
+const PIE_COLORS = { win: '#10B981', loss: '#EF4444', breakeven: '#F59E0B', expired: '#64748b', invalidated: '#FB923C' };
 
 export default function SignalHistoryPage() {
   const [loading, setLoading] = useState(true);
@@ -76,7 +97,7 @@ export default function SignalHistoryPage() {
 
   // Filters
   const [market, setMarket] = useState<'all' | 'crypto' | 'stock'>('all');
-  const [outcome, setOutcome] = useState<'all' | 'win' | 'loss' | 'breakeven' | 'expired'>('all');
+  const [outcome, setOutcome] = useState<'all' | 'win' | 'loss' | 'breakeven' | 'expired' | 'invalidated'>('all');
   const [signalType, setSignalType] = useState<'all' | string>('all');
   const [period, setPeriod] = useState<typeof TIME_PERIODS[number]['id']>('all');
   const [minConfidence, setMinConfidence] = useState(0);
@@ -89,41 +110,50 @@ export default function SignalHistoryPage() {
     return d.toISOString();
   })();
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const filters: SignalHistoryFilters = {
-        only_resolved: true,
-        page,
-        page_size: pageSize,
-        min_confidence: minConfidence > 0 ? minConfidence : undefined,
-        date_from: dateFrom,
-      };
-      if (market !== 'all') filters.market = market;
-      if (outcome !== 'all') filters.outcome = outcome;
-      if (signalType !== 'all') filters.signal_type = signalType;
-
-      const [histRes, statsRes] = await Promise.all([
-        fetchSignalHistory(filters),
-        fetchSignalHistoryStats({
-          market: market !== 'all' ? market : undefined,
-          date_from: dateFrom,
-        }),
-      ]);
-      setSignals(histRes.items);
-      setTotal(histRes.total);
-      setStats(statsRes);
-    } catch {
-      setSignals([]);
-      setTotal(0);
-      setStats(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    // Guards against React's dev-mode double-effect-invoke (and any other
+    // overlapping request): without this, an earlier in-flight request that
+    // resolves AFTER a newer one can overwrite good data with a stale/empty
+    // result — exactly what caused data to flash and then disappear.
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      try {
+        const filters: SignalHistoryFilters = {
+          only_resolved: true,
+          page,
+          page_size: pageSize,
+          min_confidence: minConfidence > 0 ? minConfidence : undefined,
+          date_from: dateFrom,
+        };
+        if (market !== 'all') filters.market = market;
+        if (outcome !== 'all') filters.outcome = outcome;
+        if (signalType !== 'all') filters.signal_type = signalType;
+
+        const [histRes, statsRes] = await Promise.all([
+          fetchSignalHistory(filters),
+          fetchSignalHistoryStats({
+            market: market !== 'all' ? market : undefined,
+            date_from: dateFrom,
+          }),
+        ]);
+        if (cancelled) return;
+        setSignals(histRes.items);
+        setTotal(histRes.total);
+        setStats(statsRes);
+      } catch {
+        if (cancelled) return;
+        setSignals([]);
+        setTotal(0);
+        setStats(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
     load();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [market, outcome, signalType, period, minConfidence, page]);
 
@@ -133,6 +163,7 @@ export default function SignalHistoryPage() {
         { name: 'Stop Oldu', value: stats.loss_count, key: 'loss' },
         { name: 'Başabaş', value: stats.breakeven_count, key: 'breakeven' },
         { name: 'Süresi Doldu', value: stats.expired_count, key: 'expired' },
+        { name: 'İptal Edildi', value: stats.invalidated_count, key: 'invalidated' },
       ].filter((d) => d.value > 0)
     : [];
 
@@ -142,6 +173,7 @@ export default function SignalHistoryPage() {
         { name: 'SL Olan', value: stats.loss_count, fill: '#EF4444' },
         { name: 'Başabaş', value: stats.breakeven_count, fill: '#F59E0B' },
         { name: 'Süresi Dolan', value: stats.expired_count, fill: '#64748b' },
+        { name: 'İptal Edilen', value: stats.invalidated_count, fill: '#FB923C' },
       ]
     : [];
 
@@ -193,8 +225,8 @@ export default function SignalHistoryPage() {
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
             <GlassCard className="p-4">
-              <span className="text-[10px] font-bold text-text-muted uppercase">Toplam Sinyal</span>
-              <div className="text-2xl font-extrabold font-mono mt-1 text-text-primary">{stats?.total_signals ?? 0}</div>
+              <span className="text-[10px] font-bold text-text-muted uppercase">Toplam Kapanan Sinyal</span>
+              <div className="text-2xl font-extrabold font-mono mt-1 text-text-primary">{stats?.closed_count ?? 0}</div>
             </GlassCard>
             <GlassCard className="p-4">
               <span className="text-[10px] font-bold text-text-muted uppercase">Başarı Oranı</span>
@@ -250,7 +282,8 @@ export default function SignalHistoryPage() {
               <option value="win">TP — Kazandı</option>
               <option value="loss">Stop Oldu</option>
               <option value="breakeven">Başabaş</option>
-              <option value="expired">Süresi Doldu</option>
+              <option value="expired">Süresi Doldu (48sa)</option>
+              <option value="invalidated">İptal Edildi (Tersine Sinyal)</option>
             </select>
 
             <select value={signalType} onChange={(e) => { setSignalType(e.target.value); setPage(1); }}
@@ -387,7 +420,14 @@ export default function SignalHistoryPage() {
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono text-text-primary">{qualityScore(s.confidence_score)}/10</td>
                       <td className="py-2.5 px-3 text-right uppercase text-text-muted">{s.risk_level}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-text-muted">{timeToOutcome(s)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-text-muted">
+                        <div>{timeToOutcome(s)}</div>
+                        {tpTimings(s).length > 0 && (
+                          <div className="text-[10px] text-bullish/80 normal-case font-sans">
+                            {tpTimings(s).map((t) => `${t.label}: ${formatDuration(t.ms)}`).join(' · ')}
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

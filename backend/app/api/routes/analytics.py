@@ -117,7 +117,7 @@ async def strategy_lab(
             "breakeven": c["breakeven"],
             "win_rate": _win_rate(c["wins"], c["resolved"]),
             "avg_confidence": round(
-                sum(p.signal.confidence_score for p in items) / len(items), 1
+                sum(float(p.signal.confidence_score) for p in items) / len(items), 1
             ) if items else 0.0,
         })
 
@@ -134,7 +134,7 @@ async def strategy_lab(
             "breakeven": c["breakeven"],
             "win_rate": _win_rate(c["wins"], c["resolved"]),
             "avg_confidence": round(
-                sum(p.signal.confidence_score for p in items) / len(items), 1
+                sum(float(p.signal.confidence_score) for p in items) / len(items), 1
             ) if items else 0.0,
         })
 
@@ -147,7 +147,7 @@ async def strategy_lab(
             "wins": c["wins"],
             "win_rate": _win_rate(c["wins"], c["resolved"]),
             "avg_confidence": round(
-                sum(p.signal.confidence_score for p in items) / len(items), 1
+                sum(float(p.signal.confidence_score) for p in items) / len(items), 1
             ) if items else 0.0,
         })
 
@@ -244,7 +244,10 @@ async def symbol_analysis(
     symbols_out = []
     for sym, d in by_symbol.items():
         resolved = d["wins"] + d["losses"] + d["breakeven"]
-        avg_conf = round(sum(d["confidences"]) / len(d["confidences"]), 1) if d["confidences"] else 0.0
+        # confidence_score is a Numeric/Decimal DB column — cast to float before
+        # arithmetic, otherwise the result is a Decimal that FastAPI serializes
+        # as a JSON string ("6.1") instead of a number, breaking frontend math.
+        avg_conf = round(sum(float(c) for c in d["confidences"]) / len(d["confidences"]), 1) if d["confidences"] else 0.0
         symbols_out.append({
             "symbol": sym,
             "name": d["name"],

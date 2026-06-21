@@ -5,9 +5,8 @@ import { FlaskConical, Clock, Calendar, TrendingUp, Shield } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard';
 import { LockedOverlay } from '@/components/ui/LockedOverlay';
 import { useTierLimits } from '@/hooks/useTierLimits';
+import { fetchStrategyLab } from '@/lib/api';
 import { cn } from '@/lib/utils';
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 interface HourData {
   hour: number; label: string; total: number;
@@ -170,8 +169,7 @@ export default function StrategyLabPage() {
   const isLocked = !limits.can_view_strategy_lab;
 
   useEffect(() => {
-    fetch(`${API}/api/v1/analytics/strategy-lab`)
-      .then((r) => r.json())
+    fetchStrategyLab()
       .then(setData)
       .catch(() => {})
       .finally(() => setLoading(false));

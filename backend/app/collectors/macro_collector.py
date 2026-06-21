@@ -172,20 +172,40 @@ class MacroCollector:
 
     async def fetch_kap_disclosures(self, limit: int = 15) -> List[Dict[str, Any]]:
         """
-        Latest KAP material disclosures (RSS feed). Returns title, link, pubdate.
+        Latest KAP material disclosures. KAP relaunched their site as a
+        Next.js app — the old GET /tr/api/anasayfa-disclosures endpoint is
+        gone; the real one is this POST search endpoint (memberTypes IGS =
+        listed companies, DDK = independent audit firms — both needed to
+        match what the KAP website itself shows on its homepage feed).
         """
         try:
-            r = await self.client.get("https://www.kap.org.tr/tr/api/anasayfa-disclosures")
+            # Query a 2-day window, not just "today" — KAP's own notion of
+            # "today" runs on Turkey-local time, and comparing strictly
+            # against our UTC "today" string can miss everything near
+            # midnight in either direction.
+            today = datetime.utcnow()
+            yesterday = today - timedelta(days=1)
+            r = await self.client.post(
+                "https://www.kap.org.tr/tr/api/disclosure/list/main",
+                json={
+                    "fromDate": yesterday.strftime("%d.%m.%Y"),
+                    "toDate": today.strftime("%d.%m.%Y"),
+                    "memberTypes": ["IGS", "DDK"],
+                },
+                headers={"User-Agent": "Mozilla/5.0"},
+            )
             r.raise_for_status()
             data = r.json()
             items = []
-            for d in data[:limit] if isinstance(data, list) else []:
+            for d in (data if isinstance(data, list) else [])[:limit]:
+                basic = d.get("disclosureBasic") or {}
+                disclosure_id = basic.get("disclosureId")
                 items.append({
-                    "title":      d.get("baslik") or d.get("title"),
-                    "company":    d.get("sirket") or d.get("companyName"),
-                    "published":  d.get("yayinTarihi") or d.get("publishDate"),
-                    "category":   d.get("kategori"),
-                    "url":        f"https://www.kap.org.tr{d.get('url')}" if d.get("url") else None,
+                    "title":     basic.get("title"),
+                    "company":   basic.get("companyTitle"),
+                    "published": basic.get("publishDate"),
+                    "category":  basic.get("disclosureCategory"),
+                    "url":       f"https://www.kap.org.tr/tr/Bildirim/{disclosure_id}" if disclosure_id else None,
                 })
             return items
         except Exception as exc:

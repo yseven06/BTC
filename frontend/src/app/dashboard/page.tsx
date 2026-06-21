@@ -14,7 +14,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { SignalBadge } from '@/components/ui/SignalBadge';
 import { ScoreRing } from '@/components/ui/ScoreRing';
 import {
-  fetchActiveSignals, fetchPerformanceSummary,
+  fetchActiveSignals, fetchPerformanceSummary, fetchSignalHistoryStats,
   fetchGlobalMarket, fetchFearGreed, fetchTopGainers,
   buildMarketCapChart,
   type ApiSignal, type PerformanceSummary, type GlobalMarketData,
@@ -83,6 +83,19 @@ export default function DashboardPage() {
   const [chartData, setChartData] = useState<MarketCapPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // CoinGecko's free API rate-limits (503) under repeated calls — when that
+  // happens we keep showing the last successfully fetched values (if any)
+  // instead of wiping them, and surface a clear message instead of leaving
+  // the cards stuck on "—" / "Yükleniyor..." forever with no explanation.
+  const [globalError, setGlobalError] = useState(false);
+  const [gainersError, setGainersError] = useState(false);
+  // Actual count of actionable (non-HOLD) active signals — matches what
+  // Sinyal Merkezi shows by default ("SADECE AL/SAT"), unlike perf.active_count
+  // which includes HOLD and so reads much higher than what's really tradeable.
+  const [actionableActiveCount, setActionableActiveCount] = useState(0);
+  // Closed trades within the selected 24s/7g/30g window — replaces the old
+  // "Toplam Sinyal" (all-time, ignored the period selector entirely).
+  const [periodClosedCount, setPeriodClosedCount] = useState(0);
 
   const signalSymbols = signals.slice(0, 6).map((s) => s.asset?.symbol ?? '').filter(Boolean);
   const livePrices = useLivePrices(signalSymbols);
@@ -93,33 +106,54 @@ export default function DashboardPage() {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
 
-    const [signalsRes, perfRes, globalRes, fngRes, gainersRes] = await Promise.allSettled([
+    const periodHours = timeRange === '24s' ? 24 : timeRange === '7g' ? 24 * 7 : 24 * 30;
+    const dateFrom = new Date(Date.now() - periodHours * 3600_000).toISOString();
+
+    const [signalsRes, actionableRes, perfRes, periodRes, globalRes, fngRes, gainersRes] = await Promise.allSettled([
       fetchActiveSignals({ page_size: 100 }),
+      fetchActiveSignals({ only_actionable: true, page_size: 1 }),
       fetchPerformanceSummary(),
+      fetchSignalHistoryStats({ date_from: dateFrom }),
       fetchGlobalMarket(),
       fetchFearGreed(),
       fetchTopGainers(5),
     ]);
 
     if (signalsRes.status === 'fulfilled') setSignals(signalsRes.value.items);
+    if (actionableRes.status === 'fulfilled') setActionableActiveCount(actionableRes.value.total);
     if (perfRes.status === 'fulfilled') setPerf(perfRes.value);
+    if (periodRes.status === 'fulfilled') setPeriodClosedCount(periodRes.value.closed_count);
     if (globalRes.status === 'fulfilled') {
       const g = globalRes.value;
       setGlobal(g);
       setChartData(buildMarketCapChart(g.total_market_cap_usd, g.market_cap_change_24h));
+      setGlobalError(false);
+    } else {
+      setGlobalError(true);
     }
     if (fngRes.status === 'fulfilled') setFng(fngRes.value);
-    if (gainersRes.status === 'fulfilled') setGainers(gainersRes.value);
+    if (gainersRes.status === 'fulfilled') {
+      setGainers(gainersRes.value);
+      setGainersError(false);
+    } else {
+      setGainersError(true);
+    }
 
     setLoading(false);
     setRefreshing(false);
-  }, []);
+  }, [timeRange]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    // Signal counts churn continuously in the background (scheduler regen +
+    // live TP/SL/reversal resolution every few minutes) — without this the
+    // stat cards go stale within minutes of opening the page.
+    const id = setInterval(() => load(true), 30_000);
+    return () => clearInterval(id);
+  }, [load]);
 
   // Derived stats
-  const totalSignals = perf?.total_signals ?? 0;
-  const activeCount = perf?.active_count ?? 0;
+  const activeCount = actionableActiveCount;
   const winRate = perf?.win_rate ?? 0;
   const avgReturn = perf?.average_return ?? 0;
   const fngValue = fng?.value ?? 50;
@@ -220,13 +254,13 @@ export default function DashboardPage() {
 
       {/* ── 5 Stat Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        {/* Total Signals */}
+        {/* Closed trades within selected period */}
         <GlassCard className="flex items-center justify-between p-4">
           <div>
-            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Toplam Sinyal</span>
-            <h3 className="text-3xl font-bold font-mono mt-1 text-text-primary">{totalSignals}</h3>
+            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Bu Dönemde Kapanan İşlem</span>
+            <h3 className="text-3xl font-bold font-mono mt-1 text-text-primary">{periodClosedCount}</h3>
             <span className="text-[10px] text-text-muted font-semibold mt-1 block">
-              tüm zamanlar
+              {timeRange === '24s' ? 'son 24 saat' : timeRange === '7g' ? 'son 7 gün' : 'son 30 gün'}
             </span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
@@ -240,7 +274,7 @@ export default function DashboardPage() {
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Aktif Sinyaller</span>
             <h3 className="text-3xl font-bold font-mono mt-1 text-text-primary">{activeCount}</h3>
             <span className="text-[10px] text-text-muted font-semibold mt-1 block">
-              %{totalSignals > 0 ? Math.round((activeCount / totalSignals) * 100) : 0} şu anda
+              şu an işlem fırsatı (AL/SAT)
             </span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-accent-primary/10 border border-accent-primary/20 flex items-center justify-center">
@@ -328,6 +362,12 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {globalError && (
+              <p className="text-[11px] text-orange-400 bg-orange-400/10 border border-orange-400/20 rounded-lg px-3 py-2 mb-3">
+                Piyasa verisi şu an alınamıyor (kaynak geçici olarak sınırlandırıyor — CoinGecko rate limit).
+                {global ? ' Aşağıda son bilinen değerler gösteriliyor.' : ' 30 saniye içinde otomatik tekrar denenecek.'}
+              </p>
+            )}
             {/* Market stats row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
               <div>
@@ -548,7 +588,9 @@ export default function DashboardPage() {
               <span className="text-[10px] text-text-muted bg-bg-secondary px-2 py-0.5 rounded">24 Saat</span>
             </div>
             {gainers.length === 0 ? (
-              <p className="text-xs text-text-muted text-center py-4">Yükleniyor...</p>
+              <p className="text-xs text-text-muted text-center py-4">
+                {gainersError ? 'Veri şu an alınamıyor (kaynak sınırlandı) — otomatik tekrar denenecek.' : 'Yükleniyor...'}
+              </p>
             ) : (
               <div className="space-y-2">
                 {gainers.map((coin) => (

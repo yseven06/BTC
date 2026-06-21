@@ -126,10 +126,18 @@ export default function AdminPage() {
 function OverviewTab() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setBusy(true);
-    try { setStats(await fetchAdminStats()); } finally { setBusy(false); }
+    setError(null);
+    try {
+      setStats(await fetchAdminStats());
+    } catch (e: any) {
+      setError(e?.message ?? 'İstatistikler yüklenemedi.');
+    } finally {
+      setBusy(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -141,6 +149,16 @@ function OverviewTab() {
           <RefreshCw className={cn('w-3.5 h-3.5', busy && 'animate-spin')} /> Yenile
         </button>
       </div>
+      {busy && !stats && (
+        <div className="flex justify-center py-16">
+          <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+      {error && (
+        <div className="text-sm text-bearish bg-bearish/10 border border-bearish/20 rounded-xl px-4 py-3">
+          {error}
+        </div>
+      )}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard label="Toplam Kullanıcı" value={stats.total_users.toString()} icon={Users} accent="bg-accent-primary/15 text-accent-primary" />
@@ -637,6 +655,8 @@ function SystemTab() {
     try {
       await triggerAdminJob(jobId);
       setTimeout(load, 2000);
+    } catch (e: any) {
+      alert(e?.message ?? 'İş tetiklenemedi.');
     } finally {
       setTimeout(() => setTriggering(null), 2000);
     }

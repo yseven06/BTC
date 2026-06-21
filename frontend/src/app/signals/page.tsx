@@ -162,6 +162,7 @@ function OutcomeBadge({ outcome }: { outcome: string }) {
     loss:      { label: 'PATLADI ✗', cls: 'bg-bearish/15 text-bearish border-bearish/30' },
     breakeven: { label: 'BERABERE',  cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
     expired:   { label: 'GEÇERSİZ',  cls: 'bg-text-muted/15 text-text-muted border-text-muted/30' },
+    invalidated: { label: 'İPTAL EDİLDİ', cls: 'bg-orange-400/15 text-orange-400 border-orange-400/30' },
   };
   const c = config[outcome] ?? config.active;
   return (
@@ -783,7 +784,7 @@ function LevelCard({ label, value, color }: { label: string; value: number | nul
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-type TfFilter = 'all' | '1h' | '4h' | '1d';
+type TfFilter = 'all' | '15m' | '1h' | '4h' | '1d';
 type DirFilter = 'all' | 'long' | 'short';
 
 export default function SignalsPage() {
@@ -836,14 +837,8 @@ export default function SignalsPage() {
       arr = Array.from(bestPerSymbol.values());
     }
 
-    // 3) Sıralama: kalite skoru DESC → TF önceliği DESC → sembol ASC
-    arr.sort((a, b) => {
-      if (b.confidence_score !== a.confidence_score) return b.confidence_score - a.confidence_score;
-      const pa = TF_PRIORITY[(a.timeframe ?? '').toLowerCase()] ?? 0;
-      const pb = TF_PRIORITY[(b.timeframe ?? '').toLowerCase()] ?? 0;
-      if (pb !== pa) return pb - pa;
-      return (a.asset?.symbol ?? '').localeCompare(b.asset?.symbol ?? '');
-    });
+    // 3) Sıralama: en yeni sinyal en üstte (ÜRETİLDİ zamanına göre DESC)
+    arr.sort((a, b) => new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime());
 
     return arr;
   })();
@@ -961,7 +956,7 @@ export default function SignalsPage() {
 
       {/* Timeframe filter */}
       <div className="flex items-center gap-1 p-1 bg-bg-secondary border border-border-subtle rounded-xl w-fit">
-        {(['all', '1h', '4h', '1d'] as TfFilter[]).map((tf) => {
+        {(['all', '15m', '1h', '4h', '1d'] as TfFilter[]).map((tf) => {
           // Count respects the minQuality filter so the badge matches what user sees
           const qualified = signals.filter((s) => qualityScore(s.confidence_score) >= minQuality);
           const cnt = tf === 'all' ? qualified.length : qualified.filter((s) => s.timeframe?.toLowerCase() === tf).length;

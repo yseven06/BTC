@@ -160,7 +160,10 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
             hit_tp1 = False
             hit_tp2 = False
             hit_tp3 = False
-            
+            tp1_hit_at = None
+            tp2_hit_at = None
+            tp3_hit_at = None
+
             closed_at = None
 
             def _aware(ts: Any) -> Any:
@@ -226,21 +229,24 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 elif tp_hit:
                     if tp1_triggered:
                         hit_tp1 = True
+                        tp1_hit_at = _aware(bar_time)
                         portion = 0.50
                         ret_tp1 = ((tp1 - entry) / entry) if signal.direction.value == "bullish" else ((entry - tp1) / entry)
                         realized_pnl_capital += portion * ret_tp1
                         remaining_share -= portion
                         current_sl = entry
-                        
+
                     if tp2_triggered and remaining_share > 0:
                         hit_tp2 = True
+                        tp2_hit_at = _aware(bar_time)
                         portion = min(0.30, remaining_share)
                         ret_tp2 = ((tp2 - entry) / entry) if signal.direction.value == "bullish" else ((entry - tp2) / entry)
                         realized_pnl_capital += portion * ret_tp2
                         remaining_share -= portion
-                        
+
                     if tp3_triggered and remaining_share > 0:
                         hit_tp3 = True
+                        tp3_hit_at = _aware(bar_time)
                         portion = remaining_share
                         ret_tp3 = ((tp3 - entry) / entry) if signal.direction.value == "bullish" else ((entry - tp3) / entry)
                         realized_pnl_capital += portion * ret_tp3
@@ -294,6 +300,9 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 perf.hit_tp1 = hit_tp1
                 perf.hit_tp2 = hit_tp2
                 perf.hit_tp3 = hit_tp3
+                perf.tp1_hit_at = tp1_hit_at
+                perf.tp2_hit_at = tp2_hit_at
+                perf.tp3_hit_at = tp3_hit_at
                 perf.closed_at = closed_at
                 perf.is_expired = is_expired_flag
 
@@ -307,10 +316,19 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 })
                 logger.info(f"Signal {signal.id} ({symbol}) resolved as {outcome.value} (PnL: {pnl_pct:.2f}%, Expired: {is_expired_flag})")
             else:
-                # Update partial target hits
+                # Update partial target hits — TP1/TP2 can trigger while the
+                # position is still open (scaled out, riding to TP3/SL), so
+                # record their hit times now rather than waiting for the
+                # eventual full close.
                 perf.hit_tp1 = hit_tp1
                 perf.hit_tp2 = hit_tp2
                 perf.hit_tp3 = hit_tp3
+                if tp1_hit_at:
+                    perf.tp1_hit_at = tp1_hit_at
+                if tp2_hit_at:
+                    perf.tp2_hit_at = tp2_hit_at
+                if tp3_hit_at:
+                    perf.tp3_hit_at = tp3_hit_at
                 perf.max_drawdown = max(0.0, max_drawdown)
 
         # Commit DB updates

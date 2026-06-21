@@ -40,8 +40,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Hard timeout so we never get stuck in spinner if backend hangs
-    const timeoutId = setTimeout(() => setLoading(false), 4000);
+    // If there's no token at all, we already know the answer — don't wait.
+    // If a token DOES exist, the user must stay "logged in" (loading=true)
+    // until refresh() actually resolves, however long that takes — forcing
+    // loading=false early via a short fixed timer caused false "you got
+    // logged out" redirects whenever /auth/me was merely slow (cold backend,
+    // brief network hiccup), even though the token in storage was still
+    // perfectly valid. apiFetch's own 8s abort + tryRefreshToken already
+    // bound how long this can take; this is just a generous last-resort
+    // safety net so a truly hung backend can't freeze the UI forever.
+    const timeoutId = setTimeout(() => setLoading(false), 20000);
     refresh().finally(() => {
       clearTimeout(timeoutId);
       setLoading(false);

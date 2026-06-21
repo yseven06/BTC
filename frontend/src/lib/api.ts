@@ -162,12 +162,15 @@ export interface ApiSignal {
   generated_at: string;
   expires_at?: string;
   is_active: boolean;
-  outcome?: 'active' | 'win' | 'loss' | 'breakeven' | 'expired';
+  outcome?: 'active' | 'win' | 'loss' | 'breakeven' | 'expired' | 'invalidated';
   actual_return?: number | null;
   max_drawdown?: number | null;
   hit_tp1?: boolean;
   hit_tp2?: boolean;
   hit_tp3?: boolean;
+  tp1_hit_at?: string | null;
+  tp2_hit_at?: string | null;
+  tp3_hit_at?: string | null;
   closed_at?: string | null;
 }
 
@@ -228,7 +231,7 @@ export interface SignalHistoryFilters {
   asset_id?: string;
   market?: 'crypto' | 'stock';
   signal_type?: string;
-  outcome?: 'active' | 'win' | 'loss' | 'breakeven' | 'expired';
+  outcome?: 'active' | 'win' | 'loss' | 'breakeven' | 'expired' | 'invalidated';
   min_confidence?: number;
   max_confidence?: number;
   date_from?: string;
@@ -257,10 +260,12 @@ export async function fetchSignalHistory(params?: SignalHistoryFilters): Promise
 
 export interface SignalHistoryStats {
   total_signals: number;
+  closed_count: number;
   win_count: number;
   loss_count: number;
   breakeven_count: number;
   expired_count: number;
+  invalidated_count: number;
   active_count: number;
   win_rate: number;
   tp_hit_rate: number;
@@ -758,6 +763,33 @@ export interface AdminUserRow {
 }
 export async function fetchAdminStats(): Promise<AdminStats> {
   return apiFetch<AdminStats>('/api/v1/admin/stats');
+}
+
+export interface SymbolAnalysisData {
+  symbols: Array<{
+    symbol: string; name: string; asset_type: string;
+    total: number; wins: number; losses: number; breakeven: number; active: number;
+    win_rate: number; avg_confidence: number; quality_score: number;
+    directions: Record<string, number>;
+    htf_types: Record<string, number>;
+  }>;
+  total_symbols: number;
+  locked?: boolean;
+}
+export async function fetchSymbolAnalysis(): Promise<SymbolAnalysisData> {
+  return apiFetch<SymbolAnalysisData>('/api/v1/analytics/symbol-analysis');
+}
+
+export interface StrategyLabData {
+  by_hour: Array<{ hour: number; label: string; total: number; wins: number; losses: number; win_rate: number; avg_confidence: number }>;
+  by_day: Array<{ day: number; label: string; total: number; wins: number; losses: number; win_rate: number; avg_confidence: number }>;
+  by_direction: Array<{ direction: string; total: number; wins: number; win_rate: number; avg_confidence: number }>;
+  by_risk: Array<{ risk_level: string; total: number; wins: number; win_rate: number }>;
+  total_signals: number;
+  locked?: boolean;
+}
+export async function fetchStrategyLab(): Promise<StrategyLabData> {
+  return apiFetch<StrategyLabData>('/api/v1/analytics/strategy-lab');
 }
 export async function fetchAdminUsers(
   page = 1, page_size = 50, q?: string,
