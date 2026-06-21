@@ -135,13 +135,33 @@ function stripMd(raw: string): string {
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
+type BiasLabelConfig = Record<'bullish' | 'bearish' | 'neutral', { label: string; bg: string; text: string; border: string }>;
+
+const DIRECTIONAL_LABELS: BiasLabelConfig = {
+  bullish: { label: 'AL',    bg: 'bg-bullish/10',   text: 'text-bullish',   border: 'border-bullish/30   hover:border-bullish/60' },
+  bearish: { label: 'SAT',   bg: 'bg-bearish/10',   text: 'text-bearish',   border: 'border-bearish/30   hover:border-bearish/60' },
+  neutral: { label: 'BEKLE', bg: 'bg-bg-tertiary',  text: 'text-text-muted',border: 'border-border-subtle hover:border-border-medium' },
+};
+
+// Risk Yönetimi motoru yön tahmin etmiyor — skoru "bu kurulum ne kadar
+// güvenli" ölçüyor (yüksek skor = düşük risk). Backend bunu diğer
+// motorlarla aynı AL/SAT/BEKLE şemasından geçiriyor, bu da "SAT" rozetini
+// "SHORT'u destekliyorum" gibi okutup kullanıcıyı yanıltıyordu — gerçekte
+// "bu işlem riskli, dikkatli ol" diyor. Ayrı bir kelime seti kullanarak bu
+// karışıklığı ortadan kaldırıyoruz.
+const RISK_SAFETY_LABELS: BiasLabelConfig = {
+  bullish: { label: 'GÜVENLİ', bg: 'bg-bullish/10',   text: 'text-bullish',   border: 'border-bullish/30   hover:border-bullish/60' },
+  bearish: { label: 'RİSKLİ',  bg: 'bg-bearish/10',   text: 'text-bearish',   border: 'border-bearish/30   hover:border-bearish/60' },
+  neutral: { label: 'ORTA',    bg: 'bg-bg-tertiary',  text: 'text-text-muted',border: 'border-border-subtle hover:border-border-medium' },
+};
+
+function engineBiasLabels(engineName: string): BiasLabelConfig {
+  return engineName === 'risk_management' ? RISK_SAFETY_LABELS : DIRECTIONAL_LABELS;
+}
+
 /** Engine card — horizontal compact layout, score + bias, click for full detail */
 function EngineCard({ engine, onClick, compact }: { engine: EngineRow; onClick: () => void; compact?: boolean }) {
-  const biasConfig = {
-    bullish: { label: 'AL',    bg: 'bg-bullish/10',   text: 'text-bullish',   border: 'border-bullish/30   hover:border-bullish/60' },
-    bearish: { label: 'SAT',   bg: 'bg-bearish/10',   text: 'text-bearish',   border: 'border-bearish/30   hover:border-bearish/60' },
-    neutral: { label: 'BEKLE', bg: 'bg-bg-tertiary',  text: 'text-text-muted',border: 'border-border-subtle hover:border-border-medium' },
-  }[engine.bias];
+  const biasConfig = (engineBiasLabels(engine.name))[engine.bias];
 
   return (
     <button
@@ -230,9 +250,13 @@ function EngineDetailModal({ engine, symbol, timeframe, onClose }: {
             <p className="text-2xl font-extrabold font-mono text-text-primary">{engine.score.toFixed(1)}<span className="text-sm text-text-muted">/100</span></p>
           </div>
           <div className="bg-bg-secondary/60 rounded-xl p-3 border border-border-subtle text-center">
-            <p className="text-[10px] text-text-muted uppercase font-bold mb-1">Yön</p>
+            <p className="text-[10px] text-text-muted uppercase font-bold mb-1">
+              {engine.name === 'risk_management' ? 'Güvenlik' : 'Yön'}
+            </p>
             <p className={cn('text-lg font-extrabold uppercase', biasColor)}>
-              {engine.bias === 'bullish' ? 'ALIM' : engine.bias === 'bearish' ? 'SATIM' : 'NÖTR'}
+              {engine.name === 'risk_management'
+                ? (engine.bias === 'bullish' ? 'GÜVENLİ' : engine.bias === 'bearish' ? 'RİSKLİ' : 'ORTA')
+                : (engine.bias === 'bullish' ? 'ALIM' : engine.bias === 'bearish' ? 'SATIM' : 'NÖTR')}
             </p>
           </div>
         </div>
