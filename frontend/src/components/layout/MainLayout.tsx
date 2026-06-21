@@ -6,9 +6,13 @@ import Header from "./Header";
 
 interface MainLayoutProps {
   children: React.ReactNode;
+  /** Chart-heavy pages (e.g. markets/[symbol]) need the full viewport width
+   * to lay a chart out beside a sidebar — the usual 1280px reading-width
+   * cap leaves a large empty gutter on either side on wide monitors. */
+  fullWidth?: boolean;
 }
 
-export default function MainLayout({ children }: MainLayoutProps) {
+export default function MainLayout({ children, fullWidth = false }: MainLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
@@ -25,7 +29,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
         {/* Scrollable Content Container */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
-          <div className="max-w-7xl mx-auto w-full">
+          <div className={fullWidth ? 'w-full' : 'max-w-7xl mx-auto w-full'}>
             {children}
           </div>
         </main>

@@ -41,5 +41,6 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
     return null;
   }
 
-  return <MainLayout>{children}</MainLayout>;
+  const fullWidth = pathname.startsWith('/markets/');
+  return <MainLayout fullWidth={fullWidth}>{children}</MainLayout>;
 }

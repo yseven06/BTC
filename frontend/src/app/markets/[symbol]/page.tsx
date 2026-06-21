@@ -302,7 +302,7 @@ export default function AssetDetailPage() {
       >
       <div
         className={cn(
-          'w-full lg:flex-[0_0_62%] lg:min-w-0 lg:h-full',
+          'w-full lg:flex-1 lg:min-w-0 lg:h-full',
           manualFullscreen && 'fixed inset-0 z-50 bg-bg-primary p-4 overflow-y-auto'
         )}
       >
@@ -437,7 +437,7 @@ export default function AssetDetailPage() {
            internally if its own content (mostly engine scores + AI
            explanation) runs longer than that — the page itself never has
            to scroll to see everything. ─── */}
-      <div className="w-full lg:flex-1 lg:min-w-0 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+      <div className="w-full lg:w-[460px] lg:flex-shrink-0 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-1">
         {loading ? (
           <GlassCard className="flex justify-center py-16">
             <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
