@@ -81,7 +81,7 @@ export default function AssetDetailPage() {
   const [candles, setCandles] = useState<ChartCandle[]>([]);
   const [chartMode, setChartMode] = useState<'overlay' | 'tradingview'>('overlay');
   const [loading, setLoading] = useState(true);
-  const [chartHeight, setChartHeight] = useState(520);
+  const [chartHeight, setChartHeight] = useState(640);
   // CSS-only overlay rather than the native Fullscreen API — some
   // environments (corporate browser policies, embedded iframes) reject
   // requestFullscreen() outright, so a plain fixed-position overlay is the
@@ -91,10 +91,26 @@ export default function AssetDetailPage() {
   const toggleFullscreen = () => setManualFullscreen((v) => !v);
 
   useEffect(() => {
-    const update = () => setChartHeight(manualFullscreen ? window.innerHeight - 170 : 520);
+    const update = () => setChartHeight(manualFullscreen ? window.innerHeight - 170 : 640);
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
+  }, [manualFullscreen]);
+
+  // The sidebar (signal hero + trade plan + engine scores + AI explanation)
+  // sits beside the chart on desktop. Its max-height is pinned to the
+  // chart card's actual rendered height so the two columns end exactly
+  // together — without this the sidebar's natural content height rarely
+  // matches the chart's, leaving either a ragged bottom edge or forcing
+  // the whole page to scroll past the fold.
+  const chartCardRef = React.useRef<HTMLDivElement>(null);
+  const [chartCardHeight, setChartCardHeight] = useState<number | null>(null);
+  useEffect(() => {
+    if (!chartCardRef.current || manualFullscreen) return;
+    const el = chartCardRef.current;
+    const observer = new ResizeObserver(() => setChartCardHeight(el.offsetHeight));
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [manualFullscreen]);
 
   useEffect(() => {
@@ -263,9 +279,15 @@ export default function AssetDetailPage() {
         </div>
       )}
 
-      {/* ─── Chart: full width, premium ─── */}
+      {/* ─── Chart (left) + Signal sidebar (right) — both visible without
+           scrolling on a normal desktop viewport ─── */}
+      <div className="flex flex-col lg:flex-row gap-5 items-start">
       <div
-        className={cn(manualFullscreen && 'fixed inset-0 z-50 bg-bg-primary p-4 overflow-y-auto')}
+        ref={chartCardRef}
+        className={cn(
+          'w-full lg:flex-[0_0_62%] lg:min-w-0',
+          manualFullscreen && 'fixed inset-0 z-50 bg-bg-primary p-4 overflow-y-auto'
+        )}
       >
       <GlassCard className="p-0 overflow-hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-border-subtle flex-wrap">
@@ -391,19 +413,28 @@ export default function AssetDetailPage() {
       </GlassCard>
       </div>
 
-      {/* ─── Signal Analytics: full width, below chart ─── */}
-      {loading ? (
-        <GlassCard className="flex justify-center py-16">
-          <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
-        </GlassCard>
-      ) : signal ? (
-        <SignalDetailSection signal={signal} />
-      ) : (
-        <GlassCard className="text-center py-12">
-          <p className="text-sm text-text-muted">Bu varlık için aktif sinyal yok.</p>
-          <p className="text-xs text-text-muted mt-2">Grafik yine de canlı görüntüleniyor.</p>
-        </GlassCard>
-      )}
+      {/* ─── Signal sidebar: pinned to the chart card's height on desktop,
+           scrolls internally if its own content (mostly engine scores + AI
+           explanation) runs longer than the chart — the page itself never
+           has to scroll to see everything. ─── */}
+      <div
+        className="w-full lg:flex-1 lg:min-w-0 lg:overflow-y-auto lg:pr-1"
+        style={!manualFullscreen && chartCardHeight ? { maxHeight: chartCardHeight } : undefined}
+      >
+        {loading ? (
+          <GlassCard className="flex justify-center py-16">
+            <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+          </GlassCard>
+        ) : signal ? (
+          <SignalDetailSection signal={signal} compact />
+        ) : (
+          <GlassCard className="text-center py-12">
+            <p className="text-sm text-text-muted">Bu varlık için aktif sinyal yok.</p>
+            <p className="text-xs text-text-muted mt-2">Grafik yine de canlı görüntüleniyor.</p>
+          </GlassCard>
+        )}
+      </div>
+      </div>
     </div>
   );
 }

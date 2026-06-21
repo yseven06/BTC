@@ -136,7 +136,7 @@ function stripMd(raw: string): string {
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
 /** Engine card — horizontal compact layout, score + bias, click for full detail */
-function EngineCard({ engine, onClick }: { engine: EngineRow; onClick: () => void }) {
+function EngineCard({ engine, onClick, compact }: { engine: EngineRow; onClick: () => void; compact?: boolean }) {
   const biasConfig = {
     bullish: { label: 'AL',    bg: 'bg-bullish/10',   text: 'text-bullish',   border: 'border-bullish/30   hover:border-bullish/60' },
     bearish: { label: 'SAT',   bg: 'bg-bearish/10',   text: 'text-bearish',   border: 'border-bearish/30   hover:border-bearish/60' },
@@ -148,25 +148,32 @@ function EngineCard({ engine, onClick }: { engine: EngineRow; onClick: () => voi
       onClick={onClick}
       title={`${engine.label} — Detayları görmek için tıkla`}
       className={cn(
-        'group relative bg-bg-secondary/40 rounded-2xl p-4',
+        'group relative bg-bg-secondary/40 rounded-2xl',
         'border transition-all duration-200',
         'hover:bg-bg-secondary/60 hover:shadow-glow-sm',
         biasConfig.border,
-        'text-left w-full'
+        'text-left w-full',
+        compact ? 'p-2.5' : 'p-4'
       )}
     >
       {/* Info icon top-right (only visible on hover) */}
-      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-60 transition-opacity">
-        <Info className="w-3.5 h-3.5 text-text-muted" />
-      </div>
+      {!compact && (
+        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-60 transition-opacity">
+          <Info className="w-3.5 h-3.5 text-text-muted" />
+        </div>
+      )}
 
       {/* Engine label + bias chip */}
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <span className="text-[11px] font-bold text-text-primary uppercase tracking-wide leading-tight line-clamp-2 flex-1">
+      <div className={cn('flex items-center justify-between gap-1.5', compact ? 'mb-1.5' : 'mb-3')}>
+        <span className={cn(
+          'font-bold text-text-primary uppercase tracking-wide leading-tight line-clamp-2 flex-1',
+          compact ? 'text-[9px]' : 'text-[11px]'
+        )}>
           {engine.label}
         </span>
         <span className={cn(
-          'flex-shrink-0 text-[10px] font-extrabold px-2 py-0.5 rounded',
+          'flex-shrink-0 font-extrabold rounded',
+          compact ? 'text-[8px] px-1.5 py-0.5' : 'text-[10px] px-2 py-0.5',
           biasConfig.bg, biasConfig.text
         )}>
           {biasConfig.label}
@@ -175,7 +182,7 @@ function EngineCard({ engine, onClick }: { engine: EngineRow; onClick: () => voi
 
       {/* Score ring centered */}
       <div className="flex items-center justify-center py-1">
-        <ScoreRing score={engine.score} size={70} strokeWidth={6} />
+        <ScoreRing score={engine.score} size={compact ? 46 : 70} strokeWidth={compact ? 4 : 6} />
       </div>
     </button>
   );
@@ -410,9 +417,13 @@ function buildTabs(raw: string | null | undefined): ExplanationTabs {
 
 interface SignalDetailSectionProps {
   signal: ApiSignal;
+  /** Narrow vertical-sidebar layout (stacked sections, no side-by-side grid)
+   * for placement next to a chart, instead of the default wide layout used
+   * in the signals-list drawer. */
+  compact?: boolean;
 }
 
-export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal }) => {
+export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal, compact = false }) => {
   const [openEngine, setOpenEngine]   = useState<EngineRow | null>(null);
   const [activeTab, setActiveTab]     = useState<keyof ExplanationTabs>('summary');
 
@@ -447,54 +458,60 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
   }, [signal.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="space-y-6">
-      {/* ─── 1. Hero — full width, premium ────────────────────────────── */}
-      <GlassCard className="p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+    <div className={compact ? 'space-y-4' : 'space-y-6'}>
+      {/* ─── 1. Hero — wide: side-by-side; compact: stacked for a narrow sidebar ─── */}
+      <GlassCard className={compact ? 'p-4' : 'p-6'}>
+        <div className={cn(
+          'flex justify-between gap-6',
+          compact ? 'flex-col gap-4' : 'flex-col lg:flex-row lg:items-center'
+        )}>
           {/* Left: Symbol + Direction */}
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 rounded-2xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-base text-accent-primary flex-shrink-0">
+          <div className={cn('flex items-center', compact ? 'gap-3' : 'gap-5')}>
+            <div className={cn(
+              'rounded-2xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-accent-primary flex-shrink-0',
+              compact ? 'w-11 h-11 text-sm' : 'w-16 h-16 text-base'
+            )}>
               {signal.asset?.symbol.slice(0, 2)}
             </div>
             <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-2xl font-extrabold text-text-primary">{signal.asset?.symbol}</span>
-                <span className="text-[10px] font-bold text-accent-primary bg-accent-primary/10 border border-accent-primary/30 px-2 py-0.5 rounded uppercase">
+              <div className="flex items-center gap-2 mb-1">
+                <span className={cn('font-extrabold text-text-primary', compact ? 'text-base' : 'text-2xl')}>{signal.asset?.symbol}</span>
+                <span className="text-[9px] font-bold text-accent-primary bg-accent-primary/10 border border-accent-primary/30 px-1.5 py-0.5 rounded uppercase">
                   {signal.timeframe}
                 </span>
               </div>
-              <div className={cn('flex items-center gap-2 text-3xl font-black tracking-wide', direction.cls)}>
-                <DirIcon className="w-7 h-7" />
+              <div className={cn('flex items-center gap-2 font-black tracking-wide', direction.cls, compact ? 'text-lg' : 'text-3xl')}>
+                <DirIcon className={compact ? 'w-4 h-4' : 'w-7 h-7'} />
                 {direction.label}
               </div>
-              <p className="text-[11px] text-text-muted mt-1.5" title={formatAbsoluteTimeTR(signal.generated_at)}>
-                Üretildi: {formatAbsoluteTimeTR(signal.generated_at)} · {formatRelativeTime(signal.generated_at)}
+              <p className={cn('text-text-muted mt-1', compact ? 'text-[10px]' : 'text-[11px] mt-1.5')} title={formatAbsoluteTimeTR(signal.generated_at)}>
+                Üretildi: {compact ? formatRelativeTime(signal.generated_at) : `${formatAbsoluteTimeTR(signal.generated_at)} · ${formatRelativeTime(signal.generated_at)}`}
               </p>
             </div>
           </div>
 
-          {/* Right: Risk + Scores */}
-          <div className="flex items-center gap-4 flex-wrap">
+          {/* Right (wide) / Below (compact): Risk + Scores */}
+          <div className={cn('flex items-center flex-wrap', compact ? 'gap-3' : 'gap-4')}>
             <RiskBadge level={signal.risk_level} />
-            <div className="flex items-center gap-5 pl-4 border-l border-border-subtle">
+            <div className={cn('flex items-center pl-3 border-l border-border-subtle', compact ? 'gap-3' : 'gap-5 pl-4')}>
               <div className="flex flex-col items-center">
-                <ScoreRing score={signal.confidence_score} size={76} strokeWidth={6} />
-                <span className="text-[10px] text-text-muted mt-1 font-bold uppercase tracking-wider">Güven</span>
+                <ScoreRing score={signal.confidence_score} size={compact ? 50 : 76} strokeWidth={compact ? 4 : 6} />
+                <span className="text-[9px] text-text-muted mt-1 font-bold uppercase tracking-wider">Güven</span>
               </div>
               <div className="flex flex-col items-center">
-                <ScoreRing score={signal.probability_score} size={76} strokeWidth={6} />
-                <span className="text-[10px] text-text-muted mt-1 font-bold uppercase tracking-wider">Olasılık</span>
+                <ScoreRing score={signal.probability_score} size={compact ? 50 : 76} strokeWidth={compact ? 4 : 6} />
+                <span className="text-[9px] text-text-muted mt-1 font-bold uppercase tracking-wider">Olasılık</span>
               </div>
             </div>
           </div>
         </div>
       </GlassCard>
 
-      {/* ─── 2. Side-by-side: Trade Plan (sol) + Engine Scores (sağ) ─── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-6">
+      {/* ─── 2. Trade Plan + Engine Scores — wide: side-by-side; compact: stacked ─── */}
+      <div className={compact ? 'flex flex-col gap-4' : 'grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-6'}>
         {/* Trade Plan column */}
         <div>
-          <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5 mb-3">
+          <h3 className={cn('font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5', compact ? 'text-[10px] mb-2' : 'text-xs mb-3')}>
             <Target className="w-3.5 h-3.5 text-accent-primary" /> İşlem Planı
             {rrRatio !== '—' && (
               <span className="ml-auto flex items-center gap-1.5 text-[10px] text-text-secondary normal-case font-normal">
@@ -513,21 +530,24 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
         {/* Engine Scores column */}
         {engines.length > 0 && (
           <div>
-            <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5 mb-3">
+            <h3 className={cn('font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5', compact ? 'text-[10px] mb-2' : 'text-xs mb-3')}>
               <BarChart3 className="w-3.5 h-3.5 text-accent-primary" /> Motor Skorları
-              <span
-                className="ml-auto text-[10px] text-text-muted normal-case font-normal hidden sm:inline"
-                title="Bu skorlar sinyalin üretildiği tarama anına ait. Yön değişmediği sürece sistem skorları yeniden hesaplamaz — gerçek bir tersine dönüş (reversal) olduğunda otomatik güncellenir."
-              >
-                Skorlar {formatRelativeTime(signal.generated_at)} hesaplandı · Detay için karta tıkla
-              </span>
+              {!compact && (
+                <span
+                  className="ml-auto text-[10px] text-text-muted normal-case font-normal hidden sm:inline"
+                  title="Bu skorlar sinyalin üretildiği tarama anına ait. Yön değişmediği sürece sistem skorları yeniden hesaplamaz — gerçek bir tersine dönüş (reversal) olduğunda otomatik güncellenir."
+                >
+                  Skorlar {formatRelativeTime(signal.generated_at)} hesaplandı · Detay için karta tıkla
+                </span>
+              )}
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className={compact ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 gap-3'}>
               {engines.map((engine) => (
                 <EngineCard
                   key={engine.name}
                   engine={engine}
                   onClick={() => setOpenEngine(engine)}
+                  compact={compact}
                 />
               ))}
             </div>
@@ -535,10 +555,10 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
         )}
       </div>
 
-      {/* ─── 3. AI Explanation (Tabbed, full width) ────────────────────── */}
+      {/* ─── 3. AI Explanation — wide: full width; compact: stacked, scrollable ─── */}
       {availableTabs.length > 0 && (
-        <div>
-          <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5 mb-3">
+        <div className={compact ? 'flex-1 flex flex-col min-h-0' : undefined}>
+          <h3 className={cn('font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5', compact ? 'text-[10px] mb-2' : 'text-xs mb-3')}>
             <FileText className="w-3.5 h-3.5 text-accent-primary" /> AI Açıklaması
           </h3>
 
@@ -548,7 +568,8 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  'px-4 py-2.5 text-xs font-bold whitespace-nowrap transition-all',
+                  'font-bold whitespace-nowrap transition-all',
+                  compact ? 'px-2.5 py-2 text-[10px]' : 'px-4 py-2.5 text-xs',
                   activeTab === tab.key
                     ? 'bg-accent-primary text-white rounded-t-lg'
                     : 'text-text-muted hover:text-text-primary hover:bg-bg-secondary/40'
@@ -559,8 +580,11 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
             ))}
           </div>
 
-          <div className="bg-bg-secondary/30 border border-t-0 border-border-subtle rounded-b-xl p-5 min-h-[140px]">
-            <div className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
+          <div className={cn(
+            'bg-bg-secondary/30 border border-t-0 border-border-subtle rounded-b-xl',
+            compact ? 'p-4 overflow-y-auto' : 'p-5 min-h-[140px]'
+          )}>
+            <div className={cn('text-text-secondary leading-relaxed whitespace-pre-wrap', compact ? 'text-xs' : 'text-sm')}>
               {translateFinding(tabs[activeTab] || 'Bu bölüm için bilgi yok.')}
             </div>
           </div>
