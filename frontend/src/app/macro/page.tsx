@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Globe, DollarSign, TrendingUp, Building2, ExternalLink, AlertCircle } from 'lucide-react';
+import { Globe, DollarSign, TrendingUp, Building2, ExternalLink, AlertCircle, Activity } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import {
-  fetchMacroSnapshot, fetchKapDisclosures,
+  fetchMacroSnapshot, fetchKapDisclosures, fetchBybitFunding,
   type MacroSnapshot, type KapDisclosure,
 } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/utils';
+
+const FUNDING_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'] as const;
 
 function MetricCard({
   label, value, sub, accent,
@@ -26,15 +28,20 @@ const num = (v: number | null, dec = 2) => (v == null ? '—' : v.toFixed(dec));
 export default function MacroPage() {
   const [snap, setSnap]   = useState<MacroSnapshot | null>(null);
   const [kap, setKap]     = useState<KapDisclosure[]>([]);
+  const [funding, setFunding] = useState<Record<string, number | null>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       fetchMacroSnapshot().catch(() => null),
       fetchKapDisclosures(15).catch(() => ({ items: [], count: 0 })),
-    ]).then(([m, k]) => {
+      Promise.all(
+        FUNDING_SYMBOLS.map((s) => fetchBybitFunding(s).then((r) => [s, r.funding_rate] as const).catch(() => [s, null] as const))
+      ),
+    ]).then(([m, k, f]) => {
       setSnap(m);
       setKap(k.items);
+      setFunding(Object.fromEntries(f));
     }).finally(() => setLoading(false));
   }, []);
 
@@ -92,6 +99,28 @@ export default function MacroPage() {
           </div>
         </>
       )}
+
+      {/* Funding rates */}
+      <div>
+        <h2 className="text-sm font-bold text-text-primary mb-3 flex items-center gap-2">
+          <Activity className="w-4 h-4 text-accent-primary" /> Vadeli İşlem Funding Oranı (Bybit)
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {FUNDING_SYMBOLS.map((s) => {
+            const rate = funding[s];
+            const pct = rate == null ? null : rate * 100;
+            const accent = pct == null ? 'text-text-primary' : pct > 0 ? 'text-bullish' : pct < 0 ? 'text-bearish' : 'text-text-primary';
+            return (
+              <MetricCard
+                key={s}
+                label={s.replace('USDT', ' / USDT')}
+                value={pct == null ? '—' : `${pct > 0 ? '+' : ''}${pct.toFixed(4)}%`}
+                accent={accent}
+              />
+            );
+          })}
+        </div>
+      </div>
 
       {/* KAP disclosures */}
       <div>

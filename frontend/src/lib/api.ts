@@ -713,6 +713,10 @@ export async function fetchKapDisclosures(limit = 15): Promise<{ items: KapDiscl
   return apiFetch(`/api/v1/macro/kap-disclosures?limit=${limit}`);
 }
 
+export async function fetchBybitFunding(symbol: string): Promise<{ funding_rate: number | null }> {
+  return apiFetch(`/api/v1/macro/bybit-funding/${symbol}`);
+}
+
 // ---------------------------------------------------------------------------
 // OHLCV for charts
 // ---------------------------------------------------------------------------
