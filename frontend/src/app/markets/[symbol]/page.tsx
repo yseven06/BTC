@@ -191,11 +191,31 @@ export default function AssetDetailPage() {
   const priceStatus = (() => {
     if (!live || !signal) return null;
     const p = live.price;
-    if (signal.stop_loss && p <= signal.stop_loss) return { label: 'Stop-Loss altında', color: 'text-bearish' };
-    if (signal.tp2 && p >= signal.tp2) return { label: 'TP2 üzerinde', color: 'text-bullish' };
-    if (signal.tp1 && p >= signal.tp1) return { label: 'TP1 üzerinde', color: 'text-bullish' };
-    if (signal.entry_zone_low && signal.entry_zone_high && p >= signal.entry_zone_low && p <= signal.entry_zone_high)
+    // SHORT sinyalinde SL girişin ÜSTÜNDE, TP'ler girişin ALTINDA olur —
+    // LONG'daki "p <= SL" / "p >= TP" karşılaştırmaları SHORT'ta ters
+    // sonuç verir, bu yüzden yön burada ayrıca kontrol edilmeli.
+    const isShort = signal.direction === 'bearish';
+    const sl = signal.stop_loss, tp1 = signal.tp1, tp2 = signal.tp2;
+    const lo = signal.entry_zone_low, hi = signal.entry_zone_high;
+
+    if (sl != null && (isShort ? p >= sl : p <= sl))
+      return { label: isShort ? 'Stop-Loss üzerinde' : 'Stop-Loss altında', color: 'text-bearish' };
+    if (tp2 != null && (isShort ? p <= tp2 : p >= tp2))
+      return { label: isShort ? 'TP2 altında' : 'TP2 üzerinde', color: 'text-bullish' };
+    if (tp1 != null && (isShort ? p <= tp1 : p >= tp1))
+      return { label: isShort ? 'TP1 altında' : 'TP1 üzerinde', color: 'text-bullish' };
+    if (lo != null && hi != null && p >= lo && p <= hi)
       return { label: 'Giriş bölgesinde', color: 'text-accent-primary' };
+
+    // Fiyat giriş bandının dışında ama henüz TP/SL'e ulaşmadı: hangi
+    // tarafta olduğunu belirt — "Bekliyor" tek başına neyin beklendiğini
+    // söylemiyordu.
+    if (lo != null && hi != null) {
+      const beyondEntry = isShort ? p < lo : p > hi;
+      return beyondEntry
+        ? { label: 'Girişten ileride, TP yolda', color: 'text-bullish' }
+        : { label: 'Giriş seviyesi bekleniyor', color: 'text-text-muted' };
+    }
     return { label: 'Bekliyor', color: 'text-text-muted' };
   })();
 
