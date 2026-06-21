@@ -15,7 +15,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -120,9 +120,19 @@ async def admin_stats(
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(require_admin),
 ) -> AdminStats:
-    total_users  = (await db.execute(select(func.count(User.id)))).scalar_one()
-    active_users = (await db.execute(select(func.count(User.id)).where(User.is_active == True))).scalar_one()
-    admin_count  = (await db.execute(select(func.count(User.id)).where(User.is_admin == True))).scalar_one()
+    # Was 12 sequential round-trips (one COUNT per stat) — under load (e.g.
+    # while the signal-generation sweeps are running) that routinely blew
+    # past apiFetch's 8s abort timeout and showed a false "backend down"
+    # error even though every query eventually succeeded. Collapsed into
+    # one aggregate query per table.
+    user_row = (await db.execute(
+        select(
+            func.count(User.id).label("total"),
+            func.sum(case((User.is_active == True, 1), else_=0)).label("active"),
+            func.sum(case((User.is_admin == True, 1), else_=0)).label("admins"),
+        )
+    )).one()
+    total_users, active_users, admin_count = user_row.total or 0, user_row.active or 0, user_row.admins or 0
 
     paying = (await db.execute(
         select(func.count(Subscription.id))
@@ -130,16 +140,27 @@ async def admin_stats(
         .where(Subscription.status == SubscriptionStatus.ACTIVE)
     )).scalar_one()
 
-    total_signals  = (await db.execute(select(func.count(Signal.id)))).scalar_one()
-    active_signals = (await db.execute(select(func.count(Signal.id)).where(Signal.is_active == True))).scalar_one()
+    signal_row = (await db.execute(
+        select(
+            func.count(Signal.id).label("total"),
+            func.sum(case((Signal.is_active == True, 1), else_=0)).label("active"),
+        )
+    )).one()
+    total_signals, active_signals = signal_row.total or 0, signal_row.active or 0
+
     total_assets = (await db.execute(select(func.count(Asset.id)))).scalar_one()
 
     rev_res = await db.execute(select(func.coalesce(func.sum(Payment.amount), 0)))
     total_revenue = float(rev_res.scalar_one())
 
-    wins   = (await db.execute(select(func.count(SignalPerformance.id)).where(SignalPerformance.outcome == SignalOutcome.WIN))).scalar_one()
-    losses = (await db.execute(select(func.count(SignalPerformance.id)).where(SignalPerformance.outcome == SignalOutcome.LOSS))).scalar_one()
-    be     = (await db.execute(select(func.count(SignalPerformance.id)).where(SignalPerformance.outcome == SignalOutcome.BREAKEVEN))).scalar_one()
+    perf_row = (await db.execute(
+        select(
+            func.sum(case((SignalPerformance.outcome == SignalOutcome.WIN, 1), else_=0)).label("wins"),
+            func.sum(case((SignalPerformance.outcome == SignalOutcome.LOSS, 1), else_=0)).label("losses"),
+            func.sum(case((SignalPerformance.outcome == SignalOutcome.BREAKEVEN, 1), else_=0)).label("be"),
+        )
+    )).one()
+    wins, losses, be = perf_row.wins or 0, perf_row.losses or 0, perf_row.be or 0
     resolved = wins + losses + be
     win_rate = round((wins / resolved * 100), 1) if resolved > 0 else 0.0
 
