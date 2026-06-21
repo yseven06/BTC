@@ -393,12 +393,14 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
 
   const DirIcon = direction.icon;
 
-  // Available tabs (skip empty sections)
+  // Available tabs (skip empty sections). No separate "İşlem Planı" tab —
+  // the AI explanation template only ever produces one combined "Risk
+  // Değerlendirmesi ve İşlem Planı" section, so a dedicated trade-plan tab
+  // would always just duplicate "Risk" verbatim.
   const ALL_TABS: { key: keyof ExplanationTabs; label: string }[] = [
     { key: 'summary',         label: 'Özet' },
     { key: 'marketStructure', label: 'Piyasa Yapısı' },
-    { key: 'risk',            label: 'Risk' },
-    { key: 'tradePlan',       label: 'İşlem Planı' },
+    { key: 'risk',            label: 'Risk & İşlem Planı' },
     { key: 'full',            label: 'Tam AI Analizi' },
   ];
   const availableTabs = ALL_TABS.filter((t) => tabs[t.key]);
