@@ -63,6 +63,42 @@
 }
 
 /* ============================================
+   Global Micro-interactions — every clickable
+   element gets a small "press" + "lift" so the
+   whole app feels responsive, not just the few
+   places that opted into .hover-lift manually.
+   ============================================ */
+@layer base {
+  button:not(:disabled),
+  a {
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+                filter 0.15s ease;
+  }
+
+  button:not(:disabled):active {
+    transform: scale(0.96);
+  }
+
+  /* Links can wrap large card-sized click targets (asset rows, list
+   * items) — a button-strength squeeze there reads as a glitch rather
+   * than a press, so links get a much subtler tap. */
+  a:active {
+    transform: scale(0.985);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    button:not(:disabled),
+    a {
+      transition: none;
+    }
+    button:not(:disabled):active,
+    a:active {
+      transform: none;
+    }
+  }
+}
+
+/* ============================================
    Custom Scrollbar (Dark Theme)
    ============================================ */
 @layer base {
