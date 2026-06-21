@@ -137,9 +137,12 @@ function stripMd(raw: string): string {
 
 type BiasLabelConfig = Record<'bullish' | 'bearish' | 'neutral', { label: string; bg: string; text: string; border: string }>;
 
+// "AL/SAT" reads as a buy/sell call, but this rozet means "this engine
+// agrees with the LONG/SHORT direction" — not "act now". LONG/SHORT
+// names the actual thing being measured.
 const DIRECTIONAL_LABELS: BiasLabelConfig = {
-  bullish: { label: 'AL',    bg: 'bg-bullish/10',   text: 'text-bullish',   border: 'border-bullish/30   hover:border-bullish/60' },
-  bearish: { label: 'SAT',   bg: 'bg-bearish/10',   text: 'text-bearish',   border: 'border-bearish/30   hover:border-bearish/60' },
+  bullish: { label: 'LONG',  bg: 'bg-bullish/10',   text: 'text-bullish',   border: 'border-bullish/30   hover:border-bullish/60' },
+  bearish: { label: 'SHORT', bg: 'bg-bearish/10',   text: 'text-bearish',   border: 'border-bearish/30   hover:border-bearish/60' },
   neutral: { label: 'BEKLE', bg: 'bg-bg-tertiary',  text: 'text-text-muted',border: 'border-border-subtle hover:border-border-medium' },
 };
 
@@ -256,7 +259,7 @@ function EngineDetailModal({ engine, symbol, timeframe, onClose }: {
             <p className={cn('text-lg font-extrabold uppercase', biasColor)}>
               {engine.name === 'risk_management'
                 ? (engine.bias === 'bullish' ? 'GÜVENLİ' : engine.bias === 'bearish' ? 'RİSKLİ' : 'ORTA')
-                : (engine.bias === 'bullish' ? 'ALIM' : engine.bias === 'bearish' ? 'SATIM' : 'NÖTR')}
+                : (engine.bias === 'bullish' ? 'LONG' : engine.bias === 'bearish' ? 'SHORT' : 'NÖTR')}
             </p>
           </div>
         </div>
