@@ -170,8 +170,20 @@ class SMCEngine(BaseEngine):
         key_findings = self._build_findings(smc_res, unmitigated_bullish_ob, unmitigated_bearish_ob, unfilled_bullish_fvg, unfilled_bearish_fvg)
 
         # --- Supporting Data ---
+        # Zone geometry (high/low/index) for chart overlays — previously only
+        # counts were exposed, so the frontend had no coordinates to draw the
+        # actual order block / FVG / breaker boxes on a candle chart.
+        def _zone(z: Any, idx_field: str = "index") -> Dict[str, Any]:
+            return {"high": z.high, "low": z.low, "index": getattr(z, idx_field)}
+
         supporting_data: Dict[str, Any] = {
             "unmitigated_bullish_ob_count": len(unmitigated_bullish_ob),
+            "unmitigated_bullish_ob": [_zone(ob) for ob in unmitigated_bullish_ob[:5]],
+            "unmitigated_bearish_ob": [_zone(ob) for ob in unmitigated_bearish_ob[:5]],
+            "unfilled_bullish_fvg": [_zone(g) for g in unfilled_bullish_fvg[:5]],
+            "unfilled_bearish_fvg": [_zone(g) for g in unfilled_bearish_fvg[:5]],
+            "bullish_breaker_zones": [_zone(b, "breaker_index") for b in bullish_breaker[:5]],
+            "bearish_breaker_zones": [_zone(b, "breaker_index") for b in bearish_breaker[:5]],
             "unmitigated_bearish_ob_count": len(unmitigated_bearish_ob),
             "unfilled_bullish_fvg_count": len(unfilled_bullish_fvg),
             "unfilled_bearish_fvg_count": len(unfilled_bearish_fvg),

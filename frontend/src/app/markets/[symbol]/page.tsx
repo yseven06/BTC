@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, TrendingUp, TrendingDown, Target, Shield, Zap, ExternalLink, Code2, Check } from 'lucide-react';
 import { toTradingViewSymbol } from '@/lib/tradingview';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -68,7 +68,14 @@ function buildPineScript(symbol: string, signal: ApiSignal): string {
 export default function AssetDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const symbol = decodeURIComponent(String(params.symbol ?? '')).toUpperCase();
+  // A symbol can have several concurrently-active signals across timeframes
+  // (e.g. SANDUSDT 15m + 1h + 4h + 1d at once), each with its own entry/SL/TP.
+  // Without this, the page always grabbed whichever one the API happened to
+  // list first — so clicking a specific row's "Grafiği Aç" could silently
+  // show a different timeframe's levels than the one the user actually opened.
+  const requestedTf = searchParams.get('tf');
 
   const [signal, setSignal] = useState<ApiSignal | null>(null);
   const [candles, setCandles] = useState<ChartCandle[]>([]);
@@ -98,13 +105,16 @@ export default function AssetDetailPage() {
         fetchActiveSignals({ page_size: 100 }),
         fetchOhlcv(symbol, chartTimeframe, 200).catch(() => ({ candles: [] as ChartCandle[] })),
       ]);
-      const match = signalsRes.items.find((s) => s.asset?.symbol?.toUpperCase() === symbol);
+      const candidates = signalsRes.items.filter((s) => s.asset?.symbol?.toUpperCase() === symbol);
+      const match = requestedTf
+        ? candidates.find((s) => s.timeframe === requestedTf) ?? candidates[0]
+        : candidates[0];
       setSignal(match ?? null);
       setCandles(ohlcvRes.candles ?? []);
     } finally {
       if (showLoading) setLoading(false);
     }
-  }, [symbol, chartTimeframe]);
+  }, [symbol, chartTimeframe, requestedTf]);
 
   useEffect(() => {
     loadData(true);

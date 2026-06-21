@@ -9,6 +9,15 @@ import {
   Target, TrendingUp, TrendingDown, Activity, ShieldAlert,
   Info, X, Scale, FileText, BarChart3,
 } from 'lucide-react';
+import { EngineMiniChart } from '@/components/charts/EngineMiniChart';
+
+// Engines whose supporting_data carries real chart-able coordinates (S/R
+// levels, premium/discount zones, OB/FVG boxes, pattern indices). The rest
+// (risk, fundamental, on-chain, macro) are purely numeric/textual — forcing
+// a chart on them would be a hollow visual, not an insight.
+const CHART_ENGINES = new Set([
+  'technical_analysis', 'market_structure', 'smart_money_concepts', 'candle_range_theory',
+]);
 
 // ─── i18n / label maps ──────────────────────────────────────────────────────
 const ENGINE_LABELS: Record<string, string> = {
@@ -73,6 +82,7 @@ interface EngineRow {
   score: number;
   bias: 'bullish' | 'bearish' | 'neutral';
   findings: string[];
+  supportingData: any;
 }
 
 function parseEngines(enginesData: any): EngineRow[] {
@@ -88,6 +98,7 @@ function parseEngines(enginesData: any): EngineRow[] {
               : String(e.bias ?? 'neutral').toLowerCase().includes('bear') ? 'bearish'
               : 'neutral',
       findings: Array.isArray(e.key_findings) ? e.key_findings : [],
+      supportingData: e.supporting_data ?? null,
     }));
 }
 
@@ -171,7 +182,9 @@ function EngineCard({ engine, onClick }: { engine: EngineRow; onClick: () => voi
 }
 
 /** Modal showing the engine's key findings */
-function EngineDetailModal({ engine, onClose }: { engine: EngineRow; onClose: () => void }) {
+function EngineDetailModal({ engine, symbol, timeframe, onClose }: {
+  engine: EngineRow; symbol: string; timeframe: string; onClose: () => void;
+}) {
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', handleEsc);
@@ -181,6 +194,7 @@ function EngineDetailModal({ engine, onClose }: { engine: EngineRow; onClose: ()
   const biasColor = engine.bias === 'bullish' ? 'text-bullish'
                   : engine.bias === 'bearish' ? 'text-bearish'
                   : 'text-text-muted';
+  const [showFindings, setShowFindings] = useState(false);
 
   return (
     <div
@@ -188,7 +202,7 @@ function EngineDetailModal({ engine, onClose }: { engine: EngineRow; onClose: ()
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md glass-panel border border-border-medium rounded-2xl p-6 space-y-4"
+        className="w-full max-w-5xl max-h-[92vh] overflow-y-auto glass-panel border border-border-medium rounded-2xl p-6 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
@@ -216,21 +230,41 @@ function EngineDetailModal({ engine, onClose }: { engine: EngineRow; onClose: ()
           </div>
         </div>
 
+        {CHART_ENGINES.has(engine.name) && (
+          <div>
+            <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-2">
+              Grafik Üzerinde
+            </p>
+            <EngineMiniChart
+              symbol={symbol}
+              timeframe={timeframe}
+              engineName={engine.name}
+              supportingData={engine.supportingData}
+            />
+          </div>
+        )}
+
         <div>
-          <p className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-2">
-            Bulgular
-          </p>
-          {engine.findings.length === 0 ? (
-            <p className="text-xs text-text-muted text-center py-4">Detaylı bulgu yok.</p>
-          ) : (
-            <ul className="space-y-2">
-              {engine.findings.map((f, i) => (
-                <li key={i} className="flex gap-2 text-xs text-text-secondary leading-relaxed bg-bg-secondary/40 rounded-lg px-3 py-2 border border-border-subtle">
-                  <span className="text-accent-primary flex-shrink-0">•</span>
-                  <span>{translateFinding(f)}</span>
-                </li>
-              ))}
-            </ul>
+          <button
+            onClick={() => setShowFindings((v) => !v)}
+            className="w-full flex items-center justify-between text-[10px] text-text-muted uppercase font-bold tracking-wider mb-2 hover:text-text-primary transition-colors"
+          >
+            <span>Bulgular ({engine.findings.length})</span>
+            <span className="text-accent-primary normal-case">{showFindings ? 'Gizle ▲' : 'Göster ▼'}</span>
+          </button>
+          {showFindings && (
+            engine.findings.length === 0 ? (
+              <p className="text-xs text-text-muted text-center py-4">Detaylı bulgu yok.</p>
+            ) : (
+              <ul className="space-y-2">
+                {engine.findings.map((f, i) => (
+                  <li key={i} className="flex gap-2 text-xs text-text-secondary leading-relaxed bg-bg-secondary/40 rounded-lg px-3 py-2 border border-border-subtle">
+                    <span className="text-accent-primary flex-shrink-0">•</span>
+                    <span>{translateFinding(f)}</span>
+                  </li>
+                ))}
+              </ul>
+            )
           )}
         </div>
       </div>
@@ -528,7 +562,14 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
       )}
 
       {/* ─── Engine Detail Modal ───────────────────────────────────────── */}
-      {openEngine && <EngineDetailModal engine={openEngine} onClose={() => setOpenEngine(null)} />}
+      {openEngine && (
+        <EngineDetailModal
+          engine={openEngine}
+          symbol={signal.asset?.symbol ?? ''}
+          timeframe={signal.timeframe}
+          onClose={() => setOpenEngine(null)}
+        />
+      )}
     </div>
   );
 };

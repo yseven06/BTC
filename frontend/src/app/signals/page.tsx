@@ -732,7 +732,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
             <FileDown className="w-4 h-4" /> PDF İndir
           </button>
           <Link
-            href={`/markets/${encodeURIComponent(sig.asset?.symbol ?? '')}`}
+            href={`/markets/${encodeURIComponent(sig.asset?.symbol ?? '')}?tf=${encodeURIComponent(sig.timeframe ?? '')}`}
             className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-primary hover:bg-accent-secondary text-white text-sm font-semibold transition-colors"
           >
             <LineChart className="w-4 h-4" /> Grafiği Aç
