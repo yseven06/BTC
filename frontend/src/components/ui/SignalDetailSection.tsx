@@ -467,8 +467,8 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
   const tabs     = buildTabs(signal.explanation_tr);
 
   const dir = (signal.direction ?? '').toLowerCase();
-  const direction = dir === 'bullish' ? { label: 'LONG · AL',  cls: 'text-bullish', icon: TrendingUp }
-                  : dir === 'bearish' ? { label: 'SHORT · SAT', cls: 'text-bearish', icon: TrendingDown }
+  const direction = dir === 'bullish' ? { label: 'LONG',  cls: 'text-bullish', icon: TrendingUp }
+                  : dir === 'bearish' ? { label: 'SHORT', cls: 'text-bearish', icon: TrendingDown }
                   : { label: 'BEKLE', cls: 'text-text-muted', icon: Activity };
 
   const DirIcon = direction.icon;
