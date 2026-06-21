@@ -63,6 +63,11 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  // Only auto-fit the view on the very first data load. The parent polls
+  // for fresh candles every 30s — calling fitContent() on every refresh
+  // snapped the chart back to the default view a few seconds after a user
+  // panned/zoomed, making manual navigation feel broken.
+  const hasFitOnceRef = useRef(false);
 
   // Initialize chart once
   useEffect(() => {
@@ -160,7 +165,10 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
     });
 
     candleSeriesRef.current.setData(data);
-    chartRef.current?.timeScale().fitContent();
+    if (!hasFitOnceRef.current) {
+      chartRef.current?.timeScale().fitContent();
+      hasFitOnceRef.current = true;
+    }
   }, [candles]);
 
   // Draw signal levels (entry / SL / TP lines)

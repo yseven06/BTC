@@ -332,8 +332,21 @@ function RiskBadge({ level }: { level: string | undefined }) {
 }
 
 // ─── Tab content extractors ─────────────────────────────────────────────────
+// The AI explanation's section headers are plain text lines (no markdown
+// "#"), so a section's content has to stop at the next KNOWN header line —
+// otherwise (as happened before this fix) "Özet Analiz" never finds a
+// boundary and swallows everything to the end of the text, making the
+// "Özet" tab identical to "Tam AI Analizi".
+const SECTION_BOUNDARIES = [
+  /Özet Analiz/i,
+  /Destekleyici ve Kısıtlayıcı Unsurlar/i,
+  /Piyasa Yapısı ve Hacim Yorumu/i,
+  /Smart Money.*CRT.*Analizi/i,
+  /Risk Değerlendirmesi(?:\s+ve\s+İşlem Planı)?/i,
+].map((r) => r.source).join('|');
+
 function extractSection(text: string, header: RegExp): string {
-  const m = text.match(new RegExp(`${header.source}([\\s\\S]+?)(?=\\n#+\\s|$)`, 'i'));
+  const m = text.match(new RegExp(`${header.source}([\\s\\S]+?)(?=\\n(?:${SECTION_BOUNDARIES})|\\n#+\\s|$)`, 'i'));
   return m ? m[1].trim() : '';
 }
 

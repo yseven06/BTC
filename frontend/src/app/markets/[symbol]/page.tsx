@@ -264,6 +264,7 @@ export default function AssetDetailPage() {
         {chartMode === 'overlay' ? (
           candles.length > 0 ? (
             <TradingChart
+              key={chartTimeframe}
               candles={candles}
               signal={signal ? {
                 entryLow:  signal.entry_zone_low,
