@@ -46,6 +46,13 @@ export interface SignalLevels {
   tp2?:       number | null;
   tp3?:       number | null;
   direction?: 'long' | 'short';
+  /** Unix seconds the signal was generated at. The Giriş/SL/TP lines are
+   * drawn flat across the whole visible range (lightweight-charts price
+   * lines aren't time-bounded) — without a marker here, price action from
+   * *before* the signal existed reads as if it happened against these
+   * levels, which is misleading (e.g. a pre-signal dip below the SL price
+   * looks like a stop-out that never actually happened). */
+  generatedAt?: number | null;
 }
 
 interface TradingChartProps {
@@ -222,6 +229,28 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
       for (const line of created) series.removePriceLine(line);
     };
   }, [signal]);
+
+  // Mark the candle where the signal actually started. The Giriş/SL/TP
+  // lines above are drawn flat across the whole visible range — without
+  // this marker, price action from before the signal existed reads as if
+  // it happened against those levels (e.g. a pre-signal dip below the SL
+  // price looks like a stop-out that never actually happened).
+  useEffect(() => {
+    if (!candleSeriesRef.current) return;
+    const series = candleSeriesRef.current;
+    if (!signal?.generatedAt || candles.length === 0) {
+      series.setMarkers([]);
+      return;
+    }
+    const startCandle = candles.find((c) => c.time >= signal.generatedAt!);
+    series.setMarkers(startCandle ? [{
+      time: startCandle.time as any,
+      position: 'aboveBar',
+      color: '#94a3b8',
+      shape: 'arrowDown',
+      text: 'Sinyal başlangıcı',
+    }] : []);
+  }, [signal?.generatedAt, candles]);
 
   return (
     <div className="relative">

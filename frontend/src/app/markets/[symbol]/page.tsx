@@ -412,6 +412,7 @@ export default function AssetDetailPage() {
                   tp2:       signal.tp2,
                   tp3:       signal.tp3,
                   direction: signal.direction === 'bullish' ? 'long' : 'short',
+                  generatedAt: Math.floor(new Date(signal.generated_at).getTime() / 1000),
                 } : undefined}
                 height={chartHeight}
               />
