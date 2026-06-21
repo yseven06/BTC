@@ -1,32 +1,27 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
 import { Language } from '@/types';
 import { t, TranslationKey } from '@/lib/i18n';
 
+// English support was half-built (only a handful of strings were ever
+// wired up to the toggle, the rest of the app stayed Turkish) and confused
+// more than it helped — the app is Turkish-only for now. `tr()` stays
+// around since plenty of call sites use it for Turkish copy; `language`
+// is just permanently 'tr'.
 interface LanguageContextType {
   language: Language;
-  setLanguage: (lang: Language) => void;
-  toggleLanguage: () => void;
   tr: (key: TranslationKey) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>('tr');
-
-  const toggleLanguage = useCallback(() => {
-    setLanguage((prev) => (prev === 'tr' ? 'en' : 'tr'));
-  }, []);
-
-  const tr = useCallback(
-    (key: TranslationKey) => t(language, key),
-    [language]
-  );
+  const language: Language = 'tr';
+  const tr = (key: TranslationKey) => t(language, key);
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, toggleLanguage, tr }}>
+    <LanguageContext.Provider value={{ language, tr }}>
       {children}
     </LanguageContext.Provider>
   );

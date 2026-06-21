@@ -100,7 +100,7 @@ export default function DashboardPage() {
   const signalSymbols = signals.slice(0, 6).map((s) => s.asset?.symbol ?? '').filter(Boolean);
   const livePrices = useLivePrices(signalSymbols);
   const limits = useTierLimits();
-  const isFreeTier = limits.tier === 'free';
+  const isFreeTier = !limits.loading && limits.tier === 'free';
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);

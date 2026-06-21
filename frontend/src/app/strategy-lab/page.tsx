@@ -166,7 +166,7 @@ export default function StrategyLabPage() {
   const limits = useTierLimits();
   const [data, setData]       = useState<LabData | null>(null);
   const [loading, setLoading] = useState(true);
-  const isLocked = !limits.can_view_strategy_lab;
+  const isLocked = !limits.loading && !limits.can_view_strategy_lab;
 
   useEffect(() => {
     fetchStrategyLab()

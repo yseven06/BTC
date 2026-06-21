@@ -9,7 +9,6 @@ import {
   LogOut, User, Newspaper, FlaskConical, Crown, Microscope, CreditCard,
   Globe, Shield, History,
 } from 'lucide-react';
-import { useLanguage } from '@/lib/language-context';
 import { cn } from '@/lib/utils';
 import {
   fetchCurrentUser, fetchMySubscription, fetchActiveSignals, fetchAlerts,

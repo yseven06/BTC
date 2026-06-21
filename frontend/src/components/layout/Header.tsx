@@ -5,7 +5,6 @@ import Link from 'next/link';
 import {
   Search,
   Bell,
-  Globe,
   Command,
   ChevronDown,
   User,
@@ -22,7 +21,7 @@ import { useAuth } from '@/lib/auth-context';
 import { formatRelativeTime } from '@/lib/utils';
 
 export default function Header() {
-  const { language, toggleLanguage, tr } = useLanguage();
+  const { tr } = useLanguage();
   const { logout: doLogout } = useAuth();
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -126,22 +125,6 @@ export default function Header() {
 
         {/* Right Actions */}
         <div className="flex items-center gap-2 ml-4">
-          {/* Language Toggle */}
-          <button
-            onClick={toggleLanguage}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg',
-              'text-sm font-medium text-text-secondary',
-              'hover:bg-white/[0.04] hover:text-text-primary',
-              'transition-all duration-200 focus-ring'
-            )}
-            title={tr('tooltip.toggle_language')}
-          >
-            <Globe className="w-4 h-4" />
-            <span className="text-xs font-semibold uppercase">
-              {language}
-            </span>
-          </button>
 
           {/* Notifications */}
           <div className="relative">

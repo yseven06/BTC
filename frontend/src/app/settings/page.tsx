@@ -5,7 +5,6 @@ import { Settings, Send, Check, X, HelpCircle } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { LockedOverlay } from '@/components/ui/LockedOverlay';
 import { useTierLimits } from '@/hooks/useTierLimits';
-import { useLanguage } from '@/lib/language-context';
 import {
   fetchNotificationSettings, updateNotificationSettings, sendTelegramTest,
   type NotificationSettings,
@@ -31,9 +30,8 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
 }
 
 export default function SettingsPage() {
-  const { language, toggleLanguage } = useLanguage();
   const limits = useTierLimits();
-  const telegramLocked = !limits.can_use_telegram;
+  const telegramLocked = !limits.loading && !limits.can_use_telegram;
 
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const [botToken, setBotToken] = useState('');
@@ -103,20 +101,6 @@ export default function SettingsPage() {
         </h1>
         <p className="text-sm text-text-secondary mt-1">Uygulama tercihleri ve bildirimler</p>
       </div>
-
-      {/* Language */}
-      <GlassCard>
-        <h3 className="text-sm font-bold text-text-primary mb-4">Dil / Language</h3>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-text-secondary">Aktif dil: <strong className="text-text-primary uppercase">{language}</strong></span>
-          <button
-            onClick={toggleLanguage}
-            className="px-4 py-2 rounded-lg bg-accent-primary/10 text-accent-primary text-sm font-semibold hover:bg-accent-primary/20 transition-colors"
-          >
-            {language === 'tr' ? 'Switch to English' : "Türkçe'ye geç"}
-          </button>
-        </div>
-      </GlassCard>
 
       {/* Telegram Notifications */}
       <GlassCard className="relative">

@@ -71,7 +71,7 @@ export default function SymbolAnalysisPage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery]   = useState('');
   const [sort, setSort]     = useState<'total' | 'win_rate' | 'quality_score'>('total');
-  const isLocked = !limits.can_view_symbol_analysis;
+  const isLocked = !limits.loading && !limits.can_view_symbol_analysis;
 
   useEffect(() => {
     fetchSymbolAnalysis()
