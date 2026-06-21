@@ -3,6 +3,11 @@ import clsx from "clsx";
 
 interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
+  /** Lift + scale on hover. Defaults to off — most GlassCard usages are
+   * pure info/layout cards (not click targets), and the lift effect both
+   * implies clickability that isn't there and clips against any ancestor
+   * with overflow:auto/hidden (e.g. a scrolling sidebar). Opt in explicitly
+   * on cards that really are a click target (e.g. a row wrapped in a Link). */
   hoverEffect?: boolean;
   glowEffect?: boolean;
   glowColor?: "primary" | "bullish" | "bearish" | "none";
@@ -11,7 +16,7 @@ interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
 export const GlassCard: React.FC<GlassCardProps> = ({
   children,
   className,
-  hoverEffect = true,
+  hoverEffect = false,
   glowEffect = false,
   glowColor = "none",
   ...props

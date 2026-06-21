@@ -150,7 +150,7 @@ function EngineCard({ engine, onClick, compact }: { engine: EngineRow; onClick: 
       className={cn(
         'group relative bg-bg-secondary/40 rounded-2xl',
         'border transition-all duration-200',
-        'hover:bg-bg-secondary/60 hover:shadow-glow-sm',
+        'hover:bg-bg-secondary/60 hover:shadow-glow-sm hover:-translate-y-0.5',
         biasConfig.border,
         'text-left w-full',
         compact ? 'p-3' : 'p-4'
@@ -361,8 +361,16 @@ function RiskBadge({ level }: { level: string | undefined }) {
     very_high:  { label: 'ÇOK YÜKSEK',  cls: 'bg-bearish/15 text-bearish border-bearish/40' },
   }[(level ?? 'medium').toLowerCase()] ?? { label: 'BİLİNMİYOR', cls: 'bg-bg-tertiary text-text-muted border-border-subtle' };
 
+  const isVeryHigh = (level ?? '').toLowerCase() === 'very_high';
+
   return (
-    <div className={cn('flex items-center gap-2 px-3 py-2 rounded-xl border whitespace-nowrap', config.cls)}>
+    <div className={cn(
+      'flex items-center gap-2 px-3 py-2 rounded-xl border whitespace-nowrap',
+      config.cls,
+      // A risk this severe deserves to draw the eye rather than sit as
+      // static as every other badge on the page.
+      isVeryHigh && 'animate-pulse'
+    )}>
       <ShieldAlert className="w-4 h-4 flex-shrink-0" />
       <div className="flex flex-col leading-none">
         <span className="text-[9px] uppercase font-bold tracking-wider opacity-70">Risk</span>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import clsx from "clsx";
 
 interface ScoreRingProps {
@@ -18,7 +18,16 @@ export const ScoreRing: React.FC<ScoreRingProps> = ({
 }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
-  const offset = circumference - (score / 100) * circumference;
+  // The ring's CSS transition only fires on a *change*, not on first paint —
+  // rendering the real offset immediately means it shows up already full,
+  // with no "filling in" feel. Starting from an empty ring and flipping to
+  // the real value one frame later gives it something to animate from.
+  const [filled, setFilled] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setFilled(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  const offset = filled ? circumference - (score / 100) * circumference : circumference;
 
   // Determine indicator color based on score value
   const getStrokeColor = (val: number) => {

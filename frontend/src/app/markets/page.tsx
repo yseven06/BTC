@@ -112,7 +112,7 @@ export default function MarketsPage() {
 
           return (
             <Link key={asset.id} href={`/markets/${encodeURIComponent(asset.symbol)}`}>
-              <GlassCard className="flex items-center gap-4 cursor-pointer group">
+              <GlassCard hoverEffect className="flex items-center gap-4 cursor-pointer group">
                 <div className={cn(
                   'w-10 h-10 rounded-lg border flex items-center justify-center font-bold font-mono text-sm flex-shrink-0 group-hover:border-accent-primary/40 transition-colors',
                   isStock
