@@ -81,7 +81,6 @@ export default function AssetDetailPage() {
   const [candles, setCandles] = useState<ChartCandle[]>([]);
   const [chartMode, setChartMode] = useState<'overlay' | 'tradingview'>('overlay');
   const [loading, setLoading] = useState(true);
-  const [chartHeight, setChartHeight] = useState(640);
   // CSS-only overlay rather than the native Fullscreen API — some
   // environments (corporate browser policies, embedded iframes) reject
   // requestFullscreen() outright, so a plain fixed-position overlay is the
@@ -91,34 +90,12 @@ export default function AssetDetailPage() {
   const toggleFullscreen = () => setManualFullscreen((v) => !v);
 
   useEffect(() => {
-    const update = () => setChartHeight(manualFullscreen ? window.innerHeight - 170 : 640);
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, [manualFullscreen]);
-
-  // The sidebar (signal hero + trade plan + engine scores + AI explanation)
-  // sits beside the chart on desktop. Its max-height is pinned to the
-  // chart card's actual rendered height so the two columns end exactly
-  // together — without this the sidebar's natural content height rarely
-  // matches the chart's, leaving either a ragged bottom edge or forcing
-  // the whole page to scroll past the fold.
-  const chartCardRef = React.useRef<HTMLDivElement>(null);
-  const [chartCardHeight, setChartCardHeight] = useState<number | null>(null);
-  useEffect(() => {
-    if (!chartCardRef.current || manualFullscreen) return;
-    const el = chartCardRef.current;
-    const observer = new ResizeObserver(() => setChartCardHeight(el.offsetHeight));
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [manualFullscreen]);
-
-  useEffect(() => {
     if (!manualFullscreen) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setManualFullscreen(false); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [manualFullscreen]);
+
   // Background polling refreshes the signal silently every 30s — the user
   // could otherwise watch a LONG call flip to SHORT or vanish entirely with
   // no indication anything changed. This tracks the previously-seen signal
@@ -126,6 +103,42 @@ export default function AssetDetailPage() {
   // the numbers underneath them.
   const prevSignalRef = React.useRef<ApiSignal | null>(null);
   const [changeNotice, setChangeNotice] = useState<string | null>(null);
+
+  // Fit the chart + sidebar row to whatever vertical space is actually left
+  // in the viewport below this row, instead of giving the chart a fixed
+  // height and letting the rest of the screen sit empty. The row's own top
+  // offset is read from the DOM (not assumed) so it stays correct whether
+  // or not the "sinyal değişti" banner above it is showing.
+  const rowRef = React.useRef<HTMLDivElement>(null);
+  const [rowHeight, setRowHeight] = useState<number | null>(null);
+  useEffect(() => {
+    if (manualFullscreen) return;
+    const update = () => {
+      if (!rowRef.current) return;
+      const top = rowRef.current.getBoundingClientRect().top;
+      setRowHeight(Math.max(480, window.innerHeight - top - 24));
+    };
+    update();
+    window.addEventListener('resize', update);
+    // Re-measure shortly after mount too — the "sinyal değişti" banner
+    // (and the initial loading→loaded swap) can shift this row's top
+    // offset after the first paint.
+    const t = setTimeout(update, 200);
+    return () => { window.removeEventListener('resize', update); clearTimeout(t); };
+  }, [manualFullscreen, changeNotice ? changeNotice : null, loading]);
+
+  // lightweight-charts needs an explicit pixel height — it won't just fill
+  // a flex/grid parent — so the chart's own render area is measured and fed
+  // back in as `chartHeight`, after subtracting the control bar above it.
+  const chartAreaRef = React.useRef<HTMLDivElement>(null);
+  const [chartHeight, setChartHeight] = useState(520);
+  useEffect(() => {
+    if (!chartAreaRef.current) return;
+    const el = chartAreaRef.current;
+    const observer = new ResizeObserver(() => setChartHeight(el.offsetHeight));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [manualFullscreen]);
 
   // Defaults to the signal's own timeframe (matches what the tracker actually
   // evaluated TP/SL against), but the user can switch it manually to inspect
@@ -279,17 +292,21 @@ export default function AssetDetailPage() {
         </div>
       )}
 
-      {/* ─── Chart (left) + Signal sidebar (right) — both visible without
-           scrolling on a normal desktop viewport ─── */}
-      <div className="flex flex-col lg:flex-row gap-5 items-start">
+      {/* ─── Chart (left) + Signal sidebar (right) — both stretched to fill
+           whatever vertical space is left in the viewport, so nothing sits
+           empty below the fold and nothing forces the page to scroll ─── */}
       <div
-        ref={chartCardRef}
+        ref={rowRef}
+        className="flex flex-col lg:flex-row gap-5 items-stretch"
+        style={!manualFullscreen && rowHeight ? { height: rowHeight } : undefined}
+      >
+      <div
         className={cn(
-          'w-full lg:flex-[0_0_62%] lg:min-w-0',
+          'w-full lg:flex-[0_0_62%] lg:min-w-0 lg:h-full',
           manualFullscreen && 'fixed inset-0 z-50 bg-bg-primary p-4 overflow-y-auto'
         )}
       >
-      <GlassCard className="p-0 overflow-hidden">
+      <GlassCard className="p-0 overflow-hidden lg:h-full flex flex-col">
         <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-border-subtle flex-wrap">
           <div className="flex gap-1 p-0.5 bg-bg-tertiary/50 rounded-lg">
             <button
@@ -381,46 +398,46 @@ export default function AssetDetailPage() {
           </div>
         </div>
 
-        {chartMode === 'overlay' ? (
-          candles.length > 0 ? (
-            <TradingChart
-              key={chartTimeframe}
-              candles={candles}
-              signal={signal ? {
-                entryLow:  signal.entry_zone_low,
-                entryHigh: signal.entry_zone_high,
-                stopLoss:  signal.stop_loss,
-                tp1:       signal.tp1,
-                tp2:       signal.tp2,
-                tp3:       signal.tp3,
-                direction: signal.direction === 'bullish' ? 'long' : 'short',
-              } : undefined}
+        <div ref={chartAreaRef} className="lg:flex-1 lg:min-h-0">
+          {chartMode === 'overlay' ? (
+            candles.length > 0 ? (
+              <TradingChart
+                key={chartTimeframe}
+                candles={candles}
+                signal={signal ? {
+                  entryLow:  signal.entry_zone_low,
+                  entryHigh: signal.entry_zone_high,
+                  stopLoss:  signal.stop_loss,
+                  tp1:       signal.tp1,
+                  tp2:       signal.tp2,
+                  tp3:       signal.tp3,
+                  direction: signal.direction === 'bullish' ? 'long' : 'short',
+                } : undefined}
+                height={chartHeight}
+              />
+            ) : (
+              <div className="flex justify-center items-center" style={{ height: chartHeight }}>
+                <div className="w-7 h-7 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            )
+          ) : (
+            <TradingViewChart
+              symbol={symbol}
+              assetType={assetType}
+              timeframe={signal?.timeframe}
               height={chartHeight}
             />
-          ) : (
-            <div className="flex justify-center items-center" style={{ height: chartHeight }}>
-              <div className="w-7 h-7 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
-            </div>
-          )
-        ) : (
-          <TradingViewChart
-            symbol={symbol}
-            assetType={assetType}
-            timeframe={signal?.timeframe}
-            height={chartHeight}
-          />
-        )}
+          )}
+        </div>
       </GlassCard>
       </div>
 
-      {/* ─── Signal sidebar: pinned to the chart card's height on desktop,
-           scrolls internally if its own content (mostly engine scores + AI
-           explanation) runs longer than the chart — the page itself never
-           has to scroll to see everything. ─── */}
-      <div
-        className="w-full lg:flex-1 lg:min-w-0 lg:overflow-y-auto lg:pr-1"
-        style={!manualFullscreen && chartCardHeight ? { maxHeight: chartCardHeight } : undefined}
-      >
+      {/* ─── Signal sidebar: stretches to the same height as the chart
+           column (flex items-stretch on the row above) and scrolls
+           internally if its own content (mostly engine scores + AI
+           explanation) runs longer than that — the page itself never has
+           to scroll to see everything. ─── */}
+      <div className="w-full lg:flex-1 lg:min-w-0 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-1">
         {loading ? (
           <GlassCard className="flex justify-center py-16">
             <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
