@@ -484,8 +484,8 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
                 <DirIcon className={compact ? 'w-4 h-4' : 'w-7 h-7'} />
                 {direction.label}
               </div>
-              <p className={cn('text-text-muted mt-1', compact ? 'text-[10px]' : 'text-[11px] mt-1.5')} title={formatAbsoluteTimeTR(signal.generated_at)}>
-                Üretildi: {compact ? formatRelativeTime(signal.generated_at) : `${formatAbsoluteTimeTR(signal.generated_at)} · ${formatRelativeTime(signal.generated_at)}`}
+              <p className={cn('text-text-muted mt-1', compact ? 'text-[10px]' : 'text-[11px] mt-1.5')}>
+                Üretildi: {formatAbsoluteTimeTR(signal.generated_at)} (TR) · {formatRelativeTime(signal.generated_at)}
               </p>
             </div>
           </div>

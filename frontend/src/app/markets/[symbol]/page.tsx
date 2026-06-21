@@ -12,7 +12,7 @@ import { TradingChart, type ChartCandle } from '@/components/charts/TradingChart
 import { fetchActiveSignals, fetchOhlcv, type ApiSignal } from '@/lib/api';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { SignalType } from '@/types';
-import { cn, formatRelativeTime, formatAbsoluteTimeTR } from '@/lib/utils';
+import { cn, formatRelativeTime } from '@/lib/utils';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 
 /**
@@ -360,11 +360,6 @@ export default function AssetDetailPage() {
                 <span className="text-text-muted">Anlık:</span>
                 <span className={cn('font-bold uppercase tracking-wider', priceStatus.color)}>{priceStatus.label}</span>
               </div>
-            )}
-            {signal && (
-              <span className="text-[10px] text-text-muted hidden md:inline" title={formatAbsoluteTimeTR(signal.generated_at)}>
-                Üretildi: {formatRelativeTime(signal.generated_at)}
-              </span>
             )}
             {signal && chartMode === 'overlay' && (
               <span className="text-[10px] text-text-muted hidden lg:inline">
