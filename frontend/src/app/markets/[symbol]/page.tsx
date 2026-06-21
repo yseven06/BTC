@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, TrendingUp, TrendingDown, Target, Shield, Zap, ExternalLink, Code2, Check } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Target, Shield, Zap, ExternalLink, Code2, Check, AlertTriangle, X } from 'lucide-react';
 import { toTradingViewSymbol } from '@/lib/tradingview';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SignalBadge } from '@/components/ui/SignalBadge';
@@ -12,7 +12,7 @@ import { TradingChart, type ChartCandle } from '@/components/charts/TradingChart
 import { fetchActiveSignals, fetchOhlcv, type ApiSignal } from '@/lib/api';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { SignalType } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, formatRelativeTime } from '@/lib/utils';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 
 /**
@@ -81,6 +81,13 @@ export default function AssetDetailPage() {
   const [candles, setCandles] = useState<ChartCandle[]>([]);
   const [chartMode, setChartMode] = useState<'overlay' | 'tradingview'>('overlay');
   const [loading, setLoading] = useState(true);
+  // Background polling refreshes the signal silently every 30s — the user
+  // could otherwise watch a LONG call flip to SHORT or vanish entirely with
+  // no indication anything changed. This tracks the previously-seen signal
+  // so we can surface that transition explicitly instead of just swapping
+  // the numbers underneath them.
+  const prevSignalRef = React.useRef<ApiSignal | null>(null);
+  const [changeNotice, setChangeNotice] = useState<string | null>(null);
 
   // Defaults to the signal's own timeframe (matches what the tracker actually
   // evaluated TP/SL against), but the user can switch it manually to inspect
@@ -96,7 +103,7 @@ export default function AssetDetailPage() {
   const chartTimeframe = manualTf ?? signal?.timeframe ?? '1h';
 
   // Reset the manual override when navigating to a different symbol.
-  useEffect(() => { setManualTf(null); }, [symbol]);
+  useEffect(() => { setManualTf(null); prevSignalRef.current = null; setChangeNotice(null); }, [symbol]);
 
   const loadData = React.useCallback(async (showLoading: boolean) => {
     if (showLoading) setLoading(true);
@@ -109,6 +116,20 @@ export default function AssetDetailPage() {
       const match = requestedTf
         ? candidates.find((s) => s.timeframe === requestedTf) ?? candidates[0]
         : candidates[0];
+
+      const prev = prevSignalRef.current;
+      if (prev) {
+        if (!match) {
+          const prevDirLabel = prev.direction === 'bullish' ? 'LONG' : prev.direction === 'bearish' ? 'SHORT' : 'BEKLE';
+          setChangeNotice(`Bu sinyal kapandı (son yön: ${prevDirLabel}). Aşağıdaki bilgiler artık güncel değil — Sinyal Geçmişi'nde sonucu görebilirsin.`);
+        } else if (match.id !== prev.id && match.direction !== prev.direction) {
+          const fromLabel = prev.direction === 'bullish' ? 'LONG' : prev.direction === 'bearish' ? 'SHORT' : 'BEKLE';
+          const toLabel = match.direction === 'bullish' ? 'LONG' : match.direction === 'bearish' ? 'SHORT' : 'BEKLE';
+          setChangeNotice(`Sinyal yön değiştirdi: ${fromLabel} → ${toLabel} (${formatRelativeTime(match.generated_at)})`);
+        }
+      }
+      prevSignalRef.current = match ?? null;
+
       setSignal(match ?? null);
       setCandles(ohlcvRes.candles ?? []);
     } finally {
@@ -189,6 +210,16 @@ export default function AssetDetailPage() {
           </div>
         )}
       </div>
+
+      {changeNotice && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+          <p className="text-xs text-amber-300 flex-1">{changeNotice}</p>
+          <button onClick={() => setChangeNotice(null)} className="text-amber-400/70 hover:text-amber-300 flex-shrink-0">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* ─── Chart: full width, premium ─── */}
       <GlassCard className="p-0 overflow-hidden">

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ScoreRing } from './ScoreRing';
 import { GlassCard } from './GlassCard';
-import { cn } from '@/lib/utils';
+import { cn, formatRelativeTime, formatAbsoluteTimeTR } from '@/lib/utils';
 import { ApiSignal } from '@/lib/api';
 import {
   Target, TrendingUp, TrendingDown, Activity, ShieldAlert,
@@ -467,6 +467,9 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
                 <DirIcon className="w-7 h-7" />
                 {direction.label}
               </div>
+              <p className="text-[11px] text-text-muted mt-1.5" title={formatAbsoluteTimeTR(signal.generated_at)}>
+                Üretildi: {formatAbsoluteTimeTR(signal.generated_at)} · {formatRelativeTime(signal.generated_at)}
+              </p>
             </div>
           </div>
 
@@ -512,8 +515,11 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
           <div>
             <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5 mb-3">
               <BarChart3 className="w-3.5 h-3.5 text-accent-primary" /> Motor Skorları
-              <span className="ml-auto text-[10px] text-text-muted normal-case font-normal hidden sm:inline">
-                Detay için karta tıkla
+              <span
+                className="ml-auto text-[10px] text-text-muted normal-case font-normal hidden sm:inline"
+                title="Bu skorlar sinyalin üretildiği tarama anına ait. Yön değişmediği sürece sistem skorları yeniden hesaplamaz — gerçek bir tersine dönüş (reversal) olduğunda otomatik güncellenir."
+              >
+                Skorlar {formatRelativeTime(signal.generated_at)} hesaplandı · Detay için karta tıkla
               </span>
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
