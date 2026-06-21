@@ -145,6 +145,25 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
       chartRef.current = null;
       candleSeriesRef.current = null;
     };
+    // Mount-once: `height` is read here only as the initial value. Putting
+    // it in the dependency array (as before) tore down and recreated the
+    // whole chart — including the candle series — every time the parent
+    // changed height (e.g. toggling fullscreen), and since `candles` itself
+    // hadn't changed, the data-sync effect below never re-ran to repopulate
+    // the brand-new empty series. The chart looked blank until a refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Resize an already-mounted chart when the parent changes `height`
+  // (e.g. fullscreen toggle) without tearing down the series/data. Width
+  // must be re-read here too — the container only grows because a CSS
+  // class flipped (fullscreen overlay), not because the browser window
+  // itself resized, so the regular `window.resize` listener never fires.
+  useEffect(() => {
+    chartRef.current?.applyOptions({
+      height,
+      width: containerRef.current?.clientWidth,
+    });
   }, [height]);
 
   // Update candles when data changes

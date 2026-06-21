@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, TrendingUp, TrendingDown, Target, Shield, Zap, ExternalLink, Code2, Check, AlertTriangle, X } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Target, Shield, Zap, ExternalLink, Code2, Check, AlertTriangle, X, Maximize2, Minimize2 } from 'lucide-react';
 import { toTradingViewSymbol } from '@/lib/tradingview';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SignalBadge } from '@/components/ui/SignalBadge';
@@ -12,7 +12,7 @@ import { TradingChart, type ChartCandle } from '@/components/charts/TradingChart
 import { fetchActiveSignals, fetchOhlcv, type ApiSignal } from '@/lib/api';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { SignalType } from '@/types';
-import { cn, formatRelativeTime } from '@/lib/utils';
+import { cn, formatRelativeTime, formatAbsoluteTimeTR } from '@/lib/utils';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 
 /**
@@ -81,6 +81,28 @@ export default function AssetDetailPage() {
   const [candles, setCandles] = useState<ChartCandle[]>([]);
   const [chartMode, setChartMode] = useState<'overlay' | 'tradingview'>('overlay');
   const [loading, setLoading] = useState(true);
+  const [chartHeight, setChartHeight] = useState(520);
+  // CSS-only overlay rather than the native Fullscreen API — some
+  // environments (corporate browser policies, embedded iframes) reject
+  // requestFullscreen() outright, so a plain fixed-position overlay is the
+  // version that's guaranteed to work everywhere.
+  const [manualFullscreen, setManualFullscreen] = useState(false);
+
+  const toggleFullscreen = () => setManualFullscreen((v) => !v);
+
+  useEffect(() => {
+    const update = () => setChartHeight(manualFullscreen ? window.innerHeight - 170 : 520);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [manualFullscreen]);
+
+  useEffect(() => {
+    if (!manualFullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setManualFullscreen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [manualFullscreen]);
   // Background polling refreshes the signal silently every 30s — the user
   // could otherwise watch a LONG call flip to SHORT or vanish entirely with
   // no indication anything changed. This tracks the previously-seen signal
@@ -222,6 +244,9 @@ export default function AssetDetailPage() {
       )}
 
       {/* ─── Chart: full width, premium ─── */}
+      <div
+        className={cn(manualFullscreen && 'fixed inset-0 z-50 bg-bg-primary p-4 overflow-y-auto')}
+      >
       <GlassCard className="p-0 overflow-hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-border-subtle flex-wrap">
           <div className="flex gap-1 p-0.5 bg-bg-tertiary/50 rounded-lg">
@@ -277,11 +302,23 @@ export default function AssetDetailPage() {
                 <span className={cn('font-bold uppercase tracking-wider', priceStatus.color)}>{priceStatus.label}</span>
               </div>
             )}
+            {signal && (
+              <span className="text-[10px] text-text-muted hidden md:inline" title={formatAbsoluteTimeTR(signal.generated_at)}>
+                Üretildi: {formatRelativeTime(signal.generated_at)}
+              </span>
+            )}
             {signal && chartMode === 'overlay' && (
-              <span className="text-[10px] text-text-muted hidden md:inline">
+              <span className="text-[10px] text-text-muted hidden lg:inline">
                 Giriş · SL · TP seviyeleri grafikte
               </span>
             )}
+            <button
+              onClick={toggleFullscreen}
+              title={manualFullscreen ? 'Tam ekrandan çık (Esc)' : 'Grafiği tam ekran göster'}
+              className="flex items-center gap-1.5 text-[11px] font-semibold text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-all"
+            >
+              {manualFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            </button>
             <button
               onClick={openInTradingView}
               title="Gerçek TradingView'da bu sembolü aç"
@@ -316,10 +353,10 @@ export default function AssetDetailPage() {
                 tp3:       signal.tp3,
                 direction: signal.direction === 'bullish' ? 'long' : 'short',
               } : undefined}
-              height={520}
+              height={chartHeight}
             />
           ) : (
-            <div className="flex justify-center items-center h-[520px]">
+            <div className="flex justify-center items-center" style={{ height: chartHeight }}>
               <div className="w-7 h-7 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
             </div>
           )
@@ -328,10 +365,11 @@ export default function AssetDetailPage() {
             symbol={symbol}
             assetType={assetType}
             timeframe={signal?.timeframe}
-            height={520}
+            height={chartHeight}
           />
         )}
       </GlassCard>
+      </div>
 
       {/* ─── Signal Analytics: full width, below chart ─── */}
       {loading ? (
