@@ -250,31 +250,31 @@ export default function AssetDetailPage() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.back()}
-            className="p-2 rounded-lg bg-bg-secondary border border-border-subtle text-text-muted hover:text-text-primary transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div className="w-11 h-11 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-base text-accent-primary">
-            {symbol.slice(0, 2)}
-          </div>
-          <div>
-            <h1 className="text-xl font-extrabold text-text-primary">{symbol}</h1>
-            <p className="text-xs text-text-secondary">{assetName}</p>
-          </div>
+      {/* Header — price sits right next to the symbol instead of being
+          flung to the far edge; on the wide (fullWidth) layout that gap
+          read as two disconnected pieces rather than one header. */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={() => router.back()}
+          className="p-2 rounded-lg bg-bg-secondary border border-border-subtle text-text-muted hover:text-text-primary transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+        <div className="w-11 h-11 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-base text-accent-primary">
+          {symbol.slice(0, 2)}
+        </div>
+        <div>
+          <h1 className="text-xl font-extrabold text-text-primary">{symbol}</h1>
+          <p className="text-xs text-text-secondary">{assetName}</p>
         </div>
 
         {/* Live price */}
         {live && (
-          <div className="text-right">
+          <div className="flex items-baseline gap-2.5 ml-1 pl-4 border-l border-border-subtle">
             <p className="text-2xl font-bold font-mono text-text-primary">
               {live.price.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
             </p>
-            <p className={cn('text-sm font-mono font-semibold flex items-center justify-end gap-1', up ? 'text-bullish' : 'text-bearish')}>
+            <p className={cn('text-sm font-mono font-semibold flex items-center gap-1', up ? 'text-bullish' : 'text-bearish')}>
               {up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
               {up ? '+' : ''}{live.changePct24h?.toFixed(2)}% (24s)
             </p>
