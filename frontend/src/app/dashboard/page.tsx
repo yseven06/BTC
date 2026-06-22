@@ -289,7 +289,14 @@ export default function DashboardPage() {
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Başarı Oranı</span>
             <h3 className="text-3xl font-bold font-mono mt-1 text-bullish">{winRate.toFixed(0)}%</h3>
             <span className="text-[10px] text-text-muted font-semibold mt-1 block">
-              tüm zamanlar · {(perf?.win_count ?? 0) + (perf?.loss_count ?? 0)} kapanan işlem
+              {/* Win rate is only ever win/(win+loss) — breakeven/expired/
+                  invalidated closes don't count toward it. Labeling this
+                  count as "kapanan işlem" (closed trades) reads as directly
+                  comparable to the "Bu Dönemde Kapanan İşlem" card above,
+                  which counts ALL closed outcomes — so a smaller all-time
+                  number here looked like a contradiction. This is the
+                  win+loss subset specifically, not every closed signal. */}
+              tüm zamanlar · {(perf?.win_count ?? 0) + (perf?.loss_count ?? 0)} kazanan/kaybeden işlem
             </span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-bullish/10 border border-bullish/20 flex items-center justify-center transition-shadow duration-300 group-hover:shadow-glow-bullish">

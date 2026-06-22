@@ -166,7 +166,22 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
             # even after price had genuinely already hit the level.
             last_candle_time = df_naive_idx[-1]
             if last_candle_time not in df_after.index.tz_localize(None):
-                df_after = pd.concat([df_after, df.iloc[[-1]]])
+                # This candle opened before the signal existed, so we don't
+                # know whether its high/low wick happened before or after
+                # sig_time — OHLCV has no intra-candle ordering. A signal
+                # created mid-candle can be reacting to a wick that already
+                # passed, with price since pulling back toward/through entry;
+                # treating that wick as a post-signal TP/SL touch produces a
+                # false positive (e.g. "TP1 alındı" while the chart shows the
+                # signal arrow sitting after the only candle that ever
+                # touched TP1). Collapse high/low to the live close here so
+                # only confirmed since-the-signal price action can trigger a
+                # hit; once the candle closes, the next pass resumes normal
+                # high/low checks on it as a completed bar.
+                still_forming = df.iloc[[-1]].copy()
+                still_forming["high"] = still_forming["close"]
+                still_forming["low"] = still_forming["close"]
+                df_after = pd.concat([df_after, still_forming])
 
             if df_after.empty:
                 logger.info(f"No new price bars recorded since signal generation for {symbol}")

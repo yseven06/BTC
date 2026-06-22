@@ -212,15 +212,25 @@ export default function AssetDetailPage() {
         }
       })();
 
-      if (prev) {
-        if (!match) {
-          const prevDirLabel = prev.direction === 'bullish' ? 'LONG' : prev.direction === 'bearish' ? 'SHORT' : 'BEKLE';
-          setChangeNotice(`Bu sinyal kapandı (son yön: ${prevDirLabel}). Aşağıdaki bilgiler artık güncel değil — Sinyal Geçmişi'nde sonucu görebilirsin.`);
-        } else if (match.id !== prev.id && match.direction !== prev.direction) {
+      // `match` being truthy means a signal is genuinely active right now —
+      // a "this signal closed" notice is a contradiction in that case (it
+      // previously stayed on screen indefinitely once set, because this
+      // block only ever set the notice, never cleared it once a fresh
+      // active signal came back). Clear it explicitly in every branch that
+      // doesn't earn a notice of its own.
+      if (match) {
+        if (prev && match.id !== prev.id && match.direction !== prev.direction) {
           const fromLabel = prev.direction === 'bullish' ? 'LONG' : prev.direction === 'bearish' ? 'SHORT' : 'BEKLE';
           const toLabel = match.direction === 'bullish' ? 'LONG' : match.direction === 'bearish' ? 'SHORT' : 'BEKLE';
           setChangeNotice(`Önceki sinyal (${fromLabel}) kapandı, bu YENİ bir sinyal: ${toLabel} (${formatRelativeTime(match.generated_at)})`);
+        } else {
+          setChangeNotice(null);
         }
+      } else if (prev) {
+        const prevDirLabel = prev.direction === 'bullish' ? 'LONG' : prev.direction === 'bearish' ? 'SHORT' : 'BEKLE';
+        setChangeNotice(`Bu sinyal kapandı (son yön: ${prevDirLabel}). Aşağıdaki bilgiler artık güncel değil — Sinyal Geçmişi'nde sonucu görebilirsin.`);
+      } else {
+        setChangeNotice(null);
       }
       prevSignalRef.current = match ?? null;
 

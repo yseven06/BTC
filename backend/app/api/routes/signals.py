@@ -198,10 +198,16 @@ async def signal_history(
     total = total_result.scalar_one()
 
     offset = (page - 1) * page_size
+    # "Kapanan Sinyaller" reads as a list of closes, not a list of scans —
+    # sorting by generated_at put a signal made hours ago but resolved just
+    # now below ones generated more recently but still open or resolved
+    # earlier. Sort by when it actually closed (falling back to
+    # generated_at for the rare still-active row that slips through here).
+    sort_key = func.coalesce(SignalPerformance.closed_at, Signal.generated_at)
     query = (
         query
         .options(joinedload(Signal.asset), joinedload(Signal.performance))
-        .order_by(Signal.generated_at.desc())
+        .order_by(sort_key.desc())
         .offset(offset).limit(page_size)
     )
     result = await db.execute(query)

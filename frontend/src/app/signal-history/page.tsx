@@ -109,6 +109,8 @@ export default function SignalHistoryPage() {
   const [page, setPage] = useState(1);
   const pageSize = 25;
   const [chartSignal, setChartSignal] = useState<ApiSignal | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Filters
   const [market, setMarket] = useState<'all' | 'crypto' | 'stock'>('all');
@@ -134,6 +136,7 @@ export default function SignalHistoryPage() {
 
     const load = async () => {
       setLoading(true);
+      setLoadError(null);
       try {
         const filters: SignalHistoryFilters = {
           only_resolved: true,
@@ -157,8 +160,12 @@ export default function SignalHistoryPage() {
         setSignals(histRes.items);
         setTotal(histRes.total);
         setStats(statsRes);
-      } catch {
+      } catch (e: any) {
         if (cancelled) return;
+        // Previously swallowed silently — a slow/timed-out request looked
+        // identical to "genuinely zero signals", which is exactly what made
+        // a real backend hiccup undiagnosable from the UI alone.
+        setLoadError(e?.message ?? 'Sinyal geçmişi yüklenemedi.');
         setSignals([]);
         setTotal(0);
         setStats(null);
@@ -170,7 +177,7 @@ export default function SignalHistoryPage() {
     load();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [market, outcome, signalType, period, minConfidence, page]);
+  }, [market, outcome, signalType, period, minConfidence, page, reloadKey]);
 
   const pieData = stats
     ? [
@@ -227,6 +234,18 @@ export default function SignalHistoryPage() {
           <div className="w-10 h-10 border-4 border-accent-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-text-secondary">Yükleniyor...</p>
         </div>
+      ) : loadError ? (
+        <GlassCard className="flex flex-col items-center justify-center p-20 text-center">
+          <XCircle className="w-14 h-14 text-bearish mb-4" />
+          <h3 className="text-base font-bold text-text-secondary mb-1">Sinyal geçmişi yüklenemedi</h3>
+          <p className="text-sm text-text-muted max-w-md mb-4">{loadError}</p>
+          <button
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="px-4 py-2 text-xs font-bold rounded-lg bg-accent-primary/15 text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/25"
+          >
+            Tekrar Dene
+          </button>
+        </GlassCard>
       ) : !hasAnyHistory ? (
         <GlassCard className="flex flex-col items-center justify-center p-20 text-center">
           <Inbox className="w-14 h-14 text-border-medium mb-4" />

@@ -205,8 +205,13 @@ export function EngineMiniChart({ symbol, timeframe, engineName, supportingData 
 
   if (error) return <p className="text-[11px] text-text-muted text-center py-3">Grafik yüklenemedi.</p>;
   if (!candles) {
+    // Must match the real chart's final height (460 price + 160 MACD for
+    // engines that render one) — otherwise the panel grows the instant
+    // candles arrive, shifting everything below it (the "Bulgular" toggle)
+    // down just as a user clicks it, swallowing the click.
+    const placeholderHeight = SUPPORTS_MACD.has(engineName) ? 460 + 160 + 4 : 460;
     return (
-      <div className="flex justify-center items-center" style={{ height: 460 }}>
+      <div className="flex justify-center items-center" style={{ height: placeholderHeight }}>
         <div className="w-5 h-5 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );

@@ -56,6 +56,10 @@ const FINDING_PATTERNS: [RegExp, string | ((m: RegExpMatchArray) => string)][] =
   [/Volatility level:\s*HIGH/i, 'Volatilite: YÜKSEK'],
   [/Recommended Position Size:\s*([\d.]+)% of portfolio/i, (m) => `Önerilen pozisyon: %${m[1]} portföy`],
   [/Reasonable supply distribution \(([\d.]+)% circulating\)/i, (m) => `Makul arz dağılımı (%${m[1]} dolaşımda)`],
+  [/Low volatility \(ATR ([\d.]+)% of price\)/i, (m) => `Düşük volatilite (ATR fiyatın %${m[1]}'i)`],
+  [/High volatility \(ATR ([\d.]+)% of price\)/i, (m) => `Yüksek volatilite (ATR fiyatın %${m[1]}'i)`],
+  [/Medium volatility \(ATR ([\d.]+)% of price\)/i, (m) => `Orta volatilite (ATR fiyatın %${m[1]}'i)`],
+  [/Pattern:\s*([\w\s]+?)\s*\((\w+),\s*(weak|moderate|strong)\)/i, (m) => `Formasyon: ${m[1]} (${m[2] === 'bullish' ? 'boğa' : m[2] === 'bearish' ? 'ayı' : 'nötr'}, ${m[3] === 'weak' ? 'zayıf' : m[3] === 'moderate' ? 'orta' : 'güçlü'})`],
 ];
 
 function translateFinding(s: string): string {
@@ -546,6 +550,19 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
           <div className={cn('flex items-center flex-wrap', compact ? 'gap-3' : 'gap-4')}>
             <RiskBadge level={signal.risk_level} />
             <div className={cn('flex items-center pl-3 border-l border-border-subtle', compact ? 'gap-3' : 'gap-5 pl-4')}>
+              <div className="flex flex-col items-center">
+                {/* Same /10 scale as Sinyal Merkezi's "Kalite Skoru" column
+                    (Math.round(confidence/10)) — surfacing it here too so
+                    a signal's strength reads consistently across pages. */}
+                <span className={cn(
+                  'font-extrabold font-mono',
+                  compact ? 'text-xl' : 'text-3xl',
+                  signal.confidence_score >= 80 ? 'text-bullish' : signal.confidence_score >= 65 ? 'text-yellow-400' : 'text-text-muted'
+                )}>
+                  {Math.round(signal.confidence_score / 10)}<span className="text-text-muted text-sm">/10</span>
+                </span>
+                <span className="text-[9px] text-text-muted mt-1 font-bold uppercase tracking-wider">Kalite</span>
+              </div>
               <div className="flex flex-col items-center">
                 <ScoreRing score={signal.confidence_score} size={compact ? 50 : 76} strokeWidth={compact ? 4 : 6} />
                 <span className="text-[9px] text-text-muted mt-1 font-bold uppercase tracking-wider">Güven</span>
