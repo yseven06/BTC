@@ -337,6 +337,15 @@ export interface SignalIntelligence {
   fear_greed: number | null;
   engine_scores_at_signal: Record<string, EngineScoreSnapshot> | null;
   coin_memory: CoinMemoryInfo;
+  similar_setups: {
+    has_data: boolean;
+    match_count: number;
+    needed?: number;
+    wins?: number;
+    losses?: number;
+    win_rate?: number | null;
+    most_common_outcome?: string | null;
+  };
   outcome: string | null;
   detail_label: string | null;
   detail_label_tr: string | null;

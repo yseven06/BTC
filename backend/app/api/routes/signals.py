@@ -539,6 +539,13 @@ async def signal_intelligence(
             "adaptive_active": bool(mem.adaptive_weights),
         }
 
+    # Historical similarity: how did past setups that looked like this resolve?
+    from app.services.similarity import find_similar_setups
+    try:
+        similar = await find_similar_setups(db, signal_id)
+    except Exception:
+        similar = {"has_data": False, "match_count": 0}
+
     # Win rate in the regime this signal was born into.
     regime = snap.regime if snap else None
     regime_win_rate = None
@@ -565,6 +572,7 @@ async def signal_intelligence(
         "fear_greed": snap.fear_greed if snap else None,
         "engine_scores_at_signal": snap.engine_scores if snap else None,
         "coin_memory": coin,
+        "similar_setups": similar,
         "outcome": perf.outcome.value if perf else None,
         "detail_label": perf.detail_label if perf else None,
         "detail_label_tr": outcome_labels.label_tr(perf.detail_label) if perf and perf.detail_label else None,
