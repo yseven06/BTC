@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { EngineMiniChart } from '@/components/charts/EngineMiniChart';
 import { CoinIcon } from '@/components/ui/CoinIcon';
+import { IntelligencePanel } from '@/components/ui/IntelligencePanel';
 
 // Engines whose supporting_data carries real chart-able coordinates (S/R
 // levels, premium/discount zones, OB/FVG boxes, pattern indices). The rest
@@ -575,6 +576,9 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
           </div>
         </div>
       </GlassCard>
+
+      {/* ─── 1b. Adaptive Intelligence — "is this signal still valid?" ─── */}
+      {signal.id && <IntelligencePanel signalId={signal.id} compact={compact} />}
 
       {/* ─── 2. Trade Plan + Engine Scores — wide: side-by-side; compact: stacked ─── */}
       <div className={compact ? 'flex flex-col gap-4' : 'grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-6'}>

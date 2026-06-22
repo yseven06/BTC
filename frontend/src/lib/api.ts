@@ -300,6 +300,56 @@ export async function triggerBatchGeneration(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Adaptive Signal Intelligence — "is this signal still valid?" panel data
+// ---------------------------------------------------------------------------
+
+export interface EngineScoreSnapshot {
+  score: number;
+  bias: string;
+  confidence: number;
+}
+
+export interface CoinMemoryInfo {
+  has_memory: boolean;
+  total_signals?: number;
+  wins?: number;
+  losses?: number;
+  win_rate?: number | null;
+  avg_bars_to_outcome?: number | null;
+  adaptive_active?: boolean;
+}
+
+export interface SignalIntelligence {
+  signal_id: string;
+  symbol: string | null;
+  timeframe: string;
+  is_active: boolean;
+  generated_at: string | null;
+  live_status: string | null;
+  live_status_tr: string | null;
+  status_reason: string | null;
+  status_updated_at: string | null;
+  birth_confidence: number | null;
+  regime: string | null;
+  regime_win_rate: number | null;
+  atr_pct: number | null;
+  volatility_ratio: number | null;
+  fear_greed: number | null;
+  engine_scores_at_signal: Record<string, EngineScoreSnapshot> | null;
+  coin_memory: CoinMemoryInfo;
+  outcome: string | null;
+  detail_label: string | null;
+  detail_label_tr: string | null;
+  mfe_pct: number | null;
+  max_drawdown: number | null;
+  bars_to_outcome: number | null;
+}
+
+export async function fetchSignalIntelligence(signalId: string): Promise<SignalIntelligence> {
+  return apiFetch<SignalIntelligence>(`/api/v1/signals/${signalId}/intelligence`);
+}
+
+// ---------------------------------------------------------------------------
 // Assets
 // ---------------------------------------------------------------------------
 

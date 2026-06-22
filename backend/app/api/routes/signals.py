@@ -19,7 +19,10 @@ from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models.asset import Asset
 from app.models.signal import Signal, SignalOutcome, SignalPerformance, SignalType, Direction, RiskLevel
+from app.models.intelligence import SignalSnapshot, CoinMemory
 from app.models.user import User
+from app.backtesting import labels as outcome_labels
+from app.backtesting import lifecycle
 from app.schemas.signal import (
     SignalDetailResponse,
     SignalHistoryStats,
@@ -485,6 +488,90 @@ async def signal_performance_summary(
         historical_equity_curve=historical_equity_curve,
         drawdown_analysis=drawdown_analysis,
     )
+
+
+@router.get(
+    "/{signal_id}/intelligence",
+    summary="Adaptive intelligence panel data for a signal",
+)
+async def signal_intelligence(
+    signal_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Rich 'is this signal still valid?' panel: live lifecycle status, birth
+    regime, this coin/timeframe's learned track record, and the engine scores
+    captured when the signal fired. Powers the symbol-page intelligence card."""
+    res = await db.execute(
+        select(Signal)
+        .options(joinedload(Signal.performance), joinedload(Signal.asset))
+        .where(Signal.id == signal_id)
+    )
+    signal = res.unique().scalar_one_or_none()
+    if signal is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signal not found.")
+
+    symbol = signal.asset.symbol if signal.asset else None
+    timeframe = signal.timeframe.value if hasattr(signal.timeframe, "value") else str(signal.timeframe)
+
+    snap = (await db.execute(
+        select(SignalSnapshot).where(SignalSnapshot.signal_id == signal_id)
+    )).scalar_one_or_none()
+
+    mem = None
+    if symbol:
+        mem = (await db.execute(
+            select(CoinMemory).where(CoinMemory.symbol == symbol, CoinMemory.timeframe == timeframe)
+        )).scalar_one_or_none()
+
+    perf = signal.performance
+
+    # Coin-specific learned track record.
+    coin: Dict[str, Any] = {"has_memory": False}
+    if mem and mem.total_signals > 0:
+        resolved = (mem.wins or 0) + (mem.losses or 0)
+        coin = {
+            "has_memory": True,
+            "total_signals": mem.total_signals,
+            "wins": mem.wins,
+            "losses": mem.losses,
+            "win_rate": round((mem.wins / resolved) * 100, 1) if resolved > 0 else None,
+            "avg_bars_to_outcome": float(mem.avg_bars_to_outcome) if mem.avg_bars_to_outcome else None,
+            "adaptive_active": bool(mem.adaptive_weights),
+        }
+
+    # Win rate in the regime this signal was born into.
+    regime = snap.regime if snap else None
+    regime_win_rate = None
+    if mem and regime and mem.regime_stats and regime in mem.regime_stats:
+        rs = mem.regime_stats[regime]
+        if rs.get("total"):
+            regime_win_rate = round(rs["wins"] / rs["total"] * 100, 1)
+
+    return {
+        "signal_id": str(signal_id),
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "is_active": signal.is_active,
+        "generated_at": signal.generated_at.isoformat() if signal.generated_at else None,
+        "live_status": signal.live_status,
+        "live_status_tr": lifecycle.status_tr(signal.live_status),
+        "status_reason": signal.status_reason,
+        "status_updated_at": signal.status_updated_at.isoformat() if signal.status_updated_at else None,
+        "birth_confidence": float(snap.composite_confidence) if snap and snap.composite_confidence is not None else float(signal.confidence_score),
+        "regime": regime,
+        "regime_win_rate": regime_win_rate,
+        "atr_pct": float(snap.atr_pct) if snap and snap.atr_pct is not None else None,
+        "volatility_ratio": float(snap.volatility_ratio) if snap and snap.volatility_ratio is not None else None,
+        "fear_greed": snap.fear_greed if snap else None,
+        "engine_scores_at_signal": snap.engine_scores if snap else None,
+        "coin_memory": coin,
+        "outcome": perf.outcome.value if perf else None,
+        "detail_label": perf.detail_label if perf else None,
+        "detail_label_tr": outcome_labels.label_tr(perf.detail_label) if perf and perf.detail_label else None,
+        "mfe_pct": float(perf.mfe_pct) if perf and perf.mfe_pct is not None else None,
+        "max_drawdown": float(perf.max_drawdown) if perf and perf.max_drawdown is not None else None,
+        "bars_to_outcome": perf.bars_to_outcome if perf else None,
+    }
 
 
 @router.get(
