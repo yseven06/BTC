@@ -25,6 +25,7 @@ from app.backtesting import lifecycle
 from app.engines.market_regime import detect_regime
 from app.engines.market_structure.structure import analyse_market_structure
 from app.services.coin_memory import update_coin_memory
+from app.services.lifecycle_log import make_event
 
 # Timeframe → seconds, for scaling the lifecycle min-state-duration.
 _TF_SECONDS = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400, "1w": 604800}
@@ -137,6 +138,12 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                     await update_coin_memory(db, signal, perf, symbol.upper())
                 except Exception as mem_exc:
                     logger.warning("CoinMemory update failed for %s: %s", symbol, mem_exc)
+                db.add(make_event(
+                    signal_id=signal.id, from_status=signal.live_status,
+                    to_status="closed", kind="resolution",
+                    reason=labels.label_tr(perf.detail_label), outcome=perf.outcome.value,
+                    price=live_hit["live_price"],
+                ))
                 resolved_count += 1
                 details.append({
                     "signal_id": str(signal.id),
@@ -422,6 +429,13 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                     await update_coin_memory(db, signal, perf, symbol.upper())
                 except Exception as mem_exc:
                     logger.warning("CoinMemory update failed for %s: %s", symbol, mem_exc)
+                # Observability: close the lifecycle timeline with the outcome.
+                db.add(make_event(
+                    signal_id=signal.id, from_status=signal.live_status,
+                    to_status="closed", kind="resolution",
+                    reason=labels.label_tr(perf.detail_label), outcome=outcome.value,
+                    price=float(closes[-1]),
+                ))
 
                 details.append({
                     "signal_id": str(signal.id),
@@ -478,7 +492,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 bar_seconds = _TF_SECONDS.get(_map_db_timeframe(signal.timeframe), 3600)
                 min_state_seconds = max(180, int(bar_seconds * 0.25))
 
-                status, reason = lifecycle.evaluate_lifecycle(
+                lc = lifecycle.evaluate_lifecycle(
                     direction=signal.direction.value,
                     entry=entry, stop_loss=stop_loss, tp1=tp1,
                     current_price=float(closes[-1]),
@@ -489,14 +503,32 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                     seconds_in_state=seconds_in_state,
                     min_state_seconds=min_state_seconds,
                 )
-                signal.live_status = status
-                signal.status_reason = reason
+                signal.live_status = lc.status
+                signal.status_reason = lc.reason
                 signal.status_updated_at = now_eval
-                # Only advance live_status_since when the state actually changes,
-                # so min-duration measures time-in-current-state, not time since
-                # last evaluation.
-                if prev_status != status or signal.live_status_since is None:
+
+                # Observability: a guard blocked a real candidate change → bump
+                # the prevented-flip-flop counter (no history row for these).
+                if lc.suppressed:
+                    signal.flipflop_prevented_count = (signal.flipflop_prevented_count or 0) + 1
+
+                # Real transition (incl. first-ever) → advance since + log ONE
+                # history row. A pass with no change writes nothing.
+                if prev_status != lc.status or signal.live_status_since is None:
                     signal.live_status_since = now_eval
+                    db.add(make_event(
+                        signal_id=signal.id,
+                        from_status=prev_status,
+                        to_status=lc.status,
+                        kind="birth" if prev_status is None else "transition",
+                        reason=lc.reason,
+                        regime=cur_regime,
+                        price=float(closes[-1]),
+                        retrace_to_sl=lc.retrace_to_sl,
+                        progress_to_tp=lc.progress_to_tp,
+                        structure_event=structure_event,
+                        momentum_dir=momentum_dir,
+                    ))
 
         # Commit DB updates
         await db.commit()

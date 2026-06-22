@@ -25,6 +25,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
+    Text,
     UniqueConstraint,
     func,
 )
@@ -93,6 +94,56 @@ class SignalSnapshot(Base):
 
     def __repr__(self) -> str:
         return f"<SignalSnapshot(signal_id={self.signal_id}, regime={self.regime})>"
+
+
+class SignalStatusHistory(Base):
+    """Append-only log of lifecycle state transitions for a signal.
+
+    The observability layer behind "how good is the lifecycle itself?". One row
+    per ACTUAL transition (from != to), plus a birth row and a resolution row —
+    never one row per tracking pass. Suppressed (hysteresis-blocked) candidate
+    changes are NOT rows here; they only bump signals.flipflop_prevented_count,
+    so this table stays small and every row is a real state change.
+
+    Attributes:
+        from_status / to_status: The transition. from_status is NULL on birth;
+            to_status is "closed" on resolution.
+        kind: birth | transition | resolution.
+        reason: The status_reason at the moment of transition.
+        regime / price / retrace_to_sl / progress_to_tp / structure_event /
+            momentum_dir: Context captured at transition, so accuracy/threshold
+            analysis can be done later without re-deriving market state.
+        outcome: Only on kind=resolution — the resolved SignalOutcome value,
+            tying the lifecycle timeline to the eventual result.
+    """
+
+    __tablename__ = "signal_status_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    signal_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("signals.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    from_status = Column(String(24), nullable=True)
+    to_status = Column(String(24), nullable=False, index=True)
+    kind = Column(String(16), nullable=False, default="transition")
+    reason = Column(Text, nullable=True)
+    regime = Column(String(32), nullable=True)
+    price = Column(Numeric(precision=20, scale=8), nullable=True)
+    retrace_to_sl = Column(Numeric(precision=10, scale=4), nullable=True)
+    progress_to_tp = Column(Numeric(precision=10, scale=4), nullable=True)
+    structure_event = Column(String(24), nullable=True)
+    momentum_dir = Column(String(16), nullable=True)
+    outcome = Column(String(16), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"<SignalStatusHistory(signal_id={self.signal_id}, "
+            f"{self.from_status}->{self.to_status}, kind={self.kind})>"
+        )
 
 
 class CoinMemory(Base):

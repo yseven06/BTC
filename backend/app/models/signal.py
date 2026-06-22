@@ -145,6 +145,10 @@ class Signal(Base):
     # soon) and "X süredir zayıflıyor" displays. Only advances when the
     # status actually changes, not on every re-evaluation.
     live_status_since = Column(DateTime(timezone=True), nullable=True)
+    # Observability: how many times hysteresis / min-state-duration BLOCKED a
+    # raw candidate change (a prevented flip-flop). Incremented in place each
+    # such pass — cheaper than logging a row per suppression.
+    flipflop_prevented_count = Column(Integer, nullable=False, default=0, server_default="0")
     timeframe = Column(
         Enum(Timeframe, name="timeframe", create_constraint=True, create_type=False),
         nullable=False,

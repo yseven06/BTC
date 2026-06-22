@@ -30,6 +30,7 @@ from app.notifications.service import notify_signal
 from app.engines.market_regime import detect_regime
 from app.services.intelligence import build_snapshot
 from app.services.coin_memory import load_effective_weights, update_coin_memory
+from app.services.lifecycle_log import make_event
 
 logger = logging.getLogger(__name__)
 
@@ -317,6 +318,13 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                         await update_coin_memory(db, old, old_perf, symbol.upper())
                     except Exception as mem_exc:
                         logger.warning("[Scheduler] CoinMemory update failed for %s: %s", symbol, mem_exc)
+                    # Observability: close the old signal's lifecycle timeline.
+                    db.add(make_event(
+                        signal_id=old.id, from_status=old.live_status,
+                        to_status="closed", kind="resolution",
+                        reason="Ters sinyalle geçersiz oldu", outcome=old_perf.outcome.value,
+                        price=last_close,
+                    ))
                 else:
                     skip_new_signal = True
                     logger.info(
@@ -388,6 +396,11 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
             db.add(new_sig)
             await db.flush()
             db.add(SignalPerformance(signal_id=new_sig.id, outcome=SignalOutcome.ACTIVE))
+            # Observability: birth event opens the lifecycle timeline.
+            db.add(make_event(
+                signal_id=new_sig.id, from_status=None, to_status="active",
+                kind="birth", reason="Sinyal üretildi", regime=regime_label,
+            ))
 
             # Capture an immutable snapshot of the conditions this signal was
             # born into (engine scores, market regime, volatility, sentiment).

@@ -11,7 +11,7 @@ from uuid import UUID
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -488,6 +488,138 @@ async def signal_performance_summary(
         historical_equity_curve=historical_equity_curve,
         drawdown_analysis=drawdown_analysis,
     )
+
+
+@router.get(
+    "/lifecycle/metrics",
+    summary="Lifecycle observability metrics (read-only)",
+)
+async def lifecycle_metrics(
+    days: int = Query(30, ge=1, le=365, description="Look-back window in days."),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Read-only Lifecycle observability metrics derived from
+    signal_status_history + the prevented-flip-flop counter.
+
+    Behavioural metrics (transition counts, durations, flip-flops) are reliable
+    within days. Accuracy metrics (invalidating/approaching correctness) need
+    enough RESOLVED signals to be meaningful and may be sparse early — they are
+    reported with their own sample sizes so they're never read as more certain
+    than they are. Purely observational: writes nothing.
+    """
+    win = f"now() - interval '{int(days)} days'"
+
+    # 1) Event counts by kind.
+    kind_rows = (await db.execute(text(
+        f"SELECT kind, count(*) c FROM signal_status_history WHERE created_at > {win} GROUP BY kind"
+    ))).fetchall()
+    event_counts = {r[0]: r[1] for r in kind_rows}
+
+    # 2) Transition matrix (applied transitions only).
+    matrix_rows = (await db.execute(text(
+        f"""SELECT from_status, to_status, count(*) c FROM signal_status_history
+            WHERE kind='transition' AND created_at > {win}
+            GROUP BY 1,2 ORDER BY c DESC"""
+    ))).fetchall()
+    transition_matrix = [
+        {"from": r[0], "to": r[1], "count": r[2]} for r in matrix_rows
+    ]
+
+    # 3) Prevented flip-flops (the cheap counter) + actual immediate reversals.
+    flip_prevented = (await db.execute(text(
+        "SELECT COALESCE(SUM(flipflop_prevented_count),0) FROM signals"
+    ))).scalar()
+    actual_flipflops = (await db.execute(text(
+        f"""WITH t AS (
+              SELECT signal_id, from_status, to_status,
+                     LAG(from_status) OVER w AS prev_from,
+                     LAG(to_status)   OVER w AS prev_to
+              FROM signal_status_history
+              WHERE kind='transition' AND created_at > {win}
+              WINDOW w AS (PARTITION BY signal_id ORDER BY created_at)
+            )
+            SELECT count(*) FROM t WHERE to_status = prev_from AND from_status = prev_to"""
+    ))).scalar() or 0
+    prevented = int(flip_prevented or 0)
+    stability_ratio = (
+        round(prevented / (prevented + actual_flipflops), 3)
+        if (prevented + actual_flipflops) > 0 else None
+    )
+
+    # 4) Average time spent in each state (seconds), from consecutive events.
+    dur_rows = (await db.execute(text(
+        f"""WITH ev AS (
+              SELECT signal_id, from_status, created_at,
+                     LAG(created_at) OVER (PARTITION BY signal_id ORDER BY created_at) AS prev_ts
+              FROM signal_status_history WHERE created_at > {win}
+            )
+            SELECT from_status,
+                   round(avg(extract(epoch from (created_at - prev_ts)))::numeric, 1) avg_s,
+                   count(*) n
+            FROM ev WHERE prev_ts IS NOT NULL AND from_status IS NOT NULL
+            GROUP BY 1"""
+    ))).fetchall()
+    avg_state_duration_sec = {r[0]: {"avg_seconds": float(r[1]), "samples": r[2]} for r in dur_rows}
+
+    # 5) Accuracy — needs resolved outcomes; reported with sample sizes.
+    # NB: the signal_outcome PG enum stores UPPERCASE labels (WIN/LOSS/...),
+    # so normalise keys to lower-case before reading them.
+    def _acc_block(rows):
+        d = {str(r[0]).lower(): r[1] for r in rows}
+        wins = d.get("win", 0)
+        losses = d.get("loss", 0) + d.get("invalidated", 0)
+        resolved = wins + losses
+        return {"win": wins, "loss": losses, "resolved": resolved, "raw": d}
+
+    inv_rows = (await db.execute(text(
+        f"""SELECT p.outcome, count(*) c
+            FROM (SELECT DISTINCT signal_id FROM signal_status_history WHERE to_status='invalidating') h
+            JOIN signal_performances p ON p.signal_id = h.signal_id
+            JOIN signals s ON s.id = h.signal_id
+            WHERE s.is_active = false AND p.outcome <> 'ACTIVE'
+            GROUP BY 1"""
+    ))).fetchall()
+    inv = _acc_block(inv_rows)
+    invalidating_accuracy = {
+        "signals_flagged": inv["resolved"],
+        # correct = signal that was flagged invalidating and indeed lost
+        "correct_loss_rate": round(inv["loss"] / inv["resolved"] * 100, 1) if inv["resolved"] else None,
+        "false_alarm_rate": round(inv["win"] / inv["resolved"] * 100, 1) if inv["resolved"] else None,
+        "detail": inv["raw"],
+    }
+
+    appr_rows = (await db.execute(text(
+        f"""SELECT (p.hit_tp1) AS hit, count(*) c
+            FROM (SELECT DISTINCT signal_id FROM signal_status_history WHERE to_status='approaching_tp') h
+            JOIN signal_performances p ON p.signal_id = h.signal_id
+            JOIN signals s ON s.id = h.signal_id
+            WHERE s.is_active = false
+            GROUP BY 1"""
+    ))).fetchall()
+    appr = {str(r[0]): r[1] for r in appr_rows}
+    appr_hit = appr.get("True", 0) + appr.get("true", 0)
+    appr_miss = appr.get("False", 0) + appr.get("false", 0)
+    appr_total = appr_hit + appr_miss
+    approaching_accuracy = {
+        "signals_flagged": appr_total,
+        "reached_tp1_rate": round(appr_hit / appr_total * 100, 1) if appr_total else None,
+        "false_hope_rate": round(appr_miss / appr_total * 100, 1) if appr_total else None,
+    }
+
+    return {
+        "window_days": days,
+        "event_counts": event_counts,
+        "transition_matrix": transition_matrix,
+        "flipflops": {
+            "prevented": prevented,
+            "actual": actual_flipflops,
+            "stability_ratio": stability_ratio,
+        },
+        "avg_state_duration_sec": avg_state_duration_sec,
+        "invalidating_accuracy": invalidating_accuracy,
+        "approaching_accuracy": approaching_accuracy,
+        "note": "Davranışsal metrikler günler içinde, doğruluk metrikleri yeterli çözülmüş sinyal birikince güvenilir olur.",
+    }
 
 
 @router.get(

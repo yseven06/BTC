@@ -21,7 +21,7 @@ here):
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import NamedTuple, Optional, Tuple
 
 import pandas as pd
 
@@ -209,6 +209,27 @@ def _classify_raw(
     return ACTIVE, "Tez korunuyor; fiyat giriş bölgesi civarında sağlıklı."
 
 
+class LifecycleResult(NamedTuple):
+    """Outcome of an evaluate_lifecycle() call.
+
+    status/reason: the FINAL persisted state (after hysteresis).
+    raw_candidate: the unfiltered classification this pass.
+    suppressed: True when a real candidate change was BLOCKED by a guard
+        (hysteresis or min-duration) — i.e. a prevented flip-flop. Drives
+        flipflop_prevented_count; it is exactly raw_candidate != prev_status
+        while final == prev_status.
+    retrace_to_sl / progress_to_tp: the R / P that produced the decision, for
+        history-row context.
+    """
+
+    status: str
+    reason: str
+    raw_candidate: str
+    suppressed: bool
+    retrace_to_sl: float
+    progress_to_tp: float
+
+
 def evaluate_lifecycle(
     *,
     direction: str,
@@ -222,18 +243,20 @@ def evaluate_lifecycle(
     prev_status: Optional[str] = None,
     seconds_in_state: Optional[float] = None,
     min_state_seconds: float = DEFAULT_MIN_STATE_SECONDS,
-) -> Tuple[str, str]:
+) -> LifecycleResult:
     """v2 lifecycle: raw classify + hysteresis + min-duration.
 
-    Returns (status, turkish_reason). Pure function — the tracker supplies
-    prev_status and seconds_in_state (from live_status_since) and persists the
-    result. Escalation toward danger is immediate; recovery is gated.
+    Pure function — the tracker supplies prev_status and seconds_in_state (from
+    live_status_since) and persists the result. Escalation toward danger is
+    immediate; recovery is gated. Returns a LifecycleResult so the caller can
+    distinguish an applied transition from a suppressed (blocked) one.
     """
     is_bull = direction == "bullish"
     dist_to_tp1 = abs(tp1 - entry)
     dist_to_sl = abs(entry - stop_loss)
     if dist_to_tp1 <= 0 or dist_to_sl <= 0 or entry <= 0:
-        return ACTIVE, "Seviyeler okunamadı; izlemeye devam."
+        return LifecycleResult(ACTIVE, "Seviyeler okunamadı; izlemeye devam.",
+                               ACTIVE, False, 0.0, 0.0)
 
     if is_bull:
         progress_to_tp = (current_price - entry) / dist_to_tp1
@@ -250,19 +273,45 @@ def evaluate_lifecycle(
     )
     structure_against = _structure_against(structure_event, is_bull)
 
-    candidate, reason = _classify_raw(
+    candidate, cand_reason = _classify_raw(
         is_bull=is_bull, progress_to_tp=progress_to_tp, retrace_to_sl=retrace_to_sl,
         regime_hostile=regime_hostile, momentum_against=momentum_against,
         structure_against=structure_against, structure_event=structure_event,
     )
 
+    # Decide the FINAL state (apply candidate or hold previous via guards).
+    final, reason = _apply_hysteresis(
+        candidate=candidate, cand_reason=cand_reason, prev_status=prev_status,
+        progress_to_tp=progress_to_tp, retrace_to_sl=retrace_to_sl,
+        regime_hostile=regime_hostile, momentum_against=momentum_against,
+        seconds_in_state=seconds_in_state, min_state_seconds=min_state_seconds,
+    )
+
+    # Suppressed = a genuine candidate change that a guard blocked.
+    suppressed = (
+        prev_status is not None
+        and candidate != prev_status
+        and final == prev_status
+    )
+    return LifecycleResult(final, reason, candidate, suppressed,
+                           round(retrace_to_sl, 4), round(progress_to_tp, 4))
+
+
+def _apply_hysteresis(
+    *, candidate: str, cand_reason: str, prev_status: Optional[str],
+    progress_to_tp: float, retrace_to_sl: float,
+    regime_hostile: bool, momentum_against: bool,
+    seconds_in_state: Optional[float], min_state_seconds: float,
+) -> Tuple[str, str]:
+    """Given a raw candidate and the previous state, return the final (status,
+    reason) after hysteresis + min-duration. Escalation immediate; recovery gated."""
     # First evaluation or unchanged → take candidate as-is.
     if prev_status is None or prev_status == candidate:
-        return candidate, reason
+        return candidate, cand_reason
 
     # APPROACHING_TP is unambiguous good news — enter immediately.
     if candidate == APPROACHING_TP:
-        return candidate, reason
+        return candidate, cand_reason
 
     # Leaving APPROACHING_TP: hold until min-duration AND progress falls back
     # below the exit band.
@@ -271,7 +320,7 @@ def evaluate_lifecycle(
         if not held_long_enough or progress_to_tp >= EXIT_APPROACH:
             pct = min(99, int(max(progress_to_tp, 0) * 100))
             return APPROACHING_TP, f"Fiyat TP1 yolunun %{pct}'inde; hedefe yakınlığını koruyor."
-        return candidate, reason
+        return candidate, cand_reason
 
     # Both prev and candidate on the {active,weakening,invalidating} axis.
     prev_sev = _SEVERITY.get(prev_status, 0)
@@ -279,7 +328,7 @@ def evaluate_lifecycle(
 
     # Escalation toward danger — apply immediately (safety first).
     if cand_sev > prev_sev:
-        return candidate, reason
+        return candidate, cand_reason
 
     # De-escalation (recovery) — gated by min-duration + hysteresis exit bands.
     if seconds_in_state is not None and seconds_in_state < min_state_seconds:
@@ -297,7 +346,7 @@ def evaluate_lifecycle(
         if not recovered:
             return prev_status, _hold_reason(prev_status)
 
-    return candidate, reason
+    return candidate, cand_reason
 
 
 def _hold_reason(status: str) -> str:
