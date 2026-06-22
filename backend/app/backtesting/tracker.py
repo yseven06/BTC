@@ -23,7 +23,30 @@ from app.models.asset import Asset
 from app.backtesting import labels
 from app.backtesting import lifecycle
 from app.engines.market_regime import detect_regime
+from app.engines.market_structure.structure import analyse_market_structure
 from app.services.coin_memory import update_coin_memory
+
+# Timeframe → seconds, for scaling the lifecycle min-state-duration.
+_TF_SECONDS = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400, "1w": 604800}
+
+
+def _recent_structure_event(df, max_age_bars: int = 15) -> str | None:
+    """Most-recent BOS/CHoCH event string (e.g. 'choch_bearish') if it occurred
+    within the last `max_age_bars` candles, else None. Cheap, reuses the
+    market-structure analyser on the OHLCV the tracker already holds. A stale
+    break from 80 bars ago is irrelevant to a signal's current health."""
+    try:
+        res = analyse_market_structure(df)
+    except Exception:
+        return None
+    recent_floor = len(df) - max_age_bars
+    candidates = [e for e in (res.latest_bos, res.latest_choch) if e is not None]
+    if not candidates:
+        return None
+    latest = max(candidates, key=lambda e: e.index)
+    if latest.index < recent_floor:
+        return None
+    return latest.event.value
 from app.collectors.binance_collector import BinanceCollector
 from app.collectors.yahoo_collector import YahooCollector
 
@@ -430,21 +453,50 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 perf.mfe_pct = max(0.0, max_favorable)
                 perf.bars_to_outcome = bars_to_outcome
 
-                # Live lifecycle status — "is this signal still valid right now?"
-                # Cheap: price-vs-levels + current regime, no engine re-run.
+                # Live lifecycle status v2 — "is this signal still valid right
+                # now?". Cheap (no engine re-run, no extra network): regime +
+                # structure (BOS/CHoCH) + momentum, all from the OHLCV already
+                # fetched. Structure is confirmation only; INVALIDATING needs
+                # price retrace AND structure+momentum together. Hysteresis and
+                # a timeframe-scaled min-state-duration damp pass-to-pass
+                # flip-flop (escalation toward danger stays immediate).
                 try:
                     cur_regime = detect_regime(df).regime.value
                 except Exception:
                     cur_regime = None
-                status, reason = lifecycle.compute_lifecycle_status(
+                structure_event = _recent_structure_event(df)
+                momentum_dir = lifecycle.momentum_direction(df)
+
+                now_eval = datetime.now(timezone.utc)
+                prev_status = signal.live_status
+                seconds_in_state = None
+                if signal.live_status_since is not None:
+                    since = signal.live_status_since
+                    if since.tzinfo is None:
+                        since = since.replace(tzinfo=timezone.utc)
+                    seconds_in_state = (now_eval - since).total_seconds()
+                bar_seconds = _TF_SECONDS.get(_map_db_timeframe(signal.timeframe), 3600)
+                min_state_seconds = max(180, int(bar_seconds * 0.25))
+
+                status, reason = lifecycle.evaluate_lifecycle(
                     direction=signal.direction.value,
                     entry=entry, stop_loss=stop_loss, tp1=tp1,
                     current_price=float(closes[-1]),
                     current_regime=cur_regime,
+                    structure_event=structure_event,
+                    momentum_dir=momentum_dir,
+                    prev_status=prev_status,
+                    seconds_in_state=seconds_in_state,
+                    min_state_seconds=min_state_seconds,
                 )
                 signal.live_status = status
                 signal.status_reason = reason
-                signal.status_updated_at = datetime.now(timezone.utc)
+                signal.status_updated_at = now_eval
+                # Only advance live_status_since when the state actually changes,
+                # so min-duration measures time-in-current-state, not time since
+                # last evaluation.
+                if prev_status != status or signal.live_status_since is None:
+                    signal.live_status_since = now_eval
 
         # Commit DB updates
         await db.commit()

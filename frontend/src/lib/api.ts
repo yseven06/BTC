@@ -329,6 +329,8 @@ export interface SignalIntelligence {
   live_status_tr: string | null;
   status_reason: string | null;
   status_updated_at: string | null;
+  status_since: string | null;
+  seconds_in_state: number | null;
   birth_confidence: number | null;
   regime: string | null;
   regime_win_rate: number | null;

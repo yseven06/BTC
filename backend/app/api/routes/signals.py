@@ -564,6 +564,14 @@ async def signal_intelligence(
         "live_status_tr": lifecycle.status_tr(signal.live_status),
         "status_reason": signal.status_reason,
         "status_updated_at": signal.status_updated_at.isoformat() if signal.status_updated_at else None,
+        "status_since": signal.live_status_since.isoformat() if signal.live_status_since else None,
+        "seconds_in_state": (
+            (datetime.now(timezone.utc) - (
+                signal.live_status_since if signal.live_status_since.tzinfo
+                else signal.live_status_since.replace(tzinfo=timezone.utc)
+            )).total_seconds()
+            if signal.live_status_since else None
+        ),
         "birth_confidence": float(snap.composite_confidence) if snap and snap.composite_confidence is not None else float(signal.confidence_score),
         "regime": regime,
         "regime_win_rate": regime_win_rate,

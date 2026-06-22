@@ -380,6 +380,7 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 is_active=True,
                 live_status="active",
                 status_updated_at=now,
+                live_status_since=now,
                 timeframe=db_tf,
                 generated_at=now,
                 expires_at=now + timedelta(hours=48),

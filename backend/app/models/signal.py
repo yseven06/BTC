@@ -138,7 +138,13 @@ class Signal(Base):
     # states reversed/stopped are represented by resolution, not here).
     live_status = Column(Text, nullable=True)
     status_reason = Column(Text, nullable=True)
+    # Last time the lifecycle was *evaluated* (every tracking pass).
     status_updated_at = Column(DateTime(timezone=True), nullable=True)
+    # When the CURRENT live_status was first entered — distinct from
+    # status_updated_at. Drives min-state-duration (don't undo a state too
+    # soon) and "X süredir zayıflıyor" displays. Only advances when the
+    # status actually changes, not on every re-evaluation.
+    live_status_since = Column(DateTime(timezone=True), nullable=True)
     timeframe = Column(
         Enum(Timeframe, name="timeframe", create_constraint=True, create_type=False),
         nullable=False,

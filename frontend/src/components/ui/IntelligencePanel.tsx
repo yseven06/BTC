@@ -27,6 +27,14 @@ const REGIME_TR: Record<string, string> = {
   unknown: 'Belirsiz',
 };
 
+function humanizeDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  if (m < 60) return `${m} dk`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} sa`;
+  return `${Math.floor(h / 24)} gün`;
+}
+
 function Stat({ label, value, sub, valueCls }: { label: string; value: React.ReactNode; sub?: string; valueCls?: string }) {
   return (
     <div className="flex flex-col">
@@ -92,7 +100,14 @@ export function IntelligencePanel({ signalId, compact }: Props) {
         <div className={cn('flex items-start gap-2.5 rounded-xl border px-3 py-2.5 mb-4', status.bg)}>
           <StatusIcon className={cn('w-5 h-5 flex-shrink-0 mt-0.5', status.cls)} />
           <div>
-            <div className={cn('font-bold text-sm', status.cls)}>{status.label}</div>
+            <div className={cn('font-bold text-sm flex items-center gap-2', status.cls)}>
+              {status.label}
+              {data.seconds_in_state != null && data.seconds_in_state >= 60 && (
+                <span className="text-[10px] font-normal text-text-muted">
+                  · {humanizeDuration(data.seconds_in_state)} süredir
+                </span>
+              )}
+            </div>
             {data.status_reason && <p className="text-[11px] text-text-secondary mt-0.5">{data.status_reason}</p>}
           </div>
         </div>
