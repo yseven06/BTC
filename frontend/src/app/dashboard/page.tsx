@@ -256,7 +256,7 @@ export default function DashboardPage() {
       {/* ── 5 Stat Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {/* Closed trades within selected period */}
-        <GlassCard className="flex items-center justify-between p-4">
+        <GlassCard className="flex items-center justify-between p-4 group" glowEffect glowColor="primary">
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Bu Dönemde Kapanan İşlem</span>
             <h3 className="text-3xl font-bold font-mono mt-1 text-text-primary">{periodClosedCount}</h3>
@@ -264,27 +264,27 @@ export default function DashboardPage() {
               {timeRange === '24s' ? 'son 24 saat' : timeRange === '7g' ? 'son 7 gün' : 'son 30 gün'}
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center transition-shadow duration-300 group-hover:shadow-[0_0_14px_rgba(249,115,22,0.35)]">
             <Activity className="w-5 h-5 text-orange-500" />
           </div>
         </GlassCard>
 
         {/* Active Signals */}
-        <GlassCard className="flex items-center justify-between p-4">
+        <GlassCard className="flex items-center justify-between p-4 group" glowEffect glowColor="primary">
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Aktif Sinyaller</span>
             <h3 className="text-3xl font-bold font-mono mt-1 text-text-primary">{activeCount}</h3>
             <span className="text-[10px] text-text-muted font-semibold mt-1 block">
-              şu an işlem fırsatı (AL/SAT)
+              şu an işlem fırsatı (LONG/SHORT)
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-accent-primary/10 border border-accent-primary/20 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-accent-primary/10 border border-accent-primary/20 flex items-center justify-center transition-shadow duration-300 group-hover:shadow-glow-md">
             <Zap className="w-5 h-5 text-accent-primary" />
           </div>
         </GlassCard>
 
         {/* Win Rate */}
-        <GlassCard className="flex items-center justify-between p-4">
+        <GlassCard className="flex items-center justify-between p-4 group" glowEffect glowColor="bullish">
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Başarı Oranı</span>
             <h3 className="text-3xl font-bold font-mono mt-1 text-bullish">{winRate.toFixed(0)}%</h3>
@@ -292,13 +292,13 @@ export default function DashboardPage() {
               tüm zamanlar · {(perf?.win_count ?? 0) + (perf?.loss_count ?? 0)} kapanan işlem
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-bullish/10 border border-bullish/20 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-bullish/10 border border-bullish/20 flex items-center justify-center transition-shadow duration-300 group-hover:shadow-glow-bullish">
             <CheckCircle className="w-5 h-5 text-bullish" />
           </div>
         </GlassCard>
 
         {/* Avg Return */}
-        <GlassCard className="flex items-center justify-between p-4">
+        <GlassCard className="flex items-center justify-between p-4 group" glowEffect glowColor={avgReturn >= 0 ? 'bullish' : 'bearish'}>
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Ortalama Getiri</span>
             <h3 className="text-3xl font-bold font-mono mt-1 text-accent-secondary">{avgReturn >= 0 ? '+' : ''}{avgReturn.toFixed(2)}%</h3>
@@ -306,13 +306,13 @@ export default function DashboardPage() {
               tüm zamanlar · işlem başına
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-accent-secondary/10 border border-accent-secondary/20 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-accent-secondary/10 border border-accent-secondary/20 flex items-center justify-center transition-shadow duration-300 group-hover:shadow-glow-md">
             <ChartIcon className="w-5 h-5 text-accent-secondary" />
           </div>
         </GlassCard>
 
         {/* Fear & Greed */}
-        <GlassCard className="flex items-center justify-between p-4">
+        <GlassCard className="flex items-center justify-between p-4 group">
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Piyasa Greed Index</span>
             <h3 className="text-3xl font-bold font-mono mt-1" style={{ color: fngColor(fngValue) }}>
@@ -323,7 +323,12 @@ export default function DashboardPage() {
             </span>
           </div>
           {/* Mini gauge */}
-          <div className="relative w-12 h-12 flex-shrink-0">
+          <div
+            className="relative w-12 h-12 flex-shrink-0 rounded-full transition-shadow duration-300"
+            style={{ '--tw-shadow-color': fngColor(fngValue) } as React.CSSProperties}
+            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 16px ${fngColor(fngValue)}55`; }}
+            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
+          >
             <svg viewBox="0 0 44 44" className="w-full h-full -rotate-90">
               <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" />
               <circle
@@ -496,10 +501,22 @@ export default function DashboardPage() {
               <p className="text-xs text-text-muted text-center py-8">Sinyal bulunamadı.</p>
             ) : (
               <div className="space-y-3">
-                {recentSignals.map((sig) => (
+                {recentSignals.map((sig) => {
+                  const dir = sig.signal_type?.toLowerCase() ?? '';
+                  const isBullish = dir.includes('buy');
+                  const isBearish = dir.includes('sell');
+                  const hoverGlow = isBullish
+                    ? 'hover:shadow-glow-bullish hover:border-bullish/30'
+                    : isBearish
+                    ? 'hover:shadow-glow-bearish hover:border-bearish/30'
+                    : 'hover:shadow-glow-sm hover:border-border-medium';
+                  return (
                   <div
                     key={sig.id}
-                    className="flex items-center gap-3 p-3 bg-bg-secondary/40 border border-border-subtle rounded-xl hover:border-border-medium transition-colors"
+                    className={cn(
+                      "flex items-center gap-3 p-3 bg-bg-secondary/40 border border-border-subtle rounded-xl transition-all duration-300",
+                      hoverGlow
+                    )}
                   >
                     {/* Icon */}
                     <div className="w-8 h-8 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-xs text-accent-primary flex-shrink-0 overflow-hidden">
@@ -538,9 +555,10 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Score ring */}
-                    <ScoreRing score={sig.confidence_score} size={36} strokeWidth={3} />
+                    <ScoreRing score={sig.confidence_score} size={52} strokeWidth={4} />
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </GlassCard>

@@ -15,7 +15,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import case, func, select
+from sqlalchemy import case, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -468,12 +468,17 @@ async def admin_bulk_delete_closed(
         cutoff = datetime.now(timezone.utc) - timedelta(days=payload.older_than_days)
         query = query.where(Signal.generated_at < cutoff)
 
-    result = await db.execute(query)
-    signals = result.unique().scalars().all()
-    count = len(signals)
+    result = await db.execute(query.with_only_columns(Signal.id))
+    ids = result.scalars().all()
+    count = len(ids)
 
-    for s in signals:
-        await db.delete(s)
+    # A row-by-row ORM delete() issues one DELETE per signal (plus cascade
+    # checks) — with thousands of closed HOLD signals this routinely blew
+    # past the frontend's 8s request timeout. SignalPerformance has an
+    # ON DELETE CASCADE FK, so a single bulk DELETE is both correct and
+    # orders of magnitude faster.
+    if ids:
+        await db.execute(delete(Signal).where(Signal.id.in_(ids)))
 
     await _log_audit(db, admin, "signal.bulk_delete_closed", "signal", None,
                       {"count": count, **payload.model_dump(exclude_none=True)})

@@ -185,14 +185,28 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
     // for sub-$1 assets — match the Trade Plan ladder's precision (4 decimals
     // there) by sizing precision to the asset's actual price magnitude.
     const lastPrice = candles[candles.length - 1].close;
-    const precision = lastPrice >= 100 ? 2 : lastPrice >= 1 ? 4 : lastPrice >= 0.01 ? 4 : 6;
+    const precision = lastPrice >= 100 ? 2 : lastPrice >= 1 ? 4 : lastPrice >= 0.01 ? 4 : lastPrice >= 0.0001 ? 6 : 8;
     candleSeriesRef.current.applyOptions({
       priceFormat: { type: 'price', precision, minMove: 1 / 10 ** precision },
     });
 
     candleSeriesRef.current.setData(data);
     if (!hasFitOnceRef.current) {
-      chartRef.current?.timeScale().fitContent();
+      // fitContent() crams all 200 fetched candles into view, which makes
+      // recent price action (and the signal-start marker) too cramped to
+      // read. Show roughly the last ~5 days instead, centered on the latest
+      // candle (equal empty space on the right as candles on display, so
+      // the most recent candle sits near the middle, not pinned to an edge).
+      // Deferred a tick — right after setData() the timeScale hasn't laid
+      // out yet and setVisibleLogicalRange is silently a no-op.
+      const visibleCount = Math.min(120, candles.length);
+      const halfSpan = visibleCount / 2;
+      requestAnimationFrame(() => {
+        chartRef.current?.timeScale().setVisibleLogicalRange({
+          from: candles.length - halfSpan,
+          to: candles.length + halfSpan,
+        });
+      });
       hasFitOnceRef.current = true;
     }
   }, [candles]);
@@ -242,13 +256,22 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
       series.setMarkers([]);
       return;
     }
-    const startCandle = candles.find((c) => c.time >= signal.generatedAt!);
+    // A freshly-generated signal can be newer than the last fetched candle
+    // (OHLCV polling and signal generation aren't perfectly in sync — a
+    // signal minted seconds after the last candle fetch is common), in
+    // which case findIndex finds nothing and the marker silently never
+    // renders. Fall back to the most recent candle instead of giving up —
+    // the signal genuinely did start "now", so anchoring the marker to the
+    // latest bar is still accurate, just not pixel-exact to the second.
+    const startIdx = candles.findIndex((c) => c.time >= signal.generatedAt!);
+    const startCandle = startIdx >= 0 ? candles[startIdx] : candles[candles.length - 1];
     series.setMarkers(startCandle ? [{
       time: startCandle.time as any,
       position: 'aboveBar',
-      color: '#94a3b8',
+      color: '#fbbf24',
       shape: 'arrowDown',
       text: 'Sinyal başlangıcı',
+      size: 2,
     }] : []);
   }, [signal?.generatedAt, candles]);
 

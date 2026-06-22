@@ -3,13 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import {
   History, CheckCircle, XCircle, Trophy, TrendingDown, TrendingUp,
-  Target, Percent, Filter, Inbox,
+  Target, Percent, Filter, Inbox, LineChart,
 } from 'lucide-react';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis, AreaChart, Area,
 } from 'recharts';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { ClosedSignalChartModal } from '@/components/ui/ClosedSignalChartModal';
 import { cn, formatAbsoluteTimeTR } from '@/lib/utils';
 import {
   fetchSignalHistory, fetchSignalHistoryStats,
@@ -50,6 +51,19 @@ function outcomeDetail(s: ApiSignal): string {
   return OUTCOME_LABEL[s.outcome ?? 'active'] ?? s.outcome ?? '-';
 }
 
+// A signal can partially close at TP1/TP2 (engine takes 50%/30% of the
+// position off the table at each level — see backend tracker.py) and *then*
+// have the remainder cut short by a reversal/SL/expiry. Showing only the
+// final outcome ("İptal Edildi") hid the fact that some profit had already
+// been locked in before that — this surfaces the partial fill as its own
+// line above the final outcome.
+function partialFillDetail(s: ApiSignal): string | null {
+  if (s.outcome === 'win' || s.outcome === 'active') return null; // already fully reflected above, or nothing closed yet
+  if (s.hit_tp2) return 'TP1+TP2 alındı (%80)';
+  if (s.hit_tp1) return 'TP1 alındı (%50)';
+  return null;
+}
+
 function formatDuration(ms: number): string {
   if (ms <= 0) return '-';
   const minutes = ms / 60000;
@@ -85,7 +99,7 @@ const TIME_PERIODS = [
   { id: '90d', label: '90 Gün', days: 90 },
 ] as const;
 
-const PIE_COLORS = { win: '#10B981', loss: '#EF4444', breakeven: '#F59E0B', expired: '#64748b', invalidated: '#FB923C' };
+const PIE_COLORS = { win: '#10B981', loss: '#EF4444', breakeven: '#F59E0B', expired: '#64748b', invalidated: '#A78BFA' };
 
 export default function SignalHistoryPage() {
   const [loading, setLoading] = useState(true);
@@ -94,6 +108,7 @@ export default function SignalHistoryPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const pageSize = 25;
+  const [chartSignal, setChartSignal] = useState<ApiSignal | null>(null);
 
   // Filters
   const [market, setMarket] = useState<'all' | 'crypto' | 'stock'>('all');
@@ -383,6 +398,7 @@ export default function SignalHistoryPage() {
                     <th className="py-2.5 px-3">Tip</th>
                     <th className="py-2.5 px-3">Yön</th>
                     <th className="py-2.5 px-3">Üretim Zamanı</th>
+                    <th className="py-2.5 px-3">Kapanma Zamanı</th>
                     <th className="py-2.5 px-3 text-right">Giriş</th>
                     <th className="py-2.5 px-3 text-right">SL</th>
                     <th className="py-2.5 px-3 text-right">TP1/TP2/TP3</th>
@@ -391,6 +407,7 @@ export default function SignalHistoryPage() {
                     <th className="py-2.5 px-3 text-right">Güven</th>
                     <th className="py-2.5 px-3 text-right">Risk</th>
                     <th className="py-2.5 px-3 text-right">Süre</th>
+                    <th className="py-2.5 px-3 text-center">Grafik</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -404,15 +421,23 @@ export default function SignalHistoryPage() {
                         </span>
                       </td>
                       <td className="py-2.5 px-3 font-mono text-text-muted">{formatAbsoluteTimeTR(s.generated_at)}</td>
+                      <td className="py-2.5 px-3 font-mono text-text-muted">{s.closed_at ? formatAbsoluteTimeTR(s.closed_at) : '-'}</td>
                       <td className="py-2.5 px-3 text-right font-mono text-text-primary">{s.entry_zone_low?.toFixed?.(4) ?? s.entry_zone_low}</td>
                       <td className="py-2.5 px-3 text-right font-mono text-bearish">{s.stop_loss}</td>
                       <td className="py-2.5 px-3 text-right font-mono text-text-muted">
                         {s.tp1} / {s.tp2} / {s.tp3}
                       </td>
                       <td className="py-2.5 px-3">
-                        <span className={cn('px-2 py-0.5 rounded text-[10px] font-bold border', OUTCOME_COLOR[s.outcome ?? 'active'])}>
-                          {outcomeDetail(s)}
-                        </span>
+                        <div className="flex flex-col gap-1 items-start">
+                          {partialFillDetail(s) && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold border text-bullish bg-bullish/10 border-bullish/20">
+                              {partialFillDetail(s)}
+                            </span>
+                          )}
+                          <span className={cn('px-2 py-0.5 rounded text-[10px] font-bold border', OUTCOME_COLOR[s.outcome ?? 'active'])}>
+                            {partialFillDetail(s) ? `Kalan: ${outcomeDetail(s)}` : outcomeDetail(s)}
+                          </span>
+                        </div>
                       </td>
                       <td className={cn('py-2.5 px-3 text-right font-bold font-mono',
                         (s.actual_return ?? 0) > 0 ? 'text-bullish' : (s.actual_return ?? 0) < 0 ? 'text-bearish' : 'text-text-muted')}>
@@ -420,13 +445,24 @@ export default function SignalHistoryPage() {
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono text-text-primary">{qualityScore(s.confidence_score)}/10</td>
                       <td className="py-2.5 px-3 text-right uppercase text-text-muted">{s.risk_level}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-text-muted">
+                      <td className="py-2.5 px-3 text-right font-mono text-text-muted min-w-[110px]">
                         <div>{timeToOutcome(s)}</div>
                         {tpTimings(s).length > 0 && (
-                          <div className="text-[10px] text-bullish/80 normal-case font-sans">
-                            {tpTimings(s).map((t) => `${t.label}: ${formatDuration(t.ms)}`).join(' · ')}
+                          <div className="flex flex-col items-end text-[10px] text-bullish/80 normal-case font-sans leading-tight mt-0.5">
+                            {tpTimings(s).map((t) => (
+                              <span key={t.label} className="whitespace-nowrap">{t.label}: {formatDuration(t.ms)}</span>
+                            ))}
                           </div>
                         )}
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <button
+                          onClick={() => setChartSignal(s)}
+                          title="Kapanma anındaki grafiği gör"
+                          className="p-1.5 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-colors"
+                        >
+                          <LineChart className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -448,6 +484,9 @@ export default function SignalHistoryPage() {
             )}
           </GlassCard>
         </>
+      )}
+      {chartSignal && (
+        <ClosedSignalChartModal signal={chartSignal} onClose={() => setChartSignal(null)} />
       )}
     </div>
   );

@@ -30,14 +30,20 @@ class BinanceCollector(BaseCollector):
         symbol: str,
         timeframe: str,
         limit: int = 100,
+        end_time_ms: int | None = None,
     ) -> pd.DataFrame:
         """Fetch historical candlesticks from Binance.
 
         Timeframes supported: 1m, 5m, 15m, 1h, 4h, 1d, 1w.
+
+        end_time_ms (optional): Binance `endTime` in unix milliseconds —
+        returns the `limit` candles ending at/before this point instead of
+        the most recent ones. Used to replay a chart's state as of a past
+        moment (e.g. a closed signal's resolution time), not just "now".
         """
         # Format symbol to uppercase and remove slashes (e.g. BTC/USDT -> BTCUSDT)
         formatted_symbol = symbol.replace("/", "").upper()
-        
+
         # Map timeframes
         tf_map = {
             "1m": "1m", "5m": "5m", "15m": "15m",
@@ -46,11 +52,13 @@ class BinanceCollector(BaseCollector):
         interval = tf_map.get(timeframe, "1h")
 
         url = f"{self.base_url}/klines"
-        params = {
+        params: Dict[str, Any] = {
             "symbol": formatted_symbol,
             "interval": interval,
             "limit": limit
         }
+        if end_time_ms is not None:
+            params["endTime"] = end_time_ms
 
         try:
             response = await self.client.get(url, params=params)

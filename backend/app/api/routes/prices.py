@@ -9,9 +9,9 @@ Used by the frontend for stock prices (WebSocket handles crypto directly).
 from __future__ import annotations
 
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.collectors.binance_collector import BinanceCollector
 from app.collectors.yahoo_collector import YahooCollector
@@ -109,6 +109,7 @@ async def get_ohlcv(
     symbol: str,
     timeframe: str = "1h",
     limit: int = 200,
+    end_time: Optional[int] = Query(None, description="Unix seconds — return the `limit` candles ending at/before this point instead of the most recent ones. Used to replay a chart's past state (e.g. a closed signal's resolution time)."),
 ) -> Dict[str, Any]:
     """
     Returns OHLCV candles in lightweight-charts compatible format:
@@ -118,16 +119,25 @@ async def get_ohlcv(
     is_stock = "." in symbol or symbol.upper().endswith(".IS")
     candles = []
 
+    df = None
     if is_stock:
         yahoo = YahooCollector()
         try:
-            df = await yahoo.fetch_ohlcv(symbol, timeframe, limit=limit)
+            df = await yahoo.fetch_ohlcv(symbol, timeframe, limit=limit, end_date=end_time)
+        except Exception as exc:
+            # A historical end_time window can legitimately land on a
+            # market-closed stretch (BIST weekends/holidays) where yfinance
+            # finds nothing — that's an empty result, not a server error.
+            logger.warning("OHLCV fetch failed for %s (end_time=%s): %s", symbol, end_time, exc)
         finally:
             await yahoo.close()
     else:
         binance = BinanceCollector()
         try:
-            df = await binance.fetch_ohlcv(symbol, timeframe, limit=limit)
+            end_time_ms = end_time * 1000 if end_time is not None else None
+            df = await binance.fetch_ohlcv(symbol, timeframe, limit=limit, end_time_ms=end_time_ms)
+        except Exception as exc:
+            logger.warning("OHLCV fetch failed for %s (end_time=%s): %s", symbol, end_time, exc)
         finally:
             await binance.close()
 

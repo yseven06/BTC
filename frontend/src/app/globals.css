@@ -383,6 +383,59 @@
 }
 
 /* ============================================
+   TP Ladder "Reached" Pulse — only on TP levels
+   that have actually been hit (hit_tpN = true).
+   An unreached target gets no motion at all now —
+   showing live motion on something that hasn't
+   happened yet read as "this is already done",
+   which is exactly backwards. Motion is reserved
+   for the moment a target is genuinely achieved:
+   a breathing glow on the badge + a traveling
+   highlight along the connector line, like a
+   small celebration rather than a progress meter.
+   ============================================ */
+@keyframes tp-pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.35); }
+  50%      { box-shadow: 0 0 14px 3px rgba(0, 230, 118, 0.45); }
+}
+
+.tp-pulse-badge {
+  animation: tp-pulse-glow 2.4s ease-in-out infinite;
+}
+
+/* Sweeps a glint fully off-screen on both ends (-100% to 200%, not 0-100%)
+   so the loop's reset is hidden outside the visible track instead of
+   happening mid-line. Using top/bottom/left + width (not `inset` + `width`
+   together — those two conflict on the right edge, which was cutting the
+   glint's travel short and made the loop look like it snapped back before
+   reaching the end). */
+@keyframes tp-pulse-travel {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.tp-pulse-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.tp-pulse-line::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 230, 118, 0.9) 50%,
+    transparent 100%
+  );
+  animation: tp-pulse-travel 2.4s linear infinite;
+}
+
+/* ============================================
    Score Ring SVG
    ============================================ */
 @layer components {

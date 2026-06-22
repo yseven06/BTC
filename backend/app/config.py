@@ -74,6 +74,11 @@ class Settings(BaseSettings):
     # --- FRED (optional — required for US macro indicators) ---
     FRED_API_KEY: str = ""
 
+    # --- Finnhub (optional — company news + earnings calendar for stocks).
+    # Free tier: 60 calls/min, get a key at finnhub.io/register. Leave blank
+    # to fall back to baseline/synthetic fundamentals. ---
+    FINNHUB_API_KEY: str = ""
+
     # --- CORS ---
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
 

@@ -7,7 +7,7 @@ import { cn, formatRelativeTime, formatAbsoluteTimeTR } from '@/lib/utils';
 import { ApiSignal } from '@/lib/api';
 import {
   Target, TrendingUp, TrendingDown, Activity, ShieldAlert,
-  Info, X, Scale, FileText, BarChart3,
+  Info, X, Scale, FileText, BarChart3, Check,
 } from 'lucide-react';
 import { EngineMiniChart } from '@/components/charts/EngineMiniChart';
 import { CoinIcon } from '@/components/ui/CoinIcon';
@@ -316,20 +316,20 @@ function PriceLadder({ signal }: { signal: ApiSignal }) {
 
   // For LONG: TP3 > TP2 > TP1 > ENTRY > SL  (descending visual order)
   // For SHORT: SL > ENTRY > TP1 > TP2 > TP3
-  const items: { key: string; label: string; value: number | null; color: string; emphasize?: boolean }[] = isLong
+  const items: { key: string; label: string; value: number | null; color: string; emphasize?: boolean; hit?: boolean }[] = isLong
     ? [
-        { key: 'tp3',   label: 'TP3',   value: signal.tp3 ?? null,        color: 'bullish' },
-        { key: 'tp2',   label: 'TP2',   value: signal.tp2 ?? null,        color: 'bullish' },
-        { key: 'tp1',   label: 'TP1',   value: signal.tp1 ?? null,        color: 'bullish' },
+        { key: 'tp3',   label: 'TP3',   value: signal.tp3 ?? null,        color: 'bullish', hit: !!signal.hit_tp3 },
+        { key: 'tp2',   label: 'TP2',   value: signal.tp2 ?? null,        color: 'bullish', hit: !!signal.hit_tp2 },
+        { key: 'tp1',   label: 'TP1',   value: signal.tp1 ?? null,        color: 'bullish', hit: !!signal.hit_tp1 },
         { key: 'entry', label: 'GİRİŞ', value: entry,                     color: 'accent', emphasize: true },
         { key: 'sl',    label: 'SL',    value: signal.stop_loss ?? null,  color: 'bearish' },
       ]
     : [
         { key: 'sl',    label: 'SL',    value: signal.stop_loss ?? null,  color: 'bearish' },
         { key: 'entry', label: 'GİRİŞ', value: entry,                     color: 'accent', emphasize: true },
-        { key: 'tp1',   label: 'TP1',   value: signal.tp1 ?? null,        color: 'bullish' },
-        { key: 'tp2',   label: 'TP2',   value: signal.tp2 ?? null,        color: 'bullish' },
-        { key: 'tp3',   label: 'TP3',   value: signal.tp3 ?? null,        color: 'bullish' },
+        { key: 'tp1',   label: 'TP1',   value: signal.tp1 ?? null,        color: 'bullish', hit: !!signal.hit_tp1 },
+        { key: 'tp2',   label: 'TP2',   value: signal.tp2 ?? null,        color: 'bullish', hit: !!signal.hit_tp2 },
+        { key: 'tp3',   label: 'TP3',   value: signal.tp3 ?? null,        color: 'bullish', hit: !!signal.hit_tp3 },
       ];
 
   return (
@@ -339,6 +339,14 @@ function PriceLadder({ signal }: { signal: ApiSignal }) {
           const colorClass = item.color === 'bullish' ? 'bg-bullish text-black border-bullish'
                             : item.color === 'bearish' ? 'bg-bearish text-white border-bearish'
                             : 'bg-accent-primary text-white border-accent-primary';
+          // A TP not yet hit hasn't happened — it gets a plain outline and
+          // no motion, full stop. Motion (pulse + traveling highlight) is
+          // reserved for the moment hit_tpN actually flips true: that's a
+          // real, already-achieved event worth a small celebration, not a
+          // "still waiting" progress indicator on something that may never
+          // come.
+          const outlineClass = 'bg-transparent text-bullish border-bullish';
+          const badgeColorClass = item.hit ? colorClass : outlineClass;
           const lineColor  = item.color === 'bullish' ? 'bg-bullish/40'
                             : item.color === 'bearish' ? 'bg-bearish/40'
                             : 'bg-accent-primary/40';
@@ -347,14 +355,22 @@ function PriceLadder({ signal }: { signal: ApiSignal }) {
               <div className="flex items-center gap-4">
                 {/* Left label badge */}
                 <div className={cn(
-                  'w-16 text-center text-[11px] font-extrabold py-1.5 rounded-lg border-2',
-                  colorClass,
-                  item.emphasize && 'shadow-glow-sm scale-110'
+                  'w-16 text-center text-[11px] font-extrabold py-1.5 rounded-lg border-2 flex items-center justify-center gap-1',
+                  badgeColorClass,
+                  item.emphasize && 'shadow-glow-sm scale-110',
+                  item.hit && 'tp-pulse-badge'
                 )}>
+                  {item.hit && <Check className="w-3 h-3" />}
                   {item.label}
                 </div>
-                {/* Dashed connector */}
-                <div className="flex-1 border-t-2 border-dashed border-border-subtle/60" />
+                {/* Dashed connector — a TP that's actually been reached gets
+                    a traveling highlight layered on top of the static
+                    dashed line underneath, rather than replacing it. */}
+                <div className="relative flex-1 border-t-2 border-dashed border-border-subtle/60">
+                  {item.hit && (
+                    <div className="absolute inset-x-0 -top-[3px] h-[2px] tp-pulse-line" />
+                  )}
+                </div>
                 {/* Value */}
                 <div className={cn(
                   'text-sm font-bold font-mono min-w-[100px] text-right',

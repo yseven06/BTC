@@ -66,13 +66,24 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
             if isinstance(res, dict) and res.get("hit"):
                 live_hit_by_sig[res["signal_id"]] = res
 
-        # Fetch pricing history for all active signals concurrently (for TP/SL bar checks)
+        # Fetch pricing history for all active signals concurrently (for TP/SL bar checks).
+        # return_exceptions=True so one bad signal/symbol can't take down the
+        # whole pass — without it, every other active signal (including ones
+        # that had already blown through their stop-loss) silently stopped
+        # getting re-checked the moment any single task raised.
         tasks = [
             _fetch_market_data_for_signal(signal, binance, yahoo)
             for signal in active_signals
         ]
-        results = await asyncio.gather(*tasks)
-        dfs_by_signal_id = dict(results)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        dfs_by_signal_id: Dict[Any, pd.DataFrame | None] = {}
+        for signal, res in zip(active_signals, results):
+            if isinstance(res, BaseException):
+                logger.error("Market data fetch raised for signal %s: %s", signal.id, res)
+                dfs_by_signal_id[signal.id] = None
+            else:
+                sig_id, df = res
+                dfs_by_signal_id[sig_id] = df
 
         for signal in active_signals:
             processed_count += 1
@@ -109,7 +120,16 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 )
                 continue
 
-            entry = float(signal.entry_zone_high + signal.entry_zone_low) / 2.0
+            # Same None-guard as _fetch_market_data_for_signal above: a HOLD
+            # signal has no entry_zone_low/high (both NULL), and this used to
+            # compute `entry` before checking signal_type — `None + None`
+            # crashed this whole function (and, before the gather() fix
+            # above, the entire tracking pass) the instant a HOLD signal
+            # showed up anywhere in the active set.
+            if signal.signal_type.value == "HOLD" or signal.entry_zone_high is None or signal.entry_zone_low is None:
+                entry = 0.0
+            else:
+                entry = float(signal.entry_zone_high + signal.entry_zone_low) / 2.0
             if signal.signal_type.value == "HOLD" or entry <= 0:
                 # Silently handle expiration/deactivation for HOLD signals
                 now_utc = datetime.now(timezone.utc)
@@ -132,7 +152,21 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
             # We filter for candles that happened *after* signal generation time
             # Parse signal.generated_at to pandas datetime (naive or timezone-aware matching)
             sig_time = pd.to_datetime(signal.generated_at).tz_localize(None)
-            df_after = df[df.index.tz_localize(None) > sig_time]
+            df_naive_idx = df.index.tz_localize(None)
+            df_after = df[df_naive_idx > sig_time]
+
+            # The candle still forming when the signal was generated opened
+            # *before* sig_time, so the strict `> sig_time` filter above drops
+            # it entirely — but its live high/low already reflect everything
+            # that's happened since (Binance's klines endpoint returns the
+            # in-progress candle with continuously-updated high/low). Without
+            # this, a TP/SL touch happening in that very candle stayed
+            # invisible until the next candle opened — for 1h/4h/1d signals
+            # that's up to a full timeframe period of "still active" lag
+            # even after price had genuinely already hit the level.
+            last_candle_time = df_naive_idx[-1]
+            if last_candle_time not in df_after.index.tz_localize(None):
+                df_after = pd.concat([df_after, df.iloc[[-1]]])
 
             if df_after.empty:
                 logger.info(f"No new price bars recorded since signal generation for {symbol}")
@@ -166,12 +200,25 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
 
             closed_at = None
 
+            sig_time_aware = pd.Timestamp(signal.generated_at)
+            if sig_time_aware.tzinfo is None:
+                sig_time_aware = sig_time_aware.tz_localize(timezone.utc)
+
             def _aware(ts: Any) -> Any:
                 """times[] entries are tz-naive (we stripped tz to compare against
                 sig_time) but the DB column is TIMESTAMP WITH TIME ZONE — asyncpg
-                rejects naive datetimes outright. Re-attach UTC before saving."""
+                rejects naive datetimes outright. Re-attach UTC before saving.
+
+                Also floors the result at sig_time: the "still-forming candle"
+                appended above (see comment near df_after) opened *before* the
+                signal existed, so its bar_time can be earlier than
+                generated_at. A TP/SL hit timestamp before the signal's own
+                creation time reads as a contradiction in the UI (e.g. a closed
+                signal chart showing the resolution marker to the left of the
+                "signal started" marker) — clamp it forward instead."""
                 ts = pd.Timestamp(ts)
-                return ts.tz_localize(timezone.utc) if ts.tzinfo is None else ts
+                ts = ts.tz_localize(timezone.utc) if ts.tzinfo is None else ts
+                return max(ts, sig_time_aware)
 
             opens = df_after["open"].values
             highs = df_after["high"].values
@@ -399,8 +446,18 @@ async def _check_live_sl_hit(
 async def _fetch_market_data_for_signal(
     signal: Signal, binance: BinanceCollector, yahoo: YahooCollector
 ) -> tuple[Any, pd.DataFrame | None]:
+    # A HOLD signal has no real trade plan, so entry_zone_low/high are NULL
+    # (see scheduler.py) — `None + None` raises TypeError, and this runs
+    # inside asyncio.gather() without return_exceptions=True, so one HOLD
+    # signal in the active set used to crash the *entire* tracking pass:
+    # every other active signal (including ones that had genuinely already
+    # blown through their stop-loss) silently never got re-checked again
+    # until this function stopped throwing. Guard the None case before
+    # touching the values at all.
+    if signal.signal_type.value == "HOLD" or signal.entry_zone_high is None or signal.entry_zone_low is None:
+        return signal.id, None
     entry = float(signal.entry_zone_high + signal.entry_zone_low) / 2.0
-    if signal.signal_type.value == "HOLD" or entry <= 0:
+    if entry <= 0:
         return signal.id, None
 
     asset: Asset = signal.asset

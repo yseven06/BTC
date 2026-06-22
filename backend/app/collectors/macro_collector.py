@@ -16,7 +16,7 @@ import asyncio
 import logging
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from xml.etree import ElementTree as ET
 
@@ -170,6 +170,19 @@ class MacroCollector:
 
     # ── KAP (BIST company disclosures) ───────────────────────────────────────
 
+    @staticmethod
+    def _parse_kap_date(raw: Optional[str]) -> Optional[str]:
+        """KAP's "DD.MM.YYYY HH:MM:SS" is Turkey-local time with no offset
+        marker — attach +03:00 explicitly so consumers get an unambiguous
+        ISO 8601 timestamp instead of a string `Date()` can't parse."""
+        if not raw:
+            return None
+        try:
+            dt = datetime.strptime(raw, "%d.%m.%Y %H:%M:%S")
+            return dt.replace(tzinfo=timezone(timedelta(hours=3))).isoformat()
+        except ValueError:
+            return None
+
     async def fetch_kap_disclosures(self, limit: int = 15) -> List[Dict[str, Any]]:
         """
         Latest KAP material disclosures. KAP relaunched their site as a
@@ -203,7 +216,12 @@ class MacroCollector:
                 items.append({
                     "title":     basic.get("title"),
                     "company":   basic.get("companyTitle"),
-                    "published": basic.get("publishDate"),
+                    # KAP returns "DD.MM.YYYY HH:MM:SS" (Turkey-local, no
+                    # offset) — JS `new Date()` can't parse that reliably,
+                    # so it renders as "NaN gün önce" client-side. Convert
+                    # to ISO 8601 here, at the source, rather than pushing
+                    # a non-standard format on to every consumer.
+                    "published": self._parse_kap_date(basic.get("publishDate")),
                     "category":  basic.get("disclosureCategory"),
                     "url":       f"https://www.kap.org.tr/tr/Bildirim/{disclosure_id}" if disclosure_id else None,
                 })

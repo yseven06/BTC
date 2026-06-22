@@ -81,14 +81,14 @@ def generate_explanation(
 
     if vol_res:
         ratio = vol_res.supporting_data.get("volume_trend_ratio", 1.0)
-        poc = vol_res.supporting_data.get("volume_profile", {}).get("poc_price", 0.0)
+        poc = (vol_res.supporting_data.get("volume_profile") or {}).get("poc_price", 0.0)
         tr_struct_parts.append(f"- **Hacim Profili**: Mevcut hacim ortalamanın `{ratio:.1f}x` katıdır. Yoğun işlem bölgesi (Point of Control) `{poc:.4f}` seviyesindedir.")
     tr_paragraphs.append("\n".join(tr_struct_parts))
 
     # 4. SMC / CRT Concepts
     tr_smc_parts = ["### Smart Money (SMC) ve Candle Range (CRT) Analizi"]
     if smc_res:
-        pd_zone = smc_res.supporting_data.get("premium_discount", {}).get("current_zone", "equilibrium")
+        pd_zone = (smc_res.supporting_data.get("premium_discount") or {}).get("current_zone", "equilibrium")
         pd_zone_tr = "İskonto (Discount - Alım)" if pd_zone == "discount" else "Premium (Satış)" if pd_zone == "premium" else "Denge (Equilibrium)"
         tr_smc_parts.append(f"- **Değer Bölgesi**: Fiyat şu anda `{pd_zone_tr}` bölgesindedir.")
         
@@ -170,14 +170,14 @@ def generate_explanation(
 
     if vol_res:
         ratio = vol_res.supporting_data.get("volume_trend_ratio", 1.0)
-        poc = vol_res.supporting_data.get("volume_profile", {}).get("poc_price", 0.0)
+        poc = (vol_res.supporting_data.get("volume_profile") or {}).get("poc_price", 0.0)
         en_struct_parts.append(f"- **Volume Profile**: Current trading volume is `{ratio:.1f}x` average. Point of Control (POC) rests at `{poc:.4f}`.")
     en_paragraphs.append("\n".join(en_struct_parts))
 
     # 4. SMC / CRT Concepts
     en_smc_parts = ["### Smart Money Concepts (SMC) & Candle Range Theory (CRT)"]
     if smc_res:
-        pd_zone = smc_res.supporting_data.get("premium_discount", {}).get("current_zone", "equilibrium")
+        pd_zone = (smc_res.supporting_data.get("premium_discount") or {}).get("current_zone", "equilibrium")
         en_smc_parts.append(f"- **Value Zone**: Price is trading inside the `{pd_zone.upper()}` zone.")
         
         bull_ob = smc_res.supporting_data.get("unmitigated_bullish_ob_count", 0)

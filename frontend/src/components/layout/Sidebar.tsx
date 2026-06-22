@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Zap, TrendingUp, Star, PieChart, Bell,
   BarChart3, BarChart2, Settings, ChevronLeft, ChevronRight,
-  LogOut, User, Newspaper, FlaskConical, Crown, Microscope, CreditCard,
+  LogOut, User, Newspaper, Crown, Microscope, CreditCard,
   Globe, Shield, History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -30,8 +30,7 @@ const navItems: NavItem[] = [
   { id: 'signal-history', label: 'Sinyal Geçmişi', icon: History,       href: '/signal-history' },
   { id: 'markets',     label: 'Piyasalar',       icon: TrendingUp,      href: '/markets' },
   { id: 'portfolio',   label: 'Portföy',         icon: PieChart,        href: '/portfolio' },
-  { id: 'backtest',        label: 'Backtest',         icon: FlaskConical,  href: '/backtest' },
-  { id: 'performance',    label: 'Performans',       icon: BarChart3,     href: '/performance' },
+  { id: 'performance',    label: 'Performans & Backtest', icon: BarChart3, href: '/performance' },
   { id: 'strategy-lab',   label: 'Strategy Lab',     icon: Microscope,    href: '/strategy-lab' },
   { id: 'symbol-analysis', label: 'Sembol Analizi',  icon: BarChart2,     href: '/symbol-analysis' },
   { id: 'macro',          label: 'Makro Görünüm',     icon: Globe,         href: '/macro' },

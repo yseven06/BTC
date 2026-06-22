@@ -229,6 +229,7 @@ export async function fetchPerformanceSummary(): Promise<PerformanceSummary> {
 
 export interface SignalHistoryFilters {
   asset_id?: string;
+  symbol?: string;
   market?: 'crypto' | 'stock';
   signal_type?: string;
   outcome?: 'active' | 'win' | 'loss' | 'breakeven' | 'expired' | 'invalidated';
@@ -244,6 +245,7 @@ export interface SignalHistoryFilters {
 export async function fetchSignalHistory(params?: SignalHistoryFilters): Promise<SignalListResponse> {
   const q = new URLSearchParams();
   if (params?.asset_id) q.set('asset_id', params.asset_id);
+  if (params?.symbol) q.set('symbol', params.symbol);
   if (params?.market) q.set('market', params.market);
   if (params?.signal_type) q.set('signal_type', params.signal_type);
   if (params?.outcome) q.set('outcome', params.outcome);
@@ -728,10 +730,11 @@ export interface OhlcvResponse {
   symbol: string; timeframe: string; candles: OhlcvCandle[];
 }
 export async function fetchOhlcv(
-  symbol: string, timeframe = '1h', limit = 200,
+  symbol: string, timeframe = '1h', limit = 200, endTime?: number,
 ): Promise<OhlcvResponse> {
+  const endParam = endTime != null ? `&end_time=${endTime}` : '';
   return apiFetch<OhlcvResponse>(
-    `/api/v1/prices/ohlcv/${encodeURIComponent(symbol)}?timeframe=${timeframe}&limit=${limit}`,
+    `/api/v1/prices/ohlcv/${encodeURIComponent(symbol)}?timeframe=${timeframe}&limit=${limit}${endParam}`,
   );
 }
 

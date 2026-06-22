@@ -15,18 +15,18 @@ export const SignalBadge: React.FC<SignalBadgeProps> = ({
 }) => {
   const labels = {
     tr: {
-      strong_buy: "Güçlü Al",
-      buy: "Al",
+      strong_buy: "Güçlü Long",
+      buy: "Long",
       hold: "Bekle",
-      sell: "Sat",
-      strong_sell: "Güçlü Sat",
+      sell: "Short",
+      strong_sell: "Güçlü Short",
     },
     en: {
-      strong_buy: "Strong Buy",
-      buy: "Buy",
+      strong_buy: "Strong Long",
+      buy: "Long",
       hold: "Hold",
-      sell: "Sell",
-      strong_sell: "Strong Sell",
+      sell: "Short",
+      strong_sell: "Strong Short",
     },
   };
 

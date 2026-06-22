@@ -2,17 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, TrendingUp, TrendingDown, Target, Shield, Zap, ExternalLink, Code2, Check, AlertTriangle, X, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Target, Shield, Zap, ExternalLink, Code2, Check, AlertTriangle, X, Maximize2, Minimize2, HelpCircle } from 'lucide-react';
 import { toTradingViewSymbol } from '@/lib/tradingview';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SignalBadge } from '@/components/ui/SignalBadge';
 import { ScoreRing } from '@/components/ui/ScoreRing';
 import TradingViewChart from '@/components/charts/TradingViewChart';
 import { TradingChart, type ChartCandle } from '@/components/charts/TradingChart';
-import { fetchActiveSignals, fetchOhlcv, type ApiSignal } from '@/lib/api';
+import { fetchActiveSignals, fetchOhlcv, fetchSignalHistory, type ApiSignal } from '@/lib/api';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { SignalType } from '@/types';
-import { cn, formatRelativeTime } from '@/lib/utils';
+import { cn, formatRelativeTime, formatAbsoluteTimeTR } from '@/lib/utils';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 
@@ -66,6 +66,15 @@ function buildPineScript(symbol: string, signal: ApiSignal): string {
   ].join('\n');
 }
 
+const RECENT_OUTCOME_LABEL: Record<string, string> = {
+  win: 'TP — Kazandı', loss: 'Stop Oldu', breakeven: 'Başabaş',
+  expired: 'Süresi Doldu', invalidated: 'İptal Edildi',
+};
+const RECENT_OUTCOME_COLOR: Record<string, string> = {
+  win: 'text-bullish', loss: 'text-bearish', breakeven: 'text-yellow-400',
+  expired: 'text-text-muted', invalidated: 'text-purple-400',
+};
+
 export default function AssetDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -79,6 +88,7 @@ export default function AssetDetailPage() {
   const requestedTf = searchParams.get('tf');
 
   const [signal, setSignal] = useState<ApiSignal | null>(null);
+  const [recentClosed, setRecentClosed] = useState<ApiSignal[]>([]);
   const [candles, setCandles] = useState<ChartCandle[]>([]);
   const [chartMode, setChartMode] = useState<'overlay' | 'tradingview'>('overlay');
   const [loading, setLoading] = useState(true);
@@ -104,6 +114,13 @@ export default function AssetDetailPage() {
   // the numbers underneath them.
   const prevSignalRef = React.useRef<ApiSignal | null>(null);
   const [changeNotice, setChangeNotice] = useState<string | null>(null);
+  // When the user picks a timeframe tab that has no actionable signal right
+  // now, loadData silently falls back to whichever timeframe *does* — the
+  // only trace of that swap was a tiny "[4H]" badge buried in the engine
+  // card, easy to miss. A user comparing two screenshots taken on different
+  // tabs (thinking they were the same timeframe) saw entry/SL/TP "change"
+  // when really they were looking at two different signals all along.
+  const [tfFallbackNotice, setTfFallbackNotice] = useState<string | null>(null);
 
   // Fit the chart + sidebar row to whatever vertical space is actually left
   // in the viewport below this row, instead of giving the chart a fixed
@@ -126,7 +143,7 @@ export default function AssetDetailPage() {
     // offset after the first paint.
     const t = setTimeout(update, 200);
     return () => { window.removeEventListener('resize', update); clearTimeout(t); };
-  }, [manualFullscreen, changeNotice ? changeNotice : null, loading]);
+  }, [manualFullscreen, changeNotice ? changeNotice : null, tfFallbackNotice ? tfFallbackNotice : null, loading]);
 
   // lightweight-charts needs an explicit pixel height — it won't just fill
   // a flex/grid parent — so the chart's own render area is measured and fed
@@ -148,6 +165,7 @@ export default function AssetDetailPage() {
   // whether a signal is really active/closed.
   const [manualTf, setManualTf] = useState<string | null>(null);
   const [pineCopied, setPineCopied] = useState(false);
+  const [showPineHint, setShowPineHint] = useState(false);
 
   const prices = useLivePrices(symbol ? [symbol] : []);
   const live = prices[symbol];
@@ -169,7 +187,31 @@ export default function AssetDetailPage() {
         ? candidates.find((s) => s.timeframe === requestedTf) ?? candidates[0]
         : candidates[0];
 
-      const prev = prevSignalRef.current;
+      setTfFallbackNotice(
+        requestedTf && match && match.timeframe !== requestedTf
+          ? `${requestedTf.toUpperCase()} için şu an aktif bir sinyal yok — gösterilen, ${match.timeframe.toUpperCase()} zaman diliminin sinyali.`
+          : null
+      );
+
+      // Persisted across page reloads (sessionStorage), not just in-memory —
+      // a full F5 re-mounts this component and wipes prevSignalRef, so a
+      // signal that closed-then-got-replaced moments before the reload
+      // silently looked "back" with no explanation. The notice key is tied
+      // to the symbol so it survives the reload but still expires quickly
+      // (closures older than a few minutes aren't worth re-surfacing).
+      const noticeKey = `signal_notice_${symbol}`;
+      const prev = prevSignalRef.current ?? (() => {
+        try {
+          const raw = sessionStorage.getItem(noticeKey);
+          if (!raw) return null;
+          const { signal: storedSig, savedAt } = JSON.parse(raw);
+          if (Date.now() - savedAt > 10 * 60_000) return null; // stale, ignore
+          return storedSig as ApiSignal;
+        } catch {
+          return null;
+        }
+      })();
+
       if (prev) {
         if (!match) {
           const prevDirLabel = prev.direction === 'bullish' ? 'LONG' : prev.direction === 'bearish' ? 'SHORT' : 'BEKLE';
@@ -177,13 +219,38 @@ export default function AssetDetailPage() {
         } else if (match.id !== prev.id && match.direction !== prev.direction) {
           const fromLabel = prev.direction === 'bullish' ? 'LONG' : prev.direction === 'bearish' ? 'SHORT' : 'BEKLE';
           const toLabel = match.direction === 'bullish' ? 'LONG' : match.direction === 'bearish' ? 'SHORT' : 'BEKLE';
-          setChangeNotice(`Sinyal yön değiştirdi: ${fromLabel} → ${toLabel} (${formatRelativeTime(match.generated_at)})`);
+          setChangeNotice(`Önceki sinyal (${fromLabel}) kapandı, bu YENİ bir sinyal: ${toLabel} (${formatRelativeTime(match.generated_at)})`);
         }
       }
       prevSignalRef.current = match ?? null;
 
+      try {
+        if (match) {
+          sessionStorage.setItem(noticeKey, JSON.stringify({ signal: match, savedAt: Date.now() }));
+        } else {
+          sessionStorage.removeItem(noticeKey);
+        }
+      } catch {
+        // sessionStorage unavailable (private mode etc.) — notice just won't survive a reload
+      }
+
       setSignal(match ?? null);
       setCandles(ohlcvRes.candles ?? []);
+
+      // No active signal for this symbol — surface its recent closed ones so
+      // "aktif sinyal yok" doesn't read as "no signal ever existed". Users
+      // tracking a symbol that just resolved need to find the outcome
+      // without manually paging through Sinyal Geçmişi's full list.
+      if (!match) {
+        try {
+          const histRes = await fetchSignalHistory({ symbol, only_resolved: true, page_size: 5 });
+          setRecentClosed(histRes.items);
+        } catch {
+          setRecentClosed([]);
+        }
+      } else {
+        setRecentClosed([]);
+      }
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -293,6 +360,16 @@ export default function AssetDetailPage() {
         </div>
       )}
 
+      {tfFallbackNotice && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-accent-primary/10 border border-accent-primary/30">
+          <AlertTriangle className="w-4 h-4 text-accent-primary flex-shrink-0" />
+          <p className="text-xs text-accent-primary flex-1">{tfFallbackNotice}</p>
+          <button onClick={() => setTfFallbackNotice(null)} className="text-accent-primary/70 hover:text-accent-primary flex-shrink-0">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* ─── Chart (left) + Signal sidebar (right) — both stretched to fill
            whatever vertical space is left in the viewport, so nothing sits
            empty below the fold and nothing forces the page to scroll ─── */}
@@ -391,6 +468,29 @@ export default function AssetDetailPage() {
                 {pineCopied ? 'Kopyalandı!' : 'Pine Script Kopyala'}
               </button>
             )}
+            {signal && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowPineHint((v) => !v)}
+                  onBlur={() => setTimeout(() => setShowPineHint(false), 150)}
+                  className="flex items-center justify-center w-6 h-6 rounded-full text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 transition-all"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                </button>
+                {showPineHint && (
+                  <div className="absolute right-0 top-full mt-2 w-64 glass-card-static rounded-xl border border-border-subtle shadow-2xl p-3 text-[11px] leading-relaxed text-text-secondary z-50">
+                    <p className="font-semibold text-text-primary mb-1.5">Nasıl kullanılır?</p>
+                    <ol className="list-decimal list-inside space-y-1">
+                      <li>Pine Script Kopyala'ya bas</li>
+                      <li>TradingView'da Aç ile gerçek TradingView'ı aç</li>
+                      <li>Pine Editor'e yapıştır ve indikatör olarak ekle</li>
+                    </ol>
+                    <p className="mt-1.5 text-text-muted">Giriş/SL/TP seviyeleri orada da görünür.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -442,10 +542,45 @@ export default function AssetDetailPage() {
         ) : signal ? (
           <SignalDetailSection signal={signal} compact />
         ) : (
-          <GlassCard className="text-center py-12">
-            <p className="text-sm text-text-muted">Bu varlık için aktif sinyal yok.</p>
-            <p className="text-xs text-text-muted mt-2">Grafik yine de canlı görüntüleniyor.</p>
-          </GlassCard>
+          <div className="space-y-4">
+            <GlassCard className="text-center py-12">
+              <p className="text-sm text-text-muted">Bu varlık için aktif sinyal yok.</p>
+              <p className="text-xs text-text-muted mt-2">Grafik yine de canlı görüntüleniyor.</p>
+            </GlassCard>
+            {recentClosed.length > 0 && (
+              <GlassCard className="p-4">
+                <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">
+                  Son Kapanan Sinyaller
+                </p>
+                <div className="space-y-2">
+                  {recentClosed.map((s) => (
+                    <div key={s.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-bg-secondary/50 border border-border-subtle text-xs">
+                      <div className="min-w-0">
+                        <span className={cn('font-semibold', RECENT_OUTCOME_COLOR[s.outcome ?? ''] ?? 'text-text-muted')}>
+                          {RECENT_OUTCOME_LABEL[s.outcome ?? ''] ?? s.outcome}
+                        </span>
+                        <span className="text-text-muted ml-2">{s.timeframe.toUpperCase()}</span>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        {s.actual_return != null && (
+                          <span className={cn('font-mono font-bold mr-2', s.actual_return > 0 ? 'text-bullish' : s.actual_return < 0 ? 'text-bearish' : 'text-text-muted')}>
+                            {s.actual_return > 0 ? '+' : ''}{s.actual_return.toFixed(2)}%
+                          </span>
+                        )}
+                        <span className="text-text-muted">{s.closed_at ? formatAbsoluteTimeTR(s.closed_at) : ''}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => router.push('/signal-history')}
+                  className="w-full mt-3 text-[11px] text-accent-primary hover:text-accent-secondary text-center"
+                >
+                  Sinyal Geçmişi'nde tümünü gör →
+                </button>
+              </GlassCard>
+            )}
+          </div>
         )}
       </div>
       </div>

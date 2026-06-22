@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 
 from app.engines.ai_decision.engine import AIDecisionEngine
+from app.engines.ai_decision.signal_generator import _price_round
 
 logger = logging.getLogger(__name__)
 
@@ -275,7 +276,7 @@ class BacktestEngine:
                         "trade_id": trade.id,
                         "direction": trade.direction,
                         "entry_price": trade.entry_price,
-                        "exit_price": round(avg_exit_price, 4),
+                        "exit_price": _price_round(avg_exit_price),
                         "stop_loss": trade.stop_loss,
                         "tp1": trade.tp1,
                         "tp2": trade.tp2,

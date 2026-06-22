@@ -153,6 +153,7 @@ def _hist_to_resp(s: Signal) -> SignalResponse:
 )
 async def signal_history(
     asset_id: Optional[UUID] = Query(None),
+    symbol: Optional[str] = Query(None, description="Filter by exact asset symbol (e.g. ALGOUSDT)."),
     market: Optional[str] = Query(None, description="crypto or stock"),
     signal_type: Optional[str] = Query(None),
     outcome: Optional[str] = Query(None, description="win, loss, breakeven, expired, active"),
@@ -173,6 +174,8 @@ async def signal_history(
 
     if asset_id is not None:
         query = query.where(Signal.asset_id == asset_id)
+    if symbol is not None:
+        query = query.where(Asset.symbol == symbol.upper())
     if market is not None:
         query = query.where(Asset.asset_type == market)
     if signal_type is not None:
@@ -258,8 +261,18 @@ async def signal_history_stats(
             func.sum(case((SignalPerformance.outcome == SignalOutcome.EXPIRED, 1), else_=0)).label("expired"),
             func.sum(case((SignalPerformance.outcome == SignalOutcome.INVALIDATED, 1), else_=0)).label("invalidated"),
             func.sum(case((SignalPerformance.outcome == SignalOutcome.ACTIVE, 1), else_=0)).label("active"),
+            # Only count a TP touch on a signal that has actually closed.
+            # An ACTIVE signal can already show hit_tp1/2/3=True (the price
+            # touched that level while the position is still open) — without
+            # this guard, tp_hits summed over *all* signals (mostly active)
+            # while tp_hit_rate divided by only the handful that are closed,
+            # producing nonsense rates over 100%.
             func.sum(case(
-                (((SignalPerformance.hit_tp1 == True) | (SignalPerformance.hit_tp2 == True) | (SignalPerformance.hit_tp3 == True)), 1),
+                (
+                    (SignalPerformance.outcome != SignalOutcome.ACTIVE)
+                    & ((SignalPerformance.hit_tp1 == True) | (SignalPerformance.hit_tp2 == True) | (SignalPerformance.hit_tp3 == True)),
+                    1,
+                ),
                 else_=0,
             )).label("tp_hits"),
             func.avg(SignalPerformance.actual_return).label("avg_return"),
@@ -286,8 +299,14 @@ async def signal_history_stats(
     resolved = win + loss + breakeven
 
     win_rate = round(win / resolved * 100, 2) if resolved > 0 else 0.0
-    tp_hit_rate = round((row.tp_hits or 0) / resolved * 100, 2) if resolved > 0 else 0.0
     sl_rate = round(loss / resolved * 100, 2) if resolved > 0 else 0.0
+    # TP hits are a price-action fact (the candle touched the TP level) —
+    # they can happen on a signal that later got INVALIDATED by a reversal
+    # before "officially" resolving as a win. Dividing by `resolved`
+    # (win+loss+breakeven only) silently zeroed this out whenever every
+    # closed signal happened to be invalidated/expired, even though a TP
+    # had genuinely been hit. Divide by all closed signals instead.
+    tp_hit_rate = round((row.tp_hits or 0) / closed * 100, 2) if closed > 0 else 0.0
     avg_return = round(float(row.avg_return), 4) if row.avg_return is not None else None
 
     gross_profit = float(row.gross_profit or 0)

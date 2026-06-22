@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from app.database import async_session_factory
-from app.models.asset import Asset
+from app.models.asset import Asset, AssetType
 from app.models.signal import Signal, SignalOutcome, SignalPerformance, SignalType, Direction, RiskLevel
 from app.models.price_data import Timeframe as DBTimeframe
 from app.collectors.binance_collector import BinanceCollector
@@ -222,14 +222,25 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
             #   - old already resolved by the live tracker (TP/SL/breakeven/
             #     real 48h expiry) before this cycle ran → just deactivate,
             #     it's already real history.
+            #
+            # This check is deliberately NOT scoped to this timeframe only.
+            # A trader who already has an active BTCUSDT LONG idea (say, from
+            # the 4h scan) doesn't need the 15m scan announcing "another LONG
+            # opportunity" minutes later — that's not a second opportunity,
+            # it's the same call restated, and showing it as a separate
+            # signal with different entry/TP/SL just reads as the platform
+            # being inconsistent with itself. One symbol holds one active
+            # directional idea at a time, regardless of which timeframe scan
+            # produced it; only a genuine reversal (handled below) replaces
+            # it — from any timeframe.
             old_res = await db.execute(
                 select(Signal)
                 .where(Signal.asset_id == asset.id)
-                .where(Signal.timeframe == db_tf)
                 .where(Signal.is_active == True)
                 .options(joinedload(Signal.performance))
             )
             skip_new_signal = False
+            just_reversed = False
             last_close = float(df["close"].iloc[-1]) if len(df) > 0 else None
 
             for old in old_res.unique().scalars().all():
@@ -242,15 +253,28 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                     await db.delete(old)
                     continue
 
-                is_reversal = new_is_actionable and (
-                    (old.direction == Direction.BULLISH and new_direction == Direction.BEARISH)
-                    or (old.direction == Direction.BEARISH and new_direction == Direction.BULLISH)
+                # Flipping direction is a bigger claim than starting a fresh
+                # signal — it says the *previous* read was wrong, not just
+                # that a new opportunity appeared. A 65%-confidence scan is
+                # good enough to open a new idea but isn't good enough to
+                # override and close out a still-active one; require extra
+                # conviction (72%) before treating this as a genuine reversal
+                # instead of one noisy scan in an otherwise normal swing.
+                REVERSAL_MIN_CONFIDENCE = 72.0
+                is_reversal = (
+                    new_is_actionable
+                    and decision["confidence_score"] >= REVERSAL_MIN_CONFIDENCE
+                    and (
+                        (old.direction == Direction.BULLISH and new_direction == Direction.BEARISH)
+                        or (old.direction == Direction.BEARISH and new_direction == Direction.BULLISH)
+                    )
                 )
 
                 if is_reversal:
                     old.is_active = False
                     old_perf.outcome = SignalOutcome.INVALIDATED
                     old_perf.closed_at = now
+                    just_reversed = True
                     if last_close is not None and old.entry_zone_low and old.entry_zone_high:
                         entry = float(old.entry_zone_high + old.entry_zone_low) / 2.0
                         if entry > 0:
@@ -260,13 +284,47 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                                 else (entry - last_close) / entry
                             )
                             old_perf.actual_return = round(ret * 100.0, 4)
-                    logger.info("[Scheduler] %s %s signal INVALIDATED by reversal.", symbol, timeframe)
+                    logger.info(
+                        "[Scheduler] %s %s signal INVALIDATED by reversal from %s scan.",
+                        symbol, old.timeframe, timeframe,
+                    )
                 else:
                     skip_new_signal = True
+                    logger.info(
+                        "[Scheduler] %s %s scan agrees with already-active %s signal — no new signal created.",
+                        symbol, timeframe, old.timeframe,
+                    )
 
             if skip_new_signal:
                 await db.commit()
-                logger.info("[Scheduler] %s %s signal confirmed consistent — no change.", symbol, timeframe)
+                return
+
+            # A reversal that just closed the opposing signal THIS cycle is a
+            # single scan's read — firing the new opposite-direction call in
+            # the same breath reacts to what could be a noisy whipsaw rather
+            # than a confirmed trend change (we've seen exactly this: a signal
+            # invalidated at a loss with a brand-new opposite signal appearing
+            # in the same instant). Defer to HOLD here; if the *next* scan
+            # still agrees, a real signal fires then with one cycle of
+            # confirmation behind it instead of zero.
+            if just_reversed and new_is_actionable:
+                logger.info(
+                    "[Scheduler] %s reversal just closed this cycle — deferring new %s signal to next scan for confirmation.",
+                    symbol, decision["signal_type"],
+                )
+                new_type = SignalType.HOLD
+                new_direction = Direction.NEUTRAL
+                new_is_actionable = False
+
+            # A HOLD scan has no trade idea behind it — persisting one just
+            # to immediately replace it on the next cycle (per the "old was
+            # HOLD → always replace" rule above) churns the DB and floods
+            # Sinyal Merkezi with rows that aren't actionable. The engines
+            # still ran and informed the active-signal checks above; only
+            # the noisy "nothing to act on" record is skipped.
+            if not new_is_actionable:
+                await db.commit()
+                logger.info("[Scheduler] %s %s scan resulted in HOLD — not persisted.", symbol, timeframe)
                 return
 
             new_sig = Signal(
@@ -316,10 +374,20 @@ async def generate_signal_now(symbol: str, asset_type: str, timeframe: str = "1h
     await _generate_signal(symbol, asset_type, timeframe)
 
 
+# Stocks don't move fast/often enough for 15m and 1h candles to carry real
+# signal — a stock barely ticks within a single hour, so these short
+# timeframes mostly produced noise (HOLD spam) for that asset class. Crypto
+# still gets every timeframe; stocks are limited to 4h and 1d.
+_STOCK_EXCLUDED_TIMEFRAMES = {"15m", "1h"}
+
+
 async def _run_all_signals(timeframe: str = "1h") -> None:
     """Regenerate signals for all active assets, with rate-limit spacing."""
     async with async_session_factory() as db:
-        res = await db.execute(select(Asset).where(Asset.is_active == True))
+        query = select(Asset).where(Asset.is_active == True)
+        if timeframe in _STOCK_EXCLUDED_TIMEFRAMES:
+            query = query.where(Asset.asset_type != AssetType.STOCK)
+        res = await db.execute(query)
         assets = res.scalars().all()
 
     logger.info("[Scheduler] Generating %s signals for %d assets", timeframe, len(assets))

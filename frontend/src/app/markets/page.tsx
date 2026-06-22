@@ -35,7 +35,10 @@ export default function MarketsPage() {
     .filter((a) => {
       if (!query.trim()) return true;
       const q = query.toLowerCase();
-      return a.symbol.toLowerCase().includes(q) || a.name.toLowerCase().includes(q);
+      // Word-prefix match on the name (not substring) — otherwise "eth"
+      // matches "Bitcoin / Tether" because "Tether" contains "eth" midword.
+      const nameWords = a.name.toLowerCase().split(/[\s/]+/);
+      return a.symbol.toLowerCase().includes(q) || nameWords.some((w) => w.startsWith(q));
     });
 
   const symbols = filtered.map((a) => a.symbol);

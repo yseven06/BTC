@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Dict, List
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import yfinance as yf
@@ -27,11 +28,16 @@ class YahooCollector(BaseCollector):
         symbol: str,
         timeframe: str,
         limit: int = 100,
+        end_date: Optional[int] = None,
     ) -> pd.DataFrame:
         """Fetch historical prices using yfinance.
 
         Intervals supported: 15m, 1h, 1d, 1wk.
         Runs inside to_thread to keep the event loop non-blocking.
+
+        end_date (optional): unix seconds — fetch a window ending at this
+        point instead of "now". Used to replay a chart's past state (e.g. a
+        closed signal's resolution time).
         """
         # Format BIST symbols (e.g. THYAO -> THYAO.IS)
         formatted_symbol = symbol.upper()
@@ -52,9 +58,22 @@ class YahooCollector(BaseCollector):
         elif limit > 50:
             period = "6mo"
 
+        # yfinance's `period` window always ends "now" — to replay a past
+        # state we need `start`/`end` instead, with a lookback wide enough
+        # to still gather `limit` candles ending at that point.
+        TF_MINUTES = {"15m": 15, "1h": 60, "1d": 1440, "1w": 10080}
+        start_dt = end_dt = None
+        if end_date is not None:
+            end_dt = datetime.fromtimestamp(end_date, tz=timezone.utc)
+            lookback_minutes = TF_MINUTES.get(interval, 1440) * limit * 2  # 2x margin for weekends/holidays
+            start_dt = end_dt - timedelta(minutes=lookback_minutes)
+
         def _fetch():
             ticker = yf.Ticker(formatted_symbol)
-            df = ticker.history(period=period, interval=interval)
+            if end_dt is not None:
+                df = ticker.history(start=start_dt, end=end_dt, interval=interval)
+            else:
+                df = ticker.history(period=period, interval=interval)
             return df
 
         try:

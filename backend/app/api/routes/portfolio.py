@@ -160,7 +160,11 @@ async def create_portfolio(
     )
     db.add(portfolio)
     await db.flush()
-    await db.refresh(portfolio)
+    # A brand-new portfolio can't have holdings yet, but PortfolioResponse
+    # reads that relationship — without eager-loading it here, Pydantic's
+    # serialization triggers a lazy load outside the greenlet context async
+    # SQLAlchemy needs, raising MissingGreenlet.
+    await db.refresh(portfolio, attribute_names=["holdings"])
 
     logger.info("Portfolio created: %s for user %s", portfolio.name, current_user.email)
     return PortfolioResponse.model_validate(portfolio)

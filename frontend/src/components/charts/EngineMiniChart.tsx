@@ -127,7 +127,7 @@ export function EngineMiniChart({ symbol, timeframe, engineName, supportingData 
 
     const chart = createChart(priceRef.current, {
       width: priceRef.current.clientWidth,
-      height: 340,
+      height: 460,
       layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#94a3b8', fontSize: 11 },
       grid: { vertLines: { color: 'rgba(148,163,184,0.06)' }, horzLines: { color: 'rgba(148,163,184,0.06)' } },
       crosshair: { mode: CrosshairMode.Normal },
@@ -172,7 +172,7 @@ export function EngineMiniChart({ symbol, timeframe, engineName, supportingData 
     if (SUPPORTS_MACD.has(engineName) && macdRef.current && candles.length > 30) {
       macdChart = createChart(macdRef.current, {
         width: macdRef.current.clientWidth,
-        height: 130,
+        height: 160,
         layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#94a3b8', fontSize: 11 },
         grid: { vertLines: { color: 'rgba(148,163,184,0.06)' }, horzLines: { color: 'rgba(148,163,184,0.06)' } },
         rightPriceScale: { borderColor: 'rgba(148,163,184,0.15)' },
@@ -206,7 +206,7 @@ export function EngineMiniChart({ symbol, timeframe, engineName, supportingData 
   if (error) return <p className="text-[11px] text-text-muted text-center py-3">Grafik yüklenemedi.</p>;
   if (!candles) {
     return (
-      <div className="flex justify-center items-center" style={{ height: 340 }}>
+      <div className="flex justify-center items-center" style={{ height: 460 }}>
         <div className="w-5 h-5 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );

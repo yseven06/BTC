@@ -81,8 +81,16 @@ export default function SymbolAnalysisPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const q = query.toLowerCase();
   const filtered = (data?.symbols ?? [])
-    .filter((s) => s.symbol.toLowerCase().includes(query.toLowerCase()) || s.name.toLowerCase().includes(query.toLowerCase()))
+    .filter((s) => {
+      if (!q) return true;
+      // Word-prefix match on the name (not substring) — otherwise a query
+      // like "eth" would match "Bitcoin / Tether" because "Tether"
+      // contains "eth" midword.
+      const nameWords = s.name.toLowerCase().split(/[\s/]+/);
+      return s.symbol.toLowerCase().includes(q) || nameWords.some((w) => w.startsWith(q));
+    })
     .sort((a, b) => b[sort] - a[sort]);
 
   const totalWins  = filtered.reduce((s, x) => s + x.wins, 0);

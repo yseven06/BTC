@@ -21,6 +21,25 @@ from app.engines.risk.analysis import calculate_atr
 logger = logging.getLogger(__name__)
 
 
+def _price_round(value: float) -> float:
+    """Round a price level to a precision that scales with its magnitude.
+
+    A flat round(x, 4) is fine for BTC ($64,500.1234) but silently zeroes
+    out micro-cap assets like PEPE (~$0.000003) — 4 decimal places truncates
+    everything below 0.0001, so entry/SL/TP all collapse to 0.0000 even
+    though the DB column (Numeric(20, 8)) has room for 8. Scale precision
+    down with the price so small-cap signals keep meaningful levels.
+    """
+    if value == 0:
+        return 0.0
+    abs_v = abs(value)
+    if abs_v >= 1:
+        return round(value, 4)
+    if abs_v >= 0.01:
+        return round(value, 6)
+    return round(value, 8)
+
+
 @dataclass
 class GeneratedSignalData:
     signal_type: str  # STRONG_BUY, BUY, HOLD, SELL, STRONG_SELL
@@ -97,14 +116,23 @@ def generate_signal(
         direction = "bearish"
 
     # --- SIGNAL QUALITY CONSENSUS ---
-    # Require confirmation from: Trend (technical), Market Structure, Volume, SMC, CRT
-    # and Risk Management before generating BUY or SELL.
+    # Quantity was never the goal — a handful of signals that genuinely
+    # reach TP beats a high signal count padded with ones that get stopped
+    # out. Backtested against the 103 currently-active signals before
+    # picking these numbers: requiring SMC AND CRT to both individually
+    # confirm passed only 17.5% of them — too strict for a platform with no
+    # resolved win/loss history yet to validate that bar against. Needing 4
+    # of the 6 engines (now incl. Fundamental) to agree, with SMC OR CRT as
+    # one of those four, passed 66% — a real tightening from the old >=2-of-5
+    # rule without going silent. Revisit these thresholds once enough
+    # signals have actually resolved to measure true win rate per setting.
     if direction in ["bullish", "bearish"]:
         ta_res = next((res for res in engine_results if res.engine_name == "technical_analysis"), None)
         ms_res = next((res for res in engine_results if res.engine_name == "market_structure"), None)
         vol_res = next((res for res in engine_results if res.engine_name == "volume_analysis"), None)
         smc_res = next((res for res in engine_results if res.engine_name == "smart_money_concepts"), None)
         crt_res = next((res for res in engine_results if res.engine_name == "candle_range_theory"), None)
+        fund_res = next((res for res in engine_results if res.engine_name == "fundamental_analysis"), None)
         risk_res = next((res for res in engine_results if res.engine_name == "risk_management"), None)
 
         ta_score = ta_res.score if ta_res else 50.0
@@ -112,34 +140,43 @@ def generate_signal(
         vol_score = vol_res.score if vol_res else 50.0
         smc_score = smc_res.score if smc_res else 50.0
         crt_score = crt_res.score if crt_res else 50.0
+        fund_score = fund_res.score if fund_res else 50.0
+
+        pool = [ta_score, ms_score, vol_score, smc_score, crt_score, fund_score]
 
         if direction == "bullish":
-            # Loosened: only STRONG opposite engines (score < 40) count as conflict
-            strong_conflicts = sum(1 for s in [ta_score, ms_score, vol_score, smc_score, crt_score] if s < 40)
-            # Only need 2 confirming engines mildly bullish (> 53)
-            confirmations = sum(1 for s in [ta_score, ms_score, vol_score, smc_score, crt_score] if s > 53)
+            strong_conflicts = sum(1 for s in pool if s < 40)
+            confirmations = sum(1 for s in pool if s > 53)
+            smc_crt_confirm = smc_score > 53 or crt_score > 53
 
             risk_too_high = False
             if risk_res and "risk_score_raw" in risk_res.supporting_data:
                 risk_too_high = risk_res.supporting_data["risk_score_raw"] >= 9.5
 
-            # Allow signal if: <=1 strong conflicts AND >=2 confirmations AND not extreme risk
-            if strong_conflicts >= 2 or confirmations < 2 or risk_too_high:
-                logger.info(f"Signal downgraded to HOLD for {symbol} (StrongConflicts: {strong_conflicts}, Confirmations: {confirmations}, ExtremeRisk: {risk_too_high})")
+            # Need 4 of 6 engines confirming AND at least one of SMC/CRT
+            # among them (see threshold note above).
+            if strong_conflicts >= 2 or confirmations < 4 or not smc_crt_confirm or risk_too_high:
+                logger.info(
+                    f"Signal downgraded to HOLD for {symbol} (StrongConflicts: {strong_conflicts}, "
+                    f"Confirmations: {confirmations}/6, SMC or CRT agree: {smc_crt_confirm}, ExtremeRisk: {risk_too_high})"
+                )
                 signal_type = "HOLD"
                 direction = "neutral"
 
         elif direction == "bearish":
-            # Loosened: only STRONG opposite engines (score > 60) count as conflict
-            strong_conflicts = sum(1 for s in [ta_score, ms_score, vol_score, smc_score, crt_score] if s > 60)
-            confirmations = sum(1 for s in [ta_score, ms_score, vol_score, smc_score, crt_score] if s < 47)
+            strong_conflicts = sum(1 for s in pool if s > 60)
+            confirmations = sum(1 for s in pool if s < 47)
+            smc_crt_confirm = smc_score < 47 or crt_score < 47
 
             risk_too_high = False
             if risk_res and "risk_score_raw" in risk_res.supporting_data:
                 risk_too_high = risk_res.supporting_data["risk_score_raw"] >= 9.5
 
-            if strong_conflicts >= 2 or confirmations < 2 or risk_too_high:
-                logger.info(f"Signal downgraded to HOLD for {symbol} (StrongConflicts: {strong_conflicts}, Confirmations: {confirmations}, ExtremeRisk: {risk_too_high})")
+            if strong_conflicts >= 2 or confirmations < 4 or not smc_crt_confirm or risk_too_high:
+                logger.info(
+                    f"Signal downgraded to HOLD for {symbol} (StrongConflicts: {strong_conflicts}, "
+                    f"Confirmations: {confirmations}/6, SMC or CRT agree: {smc_crt_confirm}, ExtremeRisk: {risk_too_high})"
+                )
                 signal_type = "HOLD"
                 direction = "neutral"
 
@@ -244,7 +281,7 @@ def generate_signal(
             else:
                 tp2 = nearest_res
 
-        invalidation_conditions = f"Close below stop loss level {stop_loss:.4f} on a 1-hour candle basis, or failure to break resistance level {tp1:.4f} within 48 hours."
+        invalidation_conditions = f"Close below stop loss level {_price_round(stop_loss)} on a 1-hour candle basis, or failure to break resistance level {_price_round(tp1)} within 48 hours."
 
     elif direction == "bearish":
         # Entry Zone: from current price up to slightly below resistance or 0.5x ATR
@@ -272,7 +309,7 @@ def generate_signal(
             else:
                 tp2 = nearest_sup
 
-        invalidation_conditions = f"Close above stop loss level {stop_loss:.4f} on a 1-hour candle basis, or failure to break support level {tp1:.4f} within 48 hours."
+        invalidation_conditions = f"Close above stop loss level {_price_round(stop_loss)} on a 1-hour candle basis, or failure to break support level {_price_round(tp1)} within 48 hours."
 
     else:
         # Neutral HOLD — still surface indicative levels so the user can read the
@@ -307,12 +344,12 @@ def generate_signal(
         probability_score=round(probability_score, 2),
         risk_score=round(risk_score, 1),
         risk_level=risk_level,
-        entry_zone_low=round(entry_zone_low, 4),
-        entry_zone_high=round(entry_zone_high, 4),
-        stop_loss=round(stop_loss, 4),
-        tp1=round(tp1, 4),
-        tp2=round(tp2, 4),
-        tp3=round(tp3, 4),
+        entry_zone_low=_price_round(entry_zone_low),
+        entry_zone_high=_price_round(entry_zone_high),
+        stop_loss=_price_round(stop_loss),
+        tp1=_price_round(tp1),
+        tp2=_price_round(tp2),
+        tp3=_price_round(tp3),
         invalidation_conditions=invalidation_conditions,
     )
 

@@ -505,7 +505,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl glass-panel border border-border-medium rounded-2xl flex flex-col max-h-[90vh]"
+        className="w-full max-w-3xl glass-panel border border-border-medium rounded-2xl flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Sticky Header ── */}
@@ -537,11 +537,12 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
           </div>
 
           {/* Levels grid: compact */}
-          <div className="grid grid-cols-4 gap-2 text-center">
+          <div className="grid grid-cols-5 gap-2 text-center">
             <LevelCard label="Giriş ↓" value={sig.entry_zone_low}    color="text-text-primary" />
             <LevelCard label="Stop SL" value={sig.stop_loss}          color="text-bearish" />
             <LevelCard label="Hedef TP1" value={sig.tp1}              color="text-bullish" />
             <LevelCard label="Hedef TP2" value={sig.tp2}              color="text-bullish" />
+            <LevelCard label="Hedef TP3" value={sig.tp3}              color="text-bullish" />
           </div>
 
           {dir.state === 'wait' && (
@@ -803,7 +804,7 @@ export default function SignalsPage() {
   const [selected, setSelected]   = useState<ApiSignal | null>(null);
   const [tfFilter, setTfFilter]   = useState<TfFilter>('all');
   const [dirFilter, setDirFilter] = useState<DirFilter>('all');
-  const [actionableOnly, setActionableOnly] = useState(true);
+  const [marketFilter, setMarketFilter] = useState<'all' | 'crypto' | 'stock'>('all');
   const [minQuality, setMinQuality] = useState(5);
   // Aynı sembol için en kaliteli timeframe'i göster, diğerlerini gizle.
   // Kullanıcı her timeframe'i ayrı görmek istiyorsa bunu kapatabilir.
@@ -816,6 +817,7 @@ export default function SignalsPage() {
   const filtered = (() => {
     // 1) TF + minQuality filtreleri
     let arr = signals
+      .filter((s) => marketFilter === 'all' || s.asset?.asset_type === marketFilter)
       .filter((s) => tfFilter === 'all' || (s.timeframe ?? '').toLowerCase() === tfFilter)
       .filter((s) => qualityScore(s.confidence_score) >= minQuality)
       .filter((s) => dirFilter === 'all' || (dirFilter === 'long' ? s.direction === 'bullish' : s.direction === 'bearish'));
@@ -870,7 +872,7 @@ export default function SignalsPage() {
   const load = async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true); else setLoading(true);
     try {
-      const res = await fetchActiveSignals({ page_size: 100, only_actionable: actionableOnly });
+      const res = await fetchActiveSignals({ page_size: 100, only_actionable: true });
       setSignals(res.items);
       setTotal(res.total);
     } catch { /**/ } finally {
@@ -887,7 +889,7 @@ export default function SignalsPage() {
       const startCount = signals.length;
       for (let i = 0; i < 60; i++) { // up to 5 min polling
         await new Promise((r) => setTimeout(r, 5000));
-        const res = await fetchActiveSignals({ page_size: 100, only_actionable: actionableOnly });
+        const res = await fetchActiveSignals({ page_size: 100, only_actionable: true });
         if (res.total > startCount || res.total > 0) {
           setSignals(res.items);
           setTotal(res.total);
@@ -910,7 +912,7 @@ export default function SignalsPage() {
     }
   };
 
-  useEffect(() => { load(); }, [actionableOnly]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-5">
@@ -960,6 +962,40 @@ export default function SignalsPage() {
       {/* Filters row */}
       <div className="flex items-center gap-3 flex-wrap">
 
+      {/* Market filter: crypto vs stock — keeps fast-moving 15m/1h crypto
+          signals from drowning out the slower-moving, mostly 4h/1d stock
+          signals when browsing "everything" together. */}
+      <div className="flex items-center gap-1 p-1 bg-bg-secondary border border-border-subtle rounded-xl w-fit">
+        {([
+          { id: 'all',    label: 'TÜMÜ' },
+          { id: 'crypto', label: 'KRİPTO' },
+          { id: 'stock',  label: 'HİSSE' },
+        ] as { id: 'all' | 'crypto' | 'stock'; label: string }[]).map((m) => {
+          const qualified = signals.filter((s) => qualityScore(s.confidence_score) >= minQuality);
+          const cnt = m.id === 'all' ? qualified.length : qualified.filter((s) => s.asset?.asset_type === m.id).length;
+          return (
+            <button
+              key={m.id}
+              onClick={() => setMarketFilter(m.id)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all',
+                marketFilter === m.id
+                  ? 'bg-accent-primary text-white shadow-glow-sm'
+                  : 'text-text-muted hover:text-text-primary'
+              )}
+            >
+              {m.label}
+              <span className={cn(
+                'text-[10px] font-mono px-1.5 py-0.5 rounded',
+                marketFilter === m.id ? 'bg-white/20' : 'bg-bg-tertiary/60'
+              )}>
+                {cnt}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Timeframe filter */}
       <div className="flex items-center gap-1 p-1 bg-bg-secondary border border-border-subtle rounded-xl w-fit">
         {(['all', '15m', '1h', '4h', '1d'] as TfFilter[]).map((tf) => {
@@ -991,55 +1027,54 @@ export default function SignalsPage() {
 
       {/* Direction filter: AL / SAT */}
       <div className="flex items-center gap-1 p-1 bg-bg-secondary border border-border-subtle rounded-xl w-fit">
-        {([
-          { id: 'all',   label: 'TÜMÜ' },
-          { id: 'long',  label: 'AL' },
-          { id: 'short', label: 'SAT' },
-        ] as { id: DirFilter; label: string }[]).map((d) => {
+        {(() => {
+          const DIR_OPTIONS = [
+            { id: 'all'   as DirFilter, label: 'TÜMÜ',  pill: 'bg-accent-primary' },
+            { id: 'long'  as DirFilter, label: 'LONG',  pill: 'bg-bullish' },
+            { id: 'short' as DirFilter, label: 'SHORT', pill: 'bg-bearish' },
+          ];
+          const activeIndex = DIR_OPTIONS.findIndex((d) => d.id === dirFilter);
           const qualified = signals.filter((s) => qualityScore(s.confidence_score) >= minQuality);
-          const cnt = d.id === 'all'
-            ? qualified.length
-            : qualified.filter((s) => (d.id === 'long' ? s.direction === 'bullish' : s.direction === 'bearish')).length;
           return (
-            <button
-              key={d.id}
-              onClick={() => setDirFilter(d.id)}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all',
-                dirFilter === d.id
-                  ? d.id === 'long'
-                    ? 'bg-bullish text-white shadow-glow-sm'
-                    : d.id === 'short'
-                      ? 'bg-bearish text-white shadow-glow-sm'
-                      : 'bg-accent-primary text-white shadow-glow-sm'
-                  : 'text-text-muted hover:text-text-primary'
-              )}
-            >
-              {d.label}
-              <span className={cn(
-                'text-[10px] font-mono px-1.5 py-0.5 rounded',
-                dirFilter === d.id ? 'bg-white/20' : 'bg-bg-tertiary/60'
-              )}>
-                {cnt}
-              </span>
-            </button>
+            <div className="relative flex bg-bg-secondary border border-border-subtle rounded-xl p-1 w-[300px]">
+              {/* Sliding highlight — animates left/width on filter change instead of swapping a static class. */}
+              <div
+                className={cn('absolute top-1 bottom-1 rounded-lg shadow-glow-sm transition-all duration-300 ease-out', DIR_OPTIONS[activeIndex]?.pill)}
+                style={{ width: 'calc(33.333% - 3px)', left: `calc(${activeIndex * 33.333}% + 2px)` }}
+              />
+              {DIR_OPTIONS.map((d) => {
+                const cnt = d.id === 'all'
+                  ? qualified.length
+                  : qualified.filter((s) => (d.id === 'long' ? s.direction === 'bullish' : s.direction === 'bearish')).length;
+                return (
+                  <button
+                    key={d.id}
+                    onClick={() => setDirFilter(d.id)}
+                    className={cn(
+                      'relative z-10 flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-colors',
+                      dirFilter === d.id
+                        ? 'text-white'
+                        : d.id === 'long'
+                          ? 'text-bullish/70 hover:text-bullish'
+                          : d.id === 'short'
+                            ? 'text-bearish/70 hover:text-bearish'
+                            : 'text-text-muted hover:text-text-primary'
+                    )}
+                  >
+                    {d.label}
+                    <span className={cn(
+                      'text-xs font-bold font-mono px-1.5 py-0.5 rounded',
+                      dirFilter === d.id ? 'bg-white/20' : 'bg-bg-tertiary/60'
+                    )}>
+                      {cnt}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           );
-        })}
+        })()}
       </div>
-
-      {/* Actionable-only toggle */}
-      <button
-        onClick={() => setActionableOnly(!actionableOnly)}
-        className={cn(
-          'flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl border transition-all',
-          actionableOnly
-            ? 'bg-bullish/15 text-bullish border-bullish/30'
-            : 'bg-bg-secondary text-text-muted border-border-subtle hover:text-text-primary'
-        )}
-        title="Sadece AL/SAT göster (BEKLE sinyallerini gizle)"
-      >
-        {actionableOnly ? '✓ SADECE AL/SAT' : 'TÜMÜ (BEKLE DAHİL)'}
-      </button>
 
       {/* Min quality slider */}
       <div className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border border-border-subtle rounded-xl">
