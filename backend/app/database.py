@@ -18,14 +18,25 @@ from app.config import get_settings
 
 settings = get_settings()
 
-# Create the async engine with connection pooling tuned for production
+# Create the async engine with connection pooling tuned for the Supabase
+# Supavisor pooler. Supavisor (session mode) hard-caps this project at 15
+# concurrent client connections — the old pool_size=20 + max_overflow=10 asked
+# for up to 30, so under any real concurrency the engine tried to open more
+# server connections than the pooler allows and got "max clients reached
+# (pool_size: 15)". Keep the ceiling (pool_size + max_overflow) safely below 15
+# and leave a few slots free for one-off admin/migration scripts that connect
+# through the same pooler. pool_recycle is shortened so the engine proactively
+# drops connections the pooler would otherwise reclaim out from under it; with
+# pool_pre_ping a stale connection is detected and replaced on checkout rather
+# than surfacing as a query error. reset-on-return defaults to a rollback, which
+# is what keeps a returned connection from lingering "idle in transaction".
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
-    pool_size=20,
-    max_overflow=10,
-    pool_timeout=30,
-    pool_recycle=1800,
+    pool_size=8,
+    max_overflow=2,
+    pool_timeout=20,
+    pool_recycle=600,
     pool_pre_ping=True,
 )
 
