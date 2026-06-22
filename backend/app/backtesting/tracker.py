@@ -20,6 +20,7 @@ from sqlalchemy.orm import selectinload
 from app.models.signal import Signal, SignalOutcome, SignalPerformance
 from app.models.price_data import Timeframe
 from app.models.asset import Asset
+from app.backtesting import labels
 from app.collectors.binance_collector import BinanceCollector
 from app.collectors.yahoo_collector import YahooCollector
 
@@ -105,6 +106,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 perf.outcome = SignalOutcome.LOSS if pnl_pct < -0.5 else SignalOutcome.BREAKEVEN
                 perf.actual_return = pnl_pct
                 perf.closed_at = datetime.now(timezone.utc)
+                perf.detail_label = labels.LIVE_SL_HIT
                 resolved_count += 1
                 details.append({
                     "signal_id": str(signal.id),
@@ -204,6 +206,9 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
             outcome = SignalOutcome.ACTIVE
             pnl_pct = 0.0
             max_drawdown = 0.0
+            max_favorable = 0.0   # MFE: best in-our-favour move (% of entry)
+            bars_to_outcome = 0
+            resolved_by_sl = False
             is_expired_flag = False
             
             hit_tp1 = False
@@ -252,13 +257,17 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 bar_close = float(closes[k])
                 bar_time = times[k]
 
-                # Update drawdown
+                bars_to_outcome = k + 1
+
+                # Update drawdown (MAE) and favorable excursion (MFE)
                 if signal.direction.value == "bullish":
                     drawdown = ((entry - bar_low) / entry) * 100.0 if entry > 0 else 0.0
-                    max_drawdown = max(max_drawdown, drawdown)
+                    favorable = ((bar_high - entry) / entry) * 100.0 if entry > 0 else 0.0
                 else:
                     drawdown = ((bar_high - entry) / entry) * 100.0 if entry > 0 else 0.0
-                    max_drawdown = max(max_drawdown, drawdown)
+                    favorable = ((entry - bar_low) / entry) * 100.0 if entry > 0 else 0.0
+                max_drawdown = max(max_drawdown, drawdown)
+                max_favorable = max(max_favorable, favorable)
 
                 # Check SL hit
                 sl_hit = bar_low <= current_sl if signal.direction.value == "bullish" else bar_high >= current_sl
@@ -286,6 +295,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                     realized_pnl_capital += remaining_share * ret_sl
                     remaining_share = 0.0
                     resolved = True
+                    resolved_by_sl = True
                     closed_at = _aware(bar_time)
                     break
                 elif tp_hit:
@@ -325,6 +335,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                             realized_pnl_capital += remaining_share * ret_sl
                             remaining_share = 0.0
                             resolved = True
+                            resolved_by_sl = True
                             closed_at = _aware(bar_time)
                             break
 
@@ -336,6 +347,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 if expires and now_utc >= expires:
                     resolved = True
                     is_expired_flag = True
+                    bars_to_outcome = len(df_after)
                     last_close = float(closes[-1])
                     closed_at = _aware(times[-1])
                     
@@ -359,6 +371,8 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 perf.outcome = outcome
                 perf.actual_return = pnl_pct
                 perf.max_drawdown = max(0.0, max_drawdown)
+                perf.mfe_pct = max(0.0, max_favorable)
+                perf.bars_to_outcome = bars_to_outcome
                 perf.hit_tp1 = hit_tp1
                 perf.hit_tp2 = hit_tp2
                 perf.hit_tp3 = hit_tp3
@@ -367,13 +381,22 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 perf.tp3_hit_at = tp3_hit_at
                 perf.closed_at = closed_at
                 perf.is_expired = is_expired_flag
+                perf.detail_label = labels.classify_resolution(
+                    hit_tp1=hit_tp1, hit_tp2=hit_tp2, hit_tp3=hit_tp3,
+                    resolved_by_sl=resolved_by_sl, is_expired=is_expired_flag,
+                    pnl_pct=pnl_pct, mfe_pct=max(0.0, max_favorable),
+                    entry=entry, tp1=tp1,
+                )
 
                 details.append({
                     "signal_id": str(signal.id),
                     "symbol": symbol,
                     "outcome": outcome.value,
+                    "detail_label": perf.detail_label,
                     "return": round(pnl_pct, 2),
                     "max_drawdown": round(max_drawdown, 2),
+                    "mfe": round(max_favorable, 2),
+                    "bars": bars_to_outcome,
                     "is_expired": is_expired_flag,
                 })
                 logger.info(f"Signal {signal.id} ({symbol}) resolved as {outcome.value} (PnL: {pnl_pct:.2f}%, Expired: {is_expired_flag})")
@@ -392,6 +415,8 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 if tp3_hit_at:
                     perf.tp3_hit_at = tp3_hit_at
                 perf.max_drawdown = max(0.0, max_drawdown)
+                perf.mfe_pct = max(0.0, max_favorable)
+                perf.bars_to_outcome = bars_to_outcome
 
         # Commit DB updates
         await db.commit()

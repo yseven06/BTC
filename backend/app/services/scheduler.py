@@ -27,6 +27,8 @@ from app.collectors.yahoo_collector import YahooCollector
 from app.engines.ai_decision.engine import AIDecisionEngine
 from app.backtesting.tracker import track_and_resolve_active_signals
 from app.notifications.service import notify_signal
+from app.engines.market_regime import detect_regime
+from app.services.intelligence import build_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +171,14 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
         await binance.close()
         await yahoo.close()
 
+    # Detect the market regime once from the same frame the engines see, so the
+    # snapshot below records exactly the conditions this signal was scored under.
+    try:
+        regime_result = detect_regime(df)
+    except Exception as exc:
+        logger.warning("[Scheduler] Regime detection failed for %s: %s", symbol, exc)
+        regime_result = None
+
     try:
         engine = AIDecisionEngine()
         decision = await engine.analyze_and_decide(
@@ -274,6 +284,7 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                     old.is_active = False
                     old_perf.outcome = SignalOutcome.INVALIDATED
                     old_perf.closed_at = now
+                    old_perf.detail_label = "invalidated_reversal"
                     just_reversed = True
                     if last_close is not None and old.entry_zone_low and old.entry_zone_high:
                         entry = float(old.entry_zone_high + old.entry_zone_low) / 2.0
@@ -356,6 +367,18 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
             db.add(new_sig)
             await db.flush()
             db.add(SignalPerformance(signal_id=new_sig.id, outcome=SignalOutcome.ACTIVE))
+
+            # Capture an immutable snapshot of the conditions this signal was
+            # born into (engine scores, market regime, volatility, sentiment).
+            # This is the raw material every learning step downstream depends
+            # on — wrapped defensively so a snapshot failure can never block
+            # the actual signal from being saved.
+            try:
+                snapshot = build_snapshot(new_sig.id, decision, df, regime=regime_result)
+                db.add(snapshot)
+            except Exception as snap_exc:
+                logger.warning("[Scheduler] Snapshot build failed for %s: %s", symbol, snap_exc)
+
             await db.commit()
             logger.info("[Scheduler] Signal saved: %s → %s (conf=%.1f%%)",
                         symbol, decision["signal_type"], decision["confidence_score"])

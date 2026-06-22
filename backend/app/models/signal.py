@@ -15,6 +15,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Integer,
     Numeric,
     Text,
     func,
@@ -190,6 +191,19 @@ class SignalPerformance(Base):
     hit_tp1 = Column(Boolean, nullable=False, default=False)
     hit_tp2 = Column(Boolean, nullable=False, default=False)
     hit_tp3 = Column(Boolean, nullable=False, default=False)
+    # Detailed outcome reason beyond the coarse WIN/LOSS/BREAKEVEN above.
+    # "win" vs "loss" doesn't tell you *why* — a loss because the direction was
+    # wrong and a loss because the stop was a hair too tight are completely
+    # different lessons. These power the per-coin learning in CoinMemory.
+    # Free-form string (not a DB enum) so the scheduler's reversal path and
+    # future regime/macro labels can write here without a schema migration.
+    detail_label = Column(Text, nullable=True)
+    # Candles elapsed from signal generation to resolution.
+    bars_to_outcome = Column(Integer, nullable=True)
+    # Maximum Favorable Excursion: how far price moved *in our favour* (% of
+    # entry) before the trade resolved. Paired with max_drawdown (the adverse
+    # excursion), this distinguishes "never worked" from "worked then reversed".
+    mfe_pct = Column(Numeric(precision=10, scale=4), nullable=True)
     # Exact moment each target was crossed — distinct from closed_at, which
     # marks full resolution (e.g. TP1 hits but the position stays open at
     # breakeven until TP2/TP3 or a later stop-out closes it; closed_at would
