@@ -21,6 +21,7 @@ from app.models.signal import Signal, SignalOutcome, SignalPerformance
 from app.models.price_data import Timeframe
 from app.models.asset import Asset
 from app.backtesting import labels
+from app.services.coin_memory import update_coin_memory
 from app.collectors.binance_collector import BinanceCollector
 from app.collectors.yahoo_collector import YahooCollector
 
@@ -107,6 +108,10 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 perf.actual_return = pnl_pct
                 perf.closed_at = datetime.now(timezone.utc)
                 perf.detail_label = labels.LIVE_SL_HIT
+                try:
+                    await update_coin_memory(db, signal, perf, symbol.upper())
+                except Exception as mem_exc:
+                    logger.warning("CoinMemory update failed for %s: %s", symbol, mem_exc)
                 resolved_count += 1
                 details.append({
                     "signal_id": str(signal.id),
@@ -387,6 +392,11 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                     pnl_pct=pnl_pct, mfe_pct=max(0.0, max_favorable),
                     entry=entry, tp1=tp1,
                 )
+                # Fold this resolution into the coin's learned memory.
+                try:
+                    await update_coin_memory(db, signal, perf, symbol.upper())
+                except Exception as mem_exc:
+                    logger.warning("CoinMemory update failed for %s: %s", symbol, mem_exc)
 
                 details.append({
                     "signal_id": str(signal.id),

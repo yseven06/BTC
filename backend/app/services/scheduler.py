@@ -29,6 +29,7 @@ from app.backtesting.tracker import track_and_resolve_active_signals
 from app.notifications.service import notify_signal
 from app.engines.market_regime import detect_regime
 from app.services.intelligence import build_snapshot
+from app.services.coin_memory import load_effective_weights, update_coin_memory
 
 logger = logging.getLogger(__name__)
 
@@ -179,11 +180,23 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
         logger.warning("[Scheduler] Regime detection failed for %s: %s", symbol, exc)
         regime_result = None
 
+    # Resolve the engine weights to use: base mix tilted by the current regime
+    # and by what this coin/timeframe has historically learned. Falls back to
+    # the static base mix on any error or when no memory has accumulated yet.
+    regime_label = regime_result.regime.value if regime_result else None
+    engine_weights = None
+    try:
+        async with async_session_factory() as wdb:
+            engine_weights = await load_effective_weights(wdb, symbol.upper(), timeframe, regime_label)
+    except Exception as exc:
+        logger.warning("[Scheduler] Effective-weight load failed for %s: %s", symbol, exc)
+
     try:
         engine = AIDecisionEngine()
         decision = await engine.analyze_and_decide(
             symbol=symbol, timeframe=timeframe,
             ohlcv_data=df, asset_type=asset_type,
+            engine_weights=engine_weights,
         )
     except Exception as exc:
         logger.error("[Scheduler] Engine failed for %s: %s", symbol, exc)
@@ -299,6 +312,11 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                         "[Scheduler] %s %s signal INVALIDATED by reversal from %s scan.",
                         symbol, old.timeframe, timeframe,
                     )
+                    # Fold this resolution into the coin's learned memory.
+                    try:
+                        await update_coin_memory(db, old, old_perf, symbol.upper())
+                    except Exception as mem_exc:
+                        logger.warning("[Scheduler] CoinMemory update failed for %s: %s", symbol, mem_exc)
                 else:
                     skip_new_signal = True
                     logger.info(

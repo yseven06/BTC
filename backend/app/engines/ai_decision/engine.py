@@ -194,8 +194,14 @@ class AIDecisionEngine:
         # Compile results
         engine_results_dict = {res.engine_name: res for res in results}
 
-        # Calculate entries, targets, and signal type in the deterministic signal generator
-        signal_data = generate_signal(symbol, timeframe, ohlcv_data, results, mtf_trends=mtf_trends)
+        # Calculate entries, targets, and signal type in the deterministic signal
+        # generator. engine_weights (regime/coin-adaptive) may be supplied by the
+        # caller; when absent the generator falls back to its static base mix.
+        signal_data = generate_signal(
+            symbol, timeframe, ohlcv_data, results,
+            mtf_trends=mtf_trends,
+            weights=kwargs.get("engine_weights"),
+        )
 
         # Generate structured explanations in TR and EN
         explanations = generate_explanation(signal_data, results, asset_type)

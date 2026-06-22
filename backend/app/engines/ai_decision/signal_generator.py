@@ -57,26 +57,39 @@ class GeneratedSignalData:
     invalidation_conditions: str
 
 
+# Base engine weights (sum to 1.00). The single source of truth for the
+# default mix; the Adaptive Weight Engine tilts these per market-regime and
+# per-coin learned performance, but always starts from here.
+BASE_ENGINE_WEIGHTS: Dict[str, float] = {
+    "technical_analysis":      0.17,
+    "market_structure":        0.17,
+    "smart_money_concepts":    0.13,
+    "volume_analysis":         0.13,
+    "candle_range_theory":     0.10,
+    "onchain_analysis":        0.10,
+    "risk_management":         0.08,
+    "fundamental_analysis":    0.07,
+    "macro_analysis":          0.05,
+}
+
+
 def generate_signal(
     symbol: str,
     timeframe: str,
     df: pd.DataFrame,
     engine_results: List[EngineResult],
     mtf_trends: Dict[str, str] = None,
+    weights: Dict[str, float] | None = None,
 ) -> GeneratedSignalData:
-    """Consolidate scores from all engines, calculate entry/SL/TP levels, and form trade plan."""
-    # 1. Calculate weighted composite score (weights sum to 1.00)
-    engine_weights = {
-        "technical_analysis":      0.17,
-        "market_structure":        0.17,
-        "smart_money_concepts":    0.13,
-        "volume_analysis":         0.13,
-        "candle_range_theory":     0.10,
-        "onchain_analysis":        0.10,
-        "risk_management":         0.08,
-        "fundamental_analysis":    0.07,
-        "macro_analysis":          0.05,
-    }
+    """Consolidate scores from all engines, calculate entry/SL/TP levels, and form trade plan.
+
+    Args:
+        weights: Optional engine-weight override (regime/coin-adaptive). When
+            None, the static BASE_ENGINE_WEIGHTS are used — identical to the
+            previous fixed behaviour, so callers that don't opt in are unchanged.
+    """
+    # 1. Calculate weighted composite score (weights sum to ~1.00)
+    engine_weights = weights if weights else BASE_ENGINE_WEIGHTS
     composite_score = 0.0
     for res in engine_results:
         weight = engine_weights.get(res.engine_name, 0.05)
