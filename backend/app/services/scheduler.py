@@ -378,6 +378,8 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 explanation_tr=decision["explanation_tr"],
                 explanation_en=decision["explanation_en"],
                 is_active=True,
+                live_status="active",
+                status_updated_at=now,
                 timeframe=db_tf,
                 generated_at=now,
                 expires_at=now + timedelta(hours=48),

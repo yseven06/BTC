@@ -50,9 +50,16 @@ class SignalResponse(BaseModel):
     is_active: bool
     generated_at: datetime
     expires_at: Optional[datetime] = None
+    # Live lifecycle state (Adaptive Signal Intelligence) — see Signal model.
+    live_status: Optional[str] = None
+    status_reason: Optional[str] = None
+    status_updated_at: Optional[datetime] = None
     outcome: Optional[str] = None  # active / win / loss / breakeven / expired
+    detail_label: Optional[str] = None  # detailed outcome reason (tp1_hit, correct_dir_tight_sl, ...)
     actual_return: Optional[float] = None
     max_drawdown: Optional[float] = None
+    mfe_pct: Optional[float] = None
+    bars_to_outcome: Optional[int] = None
     hit_tp1: bool = False
     hit_tp2: bool = False
     hit_tp3: bool = False
@@ -89,6 +96,9 @@ class SignalDetailResponse(BaseModel):
     timeframe: str
     generated_at: datetime
     expires_at: Optional[datetime] = None
+    live_status: Optional[str] = None
+    status_reason: Optional[str] = None
+    status_updated_at: Optional[datetime] = None
     performance: Optional["SignalPerformanceResponse"] = None
 
     model_config = {"from_attributes": True}

@@ -116,6 +116,9 @@ async def list_signals(
             d.tp1_hit_at = perf.tp1_hit_at
             d.tp2_hit_at = perf.tp2_hit_at
             d.tp3_hit_at = perf.tp3_hit_at
+            d.detail_label = perf.detail_label
+            d.mfe_pct = float(perf.mfe_pct) if perf.mfe_pct is not None else None
+            d.bars_to_outcome = perf.bars_to_outcome
         return d
 
     return SignalListResponse(
@@ -143,6 +146,9 @@ def _hist_to_resp(s: Signal) -> SignalResponse:
         d.tp2_hit_at = perf.tp2_hit_at
         d.tp3_hit_at = perf.tp3_hit_at
         d.closed_at = perf.closed_at
+        d.detail_label = perf.detail_label
+        d.mfe_pct = float(perf.mfe_pct) if perf.mfe_pct is not None else None
+        d.bars_to_outcome = perf.bars_to_outcome
     return d
 
 

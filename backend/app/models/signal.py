@@ -130,6 +130,15 @@ class Signal(Base):
     explanation_en = Column(Text, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True, index=True)
     admin_invalidated = Column(Boolean, nullable=False, default=False, server_default="false")
+    # Live lifecycle state for an active signal — the answer to "is this signal
+    # still valid RIGHT NOW?". Distinct from is_active (binary open/closed) and
+    # from the resolved outcome: a signal can be active-but-weakening. Updated
+    # each tracking pass from cheap price/regime cues (not a full engine re-run).
+    # Values: active | approaching_tp | weakening | invalidating (terminal
+    # states reversed/stopped are represented by resolution, not here).
+    live_status = Column(Text, nullable=True)
+    status_reason = Column(Text, nullable=True)
+    status_updated_at = Column(DateTime(timezone=True), nullable=True)
     timeframe = Column(
         Enum(Timeframe, name="timeframe", create_constraint=True, create_type=False),
         nullable=False,

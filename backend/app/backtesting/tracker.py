@@ -21,6 +21,8 @@ from app.models.signal import Signal, SignalOutcome, SignalPerformance
 from app.models.price_data import Timeframe
 from app.models.asset import Asset
 from app.backtesting import labels
+from app.backtesting import lifecycle
+from app.engines.market_regime import detect_regime
 from app.services.coin_memory import update_coin_memory
 from app.collectors.binance_collector import BinanceCollector
 from app.collectors.yahoo_collector import YahooCollector
@@ -427,6 +429,22 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 perf.max_drawdown = max(0.0, max_drawdown)
                 perf.mfe_pct = max(0.0, max_favorable)
                 perf.bars_to_outcome = bars_to_outcome
+
+                # Live lifecycle status — "is this signal still valid right now?"
+                # Cheap: price-vs-levels + current regime, no engine re-run.
+                try:
+                    cur_regime = detect_regime(df).regime.value
+                except Exception:
+                    cur_regime = None
+                status, reason = lifecycle.compute_lifecycle_status(
+                    direction=signal.direction.value,
+                    entry=entry, stop_loss=stop_loss, tp1=tp1,
+                    current_price=float(closes[-1]),
+                    current_regime=cur_regime,
+                )
+                signal.live_status = status
+                signal.status_reason = reason
+                signal.status_updated_at = datetime.now(timezone.utc)
 
         # Commit DB updates
         await db.commit()
