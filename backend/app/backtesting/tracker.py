@@ -15,7 +15,7 @@ from typing import Any, Dict, List
 import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, defer
 
 from app.models.signal import Signal, SignalOutcome, SignalPerformance
 from app.models.price_data import Timeframe
@@ -59,9 +59,21 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
     logger.info("Initializing active signal performance tracking run")
 
     # 1. Fetch all active signals with asset relations
+    # Egress optimization (Öncelik 1): the tracker never reads these heavy
+    # columns (engines_data ~4.2 KB, explanations ~3.6 KB, invalidation), yet
+    # they were shipped for every active signal every 2-minute pass (~190 MB/day).
+    # Defer them so the SELECT skips them entirely. Lifecycle logic is unchanged
+    # — it only uses levels/status/perf/asset.
     query = (
         select(Signal)
-        .options(selectinload(Signal.asset), selectinload(Signal.performance))
+        .options(
+            selectinload(Signal.asset),
+            selectinload(Signal.performance),
+            defer(Signal.engines_data),
+            defer(Signal.explanation_tr),
+            defer(Signal.explanation_en),
+            defer(Signal.invalidation_conditions),
+        )
         .where(Signal.is_active == True)
     )
     result = await db.execute(query)
