@@ -479,7 +479,11 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 except Exception:
                     cur_regime = None
                 structure_event = _recent_structure_event(df)
+                # Immediate momentum (INVALIDATING confirmed-cluster path) +
+                # v2.2 persistence-filtered momentum (WEAKENING trigger only,
+                # N=2 consecutive bars) to damp single-bar active↔weakening churn.
                 momentum_dir = lifecycle.momentum_direction(df)
+                momentum_dir_weak = lifecycle.momentum_direction(df, persist=2)
 
                 now_eval = datetime.now(timezone.utc)
                 prev_status = signal.live_status
@@ -499,6 +503,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                     current_regime=cur_regime,
                     structure_event=structure_event,
                     momentum_dir=momentum_dir,
+                    momentum_dir_weak=momentum_dir_weak,
                     prev_status=prev_status,
                     seconds_in_state=seconds_in_state,
                     min_state_seconds=min_state_seconds,

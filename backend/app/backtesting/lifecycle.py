@@ -140,19 +140,33 @@ DEFAULT_MIN_STATE_SECONDS = 300
 _SEVERITY = {ACTIVE: 0, WEAKENING: 1, INVALIDATING: 2}
 
 
-def momentum_direction(df: pd.DataFrame, span: int = 9, lookback: int = 3) -> str:
+def momentum_direction(df: pd.DataFrame, span: int = 9, lookback: int = 3,
+                       persist: int = 1) -> str:
     """Short-term momentum lean from the slope of a fast EMA, normalised by
     price. Cheap (no network); computed from the OHLCV the tracker already has.
-    Returns 'bullish' | 'bearish' | 'neutral'."""
-    if df is None or len(df) < lookback + 2:
+    Returns 'bullish' | 'bearish' | 'neutral'.
+
+    persist (v2.2): require the fast EMA to have moved the SAME direction for the
+    last `persist` consecutive bar-steps before reporting a non-neutral lean.
+    persist=1 is the original behaviour (single lookback slope). persist=2 filters
+    out single-bar blips — the main source of active↔weakening churn. The
+    magnitude threshold is still applied on the lookback slope, so a direction is
+    reported only when it is both consistent AND meaningful.
+    """
+    if df is None or len(df) < lookback + persist + 1:
         return "neutral"
     close = df["close"]
     ema = close.ewm(span=span, adjust=False).mean()
     last = float(close.iloc[-1]) or 1.0
     slope_rel = (float(ema.iloc[-1]) - float(ema.iloc[-1 - lookback])) / last
-    if slope_rel > 0.0005:
+
+    # Per-bar consistency over the last `persist` steps (the persistence filter).
+    up_consistent = all(float(ema.iloc[-i]) > float(ema.iloc[-i - 1]) for i in range(1, persist + 1))
+    down_consistent = all(float(ema.iloc[-i]) < float(ema.iloc[-i - 1]) for i in range(1, persist + 1))
+
+    if slope_rel > 0.0005 and up_consistent:
         return "bullish"
-    if slope_rel < -0.0005:
+    if slope_rel < -0.0005 and down_consistent:
         return "bearish"
     return "neutral"
 
@@ -170,9 +184,19 @@ def _structure_against(structure_event: Optional[str], is_bull: bool) -> bool:
 def _classify_raw(
     *, is_bull: bool, progress_to_tp: float, retrace_to_sl: float,
     regime_hostile: bool, momentum_against: bool, structure_against: bool,
-    structure_event: Optional[str],
+    structure_event: Optional[str], momentum_against_weak: bool = None,
 ) -> Tuple[str, str]:
-    """v2 raw candidate (pre-hysteresis). Structure is confirmation only."""
+    """v2 raw candidate (pre-hysteresis). Structure is confirmation only.
+
+    momentum_against: IMMEDIATE momentum lean — used by the INVALIDATING
+        confirmed-cluster path (kept untouched in v2.2).
+    momentum_against_weak: PERSISTENCE-filtered momentum lean (v2.2) — used by
+        the WEAKENING trigger only, so a single-bar blip no longer flips a
+        healthy signal into weakening. Defaults to momentum_against when not
+        supplied (pre-v2.2 behaviour).
+    """
+    if momentum_against_weak is None:
+        momentum_against_weak = momentum_against
     # Favourable move wins outright.
     if progress_to_tp >= ENTER_APPROACH:
         pct = min(99, int(progress_to_tp * 100))
@@ -194,13 +218,15 @@ def _classify_raw(
         )
 
     # WEAKENING: any single soft warning. Structure only enriches the reason.
-    if regime_hostile or retrace_to_sl >= ENTER_WEAKEN or momentum_against:
+    # v2.2: the momentum trigger uses the PERSISTENCE-filtered lean; retrace and
+    # regime triggers are unchanged (fire immediately).
+    if regime_hostile or retrace_to_sl >= ENTER_WEAKEN or momentum_against_weak:
         reasons = []
         if regime_hostile:
             reasons.append("rejim aleyhte döndü")
         if retrace_to_sl >= ENTER_WEAKEN:
             reasons.append(f"fiyat stop yönünde %{min(99, int(retrace_to_sl * 100))} çekildi")
-        if momentum_against:
+        if momentum_against_weak:
             reasons.append("momentum zayıflıyor")
         if structure_against:  # confirmation only
             reasons.append("aleyhte yapı sinyali")
@@ -240,6 +266,7 @@ def evaluate_lifecycle(
     current_regime: Optional[str] = None,
     structure_event: Optional[str] = None,
     momentum_dir: str = "neutral",
+    momentum_dir_weak: Optional[str] = None,
     prev_status: Optional[str] = None,
     seconds_in_state: Optional[float] = None,
     min_state_seconds: float = DEFAULT_MIN_STATE_SECONDS,
@@ -271,11 +298,18 @@ def evaluate_lifecycle(
     momentum_against = (is_bull and momentum_dir == "bearish") or (
         not is_bull and momentum_dir == "bullish"
     )
+    # v2.2: persistence-filtered momentum for the WEAKENING trigger only. Falls
+    # back to the immediate lean when the caller doesn't supply it.
+    mdw = momentum_dir_weak if momentum_dir_weak is not None else momentum_dir
+    momentum_against_weak = (is_bull and mdw == "bearish") or (
+        not is_bull and mdw == "bullish"
+    )
     structure_against = _structure_against(structure_event, is_bull)
 
     candidate, cand_reason = _classify_raw(
         is_bull=is_bull, progress_to_tp=progress_to_tp, retrace_to_sl=retrace_to_sl,
         regime_hostile=regime_hostile, momentum_against=momentum_against,
+        momentum_against_weak=momentum_against_weak,
         structure_against=structure_against, structure_event=structure_event,
     )
 
