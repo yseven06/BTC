@@ -256,15 +256,20 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
       series.setMarkers([]);
       return;
     }
-    // A freshly-generated signal can be newer than the last fetched candle
-    // (OHLCV polling and signal generation aren't perfectly in sync — a
-    // signal minted seconds after the last candle fetch is common), in
-    // which case findIndex finds nothing and the marker silently never
-    // renders. Fall back to the most recent candle instead of giving up —
-    // the signal genuinely did start "now", so anchoring the marker to the
-    // latest bar is still accurate, just not pixel-exact to the second.
-    const startIdx = candles.findIndex((c) => c.time >= signal.generatedAt!);
-    const startCandle = startIdx >= 0 ? candles[startIdx] : candles[candles.length - 1];
+    // Anchor the marker to the candle that CONTAINS the signal time, not the
+    // next one. candle.time is the bar's OPEN (UTC); signals are minted
+    // mid-bar, so the old `c.time >= generatedAt` skipped the containing bar
+    // and landed on the following one — off by a full bar (a whole day on 1D).
+    // The right bar is the last one whose open is <= generatedAt.
+    // Fallback: a signal newer than the last fetched candle (OHLCV polling and
+    // signal generation aren't perfectly in sync) still anchors to the latest
+    // bar rather than not rendering at all.
+    const gen = signal.generatedAt!;
+    const nextIdx = candles.findIndex((c) => c.time > gen);
+    const startIdx = nextIdx === -1
+      ? candles.length - 1            // signal at/after the last bar's open
+      : Math.max(0, nextIdx - 1);     // the bar that contains the signal
+    const startCandle = candles[startIdx];
     series.setMarkers(startCandle ? [{
       time: startCandle.time as any,
       position: 'aboveBar',
