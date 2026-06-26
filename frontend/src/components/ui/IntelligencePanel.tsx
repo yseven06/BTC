@@ -58,6 +58,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
   const [data, setData] = useState<SignalIntelligence | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,7 +69,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
       .catch(() => { if (!cancelled) setFailed(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [signalId]);
+  }, [signalId, reloadKey]);
 
   if (loading) {
     return (
@@ -80,7 +81,28 @@ export function IntelligencePanel({ signalId, compact }: Props) {
       </GlassCard>
     );
   }
-  if (failed || !data) return null;
+  // Never vanish silently: a fetch failure (timeout, backend restart, etc.)
+  // used to render nothing, so the whole "Akıllı Durum" panel disappeared and
+  // the screen looked inconsistent. Show a small placeholder with a retry
+  // instead, so the panel is always present.
+  if (failed || !data) {
+    return (
+      <GlassCard className={compact ? 'p-4' : 'p-5'}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-text-muted text-xs">
+            <Brain className="w-3.5 h-3.5 text-accent-primary" />
+            Akıllı Durum yüklenemedi
+          </div>
+          <button
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="text-[11px] font-bold text-accent-primary hover:underline"
+          >
+            Tekrar dene
+          </button>
+        </div>
+      </GlassCard>
+    );
+  }
 
   const status = data.live_status && STATUS_META[data.live_status] ? STATUS_META[data.live_status] : STATUS_META.active;
   const StatusIcon = status.Icon;
