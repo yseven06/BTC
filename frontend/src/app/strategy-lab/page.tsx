@@ -91,6 +91,15 @@ function HourHeatmap({ data }: { data: HourData[] }) {
 }
 
 // ── Day Heatmap ───────────────────────────────────────────────────────────────
+// Backend sends full Turkish day names; a naive slice(0,3) collided
+// Pazartesi/Pazar → "Paz" and Cuma/Cumartesi → "Cum". Map to correct abbrevs.
+const TR_DAY_ABBR: Record<string, string> = {
+  'Pazartesi': 'Pzt', 'Salı': 'Sal', 'Çarşamba': 'Çar', 'Perşembe': 'Per',
+  'Cuma': 'Cum', 'Cumartesi': 'Cmt', 'Pazar': 'Paz',
+};
+function dayAbbr(label: string): string {
+  return TR_DAY_ABBR[(label ?? '').trim()] ?? (label ?? '').slice(0, 3);
+}
 function DayHeatmap({ data }: { data: DayData[] }) {
   return (
     <div className="grid grid-cols-7 gap-2">
@@ -99,7 +108,7 @@ function DayHeatmap({ data }: { data: DayData[] }) {
           'flex flex-col items-center gap-1 p-3 rounded-xl border border-border-subtle transition-all hover:scale-105',
           heatColor(d.win_rate, d.total)
         )}>
-          <span className="text-[10px] font-bold text-text-muted">{d.label.slice(0, 3)}</span>
+          <span className="text-[10px] font-bold text-text-muted">{dayAbbr(d.label)}</span>
           <span className={cn('text-lg font-extrabold font-mono', heatText(d.win_rate, d.total))}>
             {d.total > 0 ? `${d.win_rate.toFixed(0)}%` : '—'}
           </span>
