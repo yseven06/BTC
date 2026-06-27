@@ -86,12 +86,42 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 pt-16 pb-12 text-center">
         <h1 className="text-3xl md:text-5xl font-extrabold text-text-primary leading-tight max-w-3xl mx-auto">
-          Kurumsal Düzeyde <span className="gradient-text-brand">Yapay Zekâ Trading İstihbaratı</span>
+          9 AI motoru kripto ve BIST'i 7/24 tarar,{' '}
+          <span className="gradient-text-brand">kanıtlanmış sinyaller</span> üretir
         </h1>
         <p className="text-base md:text-lg text-text-secondary mt-5 max-w-2xl mx-auto">
-          9 ayrı AI motoru kripto ve BIST'i 7/24 tarıyor; Akıllı Para (SMC), risk skorlaması ve
-          gerçek zamanlı performans takibiyle herkese kurumsal düzeyde sinyal altyapısı.
+          Akıllı Para (SMC), otomatik risk skorlaması ve gerçek zamanlı performans takibiyle
+          duygusal kararları geride bırak — veriye dayalı işlem yap.
         </p>
+
+        {/* Canlı kanıt (fold üstü) — gerçek veriden beslenir; veri yoksa statik güven rozetleri */}
+        {stats && resolved > 0 ? (
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-6 text-sm">
+            <span className="inline-flex items-center gap-1.5 font-semibold text-text-secondary">
+              <CheckCircle className="w-4 h-4 text-bullish" />
+              <span className="font-mono font-bold text-bullish">%{stats.win_rate}</span> başarı oranı
+            </span>
+            <span className="inline-flex items-center gap-1.5 font-semibold text-text-secondary">
+              <Activity className="w-4 h-4 text-accent-primary" />
+              <span className="font-mono font-bold text-text-primary">{resolved.toLocaleString('tr-TR')}</span> kapanan sinyal
+            </span>
+            {stats.average_return != null && (
+              <span className="inline-flex items-center gap-1.5 font-semibold text-text-secondary">
+                <TrendingUp className={cn('w-4 h-4', stats.average_return >= 0 ? 'text-bullish' : 'text-bearish')} />
+                <span className={cn('font-mono font-bold', stats.average_return >= 0 ? 'text-bullish' : 'text-bearish')}>
+                  {stats.average_return >= 0 ? '+' : ''}{stats.average_return.toFixed(2)}%
+                </span> ort. getiri
+              </span>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-6 text-sm text-text-secondary">
+            <span className="inline-flex items-center gap-1.5 font-semibold"><Brain className="w-4 h-4 text-accent-primary" /> 9 AI motoru</span>
+            <span className="inline-flex items-center gap-1.5 font-semibold"><Activity className="w-4 h-4 text-accent-primary" /> 7/24 tarama</span>
+            <span className="inline-flex items-center gap-1.5 font-semibold"><Shield className="w-4 h-4 text-accent-primary" /> Otomatik risk yönetimi</span>
+          </div>
+        )}
+
         <div className="flex items-center justify-center gap-3 mt-7">
           <Link href="/register" className="flex items-center gap-2 text-sm font-bold bg-accent-primary hover:bg-accent-secondary text-white px-6 py-3 rounded-xl shadow-glow-sm transition-colors">
             Ücretsiz Başla <ArrowRight className="w-4 h-4" />
@@ -103,11 +133,16 @@ export default function LandingPage() {
 
         {/* Live stats strip — real data, no placeholders */}
         {stats && resolved > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto mt-14 p-6 glass-panel border border-border-subtle rounded-2xl">
-            <StatBlock label="Başarı Oranı" value={`${stats.win_rate}%`} accent />
-            <StatBlock label="Kapanan Sinyal" value={resolved.toLocaleString('tr-TR')} />
-            <StatBlock label="Ort. Getiri" value={`${(stats.average_return ?? 0) >= 0 ? '+' : ''}${(stats.average_return ?? 0).toFixed(2)}%`} accent={(stats.average_return ?? 0) >= 0} />
-            <StatBlock label="TP1 Vuruş" value={`${stats.tp1_hit_rate}%`} />
+          <div className="max-w-3xl mx-auto mt-14">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-6 glass-panel border border-border-subtle rounded-2xl">
+              <StatBlock label="Başarı Oranı" value={`${stats.win_rate}%`} accent />
+              <StatBlock label="Kapanan Sinyal" value={resolved.toLocaleString('tr-TR')} />
+              <StatBlock label="Ort. Getiri" value={`${(stats.average_return ?? 0) >= 0 ? '+' : ''}${(stats.average_return ?? 0).toFixed(2)}%`} accent={(stats.average_return ?? 0) >= 0} />
+              <StatBlock label="TP1 Vuruş" value={`${stats.tp1_hit_rate}%`} />
+            </div>
+            <p className="text-[11px] text-text-muted text-center mt-3">
+              Tüm zamanlar · yalnızca gerçek, kapanmış sinyallerden hesaplanır
+            </p>
           </div>
         )}
       </section>
