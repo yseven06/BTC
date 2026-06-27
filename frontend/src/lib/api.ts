@@ -108,10 +108,10 @@ async function apiFetch<T>(path: string, init?: RequestInit, _isRetry = false): 
     return (text ? JSON.parse(text) : undefined) as T;
   } catch (err: any) {
     if (err?.name === 'AbortError') {
-      throw new Error('Backend yanıt vermiyor. Lütfen backend\'in çalıştığından emin ol (localhost:8000).');
+      throw new Error('Sunucu yanıt vermiyor. Lütfen birazdan tekrar dene.');
     }
     if (err?.message?.includes('Failed to fetch') || err?.message?.includes('NetworkError')) {
-      throw new Error('Backend\'e bağlanılamıyor. localhost:8000 çalışıyor mu?');
+      throw new Error('Sunucuya bağlanılamadı. İnternet bağlantını kontrol edip tekrar dene.');
     }
     throw err;
   } finally {

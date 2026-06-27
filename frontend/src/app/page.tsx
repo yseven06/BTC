@@ -54,9 +54,9 @@ export default function LandingPage() {
   }, [user, loading, router]);
 
   useEffect(() => {
-    fetchPerformanceSummary().then(setStats).catch(() => {});
-    fetchSignalHistory({ outcome: 'win', page_size: 4 }).then((r) => setWinSignals(r.items)).catch(() => {});
-    fetchPlans().then((r) => setPlans(r.plans.filter((p) => p.tier !== 'free'))).catch(() => {});
+    fetchPerformanceSummary().then(setStats).catch((e) => console.error('Landing: performans özeti alınamadı', e));
+    fetchSignalHistory({ outcome: 'win', page_size: 4 }).then((r) => setWinSignals(r.items)).catch((e) => console.error('Landing: kazanan sinyaller alınamadı', e));
+    fetchPlans().then((r) => setPlans(r.plans.filter((p) => p.tier !== 'free'))).catch((e) => console.error('Landing: planlar alınamadı', e));
   }, []);
 
   if (loading || user) {
