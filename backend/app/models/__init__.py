@@ -16,7 +16,7 @@ from app.models.alert import Alert
 from app.models.notification import NotificationSettings
 from app.models.subscription import Subscription, Payment
 from app.models.admin_audit import AdminAuditLog
-from app.models.intelligence import SignalSnapshot, CoinMemory, SignalStatusHistory
+from app.models.intelligence import SignalSnapshot, CoinMemory, SignalStatusHistory, SignalTradePath
 
 __all__ = [
     "User",
@@ -36,4 +36,5 @@ __all__ = [
     "SignalSnapshot",
     "CoinMemory",
     "SignalStatusHistory",
+    "SignalTradePath",
 ]
