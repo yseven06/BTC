@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Zap, RefreshCw, TrendingUp, TrendingDown, Eye, LineChart, FileDown, ArrowRight } from 'lucide-react';
+import { Zap, RefreshCw, TrendingUp, TrendingDown, Eye, LineChart, FileDown, ArrowRight, Crown } from 'lucide-react';
 import { fetchActiveSignals, triggerBatchGeneration, downloadSignalPdf, type ApiSignal } from '@/lib/api';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useTierLimits } from '@/hooks/useTierLimits';
@@ -954,6 +954,21 @@ export default function SignalsPage() {
           </button>
         </div>
       </div>
+
+      {/* Free-tier limit nudge — bağlamsal yükseltme tetikleyicisi */}
+      {!limits.loading && limits.tier === 'free' && (
+        <Link
+          href="/pricing"
+          className="flex items-center justify-between gap-3 bg-gradient-to-r from-orange-500/12 via-accent-primary/10 to-orange-500/12 border border-orange-500/25 hover:border-orange-500/45 rounded-xl px-4 py-2.5 transition-colors"
+        >
+          <span className="text-xs text-text-secondary">
+            <span className="font-bold text-text-primary">Ücretsiz plan</span> · günde {limits.daily_signal_limit} sinyal görüntülüyorsun. Sınırsız erişim için yükselt.
+          </span>
+          <span className="flex items-center gap-1.5 text-xs font-bold text-orange-400 whitespace-nowrap flex-shrink-0">
+            <Crown className="w-3.5 h-3.5" /> Yükselt
+          </span>
+        </Link>
+      )}
 
       {/* Generation status banner */}
       {genMsg && (
