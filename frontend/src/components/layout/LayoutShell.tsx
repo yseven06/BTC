@@ -14,10 +14,17 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
 
   const isPublic = PUBLIC_ROUTES.includes(pathname);
 
-  // Redirect unauthenticated users to /login (except on public routes)
+  // Redirect unauthenticated users to /login (except on public routes).
+  // If the session expired (a refresh attempt definitively failed), carry a
+  // ?reason=expired so login can explain why — instead of a silent bounce.
   useEffect(() => {
     if (!loading && !user && !isPublic) {
-      router.replace('/login?redirect=' + encodeURIComponent(pathname));
+      const params = new URLSearchParams({ redirect: pathname });
+      if (typeof window !== 'undefined' && sessionStorage.getItem('session_expired') === '1') {
+        params.set('reason', 'expired');
+        sessionStorage.removeItem('session_expired');
+      }
+      router.replace('/login?' + params.toString());
     }
   }, [loading, user, isPublic, pathname, router]);
 

@@ -11,6 +11,9 @@ function LoginForm() {
   const search = useSearchParams();
   const { user, login } = useAuth();
   const redirect = search.get('redirect') ?? '/dashboard';
+  const expiredNotice = search.get('reason') === 'expired'
+    ? 'Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.'
+    : null;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -61,6 +64,12 @@ function LoginForm() {
         {/* Form */}
         <form onSubmit={submit} className="glass-panel border border-border-subtle rounded-2xl p-6 space-y-4">
           <h1 className="text-lg font-bold text-text-primary">Hoş Geldin</h1>
+
+          {expiredNotice && !error && (
+            <div role="status" aria-live="polite" className="bg-accent-primary/10 border border-accent-primary/30 rounded-xl px-3 py-2 text-xs text-accent-primary">
+              {expiredNotice}
+            </div>
+          )}
 
           {error && (
             <div id="login-error" role="alert" aria-live="assertive" className="bg-bearish/10 border border-bearish/30 rounded-xl px-3 py-2 text-xs text-bearish">

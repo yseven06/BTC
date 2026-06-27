@@ -96,6 +96,10 @@ async function apiFetch<T>(path: string, init?: RequestInit, _isRetry = false): 
       const refreshed = await tryRefreshToken();
       if (refreshed) return apiFetch<T>(path, init, true);
       clearAuthTokens();
+      // Refresh kesin başarısız → oturum süresi doldu. Tek-kullanımlık UX
+      // işareti; token doğrulama/refresh akışını değiştirmez, yalnızca
+      // /login'de anlaşılır bir mesaj göstermek için LayoutShell okur.
+      if (typeof window !== 'undefined') sessionStorage.setItem('session_expired', '1');
     }
     if (!res.ok) {
       const body = await res.text();
