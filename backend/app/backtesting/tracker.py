@@ -70,6 +70,56 @@ async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, t
         logger.warning("TradePath instrumentation failed for %s (fail-open, ignored): %s",
                        getattr(signal, "id", "?"), tp_exc)
 
+
+async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, live_price, realized_return):
+    """Fail-open trade-path write for the LIVE-SL shortcut (mid-candle stop).
+    No bar-walk here, so most path metrics are genuinely UNMEASURED → kept NULL
+    (never 0), so the learning layer can tell 'not measured' from '0 happened'.
+    Only what we truly observe is recorded: MAE from the actual breach price,
+    realized return, TP flags already on perf, context, prices. Marked
+    still_forming_resolution=True (mid-candle, lower confidence)."""
+    try:
+        snap = (await db.execute(
+            select(SignalSnapshot).where(SignalSnapshot.signal_id == signal.id)
+        )).scalar_one_or_none()
+        atr_pct = float(snap.atr_pct) if snap and snap.atr_pct is not None else None
+        vol_ratio = float(snap.volatility_ratio) if snap and snap.volatility_ratio is not None else None
+        regime = snap.regime if snap else None
+        # Observed adverse excursion at the breach (real measurement); favorable
+        # excursion is unknown on this path → leave MFE NULL.
+        mae_pct = None
+        if entry and entry != 0 and live_price is not None:
+            adverse = (entry - live_price) / entry * 100.0 if signal.direction.value == "bullish" \
+                else (live_price - entry) / entry * 100.0
+            mae_pct = round(max(0.0, adverse), 4)
+        row = compute_trade_path(
+            signal_id=signal.id, asset_id=signal.asset_id,
+            symbol=(signal.asset.symbol if signal.asset else None),
+            timeframe=_map_db_timeframe(signal.timeframe),
+            direction=signal.direction.value, regime=regime,
+            resolved_at=perf.closed_at, outcome=perf.outcome.value, detail_label=perf.detail_label,
+            entry=entry, sl=sl,
+            tp1=float(signal.tp1) if signal.tp1 is not None else None,
+            tp2=float(signal.tp2) if signal.tp2 is not None else None,
+            tp3=float(signal.tp3) if signal.tp3 is not None else None,
+            mfe_pct=None,            # UNMEASURED on live-SL path → NULL (not 0)
+            mae_pct=mae_pct,         # measured from breach price
+            bars_total=None, mfe_bar_idx=None, mae_bar_idx=None,
+            atr_pct=atr_pct, volatility_ratio=vol_ratio, generated_at=signal.generated_at,
+            reached_tp1=perf.hit_tp1, reached_tp2=perf.hit_tp2, reached_tp3=perf.hit_tp3,
+            bars_to_tp1=None,
+            post_tp1_mae_pct=None, post_tp1_mfe_pct=None,
+            gave_back_after_tp1=None,   # UNMEASURED → NULL (not False)
+            realized_return=round(realized_return, 4),
+            intrabar_ambiguous=False, sl_before_tp=None, still_forming_resolution=True,
+            source="live",
+        )
+        db.add(row)
+        await update_trade_mgmt_stats(db, row)
+    except Exception as tp_exc:
+        logger.warning("TradePath(live_sl) instrumentation failed for %s (fail-open, ignored): %s",
+                       getattr(signal, "id", "?"), tp_exc)
+
 # Timeframe → seconds, for scaling the lifecycle min-state-duration.
 _TF_SECONDS = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400, "1w": 604800}
 
@@ -199,6 +249,12 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                     reason=labels.label_tr(perf.detail_label), outcome=perf.outcome.value,
                     price=live_hit["live_price"],
                 ))
+                # Trade-path instrumentation for the live-SL path (fail-open;
+                # unmeasured metrics stay NULL — see helper).
+                await _write_trade_path_live_sl_failopen(
+                    db, signal, perf, entry=entry, sl=sl,
+                    live_price=live_hit["live_price"], realized_return=pnl_pct,
+                )
                 resolved_count += 1
                 details.append({
                     "signal_id": str(signal.id),
