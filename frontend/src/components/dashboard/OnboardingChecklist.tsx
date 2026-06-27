@@ -22,7 +22,7 @@ interface Step {
 const STEPS: Step[] = [
   { id: 'signal',    label: 'İlk sinyalini incele',          desc: 'AI motorlarının ürettiği AL/SAT sinyallerini gör.', href: '/signals',         icon: Zap },
   { id: 'telegram',  label: 'Telegram bildirimlerini bağla', desc: 'Yeni sinyallerden anında haberdar ol.',             href: '/settings',        icon: Bell },
-  { id: 'analysis',  label: 'İlk Symbol Analysis\'i aç',      desc: 'Bir coin için derin AI analizini çalıştır.',        href: '/symbol-analysis', icon: BarChart3 },
+  { id: 'analysis',  label: 'Bir coin\'i derinlemesine incele', desc: 'Canlı grafik ve AI sinyal detayını gör.',           href: '/markets',         icon: BarChart3 },
   { id: 'watchlist', label: 'Watchlist oluştur',             desc: 'Takip etmek istediğin coinleri ekle.',              href: '/watchlist',       icon: Star },
 ];
 

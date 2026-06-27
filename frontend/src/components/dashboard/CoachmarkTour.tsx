@@ -11,7 +11,7 @@ interface TourStep { sel: string; title: string; desc: string; }
 const STEPS: TourStep[] = [
   { sel: '[data-tour="dashboard"]',       title: 'Gösterge Paneli',  desc: 'Piyasanın ve performansının tek ekranda özeti.' },
   { sel: '[data-tour="signals"]',         title: 'Sinyal Merkezi',   desc: 'AI motorlarının ürettiği canlı AL/SAT sinyalleri.' },
-  { sel: '[data-tour="symbol-analysis"]', title: 'Sembol Analizi',   desc: 'Tek bir coin için derin, çok-motorlu AI analizi.' },
+  { sel: '[data-tour="markets"]',         title: 'Piyasalar',        desc: 'Tüm coinleri keşfet; canlı grafik ve AI sinyallerini incele.' },
   { sel: '[data-tour="signal-history"]',  title: 'Sinyal Geçmişi',   desc: 'Geçmiş sinyaller ve gerçekleşen sonuçları.' },
 ];
 
