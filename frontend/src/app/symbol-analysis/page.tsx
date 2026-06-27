@@ -96,7 +96,12 @@ export default function SymbolAnalysisPage() {
   const totalWins  = filtered.reduce((s, x) => s + x.wins, 0);
   const totalSigs  = filtered.reduce((s, x) => s + x.total, 0);
   const totalLoss  = filtered.reduce((s, x) => s + x.losses, 0);
-  const globalWR   = totalSigs > 0 ? ((totalWins / (totalWins + totalLoss || 1)) * 100).toFixed(1) : '—';
+  const totalBE    = filtered.reduce((s, x) => s + (x.breakeven ?? 0), 0);
+  // Win rate = win / (win + loss + breakeven) — matches the platform-wide
+  // definition used on the dashboard and Sinyal Geçmişi. Excluding breakeven
+  // here previously read ~53% while everywhere else showed ~38%.
+  const resolvedTot = totalWins + totalLoss + totalBE;
+  const globalWR   = resolvedTot > 0 ? ((totalWins / resolvedTot) * 100).toFixed(1) : '—';
 
   return (
     <div className="space-y-6">
