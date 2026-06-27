@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Zap, RefreshCw, TrendingUp, TrendingDown, Eye, LineChart, FileDown } from 'lucide-react';
+import { Zap, RefreshCw, TrendingUp, TrendingDown, Eye, LineChart, FileDown, ArrowRight } from 'lucide-react';
 import { fetchActiveSignals, triggerBatchGeneration, downloadSignalPdf, type ApiSignal } from '@/lib/api';
 import { useLivePrices } from '@/hooks/useLivePrices';
+import { useTierLimits } from '@/hooks/useTierLimits';
 import { SignalType } from '@/types';
 import { cn, formatAbsoluteTimeTR } from '@/lib/utils';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -800,6 +802,11 @@ export default function SignalsPage() {
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const limits = useTierLimits();
+  // Generation is a paid action (free → 402). Admins resolve to PREMIUM, so
+  // tier !== 'free' is the correct capability check. !loading guard avoids a
+  // false "hidden" flash for paying/admin users on first render.
+  const canGenerate = !limits.loading && limits.tier !== 'free';
   const [genMsg, setGenMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [selected, setSelected]   = useState<ApiSignal | null>(null);
   const [tfFilter, setTfFilter]   = useState<TfFilter>('all');
@@ -928,14 +935,16 @@ export default function SignalsPage() {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm font-mono text-text-muted">{total} sinyal</span>
-          <button
-            onClick={generateAll}
-            disabled={generating || refreshing}
-            className="flex items-center gap-1.5 text-xs font-semibold text-accent-primary hover:text-accent-secondary border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
-          >
-            <Zap className={cn('w-3.5 h-3.5', generating && 'animate-pulse')} />
-            {generating ? 'Üretiliyor...' : 'Sinyal Üret'}
-          </button>
+          {canGenerate && (
+            <button
+              onClick={generateAll}
+              disabled={generating || refreshing}
+              className="flex items-center gap-1.5 text-xs font-semibold text-accent-primary hover:text-accent-secondary border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+            >
+              <Zap className={cn('w-3.5 h-3.5', generating && 'animate-pulse')} />
+              {generating ? 'Üretiliyor...' : 'Sinyal Üret'}
+            </button>
+          )}
           <button
             onClick={() => load(true)}
             disabled={refreshing || generating}
@@ -1112,12 +1121,31 @@ export default function SignalsPage() {
         )}
 
         {!loading && signals.length === 0 && (
-          <div className="py-16 text-center text-text-muted text-sm">
-            Aktif sinyal bulunamadı. &nbsp;
-            <button onClick={generateAll} disabled={generating} className="text-accent-primary hover:underline font-semibold">
-              {generating ? 'Üretiliyor...' : 'Şimdi üret →'}
-            </button>
-          </div>
+          <EmptyState
+            icon={<Zap className="w-6 h-6 text-accent-primary" />}
+            title="Şu an aktif sinyal yok"
+            description="AI motorları piyasayı 7/24 tarıyor. Bu sırada coinleri inceleyip canlı grafik ve AI sinyallerini görebilirsin."
+            action={
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Link
+                  href="/markets"
+                  className="focus-ring inline-flex items-center gap-1.5 text-xs font-bold bg-accent-primary hover:bg-accent-secondary text-white px-4 py-2 rounded-xl transition-colors"
+                >
+                  Piyasaları keşfet <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+                {canGenerate && (
+                  <button
+                    onClick={generateAll}
+                    disabled={generating}
+                    className="focus-ring inline-flex items-center text-xs font-semibold text-text-secondary hover:text-text-primary border border-border-medium hover:border-accent-primary/40 px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    {generating ? 'Üretiliyor...' : 'Şimdi üret'}
+                  </button>
+                )}
+              </div>
+            }
+            className="my-2"
+          />
         )}
 
         <div className="divide-y divide-border-subtle">
