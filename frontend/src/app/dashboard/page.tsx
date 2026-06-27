@@ -27,6 +27,7 @@ import { useLivePrices } from '@/hooks/useLivePrices';
 import { useTierLimits } from '@/hooks/useTierLimits';
 import { useAuth } from '@/lib/auth-context';
 import { EmptyState } from '@/components/ui/EmptyState';
+import OnboardingChecklist from '@/components/dashboard/OnboardingChecklist';
 import { Crown, Lock } from 'lucide-react';
 import TradingViewChart from '@/components/charts/TradingViewChart';
 
@@ -199,6 +200,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5">
+      {/* First-run onboarding checklist (frontend-only, localStorage) */}
+      <OnboardingChecklist />
+
       {/* Free tier banner */}
       {isFreeTier && (
         <Link
