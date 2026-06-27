@@ -210,8 +210,11 @@ export default function PortfolioPage() {
             <div className="flex items-center gap-1.5">
               <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Portföy adı..."
                 className="px-3 py-2 text-sm bg-bg-secondary border border-border-subtle rounded-xl text-text-primary outline-none focus:border-accent-primary/40 w-32" />
-              <input value={newCapital} onChange={(e) => setNewCapital(e.target.value)} type="number" placeholder="Başlangıç $"
-                className="px-3 py-2 text-sm bg-bg-secondary border border-border-subtle rounded-xl text-text-primary outline-none focus:border-accent-primary/40 w-28" />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-text-muted pointer-events-none">$</span>
+                <input value={newCapital} onChange={(e) => setNewCapital(e.target.value)} type="number" placeholder="Başlangıç bakiye"
+                  className="pl-7 pr-3 py-2 text-sm bg-bg-secondary border border-border-subtle rounded-xl text-text-primary outline-none focus:border-accent-primary/40 w-36" />
+              </div>
               <button onClick={createNewPortfolio} disabled={creating || !newName.trim()}
                 className="flex items-center justify-center w-9 h-9 rounded-xl bg-accent-primary/15 text-accent-primary hover:bg-accent-primary/25 transition-colors disabled:opacity-40">
                 <Plus className="w-4 h-4" />
