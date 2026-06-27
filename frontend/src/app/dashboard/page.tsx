@@ -25,6 +25,8 @@ import { formatLargeNumber, formatPercentage, cn } from '@/lib/utils';
 import { SignalType, RiskLevel } from '@/types';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useTierLimits } from '@/hooks/useTierLimits';
+import { useAuth } from '@/lib/auth-context';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Crown, Lock } from 'lucide-react';
 import TradingViewChart from '@/components/charts/TradingViewChart';
 
@@ -102,6 +104,8 @@ export default function DashboardPage() {
   const livePrices = useLivePrices(signalSymbols);
   const limits = useTierLimits();
   const isFreeTier = !limits.loading && limits.tier === 'free';
+  const { user } = useAuth();
+  const firstName = user?.full_name?.trim().split(/\s+/)[0] ?? '';
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -225,7 +229,9 @@ export default function DashboardPage() {
       {/* ── Title Row ── */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-text-primary">Gösterge Paneli</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight text-text-primary">
+            {firstName ? `Hoş geldin, ${firstName}` : 'Gösterge Paneli'}
+          </h1>
           <p className="text-sm text-text-secondary mt-0.5">Piyasaları yapay zekâ ile analiz edin, avantaj yakalayın.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -505,7 +511,20 @@ export default function DashboardPage() {
                 <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
               </div>
             ) : recentSignals.length === 0 ? (
-              <p className="text-xs text-text-muted text-center py-8">Sinyal bulunamadı.</p>
+              <EmptyState
+                icon={<Zap className="w-6 h-6 text-accent-primary" />}
+                title="Henüz sinyal yok"
+                description="AI motorları piyasayı 7/24 tarıyor. Tüm aktif AL/SAT sinyallerini Sinyal Merkezi'nde incele."
+                action={
+                  <Link
+                    href="/signals"
+                    className="focus-ring inline-flex items-center gap-1.5 text-xs font-bold bg-accent-primary hover:bg-accent-secondary text-white px-4 py-2 rounded-xl transition-colors"
+                  >
+                    Sinyal Merkezi&apos;ne git <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                }
+                className="my-2"
+              />
             ) : (
               <div className="space-y-3">
                 {recentSignals.map((sig) => {
