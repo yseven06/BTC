@@ -119,6 +119,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <Link
               key={item.id}
               href={item.href}
+              data-tour={item.id}
               className={cn(
                 'nav-item group relative',
                 isActive && 'active',

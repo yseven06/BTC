@@ -28,6 +28,7 @@ import { useTierLimits } from '@/hooks/useTierLimits';
 import { useAuth } from '@/lib/auth-context';
 import { EmptyState } from '@/components/ui/EmptyState';
 import OnboardingChecklist from '@/components/dashboard/OnboardingChecklist';
+import CoachmarkTour from '@/components/dashboard/CoachmarkTour';
 import { Crown, Lock } from 'lucide-react';
 import TradingViewChart from '@/components/charts/TradingViewChart';
 
@@ -200,8 +201,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      {/* First-run onboarding checklist (frontend-only, localStorage) */}
+      {/* First-run onboarding checklist + welcome tour (frontend-only, localStorage) */}
       <OnboardingChecklist />
+      <CoachmarkTour />
 
       {/* Free tier banner */}
       {isFreeTier && (
