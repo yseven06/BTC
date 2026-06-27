@@ -43,7 +43,10 @@ export default function WatchlistPage() {
     if (missing.length === 0) return;
     // assets/search endpoint only does text search; fall back to fetching all
     // and filtering client-side since there's no batch-by-id endpoint.
-    fetchAssets({ page_size: 300 }).then((r) => {
+    // page_size is capped at 200 server-side (le=200) — 300 returned 422 and
+    // left assetCache empty, so watchlist items never rendered. Total assets
+    // (~97) fit well under 200.
+    fetchAssets({ page_size: 200 }).then((r) => {
       const map: Record<string, ApiAsset> = {};
       for (const a of r.items) map[a.id] = a;
       setAssetCache((prev) => ({ ...prev, ...map }));
