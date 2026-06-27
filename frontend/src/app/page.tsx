@@ -280,6 +280,10 @@ export default function LandingPage() {
           </p>
           <p className="text-xs text-text-muted">© {new Date().getFullYear()} TradeMinds AI</p>
         </div>
+        <p className="max-w-6xl mx-auto px-6 mt-6 pt-5 border-t border-border-subtle text-[11px] text-text-muted leading-relaxed text-center md:text-left">
+          TradeMinds AI yatırım tavsiyesi sunmaz; tüm analizler bilgilendirme amaçlıdır.
+          Geçmiş performans gelecekteki getiriyi garanti etmez. Yatırım kararlarını kendi risk profiline göre ver.
+        </p>
       </footer>
     </div>
   );
