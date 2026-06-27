@@ -134,13 +134,16 @@ function QualityBar({ score }: { score: number }) {
 
 function HtfBadge({ label, bullish }: { label: string; bullish: boolean }) {
   return (
-    <span className={cn(
-      'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wide',
-      bullish
-        ? 'bg-bullish/15 text-bullish border border-bullish/30'
-        : 'bg-bearish/15 text-bearish border border-bearish/30'
-    )}>
-      {label}
+    <span
+      title="Üst zaman dilimi (HTF) / Akıllı Para (SMC) hizası"
+      className={cn(
+        'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wide',
+        bullish
+          ? 'bg-bullish/15 text-bullish border border-bullish/30'
+          : 'bg-bearish/15 text-bearish border border-bearish/30'
+      )}
+    >
+      HTF · {label}
     </span>
   );
 }
