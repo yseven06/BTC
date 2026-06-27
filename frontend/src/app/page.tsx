@@ -229,7 +229,7 @@ export default function LandingPage() {
       {plans.length > 0 && (
         <section className="max-w-6xl mx-auto px-6 py-16">
           <h2 className="text-2xl font-extrabold text-text-primary text-center">Basit, Şeffaf Fiyatlandırma</h2>
-          <p className="text-sm text-text-secondary text-center mt-2">USDT ile öde, dilediğin an yükselt.</p>
+          <p className="text-sm text-text-secondary text-center mt-2">Şeffaf fiyatlandırma, gizli ücret yok — dilediğin an yükselt veya iptal et.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-10 max-w-3xl mx-auto">
             {plans.map((p) => {
               const monthly = p.pricing.find((pr) => pr.cycle === 'monthly');
