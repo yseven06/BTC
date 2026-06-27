@@ -24,7 +24,7 @@ from app.backtesting import labels
 from app.backtesting import lifecycle
 from app.engines.market_regime import detect_regime
 from app.engines.market_structure.structure import analyse_market_structure
-from app.services.coin_memory import update_coin_memory
+from app.services.coin_memory import update_coin_memory, update_trade_mgmt_stats
 from app.services.lifecycle_log import make_event
 from app.backtesting.trade_path import compute_trade_path
 from app.models.intelligence import SignalSnapshot
@@ -63,6 +63,9 @@ async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, t
             intrabar_ambiguous=intrabar_ambiguous, still_forming_resolution=still_forming,
         )
         db.add(row)
+        # Coin Memory v2 rollup (also inside the fail-open envelope) — derivable
+        # cache over signal_trade_path; does not touch weight/decision logic.
+        await update_trade_mgmt_stats(db, row)
     except Exception as tp_exc:
         logger.warning("TradePath instrumentation failed for %s (fail-open, ignored): %s",
                        getattr(signal, "id", "?"), tp_exc)

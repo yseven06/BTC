@@ -286,3 +286,98 @@ async def load_effective_weights(
     )
     mem = res.scalar_one_or_none()
     return get_effective_weights(regime, mem)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# Coin Memory v2 — trade-management rollup (Trade Management Faz 1, OBSERVATION)
+# ════════════════════════════════════════════════════════════════════════════
+# Folds each resolved trade's path metrics into coin_memory.tm_stats. This is a
+# DERIVABLE CACHE over signal_trade_path (the source of truth) — purely additive
+# observation. It does NOT touch the existing engine/regime weight-learning
+# logic (update_coin_memory) or any decision/policy. Histograms are additive
+# lists so hierarchy parents can later be summed from children.
+
+# Bin upper-edges for R-multiple metrics (MFE_R / MAE_R). Bucket i counts values
+# in [edge[i-1], edge[i]); the final bucket is the overflow (>= last edge).
+TM_R_EDGES = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0]
+_TM_NBINS = len(TM_R_EDGES) + 1  # +1 overflow bucket
+
+
+def _bin_index(v: float) -> int:
+    for i, e in enumerate(TM_R_EDGES):
+        if v < e:
+            return i
+    return len(TM_R_EDGES)  # overflow
+
+
+def _empty_bucket() -> Dict[str, Any]:
+    return {
+        "n": 0,
+        "mfe_r_sum": 0.0, "mae_r_sum": 0.0,
+        "hist_mfe_r": [0] * _TM_NBINS,
+        "hist_mae_r": [0] * _TM_NBINS,
+        # policy-dependent diagnostics (secondary; derived from cur_* fields)
+        "tp1": 0, "tp2": 0, "tp3": 0, "give_back": 0,
+    }
+
+
+def _fold_into_bucket(b: Dict[str, Any], path) -> None:
+    b["n"] = int(b.get("n", 0)) + 1
+    if path.mfe_r is not None:
+        b["mfe_r_sum"] = round(float(b.get("mfe_r_sum", 0.0)) + float(path.mfe_r), 4)
+        h = b.setdefault("hist_mfe_r", [0] * _TM_NBINS)
+        h[_bin_index(float(path.mfe_r))] += 1
+    if path.mae_r is not None:
+        b["mae_r_sum"] = round(float(b.get("mae_r_sum", 0.0)) + float(path.mae_r), 4)
+        h = b.setdefault("hist_mae_r", [0] * _TM_NBINS)
+        h[_bin_index(float(path.mae_r))] += 1
+    if path.cur_reached_tp1:
+        b["tp1"] = int(b.get("tp1", 0)) + 1
+    if path.cur_reached_tp2:
+        b["tp2"] = int(b.get("tp2", 0)) + 1
+    if path.cur_reached_tp3:
+        b["tp3"] = int(b.get("tp3", 0)) + 1
+    if path.cur_gave_back_after_tp1:
+        b["give_back"] = int(b.get("give_back", 0)) + 1
+
+
+async def update_trade_mgmt_stats(db: AsyncSession, path) -> None:
+    """Fold a SignalTradePath row into its coin_memory cell's tm_stats. Regime
+    is a sub-key plus an "_all" aggregate. Caller wraps this so any failure is
+    fail-open (never blocks resolution). Does not commit (shares caller's txn)."""
+    symbol = (path.symbol or "").upper()
+    timeframe = path.timeframe
+    if not symbol or not timeframe:
+        return
+
+    # The session uses autoflush=False, and update_coin_memory may have just
+    # created this same (symbol, timeframe) cell earlier in this transaction
+    # without flushing. Flush first so our SELECT sees it — otherwise we'd
+    # create a DUPLICATE and the whole pass commit would fail with a unique
+    # violation (which, happening at commit, would even bypass the caller's
+    # fail-open guard). This makes the rollup robust and order-independent.
+    await db.flush()
+    res = await db.execute(
+        select(CoinMemory).where(CoinMemory.symbol == symbol, CoinMemory.timeframe == timeframe)
+    )
+    mem = res.scalar_one_or_none()
+    if mem is None:
+        mem = CoinMemory(symbol=symbol, timeframe=timeframe,
+                         total_signals=0, wins=0, losses=0,
+                         engine_stats={}, regime_stats={}, outcome_label_stats={})
+        db.add(mem)
+        await db.flush()  # surface this cell for any later same-cell update in the txn
+
+    # Rebuild dict (so SQLAlchemy detects the JSON mutation) and fold into both
+    # the regime bucket and the "_all" aggregate.
+    tm = dict(mem.tm_stats or {})
+    regime_key = path.regime or "unknown"
+    for key in (regime_key, "_all"):
+        bucket = dict(tm.get(key) or _empty_bucket())
+        # ensure histogram lists are mutable copies
+        bucket["hist_mfe_r"] = list(bucket.get("hist_mfe_r", [0] * _TM_NBINS))
+        bucket["hist_mae_r"] = list(bucket.get("hist_mae_r", [0] * _TM_NBINS))
+        _fold_into_bucket(bucket, path)
+        tm[key] = bucket
+    mem.tm_stats = tm
+    mem.tm_sample_count = int(mem.tm_sample_count or 0) + 1
