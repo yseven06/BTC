@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, X, Crown, Zap, Sparkles } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import {
-  fetchPlans, fetchMySubscription, startCheckout,
+  fetchPlans, fetchMySubscription, startCheckout, cancelSubscription,
   type Plan, type BillingCycle, type PlanPricing, type SubscriptionTier,
   type SubscriptionResponse,
 } from '@/lib/api';
@@ -39,6 +39,8 @@ export default function PricingPage() {
   const [cycle, setCycle] = useState<BillingCycle>('quarterly');
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<SubscriptionTier | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [canceling, setCanceling] = useState(false);
 
   // Detect cancel-from-Stripe redirect
   const canceled = search.get('canceled');
@@ -52,11 +54,11 @@ export default function PricingPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const subscribe = async (tier: SubscriptionTier) => {
+  const subscribe = async (tier: SubscriptionTier, overrideCycle?: BillingCycle) => {
     if (tier === 'free') return;
     setProcessing(tier);
     try {
-      const r = await startCheckout(tier, cycle);
+      const r = await startCheckout(tier, overrideCycle ?? cycle);
       if (r.mock) {
         // Mock mode: immediately refresh and notify user
         router.push(r.url);
@@ -67,6 +69,21 @@ export default function PricingPage() {
       alert('Ödeme başlatılamadı: ' + (e?.message ?? 'bilinmeyen hata'));
     } finally {
       setProcessing(null);
+    }
+  };
+
+  // Cancel = stop auto-renew (backend sets cancel_at_period_end). There is no
+  // separate "resume" endpoint — reactivation goes through checkout again.
+  const doCancel = async () => {
+    setCanceling(true);
+    try {
+      const updated = await cancelSubscription();
+      setSub(updated);
+      setConfirmCancel(false);
+    } catch (e: any) {
+      alert('İptal edilemedi: ' + (e?.message ?? 'bilinmeyen hata'));
+    } finally {
+      setCanceling(false);
     }
   };
 
@@ -88,15 +105,63 @@ export default function PricingPage() {
 
       {/* Current Subscription */}
       {sub && sub.tier !== 'free' && (
-        <GlassCard className="flex items-center justify-between">
-          <div>
+        <GlassCard className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="min-w-0">
             <p className="text-xs text-text-muted uppercase font-semibold">Mevcut Aboneliğin</p>
-            <p className="text-lg font-bold text-text-primary capitalize mt-1">{sub.tier} – {sub.status}</p>
+            <p className="text-lg font-bold text-text-primary capitalize mt-1">
+              {sub.tier} – {sub.status}
+              {sub.billing_cycle && <span className="text-text-muted font-medium"> · {CYCLE_LABEL[sub.billing_cycle]}</span>}
+            </p>
             {sub.current_period_end && (
               <p className="text-xs text-text-secondary mt-0.5">
-                Bitiş: {new Date(sub.current_period_end).toLocaleDateString('tr-TR')}
-                {sub.cancel_at_period_end && <span className="text-bearish ml-2">(iptal edildi)</span>}
+                {sub.cancel_at_period_end ? (
+                  <>Aboneliğin <span className="text-bearish font-semibold">{new Date(sub.current_period_end).toLocaleDateString('tr-TR')}</span> tarihinde sona erecek.</>
+                ) : (
+                  <>Sonraki yenileme: {new Date(sub.current_period_end).toLocaleDateString('tr-TR')}</>
+                )}
               </p>
+            )}
+            {sub.cancel_at_period_end && (
+              <p className="text-[11px] text-text-muted mt-1 max-w-md">
+                Aboneliğin mevcut dönem sonunda sona erecek. Devam etmek istersen ödeme ekranından yeniden etkinleştirebilirsin.
+              </p>
+            )}
+          </div>
+
+          <div className="flex-shrink-0">
+            {sub.cancel_at_period_end ? (
+              <button
+                onClick={() => subscribe(sub.tier, sub.billing_cycle ?? undefined)}
+                disabled={processing !== null}
+                className="focus-ring inline-flex items-center text-sm font-bold bg-accent-primary hover:bg-accent-secondary text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+              >
+                {processing === sub.tier ? 'İşleniyor...' : 'Aboneliği Devam Ettir'}
+              </button>
+            ) : confirmCancel ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-secondary">Emin misin?</span>
+                <button
+                  onClick={doCancel}
+                  disabled={canceling}
+                  className="focus-ring inline-flex items-center text-xs font-bold bg-bearish/15 border border-bearish/40 text-bearish hover:bg-bearish/25 px-3 py-1.5 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  {canceling ? 'Durduruluyor...' : 'Evet, durdur'}
+                </button>
+                <button
+                  onClick={() => setConfirmCancel(false)}
+                  disabled={canceling}
+                  className="focus-ring text-xs font-semibold text-text-secondary hover:text-text-primary px-2 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Vazgeç
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmCancel(true)}
+                className="focus-ring inline-flex items-center text-sm font-semibold text-text-secondary hover:text-text-primary border border-border-medium hover:border-bearish/40 px-4 py-2 rounded-xl transition-colors"
+              >
+                Yenilemeyi Durdur
+              </button>
             )}
           </div>
         </GlassCard>
