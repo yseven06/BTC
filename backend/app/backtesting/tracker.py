@@ -26,6 +26,46 @@ from app.engines.market_regime import detect_regime
 from app.engines.market_structure.structure import analyse_market_structure
 from app.services.coin_memory import update_coin_memory
 from app.services.lifecycle_log import make_event
+from app.backtesting.trade_path import compute_trade_path
+from app.models.intelligence import SignalSnapshot
+
+
+async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, tp3,
+                                     mfe_pct, mae_pct, bars_total, mfe_bar_idx, mae_bar_idx,
+                                     tp1_bar_idx, post_tp1_mfe, post_tp1_mae, intrabar_ambiguous,
+                                     still_forming, realized_return, outcome_val, detail_label):
+    """Fail-open: build + persist one SignalTradePath row. ANY error is swallowed
+    (logged) so trade-path instrumentation can NEVER block trade resolution,
+    change an outcome, or affect signal_performance / coin_memory."""
+    try:
+        snap = (await db.execute(
+            select(SignalSnapshot).where(SignalSnapshot.signal_id == signal.id)
+        )).scalar_one_or_none()
+        atr_pct = float(snap.atr_pct) if snap and snap.atr_pct is not None else None
+        vol_ratio = float(snap.volatility_ratio) if snap and snap.volatility_ratio is not None else None
+        regime = snap.regime if snap else None
+        row = compute_trade_path(
+            signal_id=signal.id, asset_id=signal.asset_id,
+            symbol=(signal.asset.symbol if signal.asset else None),
+            timeframe=_map_db_timeframe(signal.timeframe),
+            direction=signal.direction.value, regime=regime,
+            resolved_at=perf.closed_at, outcome=outcome_val, detail_label=detail_label,
+            entry=entry, sl=sl, tp1=tp1, tp2=tp2, tp3=tp3,
+            mfe_pct=round(max(0.0, mfe_pct), 4), mae_pct=round(max(0.0, mae_pct), 4),
+            bars_total=bars_total, mfe_bar_idx=mfe_bar_idx, mae_bar_idx=mae_bar_idx,
+            atr_pct=atr_pct, volatility_ratio=vol_ratio, generated_at=signal.generated_at,
+            reached_tp1=perf.hit_tp1, reached_tp2=perf.hit_tp2, reached_tp3=perf.hit_tp3,
+            bars_to_tp1=tp1_bar_idx if tp1_bar_idx is None else tp1_bar_idx + 1,
+            post_tp1_mae_pct=round(post_tp1_mae, 4) if perf.hit_tp1 else None,
+            post_tp1_mfe_pct=round(post_tp1_mfe, 4) if perf.hit_tp1 else None,
+            gave_back_after_tp1=(bool(perf.hit_tp1) and not bool(perf.hit_tp2)),
+            realized_return=round(realized_return, 4),
+            intrabar_ambiguous=intrabar_ambiguous, still_forming_resolution=still_forming,
+        )
+        db.add(row)
+    except Exception as tp_exc:
+        logger.warning("TradePath instrumentation failed for %s (fail-open, ignored): %s",
+                       getattr(signal, "id", "?"), tp_exc)
 
 # Timeframe → seconds, for scaling the lifecycle min-state-duration.
 _TF_SECONDS = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400, "1w": 604800}
@@ -259,6 +299,14 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
             bars_to_outcome = 0
             resolved_by_sl = False
             is_expired_flag = False
+            # Observation-only (Trade Management Faz1 instrumentation) — these
+            # NEVER affect any resolution decision; pure path facts.
+            mfe_bar_idx = 0
+            mae_bar_idx = 0
+            tp1_bar_idx = None
+            post_tp1_mfe = 0.0
+            post_tp1_mae = 0.0
+            intrabar_ambiguous = False
             
             hit_tp1 = False
             hit_tp2 = False
@@ -315,8 +363,16 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 else:
                     drawdown = ((bar_high - entry) / entry) * 100.0 if entry > 0 else 0.0
                     favorable = ((entry - bar_low) / entry) * 100.0 if entry > 0 else 0.0
-                max_drawdown = max(max_drawdown, drawdown)
-                max_favorable = max(max_favorable, favorable)
+                if favorable > max_favorable:
+                    max_favorable = favorable
+                    mfe_bar_idx = k
+                if drawdown > max_drawdown:
+                    max_drawdown = drawdown
+                    mae_bar_idx = k
+                # Post-TP1 excursion (hit_tp1 reflects prior bars here) — pure obs.
+                if hit_tp1:
+                    post_tp1_mfe = max(post_tp1_mfe, favorable)
+                    post_tp1_mae = max(post_tp1_mae, drawdown)
 
                 # Check SL hit
                 sl_hit = bar_low <= current_sl if signal.direction.value == "bullish" else bar_high >= current_sl
@@ -335,6 +391,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 
                 # Inside-bar ambiguity resolution (conservative: SL wins)
                 if sl_hit and tp_hit:
+                    intrabar_ambiguous = True  # obs-only: order unknown this bar
                     tp_hit = False
                     tp1_triggered = tp2_triggered = tp3_triggered = False
 
@@ -350,6 +407,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 elif tp_hit:
                     if tp1_triggered:
                         hit_tp1 = True
+                        tp1_bar_idx = k  # obs-only
                         tp1_hit_at = _aware(bar_time)
                         portion = 0.50
                         ret_tp1 = ((tp1 - entry) / entry) if signal.direction.value == "bullish" else ((entry - tp1) / entry)
@@ -448,6 +506,16 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                     reason=labels.label_tr(perf.detail_label), outcome=outcome.value,
                     price=float(closes[-1]),
                 ))
+                # Trade-path instrumentation (fail-open — never blocks resolution).
+                await _write_trade_path_failopen(
+                    db, signal, perf, entry=entry, sl=stop_loss, tp1=tp1, tp2=tp2, tp3=tp3,
+                    mfe_pct=max_favorable, mae_pct=max_drawdown, bars_total=bars_to_outcome,
+                    mfe_bar_idx=mfe_bar_idx, mae_bar_idx=mae_bar_idx, tp1_bar_idx=tp1_bar_idx,
+                    post_tp1_mfe=post_tp1_mfe, post_tp1_mae=post_tp1_mae,
+                    intrabar_ambiguous=intrabar_ambiguous,
+                    still_forming=False, realized_return=pnl_pct,
+                    outcome_val=outcome.value, detail_label=perf.detail_label,
+                )
 
                 details.append({
                     "signal_id": str(signal.id),
