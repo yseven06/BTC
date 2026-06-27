@@ -266,6 +266,17 @@ export default function DashboardPage() {
       </div>
 
       {/* ── 5 Stat Cards ── */}
+      {loading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <GlassCard key={i} className="p-4">
+              <div className="h-2.5 w-24 rounded bg-white/[0.06] animate-pulse" />
+              <div className="h-8 w-20 mt-2 rounded bg-white/[0.06] animate-pulse" />
+              <div className="h-2 w-28 mt-2 rounded bg-white/[0.04] animate-pulse" />
+            </GlassCard>
+          ))}
+        </div>
+      ) : (
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {/* Closed trades within selected period */}
         <GlassCard className="flex items-center justify-between p-4 group" glowEffect glowColor="primary">
@@ -360,6 +371,7 @@ export default function DashboardPage() {
           </div>
         </GlassCard>
       </div>
+      )}
 
       {/* ── Main Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
