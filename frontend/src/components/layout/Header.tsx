@@ -17,32 +17,23 @@ import { useLanguage } from '@/lib/language-context';
 import { cn } from '@/lib/utils';
 import TickerBand from './TickerBand';
 import { CoinIcon } from '@/components/ui/CoinIcon';
-import { fetchAlerts, fetchCurrentUser, searchAssets, type ApiAlert, type UserProfile, type ApiAsset } from '@/lib/api';
+import { searchAssets, type ApiAsset } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { useAlerts } from '@/hooks/useAlerts';
 import { formatRelativeTime } from '@/lib/utils';
 
 export default function Header() {
   const { tr } = useLanguage();
-  const { logout: doLogout } = useAuth();
+  // AuthContext is the single source of truth for the user; alerts come from
+  // the shared useAlerts hook (fetched once app-wide) — no duplicate requests.
+  const { user, logout: doLogout } = useAuth();
+  const notifications = useAlerts();
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ApiAsset[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-
-  const [notifications, setNotifications] = useState<ApiAlert[]>([]);
-  const [user, setUser] = useState<UserProfile | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    fetchAlerts()
-      .then((res) => setNotifications(res))
-      .catch(() => {/* not authenticated or backend offline — stay empty */});
-
-    fetchCurrentUser()
-      .then((u) => setUser(u))
-      .catch(() => {/* not logged in or backend offline */});
-  }, []);
 
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);

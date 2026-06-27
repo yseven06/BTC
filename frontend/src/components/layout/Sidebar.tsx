@@ -11,10 +11,11 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  fetchCurrentUser, fetchMySubscription, fetchActiveSignals, fetchAlerts,
-  type UserProfile, type SubscriptionResponse,
+  fetchMySubscription, fetchActiveSignals,
+  type SubscriptionResponse,
 } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { useAlerts } from '@/hooks/useAlerts';
 
 interface NavItem {
   id: string;
@@ -53,22 +54,21 @@ interface SidebarProps {
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const { user: authUser, logout: doLogout } = useAuth();
-  const [user, setUser] = useState<UserProfile | null>(null);
   const [sub, setSub] = useState<SubscriptionResponse | null>(null);
   const [signalBadge, setSignalBadge] = useState(0);
-  const [alertBadge, setAlertBadge] = useState(0);
+  // Alerts come from the shared single-source hook (no duplicate /alerts fetch).
+  const alerts = useAlerts();
+  const alertBadge = alerts.filter((x) => !x.triggered_at).length;
 
   useEffect(() => {
-    fetchCurrentUser().then(setUser).catch(() => {});
     fetchMySubscription().then(setSub).catch(() => {});
     fetchActiveSignals({ only_actionable: true, page_size: 1 }).then((r) => setSignalBadge(r.total)).catch(() => {});
-    fetchAlerts().then((a) => setAlertBadge(a.filter((x) => !x.triggered_at).length)).catch(() => {});
   }, []);
 
   const navBadges: Record<string, number> = { signals: signalBadge, alerts: alertBadge };
 
-  // Prefer auth context (has is_admin) but fall back to direct fetch
-  const effectiveUser = authUser ?? user;
+  // AuthContext is the single source of truth for the current user.
+  const effectiveUser = authUser;
 
   const isAdmin = !!effectiveUser?.is_admin;
   const tier    = isAdmin ? 'admin' : (sub?.tier ?? 'free');
@@ -207,7 +207,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           {!collapsed && (
             <div className="flex-1 min-w-0 animate-fade-in">
               <p className="text-xs font-semibold text-text-primary truncate">{displayName}</p>
-              <p className="text-[10px] text-text-muted truncate">{user?.email ?? ''}</p>
+              <p className="text-[10px] text-text-muted truncate">{effectiveUser?.email ?? ''}</p>
             </div>
           )}
           {!collapsed && (
