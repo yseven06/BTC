@@ -26,6 +26,20 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
+# --- Error monitoring (Sentry) — env-gated; a no-op when SENTRY_DSN is unset,
+# so local/dev and the TM v2 data-collection process are unaffected. Only sends
+# to Sentry once a DSN is provided via env (production). PII off by default. ---
+if settings.SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.ENVIRONMENT,
+        traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
+        send_default_pii=False,
+    )
+    logger.info("Sentry monitoring enabled (environment=%s).", settings.ENVIRONMENT)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
