@@ -17,14 +17,15 @@ from app.config import get_settings
 from app.database import init_db, close_db
 from app.services.scheduler import start_scheduler, stop_scheduler
 
-# Configure logger
+settings = get_settings()
+
+# Configure the root logger from settings (LOG_LEVEL env; default INFO). Lets
+# production lower verbosity (e.g. WARNING) without code changes.
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-settings = get_settings()
 
 # --- Error monitoring (Sentry) — env-gated; a no-op when SENTRY_DSN is unset,
 # so local/dev and the TM v2 data-collection process are unaffected. Only sends
