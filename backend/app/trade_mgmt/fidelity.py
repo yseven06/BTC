@@ -87,12 +87,14 @@ def _low_precision(rec: PathRecord) -> bool:
     return False
 
 
-def _exclude_reason(rec: PathRecord, replay_flags: tuple) -> Optional[str]:
+def exclude_reason(rec: PathRecord) -> Optional[str]:
+    """Why a row is NOT reconstructable from the stored summary — record-only and
+    policy-independent (shared by fidelity + scoring). None → reconstructable."""
     label = (rec.detail_label or "")
     if rec.still_forming_resolution or label in _LIVE_LABELS:
         return "live_sl/still_forming"
-    if "observed_fallback" in replay_flags:
-        return "observed_fallback"
+    if not rec.cur_reached_tp1 and (rec.outcome or "").lower() != "loss":
+        return "observed_fallback"   # no-TP1 non-SL (expiry/flat) — close not stored
     if label in _EXPIRY_LABELS:
         return "expiry"
     if label in _TP1_EXPIRY_LABELS:
@@ -100,6 +102,11 @@ def _exclude_reason(rec: PathRecord, replay_flags: tuple) -> Optional[str]:
     if _low_precision(rec):
         return "low_precision"
     return None
+
+
+def is_reconstructable(rec: PathRecord) -> bool:
+    """True if replay can faithfully reconstruct this row from the summary."""
+    return exclude_reason(rec) is None
 
 
 def compare_record(rec: PathRecord, policy: Optional[Policy] = None) -> FidelityRow:
@@ -125,7 +132,7 @@ def compare_record(rec: PathRecord, policy: Optional[Policy] = None) -> Fidelity
     observed_gb = bool(rec.cur_gave_back_after_tp1)
     gb_match = replay_gb == observed_gb
 
-    reason = _exclude_reason(rec, res.flags)
+    reason = exclude_reason(rec)
 
     return FidelityRow(
         signal_id=rec.signal_id, eligible=reason is None, exclude_reason=reason,
