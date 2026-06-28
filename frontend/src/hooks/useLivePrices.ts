@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useBistStatus } from './useBistStatus';
 
 export interface LivePrice {
   symbol: string;
@@ -26,6 +27,7 @@ export function useLivePrices(symbols: string[]): PriceMap {
   const [prices, setPrices] = useState<PriceMap>({});
   const wsRef = useRef<WebSocket | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const bistOpen = useBistStatus(); // true | false | null (unknown)
 
   const cryptoSymbols = symbols.filter((s) => !s.includes('.'));
   const stockSymbols  = symbols.filter((s) =>  s.includes('.'));
@@ -104,18 +106,35 @@ export function useLivePrices(symbols: string[]): PriceMap {
     }
   }, [stockSymbols.join(','), API_URL]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Crypto: persistent Binance WebSocket (24/7, unchanged) ──────────────────
   useEffect(() => {
     connectBinance();
-    pollStocks();
-
-    // Poll stocks every 30 seconds (Yahoo Finance delay is ~15-20s anyway)
-    pollRef.current = setInterval(pollStocks, 30_000);
-
     return () => {
       wsRef.current?.close();
-      if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [connectBinance, pollStocks]);
+  }, [connectBinance]);
+
+  // ── Stocks: gated by BIST market hours ──────────────────────────────────────
+  // Always poll once so the last close is loaded (backend serves it from cache
+  // when the exchange is closed). The recurring 30s interval runs ONLY while
+  // BIST is open — when closed, polling stops entirely (no wasted requests).
+  useEffect(() => {
+    if (!stockSymbols.length) return;
+
+    pollStocks(); // seed last close (or live, if open)
+
+    if (bistOpen === true) {
+      // Poll every 30 seconds (Yahoo Finance delay is ~15-20s anyway)
+      pollRef.current = setInterval(pollStocks, 30_000);
+    }
+
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [pollStocks, bistOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return prices;
 }

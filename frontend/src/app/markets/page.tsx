@@ -7,6 +7,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { fetchAssets, type ApiAsset } from '@/lib/api';
 import { useLivePrices } from '@/hooks/useLivePrices';
+import { useBistStatus } from '@/hooks/useBistStatus';
 import { cn } from '@/lib/utils';
 
 type CategoryFilter = 'all' | 'crypto' | 'stock';
@@ -43,6 +44,7 @@ export default function MarketsPage() {
 
   const symbols = filtered.map((a) => a.symbol);
   const prices = useLivePrices(symbols);
+  const bistOpen = useBistStatus(); // true | false | null — gates the stock status label
 
   return (
     <div className="space-y-6">
@@ -145,10 +147,16 @@ export default function MarketsPage() {
                       <p className="text-sm font-bold font-mono text-text-primary">
                         {live.price.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
                       </p>
-                      <p className={cn('text-[11px] font-mono font-semibold flex items-center justify-end gap-0.5', up ? 'text-bullish' : 'text-bearish')}>
-                        {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                        {up ? '+' : ''}{live.changePct24h?.toFixed(2)}%
-                      </p>
+                      {isStock && bistOpen === false ? (
+                        <p className="text-[10px] text-text-muted font-medium">
+                          Piyasa kapalı · Son kapanış
+                        </p>
+                      ) : (
+                        <p className={cn('text-[11px] font-mono font-semibold flex items-center justify-end gap-0.5', up ? 'text-bullish' : 'text-bearish')}>
+                          {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                          {up ? '+' : ''}{live.changePct24h?.toFixed(2)}%
+                        </p>
+                      )}
                     </>
                   ) : (
                     <span className="text-[10px] text-text-muted animate-pulse">—</span>

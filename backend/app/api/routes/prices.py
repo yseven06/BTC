@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.collectors.binance_collector import BinanceCollector
 from app.collectors.yahoo_collector import YahooCollector
+from app.services.market_hours import is_bist_open
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -155,3 +156,17 @@ async def get_ohlcv(
         })
 
     return {"symbol": symbol.upper(), "timeframe": timeframe, "candles": candles}
+
+
+@router.get(
+    "/market-status",
+    summary="BIST açık/kapalı durumu (frontend polling gating için tek kaynak)",
+)
+async def get_market_status() -> Dict[str, Any]:
+    """Single source of truth for whether Borsa İstanbul is currently open.
+
+    The frontend uses this to gate stock price polling (stop polling when the
+    exchange is closed and show a 'Piyasa kapalı · Son kapanış' state). Crypto
+    is 24/7 and unaffected. Cheap: a pure time check, no upstream data fetch.
+    """
+    return {"bist_open": is_bist_open()}
