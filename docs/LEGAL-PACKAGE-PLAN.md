@@ -22,6 +22,26 @@ onaylatılacaktır.** Metinler "AVUKAT ONAYI BEKLİYOR" işaretiyle taslak yazı
   (UI'da yer tutucu; İYS entegrasyonu sonraya). ETK aydınlatma dokümanı yine yazılır.
 - **Dil:** Beta **yalnız Türkçe**; mimari çok-dile hazır (registry locale destekli),
   ileride profesyonel çeviriyle EN eklenir.
+- **Şirket bilgileri:** Şimdilik **placeholder** (`[ŞİRKET UNVANI / MERSİS / vergi /
+  adres / KEP]`); tüzel kişilik kurulunca doldurulacak. Mimari hazır (metinlerde yer
+  tutucu, KVKK Aydınlatma'da zorunlu alanlar).
+- **Yaş:** **18+** (18 yaşından küçükler Hizmet'i kullanamaz).
+- **Abonelik modeli:** **1 / 3 / 6 / 12 ay** paketleri; kullanıcı iptal etmedikçe
+  **aynı süreyle otomatik yenileme**; iptal **dönem sonunda** yürürlüğe girer; yenileme
+  tarihi = dönem bitişi; ücret değişikliği önceden bildirilir. ⚠️ **Billing kod boşluğu:**
+  mevcut checkout `mode="payment"` (tek seferlik) → **gerçek otomatik yenileme için Stripe
+  `mode="subscription"` (recurring) yükseltmesi gerekir** (ayrı billing takip işi —
+  `task_a410541a`; metinler hedeflenen modeli anlatıyor).
+- **Açık onay / "gizli abonelik yok" ilkesi:** Otomatik yenileme yalnızca **checkout'ta açık
+  onayla** geçerli (ToS §5.3). Checkout ekranı; otomatik yenileme, periyot (1/3/6/12 ay),
+  **bir sonraki tahsilat tarihi** ve iptal yöntemini **açık/görünür** göstermeli ve açıkça
+  kabul ettirmeli (uygulama: Madde **5i** checkout adımı). Gizli/fark edilmeyen abonelik yok.
+- **"Platform işlem yapmaz" maddesi:** Risk Bildirimi §5 + Kullanım Koşulları §6'ya eklendi
+  — Platform kullanıcı adına emir/işlem/portföy/hesap erişimi yapmaz; yalnız analiz/karar
+  destek; kararlar kullanıcıya ait.
+- **Gelecek: Auto-Trade (API otomatik işlem):** eklenirse **ayrı sözleşme + ayrı açık onay +
+  ayrı risk bildirimi** gerektirir; mevcut metinler **yalnız bugünkü** davranışı kapsar
+  (Risk §5 + ToS §6'da not edildi). [[production-readiness-sprint]]
 
 ## 1. Sayfa envanteri (`/yasal/<slug>`)
 | Doküman | slug | Not |

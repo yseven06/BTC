@@ -37,10 +37,10 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
   "kullanim-kosullari": {
     "slug": "kullanim-kosullari",
     "title": "Kullanım Koşulları",
-    "version": "0.1.0",
+    "version": "0.9.0",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "b71ba98e8981f08da4e16dab5602d4d42d12b5db310ec06c1890b2ed3a0d43c8"
+    "hash": "2f8e17fae694ca1eee097450f5de09444b689c135f7db15ff122be85f5124f47"
   },
   "mesafeli-satis": {
     "slug": "mesafeli-satis",
@@ -53,10 +53,10 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
   "risk-bildirimi": {
     "slug": "risk-bildirimi",
     "title": "Risk Bildirimi ve Yatırım Tavsiyesi Beyanı",
-    "version": "0.1.0",
+    "version": "0.9.0",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "ba09194d2f48876abce698084289764e1e4284579cf698522e7e0a842ade1bf4"
+    "hash": "85ec6263bf0c3df5a1ab49c55c9a3849e8cd8f398d62d6d1f417707f0bbd4b4b"
   },
   "ticari-ileti": {
     "slug": "ticari-ileti",
