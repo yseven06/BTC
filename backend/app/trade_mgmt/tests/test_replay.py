@@ -12,8 +12,10 @@ import sys
 
 from app.trade_mgmt.path_reader import to_path_record
 from app.trade_mgmt.policies.base import Policy
-from app.trade_mgmt.policies.catalog import FixedCurrent, HardBE, Trailing
-from app.trade_mgmt.replay import replay
+from app.trade_mgmt.policies.catalog import (
+    AdaptiveScaleOut, FixedCurrent, HardBE, Trailing, adaptive_tp1_frac,
+)
+from app.trade_mgmt.replay import build_tp1_context, replay
 from app.trade_mgmt.types import ManagementDecision
 
 
@@ -111,6 +113,22 @@ def test_trailing_captures_post_tp1_run_approx():
     assert "trail_approx" in r.flags and r.confidence < 1.0
     # vs FixedCurrent hard-BE on the same give-back path = 0.5 → trailing captures more
     assert replay(rec, FixedCurrent()).realized_r == 0.5
+
+
+def test_adaptive_tp1_significance_curve():
+    assert adaptive_tp1_frac(0.4) == 0.20   # near TP1 → small
+    assert adaptive_tp1_frac(0.8) == 0.33
+    assert adaptive_tp1_frac(1.2) == 0.50
+    assert adaptive_tp1_frac(2.0) == 0.60
+    assert adaptive_tp1_frac(4.0) == 0.70   # meaningful TP1 → bank more
+    assert adaptive_tp1_frac(None) == 0.50  # safe default
+
+
+def test_adaptive_near_tp1_trails_else_be():
+    near = AdaptiveScaleOut().decide_tp1(build_tp1_context(_rec(tp1_price=102.0)))  # tp1_r=0.4
+    assert near.tp1_scale_frac == 0.20 and near.remainder_mode == "TRAIL"
+    far = AdaptiveScaleOut().decide_tp1(build_tp1_context(_rec(tp1_price=106.0)))   # tp1_r=1.2
+    assert far.tp1_scale_frac == 0.50 and far.remainder_mode == "BREAKEVEN"
 
 
 _TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]

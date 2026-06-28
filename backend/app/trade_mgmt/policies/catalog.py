@@ -78,7 +78,53 @@ class Trailing(Policy):
         )
 
 
+def adaptive_tp1_frac(tp1_r) -> float:
+    """TP1-significance prior curve (design §7.5/§7.6): scale-out fraction grows
+    with TP1's reward/risk. A near TP1 (low R) → small exit (don't kill upside);
+    a meaningful TP1 (high R) → bank more. Calibrated later from data."""
+    if tp1_r is None:
+        return 0.50
+    if tp1_r < 0.5:
+        return 0.20
+    if tp1_r < 1.0:
+        return 0.33
+    if tp1_r < 1.5:
+        return 0.50
+    if tp1_r < 2.5:
+        return 0.60
+    return 0.70
+
+
+class AdaptiveScaleOut(Policy):
+    """TP1-significance-aware scale-out (design §7.6, the central thesis).
+
+    The TP1 exit fraction adapts to tp1_r (reward/risk), not a fixed 50%. When
+    TP1 is too close to entry (tp1_r < 0.5) it takes only a little (20%) and
+    TRAILS the rest instead of hard-BE — directly addressing the "+0.09% TP1"
+    problem. Otherwise it banks per the prior curve and BE-manages the remainder.
+
+    Phase-1 = prior curve only (no learned multipliers / segment priors yet);
+    those arrive with the data checkpoint. TRAIL legs are approximate (flagged).
+    """
+
+    name = "AdaptiveScaleOut"
+
+    def decide_tp1(self, ctx: Tp1Context) -> ManagementDecision:
+        frac = adaptive_tp1_frac(ctx.tp1_r)
+        near_tp1 = ctx.tp1_r is not None and ctx.tp1_r < 0.5
+        return ManagementDecision(
+            tp1_scale_frac=frac,
+            tp2_scale_frac=0.30,
+            tp3_scale_frac=0.0,
+            remainder_mode="TRAIL" if near_tp1 else "BREAKEVEN",
+            trail_rule="R_K",
+            trail_k=0.5,
+            reason=f"adaptif tp1_frac={frac} (tp1_r={ctx.tp1_r}) "
+                   + ("yakın-TP1 → trail" if near_tp1 else "BE"),
+        )
+
+
 def registered_policies():
     """Policy comparison set; FixedCurrent is the baseline (index 0). Each Phase-1
     Step-5 commit appends one alternative here and it shows up in the report."""
-    return [FixedCurrent(), HardBE(), Trailing()]
+    return [FixedCurrent(), HardBE(), Trailing(), AdaptiveScaleOut()]
