@@ -5,6 +5,8 @@ import { ScoreRing } from './ScoreRing';
 import { GlassCard } from './GlassCard';
 import { cn, formatRelativeTime, formatAbsoluteTimeTR, formatPrice } from '@/lib/utils';
 import { ApiSignal } from '@/lib/api';
+import { track } from '@/lib/analytics';
+import { AnalyticsEvent } from '@/lib/analytics-events';
 import {
   Target, TrendingUp, TrendingDown, Activity, ShieldAlert,
   Info, X, Scale, FileText, BarChart3, Check,
@@ -519,6 +521,16 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
   const rrRatio  = calculateRR(signal);
   const engines  = parseEngines(signal.engines_data);
   const tabs     = buildTabs(signal.explanation_tr);
+
+  // Activation event: a user opened a full signal detail (the product's value moment).
+  useEffect(() => {
+    track(AnalyticsEvent.signal_viewed, {
+      signal_id: signal.id,
+      symbol: signal.asset.symbol,
+      market: signal.asset.market,
+      timeframe: signal.timeframe,
+    });
+  }, [signal.id]);
 
   const dir = (signal.direction ?? '').toLowerCase();
   const direction = dir === 'bullish' ? { label: 'LONG',  cls: 'text-bullish', icon: TrendingUp }

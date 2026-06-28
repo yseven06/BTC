@@ -10,6 +10,8 @@ import {
   type SubscriptionResponse,
 } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { track } from '@/lib/analytics';
+import { AnalyticsEvent } from '@/lib/analytics-events';
 
 const CYCLE_LABEL: Record<BillingCycle, string> = {
   monthly:     '1 Ay',
@@ -54,8 +56,14 @@ export default function PricingPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Revenue-funnel entry: the pricing page was viewed.
+  useEffect(() => {
+    track(AnalyticsEvent.pricing_viewed);
+  }, []);
+
   const subscribe = async (tier: SubscriptionTier, overrideCycle?: BillingCycle) => {
     if (tier === 'free') return;
+    track(AnalyticsEvent.checkout_started, { tier, billing_cycle: overrideCycle ?? cycle });
     setProcessing(tier);
     try {
       const r = await startCheckout(tier, overrideCycle ?? cycle);

@@ -7,6 +7,8 @@ import {
   storeAuthTokens, isLoggedIn,
   type UserProfile,
 } from '@/lib/api';
+import { track } from '@/lib/analytics';
+import { AnalyticsEvent } from '@/lib/analytics-events';
 
 interface AuthContextValue {
   user: UserProfile | null;
@@ -60,18 +62,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await loginUser(email, password);
     storeAuthTokens(res.access_token, res.refresh_token, remember);
     await refresh();
+    track(AnalyticsEvent.login_completed, { method: 'password' });
   };
 
   const register = async (email: string, password: string, full_name?: string) => {
     const res = await registerUser({ email, password, full_name });
     storeAuthTokens(res.access_token, res.refresh_token, true);
     await refresh();
+    track(AnalyticsEvent.signup_completed, { method: 'password' });
   };
 
   const googleLogin = async (idToken: string) => {
     const res = await loginWithGoogle(idToken);
     storeAuthTokens(res.access_token, res.refresh_token, true);
     await refresh();
+    track(AnalyticsEvent.login_completed, { method: 'google' });
   };
 
   const logout = () => {
