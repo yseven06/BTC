@@ -16,7 +16,8 @@ import logging
 
 from app.database import async_session_factory
 from app.trade_mgmt.path_reader import load_paths
-from app.trade_mgmt.scoring import compare_policies, compare_segments, default_baseline
+from app.trade_mgmt.policies.catalog import registered_policies
+from app.trade_mgmt.scoring import compare_policies, compare_segments
 
 logging.disable(logging.CRITICAL)
 
@@ -41,7 +42,7 @@ async def main() -> None:
     async with async_session_factory() as db:
         records = await load_paths(db)  # READ ONLY
 
-    policies = default_baseline()
+    policies = registered_policies()
 
     print("=" * 96)
     print("TM v2 — REPLAY POLICY COMPARISON  (baseline = FixedCurrent)")
@@ -61,8 +62,8 @@ async def main() -> None:
         for entry in table["rows"]:
             _row(entry)
 
-    print("\nNOT: tek politika (FixedCurrent baseline). Adım 5'te Hard-BE / Trailing /")
-    print("Adaptive Scale-out eklenince aynı tabloda Δ sütunlarıyla karşılaştırılacak.")
+    print(f"\nNOT: {len(policies)} politika (baseline=FixedCurrent). Δ sütunları baseline'a göre.")
+    print("Yönsel karşılaştırma (n küçük); parametre optimizasyonu veri checkpoint'inde (~250-300).")
 
 
 if __name__ == "__main__":

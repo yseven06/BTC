@@ -12,7 +12,7 @@ import sys
 
 from app.trade_mgmt.path_reader import to_path_record
 from app.trade_mgmt.policies.base import Policy
-from app.trade_mgmt.policies.catalog import FixedCurrent
+from app.trade_mgmt.policies.catalog import FixedCurrent, HardBE
 from app.trade_mgmt.replay import replay
 from app.trade_mgmt.types import ManagementDecision
 
@@ -84,6 +84,22 @@ def test_replay_core_is_policy_agnostic_pluggable():
     assert r.realized_r == 1.4, r.realized_r
     assert "trail_approx" in r.flags
     assert r.confidence < 1.0
+
+
+def test_hardbe_banks_more_on_big_run_less_than_fixed():
+    # all TP: HardBE = 0.7*1 + 0.3*2 = 1.3  (< FixedCurrent 1.9 — trades upside)
+    rec = _rec()
+    assert replay(rec, HardBE()).realized_r == 1.3
+    assert replay(rec, FixedCurrent()).realized_r == 1.9
+
+
+def test_hardbe_protects_more_on_giveback():
+    # TP1 only, give-back: HardBE = 0.7*1 + 0.3*0(BE) = 0.7  (> FixedCurrent 0.5)
+    rec = _rec(cur_reached_tp2=False, cur_reached_tp3=False,
+               outcome="breakeven", cur_gave_back_after_tp1=True)
+    hb = replay(rec, HardBE())
+    assert hb.realized_r == 0.7 and hb.gave_back is True
+    assert replay(rec, FixedCurrent()).realized_r == 0.5
 
 
 _TESTS = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
