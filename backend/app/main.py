@@ -16,6 +16,7 @@ from app.api.router import api_router
 from app.config import get_settings
 from app.database import init_db, close_db
 from app.services.scheduler import start_scheduler, stop_scheduler
+from app.rate_limit import limiter, rate_limit_exceeded_handler, RateLimitExceeded
 
 settings = get_settings()
 
@@ -75,6 +76,13 @@ app = FastAPI(
     lifespan=lifespan,
     debug=settings.DEBUG,
 )
+
+# --- Rate limiting (slowapi) — only selected PUBLIC endpoints are decorated
+# (see app/rate_limit.py). Register the shared limiter on app.state and a clean
+# HTTP 429 JSON handler. No global/default limit is applied, so every other
+# route — admin, signals, prices, scheduler, TM v2 — is untouched. ---
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # Configure CORS using the origins list from settings.
 # In development the default is ["http://localhost:3000", "http://localhost:5173"].

@@ -89,6 +89,16 @@ class Settings(BaseSettings):
     SENTRY_DSN: str = ""
     SENTRY_TRACES_SAMPLE_RATE: float = 0.1
 
+    # --- Rate limiting (slowapi) — applied ONLY to selected public endpoints
+    # (auth + checkout). Format "<count>/<period>" (e.g. "5/minute"). Defaults
+    # are lenient (dev); set stricter values per-env in production. Toggle the
+    # whole feature with RATE_LIMIT_ENABLED. ---
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_LOGIN: str = "10/minute"
+    RATE_LIMIT_REGISTER: str = "5/minute"
+    RATE_LIMIT_REFRESH: str = "30/minute"
+    RATE_LIMIT_CHECKOUT: str = "10/minute"
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: object) -> List[str]:
