@@ -355,6 +355,15 @@ function PriceLadder({ signal }: { signal: ApiSignal }) {
           const lineColor  = item.color === 'bullish' ? 'bg-bullish/40'
                             : item.color === 'bearish' ? 'bg-bearish/40'
                             : 'bg-accent-primary/40';
+          // R-multiple of each level vs the SL distance (reward ÷ risk). Surfaces
+          // that e.g. a TP1 at 0.7R is a small, conservative first target — so a
+          // "TP1 reached" tick isn't misread as a big win. Pure presentation;
+          // signal geometry is NOT touched.
+          const rMult = entry != null && signal.stop_loss != null && item.value != null
+                        && entry !== signal.stop_loss && item.key !== 'entry'
+            ? Math.abs(item.value - entry) / Math.abs(entry - signal.stop_loss)
+            : null;
+          const lowTp1 = item.key === 'tp1' && rMult != null && rMult < 0.6;
           return (
             <div key={item.key}>
               <div className="flex items-center gap-4">
@@ -376,15 +385,34 @@ function PriceLadder({ signal }: { signal: ApiSignal }) {
                     <div className="absolute inset-x-0 -top-[3px] h-[2px] tp-pulse-line" />
                   )}
                 </div>
-                {/* Value */}
-                <div className={cn(
-                  'text-sm font-bold font-mono min-w-[100px] text-right',
-                  item.color === 'bullish' ? 'text-bullish'
-                  : item.color === 'bearish' ? 'text-bearish'
-                  : 'text-accent-primary',
-                  item.emphasize && 'text-base'
-                )}>
-                  {item.value != null ? item.value.toLocaleString('tr-TR', { maximumFractionDigits: 4 }) : '—'}
+                {/* R-multiple badge + value */}
+                <div className="flex items-center justify-end gap-2 min-w-[150px]">
+                  {rMult != null && (
+                    <span
+                      title={item.key === 'sl'
+                        ? 'Risk birimi (1R) = giriş ile stop arası mesafe'
+                        : lowTp1
+                          ? 'TP1 girişe yakın: küçük ama yüksek olasılıklı ilk hedef (R = ödül/risk)'
+                          : 'Ödül/risk: hedefin, giriş–stop mesafesine oranı'}
+                      className={cn(
+                        'text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border',
+                        lowTp1
+                          ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30'
+                          : 'text-text-muted bg-bg-tertiary/60 border-border-subtle'
+                      )}
+                    >
+                      {item.key === 'sl' ? '1R risk' : `${rMult.toFixed(1)}R`}
+                    </span>
+                  )}
+                  <span className={cn(
+                    'text-sm font-bold font-mono text-right',
+                    item.color === 'bullish' ? 'text-bullish'
+                    : item.color === 'bearish' ? 'text-bearish'
+                    : 'text-accent-primary',
+                    item.emphasize && 'text-base'
+                  )}>
+                    {item.value != null ? item.value.toLocaleString('tr-TR', { maximumFractionDigits: 4 }) : '—'}
+                  </span>
                 </div>
               </div>
               {/* Vertical bridge to next item */}
@@ -397,6 +425,10 @@ function PriceLadder({ signal }: { signal: ApiSignal }) {
           );
         })}
       </div>
+      <p className="mt-3 text-[10px] text-text-muted leading-snug">
+        <span className="font-mono font-bold">R</span> = ödül/risk (hedefin, giriş–stop mesafesine oranı).
+        TP1 çoğu sinyalde 1R altındadır — küçük ama yüksek olasılıklı ilk kâr kademesidir.
+      </p>
     </div>
   );
 }
