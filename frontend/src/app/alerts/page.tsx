@@ -41,7 +41,7 @@ export default function AlertsPage() {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    fetchAssets({ page_size: 300 }).then((r) => {
+    fetchAssets({ page_size: 200 }).then((r) => {
       const map: Record<string, ApiAsset> = {};
       for (const a of r.items) map[a.id] = a;
       setAssetCache(map);

@@ -56,7 +56,7 @@ export default function PortfolioPage() {
 
   useEffect(() => {
     if (Object.keys(assetCache).length > 0) return;
-    fetchAssets({ page_size: 300 }).then((r) => {
+    fetchAssets({ page_size: 200 }).then((r) => {
       const map: Record<string, ApiAsset> = {};
       for (const a of r.items) map[a.id] = a;
       setAssetCache(map);
