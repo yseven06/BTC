@@ -31,6 +31,7 @@ from app.engines.market_regime import detect_regime
 from app.services.intelligence import build_snapshot
 from app.services.coin_memory import load_effective_weights, update_coin_memory
 from app.services.lifecycle_log import make_event
+from app.services.market_hours import is_bist_open
 
 logger = logging.getLogger(__name__)
 
@@ -446,6 +447,16 @@ async def _run_all_signals(timeframe: str = "1h") -> None:
             query = query.where(Asset.asset_type != AssetType.STOCK)
         res = await db.execute(query)
         assets = res.scalars().all()
+
+    # Market-hours gate: skip BIST stocks while the exchange is closed, EXCEPT
+    # the daily timeframe (its candle finalizes at close, so the once-daily 1d
+    # run after hours is legitimate). Avoids wasted upstream calls / egress
+    # off-hours; crypto is 24/7 and unaffected.
+    if timeframe != "1d" and not is_bist_open():
+        before = len(assets)
+        assets = [a for a in assets if a.asset_type != AssetType.STOCK]
+        if before != len(assets):
+            logger.info("[Scheduler] BIST kapalı — %s turunda %d hisse atlandı", timeframe, before - len(assets))
 
     logger.info("[Scheduler] Generating %s signals for %d assets", timeframe, len(assets))
     for i, asset in enumerate(assets):
