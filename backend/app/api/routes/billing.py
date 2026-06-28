@@ -13,8 +13,6 @@ endpoint returns a mock session url so the UI can still be developed
 end-to-end.
 """
 
-from __future__ import annotations
-
 import json
 import logging
 from datetime import datetime, timedelta, timezone
@@ -28,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import get_current_user
 from app.config import get_settings
 from app.database import get_db
+from app.rate_limit import limiter, CHECKOUT_LIMIT
 from app.models.subscription import (
     BillingCycle, Payment, Subscription,
     SubscriptionStatus, SubscriptionTier,
@@ -130,7 +129,9 @@ async def my_subscription(
 
 
 @router.post("/checkout", response_model=CheckoutResponse, summary="Start checkout session")
+@limiter.limit(CHECKOUT_LIMIT)
 async def start_checkout(
+    request: Request,
     payload: CheckoutRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

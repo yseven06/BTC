@@ -8,7 +8,7 @@ and profile retrieval.
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,7 @@ from app.auth.jwt_handler import create_access_token, create_refresh_token, veri
 from app.auth.password import hash_password, verify_password
 from app.config import get_settings
 from app.database import get_db
+from app.rate_limit import limiter, LOGIN_LIMIT, REGISTER_LIMIT, REFRESH_LIMIT
 from app.models.user import AuthProvider, Language, User
 from app.schemas.user import (
     GoogleLoginRequest,
@@ -53,7 +54,9 @@ def _create_token_response(user: User) -> TokenResponse:
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user",
 )
+@limiter.limit(REGISTER_LIMIT)
 async def register(
+    request: Request,
     payload: UserCreate,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
@@ -93,7 +96,9 @@ async def register(
     response_model=TokenResponse,
     summary="Login with email and password",
 )
+@limiter.limit(LOGIN_LIMIT)
 async def login(
+    request: Request,
     payload: UserLogin,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
@@ -132,7 +137,9 @@ async def login(
     response_model=TokenResponse,
     summary="Login or register with Google",
 )
+@limiter.limit(LOGIN_LIMIT)
 async def google_login(
+    request: Request,
     payload: GoogleLoginRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
@@ -190,7 +197,9 @@ async def google_login(
     response_model=TokenResponse,
     summary="Refresh access token",
 )
+@limiter.limit(REFRESH_LIMIT)
 async def refresh_token(
+    request: Request,
     payload: RefreshTokenRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
