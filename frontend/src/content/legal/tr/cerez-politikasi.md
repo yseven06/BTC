@@ -1,22 +1,53 @@
 ---
 slug: cerez-politikasi
 title: Çerez Politikası
-version: 0.1.0
+version: 0.9.0
 effectiveDate: 2026-06-29
 locale: tr
 ---
 
 # Çerez Politikası
 
-> **TASLAK — AVUKAT ONAYI BEKLİYOR.**
+> Bu politika, çerez ve benzeri teknolojilerin kullanımını açıklar.
+> [KVKK Aydınlatma Metni](/yasal/aydinlatma-metni) ile birlikte değerlendirilir.
+> _Metin yürürlüğe hazır taslaktır; nihai hukuki inceleme tamamlanmak üzeredir._
 
-Platform, zorunlu çerezleri hizmetin çalışması için kullanır. Analitik ve pazarlama
-çerezleri **yalnızca açık onayınızla** ve varsayılan olarak kapalı şekilde çalışır.
+## 1. Çerez Nedir?
 
-## Çerez Kategorileri
-- **Zorunlu:** oturum, güvenlik (onay gerektirmez).
-- **Analitik:** ürün kullanım ölçümü (PostHog) — onayınıza bağlı.
+Çerez (cookie), ziyaret ettiğiniz sitelerin tarayıcınıza kaydettiği küçük metin
+dosyalarıdır. Benzer teknolojiler (localStorage vb.) da bu politika kapsamındadır.
 
-Tercihlerinizi çerez ayarları panelinden her zaman değiştirebilirsiniz.
+## 2. Çerez Kategorileri
 
-(Taslak — detaylandırılacak.)
+| Kategori | Amaç | Onay |
+|---|---|---|
+| **Zorunlu** | Oturum, kimlik doğrulama, güvenlik ve temel işlevler | Gerekmez |
+| **Analitik (isteğe bağlı)** | Ürün kullanımının ölçülmesi ve iyileştirme (ör. PostHog) | Açık onay gerekir |
+
+Zorunlu çerezler Hizmet'in çalışması için gereklidir ve onay gerektirmez. Analitik
+çerezler **varsayılan olarak kapalıdır** ve yalnızca açık onayınızla çalışır.
+
+Güncel ve ayrıntılı çerez envanteri (çerez adı, sağlayıcı, tür ve saklama süresi) çerez
+ayarları panelinde sunulur ve teknik değişikliklere göre güncellenir.
+
+## 3. Onay ve Yönetim
+
+Siteye ilk erişiminizde bir çerez tercih bildirimi (banner) sunulur. Burada zorunlu
+olmayan çerezleri **kabul edebilir veya reddedebilirsiniz**; reddetmek, kabul etmek kadar
+kolaydır. Tercihlerinizi daha sonra **çerez ayarları** bölümünden dilediğiniz zaman
+değiştirebilirsiniz.
+
+Analitik onayı verildiğinde ürün analitiği etkinleşir; onay verilmediğinde veya geri
+alındığında analitik verisi toplanmaz.
+
+## 4. Üçüncü Taraf
+
+Analitik için PostHog (AB/EU bölgesi) kullanılabilir. Bu kapsamda işlenen veriler ve
+aktarım, [KVKK Aydınlatma Metni](/yasal/aydinlatma-metni) ve
+[Açık Rıza Metni](/yasal/acik-riza) çerçevesindedir.
+
+## 5. Saklama
+
+Çerezlerin saklama süreleri türlerine göre değişir; oturum çerezleri tarayıcı kapandığında,
+kalıcı çerezler tanımlı süreleri sonunda silinir. Çerez tercihleri periyodik olarak yeniden
+sorulabilir.

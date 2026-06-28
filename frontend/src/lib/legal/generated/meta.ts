@@ -13,26 +13,26 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
   "acik-riza": {
     "slug": "acik-riza",
     "title": "KVKK Açık Rıza Metni",
-    "version": "0.1.0",
+    "version": "0.9.0",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "1e259370e8ac82a284ce9b1d7bf81785fdcef8480bf3b92fc273e91db0de7c9e"
+    "hash": "6c9caae51c77afb3898c371683e9dc74f47881708f57ae582760c44170fe7699"
   },
   "aydinlatma-metni": {
     "slug": "aydinlatma-metni",
     "title": "KVKK Aydınlatma Metni",
-    "version": "0.1.0",
+    "version": "0.9.0",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "92662c5980baa5c55092bfdc01059e1326e52b8d0776b3ca75d2d1546c9217de"
+    "hash": "11873329369a90dc0e5916a5ee49ef020a2264582d3eb46c7e5cd5bc6010714e"
   },
   "cerez-politikasi": {
     "slug": "cerez-politikasi",
     "title": "Çerez Politikası",
-    "version": "0.1.0",
+    "version": "0.9.0",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "239a7081d722006965d70f6507a666d16bf85360bb70cef08ae46b5ed419b4bf"
+    "hash": "ba9b62e3007c1da50936a86c9cadaaf3349a85727befc378e6c424ee13d0ee5a"
   },
   "kullanim-kosullari": {
     "slug": "kullanim-kosullari",
@@ -40,15 +40,15 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.0",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "2f8e17fae694ca1eee097450f5de09444b689c135f7db15ff122be85f5124f47"
+    "hash": "4c2fd3ceca1c60eed1ca4168c910f10447d0db1a452ff319a23ba68ea8460bb1"
   },
   "mesafeli-satis": {
     "slug": "mesafeli-satis",
     "title": "Mesafeli Satış Sözleşmesi ve Ön Bilgilendirme",
-    "version": "0.1.0",
+    "version": "0.9.0",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "0b1cffa95a62d42cc3f9a4a310254ba8f0cec74b0eaf930d3f7904c918a1d6b4"
+    "hash": "955c23603d8230fb824cf57be946c9887462c673c9c25deb424b17f9103e3519"
   },
   "risk-bildirimi": {
     "slug": "risk-bildirimi",
@@ -61,9 +61,9 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
   "ticari-ileti": {
     "slug": "ticari-ileti",
     "title": "Ticari Elektronik İleti Aydınlatma Metni",
-    "version": "0.1.0",
+    "version": "0.9.0",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "0876bf5ae5583c786ae6877f4d674919ca9a53860179acd670e7da4ba7eb656f"
+    "hash": "9a2053d8f4d2e17c8475654b08411463bb5c7f7ed6933ac37afbb8847e1c47e9"
   }
 };
