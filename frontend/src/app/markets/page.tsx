@@ -8,6 +8,7 @@ import { CoinIcon } from '@/components/ui/CoinIcon';
 import { fetchAssets, type ApiAsset } from '@/lib/api';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useBistStatus } from '@/hooks/useBistStatus';
+import { PriceSkeleton } from '@/components/ui/PriceSkeleton';
 import { cn } from '@/lib/utils';
 
 type CategoryFilter = 'all' | 'crypto' | 'stock';
@@ -159,7 +160,7 @@ export default function MarketsPage() {
                       )}
                     </>
                   ) : (
-                    <span className="text-[10px] text-text-muted animate-pulse">—</span>
+                    <PriceSkeleton />
                   )}
                 </div>
               </GlassCard>

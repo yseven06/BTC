@@ -11,6 +11,7 @@ import { cn, formatAbsoluteTimeTR } from '@/lib/utils';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CoinIcon } from '@/components/ui/CoinIcon';
+import { PriceSkeleton } from '@/components/ui/PriceSkeleton';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1217,7 +1218,7 @@ export default function SignalsPage() {
                       </p>
                     </div>
                   ) : (
-                    <span className="text-xs text-text-muted animate-pulse">—</span>
+                    <PriceSkeleton />
                   )}
                 </div>
 
