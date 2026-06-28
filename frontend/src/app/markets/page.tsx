@@ -9,7 +9,7 @@ import { fetchAssets, type ApiAsset } from '@/lib/api';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useBistStatus } from '@/hooks/useBistStatus';
 import { PriceSkeleton } from '@/components/ui/PriceSkeleton';
-import { cn } from '@/lib/utils';
+import { cn, formatPrice } from '@/lib/utils';
 
 type CategoryFilter = 'all' | 'crypto' | 'stock';
 
@@ -146,7 +146,7 @@ export default function MarketsPage() {
                   {live ? (
                     <>
                       <p className="text-sm font-bold font-mono text-text-primary">
-                        {live.price.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
+                        {formatPrice(live.price)}
                       </p>
                       {isStock && bistOpen === false ? (
                         <p className="text-[10px] text-text-muted font-medium">

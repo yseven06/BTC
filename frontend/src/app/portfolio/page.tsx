@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCardModal';
-import { cn } from '@/lib/utils';
+import { cn, formatPrice } from '@/lib/utils';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import {
   fetchPortfolios, fetchPortfolio, createPortfolio, deletePortfolio,
@@ -335,8 +335,8 @@ export default function PortfolioPage() {
                         <div key={h.id} className="grid grid-cols-[1.2fr_0.9fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center px-5 py-3 text-xs hover:bg-white/[0.02]">
                           <span className="font-bold text-text-primary">{asset?.symbol ?? '—'}</span>
                           <span className="font-mono text-text-secondary">{h.quantity}</span>
-                          <span className="font-mono text-text-secondary">${h.average_entry_price.toLocaleString('en-US', { maximumFractionDigits: 4 })}</span>
-                          <span className="font-mono text-text-primary">${currentPrice.toLocaleString('en-US', { maximumFractionDigits: 4 })}</span>
+                          <span className="font-mono text-text-secondary">${formatPrice(h.average_entry_price, 'en-US')}</span>
+                          <span className="font-mono text-text-primary">${formatPrice(currentPrice, 'en-US')}</span>
                           <span className="font-mono text-text-primary">${value.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
                           <span className={cn('flex items-center gap-1 font-bold font-mono', pnlPct >= 0 ? 'text-bullish' : 'text-bearish')}>
                             {pnlPct >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
@@ -386,8 +386,8 @@ export default function PortfolioPage() {
                           <div key={h.id} className="grid grid-cols-[1.2fr_0.9fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center px-5 py-3 text-xs hover:bg-white/[0.02] opacity-90">
                             <span className="font-bold text-text-primary">{asset?.symbol ?? '—'}</span>
                             <span className="font-mono text-text-secondary">{h.quantity}</span>
-                            <span className="font-mono text-text-secondary">${h.average_entry_price.toLocaleString('en-US', { maximumFractionDigits: 4 })}</span>
-                            <span className="font-mono text-text-secondary">${(h.exit_price ?? 0).toLocaleString('en-US', { maximumFractionDigits: 4 })}</span>
+                            <span className="font-mono text-text-secondary">${formatPrice(h.average_entry_price, 'en-US')}</span>
+                            <span className="font-mono text-text-secondary">${formatPrice(h.exit_price ?? 0, 'en-US')}</span>
                             <span className={cn('font-mono font-bold', (h.realized_pnl ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
                               {(h.realized_pnl ?? 0) >= 0 ? '+' : ''}${(h.realized_pnl ?? 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}
                             </span>

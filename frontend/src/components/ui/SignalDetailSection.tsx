@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ScoreRing } from './ScoreRing';
 import { GlassCard } from './GlassCard';
-import { cn, formatRelativeTime, formatAbsoluteTimeTR } from '@/lib/utils';
+import { cn, formatRelativeTime, formatAbsoluteTimeTR, formatPrice } from '@/lib/utils';
 import { ApiSignal } from '@/lib/api';
 import {
   Target, TrendingUp, TrendingDown, Activity, ShieldAlert,
@@ -411,7 +411,7 @@ function PriceLadder({ signal }: { signal: ApiSignal }) {
                     : 'text-accent-primary',
                     item.emphasize && 'text-base'
                   )}>
-                    {item.value != null ? item.value.toLocaleString('tr-TR', { maximumFractionDigits: 4 }) : '—'}
+                    {formatPrice(item.value)}
                   </span>
                 </div>
               </div>

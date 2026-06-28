@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Star, Plus, Trash2, Search, X, TrendingUp, TrendingDown } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { cn } from '@/lib/utils';
+import { cn, formatPrice } from '@/lib/utils';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import {
   fetchWatchlists, createWatchlist, updateWatchlist, deleteWatchlist,
@@ -236,7 +236,7 @@ export default function WatchlistPage() {
                           {live ? (
                             <div className="flex items-center gap-2 mt-1.5">
                               <span className="text-sm font-mono font-bold text-text-primary">
-                                {live.price.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
+                                {formatPrice(live.price)}
                               </span>
                               <span className={cn('flex items-center gap-0.5 text-[11px] font-mono font-semibold', up ? 'text-bullish' : 'text-bearish')}>
                                 {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}

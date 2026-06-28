@@ -21,7 +21,7 @@ import {
   type ApiSignal, type PerformanceSummary, type GlobalMarketData,
   type FearGreedData, type CoinMarket, type MarketCapPoint,
 } from '@/lib/api';
-import { formatLargeNumber, formatPercentage, cn } from '@/lib/utils';
+import { formatLargeNumber, formatPercentage, cn, formatPrice } from '@/lib/utils';
 import { SignalType, RiskLevel } from '@/types';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useTierLimits } from '@/hooks/useTierLimits';
@@ -584,7 +584,7 @@ export default function DashboardPage() {
                         {livePrices[sig.asset?.symbol ?? ''] ? (
                           <>
                             <span className="text-[10px] font-mono text-text-primary font-bold">
-                              {livePrices[sig.asset?.symbol ?? ''].price.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}
+                              {formatPrice(livePrices[sig.asset?.symbol ?? ''].price)}
                             </span>
                             <span className={cn('text-[10px] font-mono font-semibold',
                               (livePrices[sig.asset?.symbol ?? ''].changePct24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
@@ -595,10 +595,10 @@ export default function DashboardPage() {
                         ) : (
                           <>
                             <span className="text-[10px] text-text-muted">
-                              TP: <span className="text-bullish font-mono">{sig.tp1 ? sig.tp1.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—'}</span>
+                              TP: <span className="text-bullish font-mono">{sig.tp1 ? formatPrice(sig.tp1, 'en-US') : '—'}</span>
                             </span>
                             <span className="text-[10px] text-text-muted">
-                              SL: <span className="text-bearish font-mono">{sig.stop_loss ? sig.stop_loss.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—'}</span>
+                              SL: <span className="text-bearish font-mono">{sig.stop_loss ? formatPrice(sig.stop_loss, 'en-US') : '—'}</span>
                             </span>
                           </>
                         )}

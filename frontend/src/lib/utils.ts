@@ -57,6 +57,22 @@ export function formatPercentage(value: number, decimals: number = 2): string {
 }
 
 /**
+ * Adaptive price formatting. Fixed-decimal formatting collapses micro-cap prices
+ * to "0" / "0,00" (e.g. SHIB ~0.0000089). Scale precision to magnitude — ≥1000
+ * → 2 decimals, ≥1 → up to 4, and under 1 keep ~4 significant figures so small
+ * prices stay meaningful. Returns "—" for null/NaN.
+ */
+export function formatPrice(value: number | null | undefined, locale: string = 'tr-TR'): string {
+  if (value == null || Number.isNaN(value)) return '—';
+  const abs = Math.abs(value);
+  if (abs === 0) return '0';
+  if (abs >= 1) {
+    return value.toLocaleString(locale, { maximumFractionDigits: abs >= 1000 ? 2 : 4 });
+  }
+  return value.toLocaleString(locale, { maximumSignificantDigits: 4 });
+}
+
+/**
  * Get signal color class
  */
 export function getSignalColor(signal: SignalType): string {

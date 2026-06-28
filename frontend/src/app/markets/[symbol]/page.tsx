@@ -12,7 +12,7 @@ import { TradingChart, type ChartCandle } from '@/components/charts/TradingChart
 import { fetchActiveSignals, fetchOhlcv, fetchSignalHistory, type ApiSignal } from '@/lib/api';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { SignalType } from '@/types';
-import { cn, formatRelativeTime, formatAbsoluteTimeTR } from '@/lib/utils';
+import { cn, formatRelativeTime, formatAbsoluteTimeTR, formatPrice } from '@/lib/utils';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 
@@ -350,7 +350,7 @@ export default function AssetDetailPage() {
         {live && (
           <div className="flex items-baseline gap-2.5 ml-1 pl-4 border-l border-border-subtle">
             <p className="text-2xl font-bold font-mono text-text-primary">
-              {live.price.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
+              {formatPrice(live.price)}
             </p>
             <p className={cn('text-sm font-mono font-semibold flex items-center gap-1', up ? 'text-bullish' : 'text-bearish')}>
               {up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}

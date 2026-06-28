@@ -7,7 +7,7 @@ import { fetchActiveSignals, triggerBatchGeneration, downloadSignalPdf, type Api
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useTierLimits } from '@/hooks/useTierLimits';
 import { SignalType } from '@/types';
-import { cn, formatAbsoluteTimeTR } from '@/lib/utils';
+import { cn, formatAbsoluteTimeTR, formatPrice } from '@/lib/utils';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CoinIcon } from '@/components/ui/CoinIcon';
@@ -789,7 +789,7 @@ function LevelCard({ label, value, color }: { label: string; value: number | nul
     <div className="bg-bg-secondary/60 rounded-lg p-2 border border-border-subtle">
       <p className="text-[9px] text-text-muted uppercase font-semibold mb-0.5">{label}</p>
       <p className={cn('text-xs font-bold font-mono truncate', color)}>
-        {value != null ? value.toLocaleString('tr-TR', { maximumFractionDigits: 4 }) : '—'}
+        {formatPrice(value)}
       </p>
     </div>
   );
@@ -1211,7 +1211,7 @@ export default function SignalsPage() {
                   {live ? (
                     <div>
                       <p className={cn('text-sm font-bold font-mono', invalid ? 'text-text-muted line-through' : 'text-text-primary')}>
-                        {live.price.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
+                        {formatPrice(live.price)}
                       </p>
                       <p className={cn('text-[10px] font-mono font-semibold', up ? 'text-bullish' : 'text-bearish')}>
                         {up ? '+' : ''}{live.changePct24h?.toFixed(2)}%
