@@ -7,12 +7,18 @@ import { useAuth } from '@/lib/auth-context';
 
 const PUBLIC_ROUTES = ['/', '/login', '/register'];
 
+// Legal pages (/yasal, /yasal/<slug>) must be reachable without auth — they are
+// linked from the footer, the register form, and need to be publicly viewable.
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.includes(pathname) || pathname === '/yasal' || pathname.startsWith('/yasal/');
+}
+
 export default function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router   = useRouter();
   const { user, loading } = useAuth();
 
-  const isPublic = PUBLIC_ROUTES.includes(pathname);
+  const isPublic = isPublicRoute(pathname);
 
   // Redirect unauthenticated users to /login (except on public routes).
   // If the session expired (a refresh attempt definitively failed), carry a
