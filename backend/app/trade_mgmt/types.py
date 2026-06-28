@@ -77,3 +77,60 @@ class PathRecord:
     tp1_atr: Optional[float]
     sl_before_tp: Optional[bool]
     confidence_flags: Tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class Tp1Context:
+    """Pre-decision view handed to a Policy at the TP1 juncture.
+
+    Deliberately contains ONLY information available *at* the TP1 decision —
+    no realized/future outcome (no look-ahead bias). The replay engine builds
+    this; policies never see PathRecord's observed `cur_*` results.
+    Optional priors are values known *before* the trade (e.g. a segment's
+    historical give-back rate), so passing them in does not leak the future.
+    """
+
+    direction: Optional[str]
+    entry: Optional[float]
+    sl: Optional[float]
+    tp1: Optional[float]
+    tp2: Optional[float]
+    tp3: Optional[float]
+    tp1_r: Optional[float]
+    tp2_r: Optional[float]
+    tp3_r: Optional[float]
+    tp1_atr: Optional[float]
+    atr_pct: Optional[float]
+    regime: Optional[str]
+    timeframe: Optional[str]
+    symbol: Optional[str]
+    prior_giveback_rate: Optional[float] = None
+    prior_tp1_to_tp2: Optional[float] = None
+
+
+@dataclass(frozen=True)
+class ManagementDecision:
+    """A Policy's output at TP1: the scale-out schedule + remainder handling.
+    The replay engine applies this mechanically (policy-independent)."""
+
+    tp1_scale_frac: float                 # fraction of original position exited at TP1
+    tp2_scale_frac: float = 0.0           # fraction (of original) exited at TP2
+    tp3_scale_frac: float = 0.0           # fraction (of original) exited at TP3
+    remainder_mode: str = "BREAKEVEN"     # "BREAKEVEN" | "TRAIL"
+    trail_rule: Optional[str] = None      # "R_K" | "ATR_K" | "STRUCTURE" (when TRAIL)
+    trail_k: Optional[float] = None
+    reason: str = ""
+
+
+@dataclass(frozen=True)
+class ReplayResult:
+    """Outcome of replaying one PathRecord under one Policy. Realized return in
+    R-multiples (policy-independent unit = entry↔SL distance)."""
+
+    realized_r: float
+    exit_reason: str
+    scale_events: Tuple[Tuple[float, float, str], ...]  # (frac, r_at_exit, why)
+    gave_back: bool
+    bars_held: Optional[int]
+    flags: Tuple[str, ...]
+    confidence: float                      # 1.0 exact · <1 approximate (trail/fallback/forming)
