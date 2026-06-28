@@ -54,7 +54,31 @@ class HardBE(Policy):
         )
 
 
+class Trailing(Policy):
+    """Let-winners-run policy — take little at TP1, trail the rest.
+
+    Thesis: the data shows ~1R of post-TP1 favorable movement is given back under
+    hard-BE; a trailing stop should capture part of that. Takes 30% at TP1 and
+    trails the remaining 70% at `trail_k` R behind the post-TP1 peak.
+
+    NOTE: trailing replay is APPROXIMATE (the stored summary has post-TP1 MFE/MAE
+    extremes, not the full path) → these results carry lower confidence (flagged
+    'trail_approx'). Direction is meaningful; exact magnitude is not.
+    """
+
+    name = "Trailing"
+
+    def decide_tp1(self, ctx: Tp1Context) -> ManagementDecision:
+        return ManagementDecision(
+            tp1_scale_frac=0.30,
+            remainder_mode="TRAIL",
+            trail_rule="R_K",
+            trail_k=0.5,
+            reason="TP1 %30 + kalan trailing (0.5R)",
+        )
+
+
 def registered_policies():
     """Policy comparison set; FixedCurrent is the baseline (index 0). Each Phase-1
     Step-5 commit appends one alternative here and it shows up in the report."""
-    return [FixedCurrent(), HardBE()]
+    return [FixedCurrent(), HardBE(), Trailing()]

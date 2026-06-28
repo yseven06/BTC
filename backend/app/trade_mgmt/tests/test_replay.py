@@ -12,7 +12,7 @@ import sys
 
 from app.trade_mgmt.path_reader import to_path_record
 from app.trade_mgmt.policies.base import Policy
-from app.trade_mgmt.policies.catalog import FixedCurrent, HardBE
+from app.trade_mgmt.policies.catalog import FixedCurrent, HardBE, Trailing
 from app.trade_mgmt.replay import replay
 from app.trade_mgmt.types import ManagementDecision
 
@@ -99,6 +99,17 @@ def test_hardbe_protects_more_on_giveback():
                outcome="breakeven", cur_gave_back_after_tp1=True)
     hb = replay(rec, HardBE())
     assert hb.realized_r == 0.7 and hb.gave_back is True
+    assert replay(rec, FixedCurrent()).realized_r == 0.5
+
+
+def test_trailing_captures_post_tp1_run_approx():
+    # TP1 only, post_tp1_mfe_r=2.0: Trailing = 0.3*1 + 0.7*max(0,2.0-0.5)=0.3+1.05=1.35
+    rec = _rec(cur_reached_tp2=False, cur_reached_tp3=False,
+               cur_post_tp1_mfe_r=2.0, outcome="win")
+    r = replay(rec, Trailing())
+    assert r.realized_r == 1.35
+    assert "trail_approx" in r.flags and r.confidence < 1.0
+    # vs FixedCurrent hard-BE on the same give-back path = 0.5 → trailing captures more
     assert replay(rec, FixedCurrent()).realized_r == 0.5
 
 
