@@ -1,17 +1,28 @@
 """
 TradeMinds AI – Yahoo Finance BIST Collector
 
-Uses yfinance to fetch market data and balance sheets for BIST stocks (symbol format: THYAO.IS).
-Runs blocking yfinance calls inside asyncio.to_thread for high concurrency.
+Fetches OHLCV + live price for BIST stocks (symbol format: THYAO.IS) via Yahoo's
+public chart API (query1.finance.yahoo.com/v8/finance/chart) — a direct HTTP
+call that needs no crumb/cookie auth and is resilient to the yfinance library
+breakage that took BIST offline (the old lib returned empty for every symbol).
+
+Financials (income statement / balance sheet) still go through yfinance and
+degrade gracefully (return empty) when unavailable — the fundamental engine
+treats missing data as a neutral contribution. A direct-API port of financials
+(crumb-locked) is deferred to a later phase.
+
+A fresh httpx.AsyncClient is created per request (each method makes a single
+call) so there is no shared client to leak — close() stays a no-op, keeping
+every existing call site (some of which never call close()) safe.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
+import httpx
 import pandas as pd
 import yfinance as yf
 
@@ -19,9 +30,60 @@ from app.collectors.base import BaseCollector
 
 logger = logging.getLogger(__name__)
 
+_CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart"
+_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
+
+# Yahoo chart intervals. No native 4h → falls back to 1d (matches prior behavior).
+_TF_MAP = {"15m": "15m", "1h": "1h", "1d": "1d", "1w": "1wk"}
+_TF_MINUTES = {"15m": 15, "1h": 60, "1d": 1440, "1wk": 10080}
+
+
+def _format_symbol(symbol: str) -> str:
+    s = symbol.upper()
+    if not s.endswith(".IS") and len(s) == 5:
+        s = f"{s}.IS"
+    return s
+
 
 class YahooCollector(BaseCollector):
-    """Yahoo Finance Collector for BIST Stocks."""
+    """Yahoo Finance collector for BIST stocks (direct chart API)."""
+
+    async def _chart(
+        self,
+        symbol: str,
+        interval: str,
+        *,
+        range_: Optional[str] = None,
+        period1: Optional[int] = None,
+        period2: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Call Yahoo's chart API and return the parsed `result[0]` block.
+        Raises ValueError for unknown/delisted symbols or empty responses."""
+        params: Dict[str, Any] = {"interval": interval, "includePrePost": "false"}
+        if period1 is not None and period2 is not None:
+            params["period1"] = period1
+            params["period2"] = period2
+        else:
+            params["range"] = range_ or "3mo"
+
+        async with httpx.AsyncClient(timeout=15.0, headers={"User-Agent": _UA}) as client:
+            resp = await client.get(f"{_CHART_BASE}/{symbol}", params=params)
+
+        try:
+            payload = resp.json()
+        except Exception:
+            raise ValueError(f"Yahoo chart returned non-JSON for {symbol} (HTTP {resp.status_code})")
+
+        chart = payload.get("chart") or {}
+        if chart.get("error"):
+            raise ValueError(f"Yahoo chart error for {symbol}: {chart['error'].get('description')}")
+        results = chart.get("result")
+        if not results:
+            raise ValueError(f"No Yahoo chart data for {symbol}")
+        return results[0]
 
     async def fetch_ohlcv(
         self,
@@ -30,126 +92,102 @@ class YahooCollector(BaseCollector):
         limit: int = 100,
         end_date: Optional[int] = None,
     ) -> pd.DataFrame:
-        """Fetch historical prices using yfinance.
+        """Fetch OHLCV via Yahoo chart API. Columns: open/high/low/close/volume,
+        DatetimeIndex named 'timestamp'. Intervals 15m/1h/1d/1wk (others → 1d).
+        `end_date` (unix seconds) replays a past window via period1/period2."""
+        fsym = _format_symbol(symbol)
+        interval = _TF_MAP.get(timeframe, "1d")
 
-        Intervals supported: 15m, 1h, 1d, 1wk.
-        Runs inside to_thread to keep the event loop non-blocking.
-
-        end_date (optional): unix seconds — fetch a window ending at this
-        point instead of "now". Used to replay a chart's past state (e.g. a
-        closed signal's resolution time).
-        """
-        # Format BIST symbols (e.g. THYAO -> THYAO.IS)
-        formatted_symbol = symbol.upper()
-        if not formatted_symbol.endswith(".IS") and len(formatted_symbol) == 5:
-            formatted_symbol = f"{formatted_symbol}.IS"
-
-        tf_map = {
-            "15m": "15m", "1h": "1h", "1d": "1d", "1w": "1wk"
-        }
-        interval = tf_map.get(timeframe, "1d")
-
-        # Select period based on limit
-        period = "3mo"
-        if limit > 700:
-            period = "5y"
-        elif limit > 200:
-            period = "2y"
-        elif limit > 50:
-            period = "6mo"
-
-        # yfinance's `period` window always ends "now" — to replay a past
-        # state we need `start`/`end` instead, with a lookback wide enough
-        # to still gather `limit` candles ending at that point.
-        TF_MINUTES = {"15m": 15, "1h": 60, "1d": 1440, "1w": 10080}
-        start_dt = end_dt = None
+        period1 = period2 = None
+        range_ = "3mo"
         if end_date is not None:
-            end_dt = datetime.fromtimestamp(end_date, tz=timezone.utc)
-            lookback_minutes = TF_MINUTES.get(interval, 1440) * limit * 2  # 2x margin for weekends/holidays
-            start_dt = end_dt - timedelta(minutes=lookback_minutes)
-
-        def _fetch():
-            ticker = yf.Ticker(formatted_symbol)
-            if end_dt is not None:
-                df = ticker.history(start=start_dt, end=end_dt, interval=interval)
-            else:
-                df = ticker.history(period=period, interval=interval)
-            return df
+            period2 = int(end_date)
+            lookback_min = _TF_MINUTES.get(interval, 1440) * max(limit, 1) * 2  # 2x margin for gaps
+            period1 = period2 - lookback_min * 60
+        else:
+            if limit > 700:
+                range_ = "5y"
+            elif limit > 200:
+                range_ = "2y"
+            elif limit > 50:
+                range_ = "6mo"
+            # Yahoo caps intraday history windows; clamp so the request isn't rejected.
+            if interval == "15m":
+                range_ = "1mo"          # 15m: ~60d max
+            elif interval == "1h" and range_ == "5y":
+                range_ = "2y"           # 1h: ~730d max
 
         try:
-            df = await asyncio.to_thread(_fetch)
-            if df.empty:
-                raise ValueError(f"No yfinance historical data found for {formatted_symbol}")
+            res = await self._chart(fsym, interval, range_=range_, period1=period1, period2=period2)
+            ts = res.get("timestamp") or []
+            quote = (res.get("indicators", {}).get("quote") or [{}])[0]
+            if not ts or not quote.get("close"):
+                raise ValueError(f"No Yahoo OHLCV rows for {fsym}")
 
-            # Normalize columns
-            df.rename(
-                columns={
-                    "Open": "open", "High": "high", "Low": "low",
-                    "Close": "close", "Volume": "volume"
+            df = pd.DataFrame(
+                {
+                    "open": quote.get("open"),
+                    "high": quote.get("high"),
+                    "low": quote.get("low"),
+                    "close": quote.get("close"),
+                    "volume": quote.get("volume"),
                 },
-                inplace=True
+                index=pd.to_datetime(ts, unit="s", utc=True),
             )
-            df = df[["open", "high", "low", "close", "volume"]]
             df.index.name = "timestamp"
-            
+            df = df.dropna(subset=["close"])
+            if df.empty:
+                raise ValueError(f"No Yahoo OHLCV rows for {fsym}")
             return df.tail(limit)
 
+        except ValueError:
+            raise
         except Exception as e:
-            logger.error(f"Error fetching historical data from yfinance for {symbol}: {str(e)}")
+            logger.error("Error fetching OHLCV from Yahoo chart for %s: %s", symbol, e)
             raise
 
     async def fetch_ticker(self, symbol: str) -> Dict[str, Any]:
-        """Fetch current ticker price and 24h stats."""
-        formatted_symbol = symbol.upper()
-        if not formatted_symbol.endswith(".IS") and len(formatted_symbol) == 5:
-            formatted_symbol = f"{formatted_symbol}.IS"
-
-        def _fetch_info():
-            ticker = yf.Ticker(formatted_symbol)
-            # Retrieve basic history to get current price and change percentage
-            history = ticker.history(period="2d")
-            return ticker.info, history
-
+        """Current price + 24h stats from the chart API meta (no crumb needed)."""
+        fsym = _format_symbol(symbol)
         try:
-            info, history = await asyncio.to_thread(_fetch_info)
-            
-            current_price = info.get("currentPrice") or info.get("regularMarketPrice")
-            price_change = 0.0
-            price_change_pct = 0.0
+            res = await self._chart(fsym, "1d", range_="5d")
+            meta = res.get("meta") or {}
+            closes = [c for c in ((res.get("indicators", {}).get("quote") or [{}])[0].get("close") or []) if c is not None]
 
-            if not history.empty and len(history) >= 2:
-                prev_close = float(history["Close"].iloc[0])
-                current_price = float(history["Close"].iloc[-1])
-                price_change = current_price - prev_close
-                price_change_pct = (price_change / prev_close) * 100.0
-            elif current_price is None and not history.empty:
-                current_price = float(history["Close"].iloc[-1])
+            current_price = meta.get("regularMarketPrice")
+            if current_price is None and closes:
+                current_price = closes[-1]
+            prev_close = meta.get("chartPreviousClose") or meta.get("previousClose")
+            if prev_close is None and len(closes) >= 2:
+                prev_close = closes[-2]
 
-            # Safety fallback for current price
-            if current_price is None:
-                current_price = 0.0
+            current_price = float(current_price) if current_price is not None else 0.0
+            change = change_pct = 0.0
+            if prev_close:
+                change = current_price - float(prev_close)
+                change_pct = (change / float(prev_close)) * 100.0
 
             return {
-                "current_price": float(current_price),
-                "price_change_24h": float(price_change),
-                "price_change_percentage_24h": float(price_change_pct),
-                "high_24h": float(info.get("dayHigh") or current_price),
-                "low_24h": float(info.get("dayLow") or current_price),
-                "volume_24h": float(info.get("volume") or 0.0),
+                "current_price": current_price,
+                "price_change_24h": float(change),
+                "price_change_percentage_24h": float(change_pct),
+                "high_24h": float(meta.get("regularMarketDayHigh") or current_price),
+                "low_24h": float(meta.get("regularMarketDayLow") or current_price),
+                "volume_24h": float(meta.get("regularMarketVolume") or 0.0),
             }
         except Exception as e:
-            logger.error(f"Error fetching ticker from yfinance for {symbol}: {str(e)}")
+            logger.error("Error fetching ticker from Yahoo chart for %s: %s", symbol, e)
             raise
 
     async def fetch_financials(self, symbol: str) -> Dict[str, Any]:
-        """Fetch fundamental data sheets (income statement, balance sheet)."""
-        formatted_symbol = symbol.upper()
-        if not formatted_symbol.endswith(".IS") and len(formatted_symbol) == 5:
-            formatted_symbol = f"{formatted_symbol}.IS"
+        """Fundamental sheets via yfinance. Degrades gracefully to empty dicts —
+        the fundamental engine treats missing data as a neutral contribution.
+        (yfinance's fundamentals endpoint is crumb-locked; direct-API port is a
+        later phase.)"""
+        fsym = _format_symbol(symbol)
 
         def _fetch_sheets():
-            ticker = yf.Ticker(formatted_symbol)
-            # retrieve info dict, financials and balance sheet DataFrames
+            ticker = yf.Ticker(fsym)
             info = ticker.info
             financials = ticker.quarterly_financials
             balance_sheet = ticker.quarterly_balance_sheet
@@ -157,21 +195,19 @@ class YahooCollector(BaseCollector):
 
         try:
             info, financials, balance_sheet = await asyncio.to_thread(_fetch_sheets)
-            
-            # Map financial data to standard dictionaries
             return {
                 "info": info,
                 "financials": financials.to_dict() if not financials.empty else {},
                 "balance_sheet": balance_sheet.to_dict() if not balance_sheet.empty else {},
             }
         except Exception as e:
-            logger.error(f"Error fetching financials from yfinance for {symbol}: {str(e)}")
+            logger.warning("Financials unavailable for %s (graceful degrade): %s", symbol, e)
             return {"info": {}, "financials": {}, "balance_sheet": {}}
 
     async def fetch_orderbook(self, symbol: str) -> Dict[str, Any]:
-        """Yahoo Finance does not serve orderbook depth. Return empty."""
+        """Yahoo does not serve orderbook depth."""
         return {"bids": [], "asks": []}
 
     async def close(self) -> None:
-        """No-op: yfinance manages its own session per call, nothing to close."""
+        """No persistent client (one created per request) — nothing to close."""
         return None
