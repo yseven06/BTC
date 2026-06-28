@@ -35,6 +35,7 @@ desktop.ini
 
 # Logs
 *.log
+*.err
 logs/
 
 # Database
@@ -49,3 +50,7 @@ coverage.xml
 # Misc
 *.bak
 *.tmp
+
+# Build cache / local tooling (artifacts — keep out of the repo)
+*.tsbuildinfo
+.claude/settings.local.json
