@@ -165,6 +165,16 @@ export default function DashboardPage() {
   const avgReturn = perf?.average_return ?? 0;
   const fngValue = fng?.value ?? 50;
 
+  // Win rate's true denominator is win + loss + breakeven (the canonical
+  // platform definition). Derive shares from the SAME denominator so the cards
+  // are internally consistent: wins are `winRate`% of resolved, losses are
+  // `lossShare`% — they don't sum to 100 because breakeven takes the rest.
+  const winCount = perf?.win_count ?? 0;
+  const lossCount = perf?.loss_count ?? 0;
+  const breakevenCount = perf?.breakeven_count ?? 0;
+  const resolvedCount = winCount + lossCount + breakevenCount;
+  const lossShare = resolvedCount ? Math.round((lossCount / resolvedCount) * 100) : 0;
+
   // "Son Sinyaller" widget only needs the newest 6, but the asset-distribution
   // pie needs a much larger sample — otherwise it's just 6 equally-weighted
   // slices that look like a real allocation but aren't.
@@ -194,8 +204,8 @@ export default function DashboardPage() {
 
   const perfCards = [
     { label: 'Toplam Getiri', value: `${totalReturnPct >= 0 ? '+' : ''}${totalReturnPct.toFixed(2)}%`, color: totalReturnPct >= 0 ? 'text-bullish' : 'text-bearish' },
-    { label: 'Kazanılan İşlemler', value: `${perf?.win_count ?? 0}`, sub: `↗ ${winRate.toFixed(0)}%`, color: 'text-bullish' },
-    { label: 'Kaybedilen İşlemler', value: `${perf?.loss_count ?? 0}`, sub: `↘ ${(100 - winRate).toFixed(0)}%`, color: 'text-bearish' },
+    { label: 'Kazanılan İşlemler', value: `${winCount}`, sub: `↗ ${winRate.toFixed(0)}%`, color: 'text-bullish' },
+    { label: 'Kaybedilen İşlemler', value: `${lossCount}`, sub: `↘ ${lossShare}%`, color: 'text-bearish' },
     { label: 'Ortalama Getiri', value: `${avgReturn >= 0 ? '+' : ''}${avgReturn.toFixed(2)}%`, color: 'text-accent-secondary' },
   ];
 
@@ -312,14 +322,11 @@ export default function DashboardPage() {
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Başarı Oranı</span>
             <h3 className="text-3xl font-bold font-mono mt-1 text-bullish">{winRate.toFixed(0)}%</h3>
             <span className="text-[10px] text-text-muted font-semibold mt-1 block">
-              {/* Win rate is only ever win/(win+loss) — breakeven/expired/
-                  invalidated closes don't count toward it. Labeling this
-                  count as "kapanan işlem" (closed trades) reads as directly
-                  comparable to the "Bu Dönemde Kapanan İşlem" card above,
-                  which counts ALL closed outcomes — so a smaller all-time
-                  number here looked like a contradiction. This is the
-                  win+loss subset specifically, not every closed signal. */}
-              tüm zamanlar · {(perf?.win_count ?? 0) + (perf?.loss_count ?? 0)} kazanan/kaybeden işlem
+              {/* Win rate = win / (win + loss + breakeven) — the canonical
+                  platform definition (breakeven dilutes it, which is why this
+                  is below 50% even though wins outnumber losses). Show the full
+                  resolved breakdown so the percentage is self-consistent. */}
+              tüm zamanlar · {winCount}G / {lossCount}K / {breakevenCount}BE
             </span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-bullish/10 border border-bullish/20 flex items-center justify-center transition-shadow duration-300 group-hover:shadow-glow-bullish">
