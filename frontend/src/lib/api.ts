@@ -360,8 +360,42 @@ export interface SignalIntelligence {
   bars_to_outcome: number | null;
 }
 
+// Intelligence is the heaviest per-signal call (it reads coin-memory +
+// similarity) and was being fired many times per page render (parent re-fetches
+// remount the panel), pressuring the DB pool into intermittent 503s. Dedupe
+// concurrent + near-term repeats (shared in-flight promise + short success
+// cache) and retry once on a transient failure. Backend is untouched.
+const _intelCache = new Map<string, { ts: number; data: SignalIntelligence }>();
+const _intelInflight = new Map<string, Promise<SignalIntelligence>>();
+const INTEL_TTL_MS = 15_000;
+
 export async function fetchSignalIntelligence(signalId: string): Promise<SignalIntelligence> {
-  return apiFetch<SignalIntelligence>(`/api/v1/signals/${signalId}/intelligence`);
+  const cached = _intelCache.get(signalId);
+  if (cached && Date.now() - cached.ts < INTEL_TTL_MS) return cached.data;
+
+  const inflight = _intelInflight.get(signalId);
+  if (inflight) return inflight;
+
+  const path = `/api/v1/signals/${signalId}/intelligence`;
+  const run = (async () => {
+    try {
+      return await apiFetch<SignalIntelligence>(path);
+    } catch {
+      // one retry smooths a transient failure (e.g. a brief 503 under load)
+      await new Promise((r) => setTimeout(r, 400));
+      return await apiFetch<SignalIntelligence>(path);
+    }
+  })()
+    .then((d) => {
+      _intelCache.set(signalId, { ts: Date.now(), data: d });
+      return d;
+    })
+    .finally(() => {
+      _intelInflight.delete(signalId);
+    });
+
+  _intelInflight.set(signalId, run);
+  return run;
 }
 
 // ---------------------------------------------------------------------------
