@@ -5,7 +5,7 @@ Covers signal listing, detail views, and performance tracking responses.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -187,7 +187,11 @@ class BacktestRequest(BaseModel):
     initial_capital: float = 10000.0
     risk_pct: float = 2.0
     max_age: int = 48
-    execution_model: str = "conservative"
+    # Inside-bar ambiguity model. 'conservative' (SL wins) is canonical — it matches
+    # the LIVE tracker + resolution_core default and is the model any BP2 gate run must
+    # use; 'optimistic'/'neutral' are sensitivity-analysis only. Validated (invalid
+    # values now 422 instead of silently falling through to neutral).
+    execution_model: Literal["conservative", "optimistic", "neutral"] = "conservative"
 
 
 class BacktestResponse(BaseModel):

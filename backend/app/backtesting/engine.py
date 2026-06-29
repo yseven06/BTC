@@ -307,7 +307,14 @@ class BacktestEngine:
                 "drawdown": round(dd, 2),
             })
 
-            # 2. Check for New Signal (only if no open trades to prevent overlap in simulation)
+            # 2. Check for New Signal — SINGLE-POSITION SAMPLING (BUG-14): the backtest
+            # holds at most one position at a time (the len==0 guard below) to avoid
+            # double-allocating capital, whereas PRODUCTION issues independent signals
+            # regardless of open positions. The backtest sample is therefore sparser and
+            # biased toward periods with no open trade — read its win-rate / profit-factor
+            # as BEFORE/AFTER deltas (vs a baseline run), NOT as absolute live
+            # expectations. Documented, not changed (a configurable-overlap mode is
+            # BP2-gated and deferred).
             # IMPORTANT: The signal is generated from data up to and including bar i
             # (the closed bar).  We then enter on bar i+1's open price to eliminate
             # lookahead bias — you cannot trade the close of the candle that just
