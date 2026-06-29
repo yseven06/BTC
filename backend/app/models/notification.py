@@ -1,36 +1,39 @@
 """
 NotificationSettings database model.
 
-Stores Telegram delivery configuration. Single global row (singleton)
-keyed by a fixed UUID so the app can fetch/update it without a user context.
+**Per-user** Telegram delivery configuration — exactly one row per user. This
+replaces the old global singleton: a user's settings (bot token, chat id,
+thresholds) never affect any other user.
 """
 
 import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.database import Base
 
-# Fixed singleton id so there is always at most one settings row.
-SETTINGS_SINGLETON_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
-
 
 class NotificationSettings(Base):
-    """
-    Global notification/delivery settings.
+    """Per-user notification/delivery settings (Telegram).
 
     Attributes:
-        telegram_enabled: Master switch for Telegram delivery.
-        telegram_bot_token: The user's Telegram bot token (from @BotFather).
-        telegram_chat_id: The destination chat/channel id.
-        min_confidence: Only notify when signal confidence >= this.
-        notify_hold: Whether to also send notifications for HOLD signals.
+        user_id: Owner — unique, so there is at most one settings row per user.
+        telegram_enabled: Master switch for this user's Telegram delivery.
+        telegram_bot_token: The user's own Telegram bot token (from @BotFather).
+        telegram_chat_id: The user's destination chat/channel id.
+        min_confidence: Only notify this user when signal confidence >= this.
+        notify_hold: Whether this user also wants HOLD-signal notifications.
     """
 
     __tablename__ = "notification_settings"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=SETTINGS_SINGLETON_ID)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False, unique=True, index=True,
+    )
     telegram_enabled = Column(Boolean, nullable=False, default=False)
     telegram_bot_token = Column(String(255), nullable=True)
     telegram_chat_id = Column(String(64), nullable=True)
@@ -41,4 +44,4 @@ class NotificationSettings(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<NotificationSettings(telegram_enabled={self.telegram_enabled})>"
+        return f"<NotificationSettings(user_id={self.user_id}, telegram_enabled={self.telegram_enabled})>"
