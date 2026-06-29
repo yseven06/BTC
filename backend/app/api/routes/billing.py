@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.admin import require_admin
 from app.auth.dependencies import get_current_user
+from app.challenge import require_challenge
 from app.config import get_settings
 from app.database import get_db
 from app.rate_limit import limiter, CHECKOUT_LIMIT
@@ -149,6 +150,7 @@ async def start_checkout(
     payload: CheckoutRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _challenge: None = Depends(require_challenge("checkout", allow_role_bypass=True)),
 ) -> CheckoutResponse:
     """
     Create a Stripe Checkout session for the chosen tier+cycle.

@@ -20,6 +20,7 @@ from app.auth.password import hash_password, verify_password
 from app.config import get_settings
 from app.database import get_db
 from app.rate_limit import limiter, LOGIN_LIMIT, REGISTER_LIMIT, REFRESH_LIMIT
+from app.challenge import require_challenge, record_auth_failure, clear_auth_failures
 from app.services.consent import record_consent
 from app.models.user import AuthProvider, Language, User
 from app.schemas.user import (
@@ -61,6 +62,7 @@ async def register(
     request: Request,
     payload: UserCreate,
     db: AsyncSession = Depends(get_db),
+    _challenge: None = Depends(require_challenge("register")),
 ) -> TokenResponse:
     """
     Register a new user with email and password.
@@ -141,6 +143,7 @@ async def login(
     request: Request,
     payload: UserLogin,
     db: AsyncSession = Depends(get_db),
+    _challenge: None = Depends(require_challenge("login")),
 ) -> TokenResponse:
     """
     Authenticate a user with email and password.
@@ -151,12 +154,14 @@ async def login(
     user = result.scalar_one_or_none()
 
     if user is None or user.password_hash is None:
+        record_auth_failure(request)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password.",
         )
 
     if not verify_password(payload.password, user.password_hash):
+        record_auth_failure(request)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password.",
@@ -168,6 +173,7 @@ async def login(
             detail="User account is deactivated.",
         )
 
+    clear_auth_failures(request)
     logger.info("User logged in: %s", user.email)
     return _create_token_response(user)
 
@@ -182,6 +188,7 @@ async def google_login(
     request: Request,
     payload: GoogleLoginRequest,
     db: AsyncSession = Depends(get_db),
+    _challenge: None = Depends(require_challenge("google_login")),
 ) -> TokenResponse:
     """
     Authenticate or register a user via Google OAuth2.
@@ -192,6 +199,7 @@ async def google_login(
     try:
         google_data = await verify_google_token(payload.token)
     except GoogleOAuthError as e:
+        record_auth_failure(request)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e.message),
@@ -229,6 +237,7 @@ async def google_login(
             detail="User account is deactivated.",
         )
 
+    clear_auth_failures(request)
     return _create_token_response(user)
 
 
