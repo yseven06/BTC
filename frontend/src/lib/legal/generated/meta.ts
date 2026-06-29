@@ -7,7 +7,8 @@ export const LEGAL_ORDER: string[] = [
   "cerez-politikasi",
   "risk-bildirimi",
   "mesafeli-satis",
-  "ticari-ileti"
+  "ticari-ileti",
+  "iletisim-kunye"
 ];
 export const LEGAL_META: Record<string, LegalDocMeta> = {
   "acik-riza": {
@@ -35,6 +36,15 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "effectiveDate": "2026-06-29",
     "locale": "tr",
     "hash": "23e2afb902305f92607084bf640dba28482c94a01b78c5a604921662095d936a",
+    "reconsentOnMinor": false
+  },
+  "iletisim-kunye": {
+    "slug": "iletisim-kunye",
+    "title": "İletişim ve Künye",
+    "version": "0.9.1",
+    "effectiveDate": "2026-06-29",
+    "locale": "tr",
+    "hash": "e9d574799da7b1db6349dbdc94b99d7cba98519126c1316ee755e1b185f589de",
     "reconsentOnMinor": false
   },
   "kullanim-kosullari": {

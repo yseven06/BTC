@@ -26,6 +26,7 @@ const PREFERRED_ORDER = [
   'risk-bildirimi',
   'mesafeli-satis',
   'ticari-ileti',
+  'iletisim-kunye',
 ];
 
 function parseFrontmatter(raw) {
