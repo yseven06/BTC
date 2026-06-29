@@ -21,6 +21,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
@@ -28,7 +29,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.rate_limit import limiter, CHECKOUT_LIMIT
 from app.models.subscription import (
-    BillingCycle, Payment, Subscription,
+    BillingCycle, Payment, StripeEvent, Subscription,
     SubscriptionStatus, SubscriptionTier,
 )
 from app.models.user import User
@@ -268,12 +269,130 @@ async def cancel_subscription(
     return _to_response(sub)
 
 
+# ─── Stripe webhook helpers (Stripe = single source of truth) ─────────────────
+
+# Stripe subscription.status → our SubscriptionStatus.
+_STRIPE_STATUS_MAP = {
+    "active": SubscriptionStatus.ACTIVE,
+    "trialing": SubscriptionStatus.TRIAL,
+    "past_due": SubscriptionStatus.PAST_DUE,
+    "unpaid": SubscriptionStatus.PAST_DUE,
+    "canceled": SubscriptionStatus.CANCELED,
+    "incomplete": SubscriptionStatus.PAST_DUE,
+    "incomplete_expired": SubscriptionStatus.EXPIRED,
+}
+
+
+def _ts(unix) -> Optional[datetime]:
+    return datetime.fromtimestamp(unix, tz=timezone.utc) if unix else None
+
+
+def _apply_subscription_object(sub: Subscription, obj: Dict[str, Any]) -> None:
+    """Mirror a Subscription row from a Stripe Subscription object (created/updated/
+    deleted). Pure state-sync — Stripe is authoritative."""
+    meta = obj.get("metadata") or {}
+    if meta.get("tier"):
+        try:
+            sub.tier = SubscriptionTier(meta["tier"])
+        except ValueError:
+            pass
+    if meta.get("cycle"):
+        try:
+            sub.billing_cycle = BillingCycle(meta["cycle"])
+        except ValueError:
+            pass
+    sub.status = _STRIPE_STATUS_MAP.get(obj.get("status"), sub.status)
+    sub.current_period_start = _ts(obj.get("current_period_start")) or sub.current_period_start
+    sub.current_period_end = _ts(obj.get("current_period_end")) or sub.current_period_end
+    sub.cancel_at_period_end = bool(obj.get("cancel_at_period_end"))
+    if obj.get("id"):
+        sub.stripe_subscription_id = obj["id"]
+    if obj.get("customer"):
+        sub.stripe_customer_id = obj["customer"]
+    # Fully ended → drop to FREE (access already governed by status/period_end).
+    if sub.status in (SubscriptionStatus.CANCELED, SubscriptionStatus.EXPIRED):
+        sub.tier = SubscriptionTier.FREE
+        sub.cancel_at_period_end = False
+
+
+async def _find_subscription(db, *, user_id=None, stripe_subscription_id=None):
+    if user_id:
+        res = await db.execute(select(Subscription).where(Subscription.user_id == user_id))
+        sub = res.scalar_one_or_none()
+        if sub:
+            return sub
+    if stripe_subscription_id:
+        res = await db.execute(
+            select(Subscription).where(Subscription.stripe_subscription_id == stripe_subscription_id)
+        )
+        return res.scalar_one_or_none()
+    return None
+
+
+async def _handle_checkout_completed(db, session: Dict[str, Any]) -> None:
+    """First activation after a successful Checkout (subscription mode). Payment rows
+    are recorded by invoice.paid (which fires for the first charge and every renewal)."""
+    meta = session.get("metadata") or {}
+    user_id = meta.get("user_id")
+    if not user_id:
+        return
+    sub = await _find_subscription(
+        db, user_id=user_id, stripe_subscription_id=session.get("subscription")
+    ) or await _get_or_create_subscription(db, user_id)
+    if meta.get("tier"):
+        try:
+            sub.tier = SubscriptionTier(meta["tier"])
+        except ValueError:
+            pass
+    if meta.get("cycle"):
+        try:
+            sub.billing_cycle = BillingCycle(meta["cycle"])
+        except ValueError:
+            pass
+    sub.status = SubscriptionStatus.ACTIVE
+    sub.cancel_at_period_end = False
+    if session.get("customer"):
+        sub.stripe_customer_id = session["customer"]
+    if session.get("subscription"):
+        sub.stripe_subscription_id = session["subscription"]
+    now = datetime.now(timezone.utc)
+    sub.current_period_start = sub.current_period_start or now
+    if not sub.current_period_end or sub.current_period_end < now:
+        months = int(meta.get("months") or (get_months(sub.billing_cycle) if sub.billing_cycle else 1))
+        sub.current_period_end = now + timedelta(days=30 * months)
+
+
+async def _handle_invoice_paid(db, invoice: Dict[str, Any]) -> None:
+    """First/recurring payment succeeded → ACTIVE + record a Payment row."""
+    sub = await _find_subscription(db, stripe_subscription_id=invoice.get("subscription"))
+    if not sub:
+        return
+    sub.status = SubscriptionStatus.ACTIVE
+    db.add(Payment(
+        user_id=sub.user_id,
+        amount=(invoice.get("amount_paid") or 0) / 100.0,
+        currency=(invoice.get("currency") or "usd").upper(),
+        tier=sub.tier,
+        billing_cycle=sub.billing_cycle or BillingCycle.MONTHLY,
+        method="stripe",
+        stripe_invoice_id=invoice.get("id"),
+        stripe_payment_intent_id=invoice.get("payment_intent"),
+    ))
+
+
+async def _handle_invoice_failed(db, invoice: Dict[str, Any]) -> None:
+    sub = await _find_subscription(db, stripe_subscription_id=invoice.get("subscription"))
+    if sub:
+        sub.status = SubscriptionStatus.PAST_DUE
+
+
 @router.post("/webhooks/stripe", summary="Stripe webhook")
 async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)) -> Dict[str, str]:
-    """Handle Stripe events (checkout.session.completed). Verifies signature."""
+    """Handle Stripe subscription lifecycle events. Verifies signature; **idempotent**
+    (each event id applied at most once). Stripe is the single source of truth —
+    subscription status is updated ONLY here, never from the client."""
     if not _stripe_configured():
         raise HTTPException(status_code=503, detail="Stripe yapılandırılmamış.")
-
     try:
         import stripe   # type: ignore
     except ImportError:
@@ -282,46 +401,47 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)) -
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
     webhook_secret = getattr(settings, "STRIPE_WEBHOOK_SECRET", "")
-
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
     except Exception as exc:
         logger.warning("Stripe webhook signature invalid: %s", exc)
         raise HTTPException(status_code=400, detail="invalid signature")
 
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
-        meta = session.get("metadata") or {}
-        user_id = meta.get("user_id")
-        tier_str = meta.get("tier")
-        cycle_str = meta.get("cycle")
-        if not (user_id and tier_str and cycle_str):
-            return {"status": "ignored"}
+    event_id = event["id"]
+    event_type = event["type"]
 
-        tier  = SubscriptionTier(tier_str)
-        cycle = BillingCycle(cycle_str)
-        months = int(meta.get("months", get_months(cycle)))
+    # Idempotency: never apply the same event twice (Stripe redelivers on failure).
+    seen = await db.execute(select(StripeEvent).where(StripeEvent.id == event_id))
+    if seen.scalar_one_or_none():
+        return {"status": "duplicate"}
 
-        sub = await _get_or_create_subscription(db, user_id)
-        now = datetime.now(timezone.utc)
-        sub.tier = tier
-        sub.status = SubscriptionStatus.ACTIVE
-        sub.billing_cycle = cycle
-        sub.current_period_start = now
-        sub.current_period_end = now + timedelta(days=30 * months)
-        sub.cancel_at_period_end = False
-        sub.stripe_customer_id = session.get("customer")
-        sub.stripe_subscription_id = session.get("subscription")
+    obj = event["data"]["object"]
+    try:
+        if event_type == "checkout.session.completed":
+            await _handle_checkout_completed(db, obj)
+        elif event_type in (
+            "customer.subscription.created",
+            "customer.subscription.updated",
+            "customer.subscription.deleted",
+        ):
+            sub = await _find_subscription(
+                db,
+                user_id=(obj.get("metadata") or {}).get("user_id"),
+                stripe_subscription_id=obj.get("id"),
+            )
+            if sub:
+                _apply_subscription_object(sub, obj)
+        elif event_type in ("invoice.paid", "invoice.payment_succeeded"):
+            await _handle_invoice_paid(db, obj)
+        elif event_type == "invoice.payment_failed":
+            await _handle_invoice_failed(db, obj)
+        # other event types are acknowledged (200) but not acted on
 
-        db.add(Payment(
-            user_id=user_id,
-            amount=session.get("amount_total", 0) / 100,
-            currency=(session.get("currency") or "usd").upper(),
-            tier=tier, billing_cycle=cycle, method="stripe",
-            stripe_session_id=session.get("id"),
-            stripe_payment_intent_id=session.get("payment_intent"),
-        ))
+        db.add(StripeEvent(id=event_id, type=event_type))
         await db.commit()
-        logger.info("Subscription activated for user %s → %s/%s", user_id, tier_str, cycle_str)
+    except IntegrityError:
+        # Concurrent redelivery inserted this event id first → treat as duplicate.
+        await db.rollback()
+        return {"status": "duplicate"}
 
     return {"status": "ok"}
