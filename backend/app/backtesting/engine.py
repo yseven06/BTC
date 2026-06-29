@@ -112,7 +112,7 @@ class BacktestEngine:
         df: pd.DataFrame,
         initial_capital: float = 10000.0,
         risk_pct: float = 2.0,  # 2% risk of current capital per trade
-        max_age: int = 48,      # Expiration after 48 bars
+        max_age: int = 48,      # signal lifetime in WALL-CLOCK HOURS (live = fixed 48h)
         execution_model: str = "conservative",
     ) -> BacktestReport:
         """Run step-by-step backtest simulation."""
@@ -121,6 +121,13 @@ class BacktestEngine:
         
         if n < min_bars + 10:
             raise ValueError(f"Insufficient history ({n} bars) for backtesting. Minimum required is {min_bars + 10} bars.")
+
+        # KEY1-c (D3): max_age is WALL-CLOCK HOURS — the live signal lifetime is a fixed
+        # 48h (timeframe-independent). Convert to a per-timeframe bar count so the backtest
+        # expires at the SAME real-time horizon as live (1h: 48 bars; 4h: 12; 15m: 192).
+        _TF_HOURS = {"1m": 1 / 60, "5m": 5 / 60, "15m": 0.25, "30m": 0.5,
+                     "1h": 1.0, "4h": 4.0, "1d": 24.0, "1w": 168.0}
+        max_age_bars = max(1, round(max_age / _TF_HOURS.get(timeframe, 1.0)))
 
         capital = initial_capital
         equity_curve: List[Dict[str, Any]] = []
@@ -162,7 +169,7 @@ class BacktestEngine:
             for trade in active_trades:
                 trade.age += 1
                 bar = (current_open, current_high, current_low, current_price)
-                if apply_backtest_bar(trade, trade.age - 1, bar, max_age):
+                if apply_backtest_bar(trade, trade.age - 1, bar, max_age_bars):
                     if trade.is_expired:
                         expired_count += 1
                     pnl_pct = (trade.realized_pnl_capital / trade.allocated_capital) * 100.0
@@ -265,42 +272,31 @@ class BacktestEngine:
                     if sig_type in ["STRONG_BUY", "BUY", "SELL", "STRONG_SELL"]:
                         trade_counter += 1
 
-                        # Entry is the OPEN of the NEXT bar — no lookahead bias
-                        next_open = float(opens[i + 1])
+                        # KEY1-c (D2): enter at the entry-zone MIDPOINT with the
+                        # UNSHIFTED published levels — the SAME assumption the LIVE
+                        # tracker makes (it fills at the zone midpoint and resolves the
+                        # signal's stop_loss/tp1/2/3 directly). This makes the backtest a
+                        # faithful mirror of live (a valid BP2 gate). No look-ahead: the
+                        # midpoint + levels come from data up to bar i (the closed bar);
+                        # only the post-signal bars (i+1 onward) drive resolution.
+                        entry_mid = (float(decision["entry_zone_low"]) + float(decision["entry_zone_high"])) / 2.0
 
-                        # Calculate allocated capital based on risk engine recommendations
+                        # Position size from the risk engine recommendation.
                         pos_pct = 5.0  # default fallback
                         for res in decision.get("engine_results", []):
                             if res["engine_name"] == "risk_management":
                                 pos_pct = res["supporting_data"].get("recommended_position_pct", 5.0)
-
                         allocated_capital = capital * (pos_pct / 100.0)
 
-                        # Scale SL and TP levels by the ratio of next-open to signal close
-                        # so that the RR structure relative to entry is preserved.
-                        signal_close = float(closes[i])
-                        if signal_close > 0 and direction == "bullish":
-                            offset = next_open - signal_close
-                            adj_sl  = decision["stop_loss"] + offset
-                            adj_tp1 = decision["tp1"]  + offset
-                            adj_tp2 = decision["tp2"]  + offset
-                            adj_tp3 = decision["tp3"]  + offset
-                        elif signal_close > 0 and direction == "bearish":
-                            offset = next_open - signal_close
-                            adj_sl  = decision["stop_loss"] + offset
-                            adj_tp1 = decision["tp1"]  + offset
-                            adj_tp2 = decision["tp2"]  + offset
-                            adj_tp3 = decision["tp3"]  + offset
-                        else:
-                            adj_sl  = decision["stop_loss"]
-                            adj_tp1 = decision["tp1"]
-                            adj_tp2 = decision["tp2"]
-                            adj_tp3 = decision["tp3"]
+                        adj_sl  = float(decision["stop_loss"])
+                        adj_tp1 = float(decision["tp1"])
+                        adj_tp2 = float(decision["tp2"])
+                        adj_tp3 = float(decision["tp3"])
 
                         new_trade = Trade(
                             id=f"T-{trade_counter}",
                             direction=direction,
-                            entry_price=next_open,
+                            entry_price=entry_mid,
                             stop_loss=adj_sl,
                             tp1=adj_tp1,
                             tp2=adj_tp2,
@@ -309,7 +305,7 @@ class BacktestEngine:
                             allocated_capital=allocated_capital,
                             entry_index=i + 1,
                             entry_time=timestamps[i + 1],
-                            state=new_walk_state(direction=direction, entry=next_open,
+                            state=new_walk_state(direction=direction, entry=entry_mid,
                                                  sl=adj_sl, tp1=adj_tp1, tp2=adj_tp2,
                                                  tp3=adj_tp3, execution_model=execution_model),
                         )
