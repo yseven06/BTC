@@ -1168,7 +1168,7 @@ export interface BacktestResult {
   loss_rate: number;
   profit_factor: number;
   sharpe_ratio: number;
-  sortino_ratio: number;
+  sortino_ratio: number | null;
   max_drawdown_pct: number;
   average_return_pct: number;
   average_rr: number;

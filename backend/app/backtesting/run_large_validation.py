@@ -117,10 +117,14 @@ async def main():
             returns = [t["return_pct"] for t in report.trades_log]
             avg_return = np.mean(returns) if returns else 0.0
             
-            # Sortino denominator: standard deviation of negative returns
+            # Sortino denominator: std of negative returns. Undefined when there
+            # are too few losers / zero downside variance — show n/a rather than a
+            # fabricated ratio (BUG-12, same fix as the engine).
             downside_returns = [r for r in returns if r < 0]
-            downside_std = np.std(downside_returns) if downside_returns else 0.001
-            sortino = round(avg_return / downside_std, 3) if downside_std > 0 else 0.0
+            if len(downside_returns) > 1 and float(np.std(downside_returns)) > 0:
+                sortino = round(avg_return / float(np.std(downside_returns)), 3)
+            else:
+                sortino = "n/a"
 
             monthly_performance = compute_monthly_breakdown(report.equity_curve)
 

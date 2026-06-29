@@ -201,7 +201,7 @@ class BacktestResponse(BaseModel):
     loss_rate: float
     profit_factor: float
     sharpe_ratio: float
-    sortino_ratio: float
+    sortino_ratio: Optional[float] = None  # None when undefined (no/low downside variance)
     max_drawdown_pct: float
     average_return_pct: float
     average_rr: float

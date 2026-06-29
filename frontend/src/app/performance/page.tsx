@@ -483,7 +483,7 @@ export default function PerformancePage() {
                   <GlassCard className="p-4 flex justify-between items-center">
                     <div>
                       <span className="text-[10px] font-bold text-text-muted uppercase">Sortino Oranı</span>
-                      <h4 className="text-xl font-bold font-mono text-text-primary mt-1">{backtestResult.sortino_ratio}</h4>
+                      <h4 className="text-xl font-bold font-mono text-text-primary mt-1">{backtestResult.sortino_ratio ?? '—'}</h4>
                     </div>
                     <div className="text-xs font-semibold text-bullish bg-bullish/10 px-2.5 py-1 rounded-lg">
                       Düşük Risk

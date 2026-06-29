@@ -81,7 +81,7 @@ class BacktestReport:
     loss_rate: float
     profit_factor: float
     sharpe_ratio: float
-    sortino_ratio: float
+    sortino_ratio: Optional[float]  # None when undefined (no/low downside variance)
     max_drawdown_pct: float
     average_return_pct: float
     average_rr: float
@@ -155,13 +155,12 @@ class BacktestEngine:
             for trade in active_trades:
                 trade.age += 1
                 
-                # Track extreme prices for drawdown/runup
-                if trade.direction == "bullish":
-                    trade.max_price_reached = max(trade.max_price_reached, current_high)
-                    trade.min_price_reached = min(trade.min_price_reached, current_low)
-                else:
-                    trade.max_price_reached = max(trade.max_price_reached, current_low)
-                    trade.min_price_reached = min(trade.min_price_reached, current_high)
+                # Track the true high/low envelope of the trade. Direction only
+                # changes how it is interpreted as adverse/favourable excursion
+                # below (BUG-13: the short branch previously fed lows into the
+                # adverse-high field, understating short max-drawdown).
+                trade.max_price_reached = max(trade.max_price_reached, current_high)
+                trade.min_price_reached = min(trade.min_price_reached, current_low)
 
                 # Check Stop Loss hit
                 sl_hit = current_low <= trade.current_sl if trade.direction == "bullish" else current_high >= trade.current_sl
@@ -400,19 +399,24 @@ class BacktestEngine:
         returns = [t["return_pct"] for t in trades_log]
         avg_return = sum(returns) / len(returns) if returns else 0.0
 
-        # Sharpe & Sortino Ratios (based on trade return values)
+        # Per-trade Sharpe & Sortino (NOT annualized, no risk-free term — ratios
+        # over the per-trade return distribution; surfaces should label them so).
         sharpe = 0.0
-        sortino = 0.0
+        sortino: Optional[float] = None
         if returns and len(returns) > 1:
             mean_ret = np.mean(returns)
             std_ret = np.std(returns)
-            # Sharpe: standard deviation of returns
             sharpe = (mean_ret / std_ret) if std_ret > 0 else 0.0
-            
-            # Sortino: standard deviation of downside returns only
+
+            # Sortino over downside returns only. Undefined (None) when there are
+            # too few losers or zero downside variance — do NOT fabricate a ratio
+            # from a sentinel std (BUG-12: the old 0.0001 emitted a fake ~5-figure
+            # ratio for any run with no losing trades).
             downside_ret = [r for r in returns if r < 0]
-            std_downside = np.std(downside_ret) if downside_ret else 0.0001
-            sortino = (mean_ret / std_downside) if std_downside > 0 else 0.0
+            if len(downside_ret) > 1:
+                std_downside = float(np.std(downside_ret))
+                if std_downside > 0:
+                    sortino = mean_ret / std_downside
 
         # Average Risk / Reward
         rr_vals = []
@@ -441,7 +445,7 @@ class BacktestEngine:
             loss_rate=round(loss_rate, 2),
             profit_factor=round(profit_factor, 2),
             sharpe_ratio=round(sharpe, 3),
-            sortino_ratio=round(sortino, 3),
+            sortino_ratio=(round(sortino, 3) if sortino is not None else None),
             max_drawdown_pct=round(max_drawdown, 2),
             average_return_pct=round(avg_return, 2),
             average_rr=round(avg_rr, 2),
