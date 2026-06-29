@@ -147,3 +147,15 @@ def get_months(cycle: BillingCycle) -> int:
         BillingCycle.SEMI_ANNUAL: 6,
         BillingCycle.YEARLY: 12,
     }.get(cycle, 1)
+
+
+def get_stripe_recurring(cycle: BillingCycle) -> Dict[str, object]:
+    """Stripe ``recurring`` params for a billing cycle (used by checkout in
+    subscription mode).
+
+    Uses ``interval='month'`` + ``interval_count = months`` so 1/3/6/12-month
+    cycles map uniformly (Stripe allows interval_count up to 12 for 'month').
+    The amount billed each interval is the per-cycle price from PLANS — e.g.
+    quarterly = the full 3-month price charged once every 3 months.
+    """
+    return {"interval": "month", "interval_count": get_months(cycle)}
