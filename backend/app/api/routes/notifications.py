@@ -13,7 +13,9 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.dependencies import get_current_user
 from app.database import get_db
+from app.models.user import User
 from app.notifications.service import get_or_create_settings
 from app.notifications.telegram import send_telegram_message
 from app.subscriptions.gating import require_feature
@@ -49,8 +51,11 @@ def _to_response(s) -> NotificationSettingsResponse:
 
 
 @router.get("/settings", response_model=NotificationSettingsResponse)
-async def get_settings(db: AsyncSession = Depends(get_db)) -> NotificationSettingsResponse:
-    """Return current notification settings (bot token is masked)."""
+async def get_settings(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> NotificationSettingsResponse:
+    """Return current notification settings (bot token is masked). Auth required."""
     s = await get_or_create_settings(db)
     return _to_response(s)
 
@@ -59,6 +64,7 @@ async def get_settings(db: AsyncSession = Depends(get_db)) -> NotificationSettin
 async def update_settings(
     payload: NotificationSettingsUpdate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
     _gate = Depends(require_feature("can_use_telegram")),
 ) -> NotificationSettingsResponse:
     """Update notification settings. Only provided fields are changed."""
@@ -82,8 +88,12 @@ async def update_settings(
 
 
 @router.post("/test")
-async def send_test(db: AsyncSession = Depends(get_db)) -> dict:
-    """Send a test Telegram message using the stored settings."""
+async def send_test(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _gate = Depends(require_feature("can_use_telegram")),
+) -> dict:
+    """Send a test Telegram message using the stored settings. Auth + feature gated."""
     s = await get_or_create_settings(db)
     if not s.telegram_bot_token or not s.telegram_chat_id:
         return {"ok": False, "error": "Bot token ve chat id gerekli."}
