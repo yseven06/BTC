@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, X, Crown, Zap, Sparkles } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import {
-  fetchPlans, fetchMySubscription, startCheckout, cancelSubscription,
+  fetchPlans, fetchMySubscription, startCheckout, cancelSubscription, recordCheckoutConsent,
   type Plan, type BillingCycle, type PlanPricing, type SubscriptionTier,
   type SubscriptionResponse,
 } from '@/lib/api';
@@ -13,6 +13,8 @@ import { cn } from '@/lib/utils';
 import { track } from '@/lib/analytics';
 import { AnalyticsEvent } from '@/lib/analytics-events';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
+import { CheckoutConfirmModal } from '@/components/billing/CheckoutConfirmModal';
+import { LEGAL_META } from '@/lib/legal/registry';
 
 const CYCLE_LABEL: Record<BillingCycle, string> = {
   monthly:     '1 Ay',
@@ -44,6 +46,7 @@ export default function PricingPage() {
   const [processing, setProcessing] = useState<SubscriptionTier | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [canceling, setCanceling] = useState(false);
+  const [pending, setPending] = useState<{ tier: SubscriptionTier; cycle: BillingCycle } | null>(null);
 
   // Detect cancel-from-Stripe redirect
   const canceled = search.get('canceled');
@@ -62,14 +65,40 @@ export default function PricingPage() {
     track(AnalyticsEvent.pricing_viewed);
   }, []);
 
-  const subscribe = async (tier: SubscriptionTier, overrideCycle?: BillingCycle) => {
+  // Open the pre-payment confirmation modal (shows terms + auto-renewal, collects consent).
+  const subscribe = (tier: SubscriptionTier, overrideCycle?: BillingCycle) => {
     if (tier === 'free') return;
-    track(AnalyticsEvent.checkout_started, { tier, billing_cycle: overrideCycle ?? cycle });
+    setPending({ tier, cycle: overrideCycle ?? cycle });
+  };
+
+  // After the user accepts in the modal: record checkout consent, then start payment.
+  const confirmCheckout = async () => {
+    if (!pending) return;
+    const { tier, cycle: cyc } = pending;
+    const plan = plans.find((p) => p.tier === tier);
+    const pricing = plan?.pricing.find((p) => p.cycle === cyc) ?? plan?.pricing[0];
+    const months = pricing?.months ?? 1;
+    const next = new Date();
+    next.setMonth(next.getMonth() + months);
+
+    track(AnalyticsEvent.checkout_started, { tier, billing_cycle: cyc });
     setProcessing(tier);
     try {
-      const r = await startCheckout(tier, overrideCycle ?? cycle);
+      // Record distance-sale + auto-renewal + withdrawal-waiver consent BEFORE payment
+      // (best-effort: never block the purchase if the audit infra is mid-migration).
+      await recordCheckoutConsent({
+        tier,
+        cycle: cyc,
+        amount_usd: pricing?.amount_usd ?? 0,
+        months,
+        next_charge_date: next.toISOString(),
+        document_version: LEGAL_META['mesafeli-satis']?.version ?? '0.0.0',
+        document_hash: LEGAL_META['mesafeli-satis']?.hash ?? '',
+        immediate_performance: true,
+      }).catch(() => {});
+
+      const r = await startCheckout(tier, cyc);
       if (r.mock) {
-        // Mock mode: immediately refresh and notify user
         router.push(r.url);
       } else {
         window.location.href = r.url;
@@ -78,6 +107,7 @@ export default function PricingPage() {
       alert('Ödeme başlatılamadı: ' + (e?.message ?? 'bilinmeyen hata'));
     } finally {
       setProcessing(null);
+      setPending(null);
     }
   };
 
@@ -294,6 +324,26 @@ export default function PricingPage() {
       </p>
 
       <InvestmentDisclaimer variant="inline" className="mx-auto max-w-2xl" />
+
+      {pending && (() => {
+        const plan = plans.find((p) => p.tier === pending.tier);
+        const pricing = plan?.pricing.find((p) => p.cycle === pending.cycle) ?? plan?.pricing[0];
+        const months = pricing?.months ?? 1;
+        const next = new Date();
+        next.setMonth(next.getMonth() + months);
+        return (
+          <CheckoutConfirmModal
+            planName={plan?.name ?? pending.tier}
+            cycleLabel={CYCLE_LABEL[pending.cycle]}
+            months={months}
+            amountUsd={pricing?.amount_usd ?? 0}
+            nextRenewalStr={next.toLocaleDateString('tr-TR')}
+            processing={processing === pending.tier}
+            onConfirm={confirmCheckout}
+            onClose={() => setPending(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

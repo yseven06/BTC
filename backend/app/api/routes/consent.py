@@ -57,6 +57,68 @@ async def record_cookie_consent(
     return {"status": "recorded"}
 
 
+class CheckoutConsentIn(BaseModel):
+    tier: str
+    cycle: str
+    amount_usd: float
+    months: int
+    next_charge_date: str
+    document_version: str
+    document_hash: str = ""
+    immediate_performance: bool = True
+
+
+@router.post("/checkout", summary="Record distance-sale + auto-renewal + withdrawal-waiver consent")
+async def checkout_consent(
+    payload: CheckoutConsentIn,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Records the consent the user gives at checkout BEFORE payment: acceptance of
+    the distance-sales / auto-renewal terms, and (if performance starts
+    immediately) the withdrawal-right waiver. Append-only, source=checkout.
+    """
+    details = {
+        "tier": payload.tier,
+        "cycle": payload.cycle,
+        "amount_usd": payload.amount_usd,
+        "months": payload.months,
+        "next_charge_date": payload.next_charge_date,
+    }
+    await record_consent(
+        db,
+        consent_type="distance_sale",
+        action="accepted",
+        source="checkout",
+        user_id=current_user.id,
+        document_slug="mesafeli-satis",
+        document_version=payload.document_version,
+        document_hash=payload.document_hash or None,
+        locale="tr",
+        request=request,
+        checkbox_states={"distance_sale": True, "auto_renewal": True},
+        details=details,
+    )
+    if payload.immediate_performance:
+        await record_consent(
+            db,
+            consent_type="withdrawal_waiver",
+            action="accepted",
+            source="checkout",
+            user_id=current_user.id,
+            document_slug="mesafeli-satis",
+            document_version=payload.document_version,
+            document_hash=payload.document_hash or None,
+            locale="tr",
+            request=request,
+            checkbox_states={"immediate_performance": True},
+            details=details,
+        )
+    return {"status": "recorded"}
+
+
 _RECONSENT_TYPES = ("tos", "privacy", "risk")
 
 

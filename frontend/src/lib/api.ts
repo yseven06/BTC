@@ -794,6 +794,17 @@ export async function recordCookieConsent(
   });
 }
 
+export async function recordCheckoutConsent(payload: {
+  tier: string; cycle: string; amount_usd: number; months: number;
+  next_charge_date: string; document_version: string; document_hash: string;
+  immediate_performance: boolean;
+}): Promise<void> {
+  await apiFetch('/api/v1/consent/checkout', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export type ConsentStatus = Record<string, string | null>;
 
 export async function getConsentStatus(): Promise<ConsentStatus> {
