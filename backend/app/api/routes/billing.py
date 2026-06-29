@@ -15,8 +15,9 @@ end-to-end.
 
 import json
 import logging
+import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
@@ -24,6 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.admin import require_admin
 from app.auth.dependencies import get_current_user
 from app.config import get_settings
 from app.database import get_db
@@ -62,6 +64,17 @@ class CheckoutResponse(BaseModel):
     url: str
     session_id: str
     mock: bool = False
+
+
+class PaymentResponse(BaseModel):
+    id: str
+    amount: float
+    currency: str
+    tier: str
+    billing_cycle: Optional[str] = None
+    method: str
+    stripe_invoice_id: Optional[str] = None
+    paid_at: datetime
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -288,6 +301,62 @@ async def cancel_subscription(
     await db.commit()
     await db.refresh(sub)
     return _to_response(sub)
+
+
+@router.get("/payments", summary="Current user's payment / invoice history")
+async def my_payments(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> List[PaymentResponse]:
+    """Payment & invoice history for the current user (newest first). Refund rows
+    appear with a negative amount and method='refund'."""
+    res = await db.execute(
+        select(Payment).where(Payment.user_id == current_user.id).order_by(Payment.paid_at.desc())
+    )
+    return [
+        PaymentResponse(
+            id=str(p.id), amount=float(p.amount), currency=p.currency, tier=p.tier.value,
+            billing_cycle=p.billing_cycle.value if p.billing_cycle else None,
+            method=p.method, stripe_invoice_id=p.stripe_invoice_id, paid_at=p.paid_at,
+        )
+        for p in res.scalars().all()
+    ]
+
+
+@router.post("/refund/{payment_id}", summary="Refund a payment (admin)")
+async def refund_payment(
+    payment_id: uuid.UUID,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """Admin-initiated Stripe refund of a payment; records a reversal Payment row
+    (negative amount, method='refund'). Money movement is performed by Stripe."""
+    res = await db.execute(select(Payment).where(Payment.id == payment_id))
+    payment = res.scalar_one_or_none()
+    if not payment:
+        raise HTTPException(status_code=404, detail="Ödeme bulunamadı.")
+    if float(payment.amount) <= 0:
+        raise HTTPException(status_code=400, detail="Bu kayıt iade edilemez.")
+    if not payment.stripe_payment_intent_id:
+        raise HTTPException(status_code=400, detail="Bu ödeme için Stripe ödeme kaydı yok; iade edilemez.")
+    if not _stripe_configured():
+        raise HTTPException(status_code=503, detail="Stripe yapılandırılmamış.")
+    try:
+        import stripe   # type: ignore
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        refund = stripe.Refund.create(payment_intent=payment.stripe_payment_intent_id)
+    except Exception as exc:
+        logger.error("Stripe refund failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=502, detail="İade sırasında ödeme sağlayıcısına ulaşılamadı.")
+    db.add(Payment(
+        user_id=payment.user_id, amount=-abs(float(payment.amount)), currency=payment.currency,
+        tier=payment.tier, billing_cycle=payment.billing_cycle, method="refund",
+        stripe_payment_intent_id=payment.stripe_payment_intent_id,
+        stripe_invoice_id=payment.stripe_invoice_id,
+        metadata_json={"refund_id": getattr(refund, "id", None), "original_payment_id": str(payment.id)},
+    ))
+    await db.commit()
+    return {"status": "refunded", "refund_id": getattr(refund, "id", None)}
 
 
 # ─── Stripe webhook helpers (Stripe = single source of truth) ─────────────────
