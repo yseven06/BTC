@@ -794,6 +794,19 @@ export async function recordCookieConsent(
   });
 }
 
+export type ConsentStatus = Record<string, string | null>;
+
+export async function getConsentStatus(): Promise<ConsentStatus> {
+  return apiFetch<ConsentStatus>('/api/v1/consent/status');
+}
+
+export async function recordReconsent(consents: ConsentAcceptance[]): Promise<void> {
+  await apiFetch('/api/v1/consent/reconsent', {
+    method: 'POST',
+    body: JSON.stringify({ consents }),
+  });
+}
+
 export function logout(): void {
   clearAuthTokens();
 }

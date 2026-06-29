@@ -4,6 +4,7 @@ import { LanguageProvider } from "@/lib/language-context";
 import { AuthProvider } from "@/lib/auth-context";
 import { AnalyticsProvider } from "@/components/AnalyticsProvider";
 import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
+import { ReconsentGate } from "@/components/consent/ReconsentGate";
 import LayoutShell from "@/components/layout/LayoutShell";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -44,6 +45,7 @@ export default function RootLayout({
             <AnalyticsProvider />
             <LayoutShell>{children}</LayoutShell>
             <CookieConsentBanner />
+            <ReconsentGate />
           </AuthProvider>
         </LanguageProvider>
       </body>
