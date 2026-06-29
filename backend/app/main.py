@@ -124,7 +124,6 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "trademinds-backend",
-        "debug_mode": settings.DEBUG,
     }
 
 

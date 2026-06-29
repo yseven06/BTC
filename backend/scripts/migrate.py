@@ -30,7 +30,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.database import engine
+import app.main  # noqa: F401 — registers ALL models on Base.metadata for create_all
+from app.database import Base, engine
 
 _BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MIGRATIONS_DIR = os.path.join(_BACKEND, "migrations")
@@ -86,6 +87,12 @@ async def main(mode: str):
                 )
             print("STAMPED (marked applied, NOT run):", pending or "(none pending)")
         else:  # apply
+            # Ensure base schema first (idempotent: create_all only creates MISSING
+            # tables, never drops/alters). This is how a FRESH prod DB gets its base
+            # tables — create_all is no longer tied to app startup / DEBUG. On an
+            # existing DB it is a no-op. The 000X migrations then apply alterations.
+            await conn.run_sync(Base.metadata.create_all)
+            print("create_all: base schema ensured (idempotent)")
             if not pending:
                 print("Up to date — no pending migrations.")
             await conn.exec_driver_sql("SET lock_timeout = '5s'")

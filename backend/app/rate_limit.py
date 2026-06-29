@@ -44,12 +44,15 @@ __all__ = [
 
 
 def client_ip_key(request: Request) -> str:
-    """Rate-limit key = real client IP (left-most X-Forwarded-For, else peer)."""
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        first = forwarded.split(",")[0].strip()
-        if first:
-            return first
+    """Rate-limit / challenge key = the real client IP.
+
+    We deliberately do NOT trust the raw left-most ``X-Forwarded-For`` value — it
+    is fully client-controlled, so an attacker could forge it to dodge per-IP
+    limits (and the adaptive challenge). Instead we read the proxy-validated peer
+    via ``get_remote_address``. In production uvicorn runs with
+    ``--proxy-headers --forwarded-allow-ips`` so ``request.client.host`` is the
+    real client behind Railway/Cloudflare; in dev it is the direct peer.
+    """
     return get_remote_address(request)
 
 

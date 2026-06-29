@@ -8,7 +8,7 @@ Provides a singleton settings instance used across the application.
 from functools import lru_cache
 from typing import List
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -122,6 +122,27 @@ class Settings(BaseSettings):
                 return json.loads(v)
             return [origin.strip() for origin in v.split(",") if origin.strip()]
         return list(v)  # type: ignore[arg-type]
+
+    @model_validator(mode="after")
+    def _validate_production(self) -> "Settings":
+        """Fail-fast in production on unsafe defaults — refuse to start rather than
+        boot with a guessable JWT secret, DEBUG on, or a localhost DB/CORS."""
+        if self.ENVIRONMENT == "production":
+            problems = []
+            if self.DEBUG:
+                problems.append("DEBUG must be false in production")
+            if "change-me" in self.JWT_SECRET or len(self.JWT_SECRET) < 32:
+                problems.append("JWT_SECRET must be a strong (>=32 char) non-default value")
+            if "localhost" in self.DATABASE_URL or "127.0.0.1" in self.DATABASE_URL:
+                problems.append("DATABASE_URL must point to the production database (not localhost)")
+            if any(("localhost" in o or "127.0.0.1" in o) for o in self.CORS_ORIGINS):
+                problems.append("CORS_ORIGINS must be the production frontend domain (no localhost)")
+            if problems:
+                raise RuntimeError(
+                    "Unsafe production configuration — refusing to start:\n  - "
+                    + "\n  - ".join(problems)
+                )
+        return self
 
     @property
     def is_production(self) -> bool:
