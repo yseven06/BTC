@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { listLegalDocs } from '@/lib/legal/registry';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
+import { CookieSettingsLink } from '@/components/consent/CookieSettingsLink';
 
 /**
  * Global footer — rendered on every page (public via LayoutShell, authenticated
@@ -49,6 +50,9 @@ export function Footer() {
                 >
                   Tüm Yasal Belgeler
                 </Link>
+              </li>
+              <li>
+                <CookieSettingsLink className="text-xs text-text-muted transition-colors hover:text-text-primary hover:underline" />
               </li>
             </ul>
           </nav>
