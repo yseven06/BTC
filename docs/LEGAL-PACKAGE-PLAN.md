@@ -1,9 +1,13 @@
 # Legal Paketi — Kapsam & Uygulama Planı (Madde 5)
 
 **Durum:** Onaylandı (2026-06-29). Kod adımları aşağıdaki commit sırasıyla.
-**⚠️ Hukuki not:** Bu belge mühendislik planıdır, hukuki danışmanlık değildir. Tüm
-yasal metinler **yayın öncesi Türkiye sermaye piyasaları + KVKK uzmanı bir avukata
-onaylatılacaktır.** Metinler "AVUKAT ONAYI BEKLİYOR" işaretiyle taslak yazılır.
+**⚠️ Hukuki not:** Bu belge mühendislik planıdır, hukuki danışmanlık değildir. Yasal
+metinler **uluslararası best practice + SPK + KVKK + ETK + tüketici mevzuatına** göre
+hazırlanır ve bu standartlara göre sürekli geliştirilir; her değişiklik için **"avukat
+bekleniyor" varsayımı YAPILMAZ** (avukat nihai gözden geçirme şimdilik beklemede ve
+opsiyoneldir, metin geliştirmenin önünde blokaj değildir). Şirket kuruluşundan önce
+**yalnızca şirket bilgileri** doldurulur. Bağlayıcı ilkeler:
+[PRODUCT-LEGAL-PRINCIPLES.md](./PRODUCT-LEGAL-PRINCIPLES.md).
 
 İlgili: [CAPTCHA-STRATEGY.md](./CAPTCHA-STRATEGY.md) (§9 KVKK ifşası buraya bağlanır),
 [production-readiness] sprint Madde 5.
@@ -16,7 +20,7 @@ onaylatılacaktır.** Metinler "AVUKAT ONAYI BEKLİYOR" işaretiyle taslak yazı
   yatırım kararı tamamen kullanıcıya aittir.** Kişiye özel yatırım danışmanlığı
   verilmez, yatırım tavsiyesi sunulmaz, geçmiş performans gelecekteki sonuçları
   garanti etmez. Metinler "eğitim sitesi" gibi küçümseyici değil, **profesyonel**;
-  en koruyucu (defensif) dille. Nihai yayın öncesi avukat onayı.
+  en koruyucu (defensif) dille; SPK/KVKK/ETK/tüketici + uluslararası best practice'e göre.
 - **Pazarlama/ETK:** Beta'da **pazarlama iletisi YOK** — yalnız zorunlu sistem
   e-postaları (hesap, güvenlik, ödeme, fatura). ETK/İYS **altyapıya hazır ama pasif**
   (UI'da yer tutucu; İYS entegrasyonu sonraya). ETK aydınlatma dokümanı yine yazılır.
@@ -113,7 +117,9 @@ ETK/İYS opt-in akışı (pasif → aktif) ve EN çeviri **ertelenen** opsiyonel
 Her commit ayrı doğrulama + rapor. TM v2/scheduler/Signal Generator/BIST/veri
 toplamaya dokunulmaz.
 
-## 8. Açık kalan (avukat/işletme) noktalar
+## 8. Açık kalan (işletme/mevzuat) noktalar
+> Bu maddeler yukarıdaki çerçevelere göre **proaktif** ele alınır; "avukat bekleniyor" diye
+> ertelenmez. Public yayın için **tek zorunlu blokaj: gerçek şirket bilgileri**.
 - SPK yetkilendirme posizyonu nihai onayı (lansman öncesi hard gate).
 - Veri sorumlusu tüzel kişilik + VERBİS kaydı gerekliliği.
 - Yurt dışı aktarım mekanizması (Sentry/PostHog/Vercel/Supabase alt-işleyiciler).

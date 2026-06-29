@@ -41,8 +41,12 @@ konumlanmaz.
 5. **Şirket bilgileri.** Public yayına kadar placeholder. Yayından önce gerçek **unvan,
    MERSİS, vergi no, adres, KEP, resmi iletişim** ile doldurulur.
 
-6. **Hukuki metin sürümü.** Metinler **v0.9** kalır; public yayın öncesi avukat onayı +
-   şirket bilgileri ile **v1.0**'a yükseltilir.
+6. **Hukuki metin standardı ve sürümü.** Metinler **uluslararası best practice + SPK +
+   KVKK + ETK + tüketici mevzuatına** göre hazırlanır ve bu standartlara göre sürekli
+   geliştirilir. Her değişiklik için **"avukat bekleniyor" varsayımı yapılmaz** (avukat
+   nihai gözden geçirme şimdilik beklemede ve opsiyoneldir; metin geliştirmenin önünde
+   blokaj değildir). Şirket kuruluşundan önce **yalnızca şirket bilgileri** (unvan/MERSİS/
+   vergi/adres/KEP) doldurulur. Metinler şu an **v0.9**; public yayın öncesi **v1.0**'a yükseltilir.
 
 7. **KVKK ayrımı.** Aydınlatma Metni, Açık Rıza ve Çerez onayları **ayrı** tutulur
    (`aydinlatma-metni`, `acik-riza`, `cerez-politikasi`).
@@ -76,8 +80,10 @@ Kod tabanı 10 prensibe karşı 7-boyutlu adversarial workflow denetiminden geç
 | Konumlandırma dili (1,2,3) | ✅ uygun ("karar destek"; "TP seviyesi") |
 | Hukuki metin / KVKK (5,6,7) | ✅ uygun (placeholder, v0.9.0, KVKK ayrı belgeler) |
 
-**Public yayın kapısı (gate):** (a) şirket placeholder'ları → gerçek bilgi; (b) avukat onayı;
-(c) hukuki metinler v0.9 → v1.0; (d) [SMOKE-TEST.md](./SMOKE-TEST.md) deploy-sonrası checklist.
+**Public yayın kapısı (gate):** (a) şirket placeholder'ları → gerçek bilgi (**tek zorunlu
+blokaj**); (b) hukuki metinler v0.9 → v1.0; (c) [SMOKE-TEST.md](./SMOKE-TEST.md) deploy-sonrası
+checklist. Avukat nihai gözden geçirme şimdilik beklemede; metinler yukarıdaki çerçevelere göre
+geliştirilmeye devam eder.
 
 ## Yeni iş geliştirirken (uyum kuralları)
 - Her yeni karar/analiz yüzeyine **tek-kaynak `InvestmentDisclaimer`** koy (uygun variant);
