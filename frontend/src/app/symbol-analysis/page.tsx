@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, TrendingDown, Search } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { LockedOverlay } from '@/components/ui/LockedOverlay';
 import { useTierLimits } from '@/hooks/useTierLimits';
@@ -114,6 +115,9 @@ export default function SymbolAnalysisPage() {
           Çift bazlı kazanma oranı · OB vs FVG karşılaştırma · kalite skoru
         </p>
       </div>
+
+      {/* Prensip 4: varlık-bazlı analiz yüzeyi — belirgin uyarı (tek kaynak) */}
+      <InvestmentDisclaimer variant="inline" />
 
       <div className="relative space-y-6">
         {isLocked && (

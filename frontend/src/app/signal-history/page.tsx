@@ -10,6 +10,7 @@ import {
   BarChart, Bar, XAxis, YAxis, AreaChart, Area,
 } from 'recharts';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import { ClosedSignalChartModal } from '@/components/ui/ClosedSignalChartModal';
 import { cn, formatAbsoluteTimeTR } from '@/lib/utils';
 import {
@@ -228,6 +229,9 @@ export default function SignalHistoryPage() {
           Geçmişte verilen sinyallerin TP / Stop Loss / Başabaş sonuçları — platform performansını burada değerlendirebilirsiniz
         </p>
       </div>
+
+      {/* Prensip 4: geçmiş/simüle performans yüzeyi — belirgin uyarı (tek kaynak) */}
+      <InvestmentDisclaimer variant="backtest" />
 
       {loading ? (
         <div className="flex flex-col items-center justify-center p-20 space-y-4">

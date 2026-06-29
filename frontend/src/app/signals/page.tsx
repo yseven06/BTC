@@ -9,6 +9,7 @@ import { useTierLimits } from '@/hooks/useTierLimits';
 import { SignalType } from '@/types';
 import { cn, formatAbsoluteTimeTR, formatPrice } from '@/lib/utils';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
+import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { PriceSkeleton } from '@/components/ui/PriceSkeleton';
@@ -958,6 +959,9 @@ export default function SignalsPage() {
           </button>
         </div>
       </div>
+
+      {/* Prensip 4: belirgin, sayfa-üstü yatırım uyarısı (tek kaynak: disclaimer.ts) */}
+      <InvestmentDisclaimer variant="inline" />
 
       {/* Free-tier limit nudge — bağlamsal yükseltme tetikleyicisi */}
       {!limits.loading && limits.tier === 'free' && (
