@@ -1,0 +1,17 @@
+{
+  "name": "TradeMinds AI",
+  "short_name": "TradeMinds",
+  "description": "AI destekli genel analiz ve karar destek platformu — kripto & BIST.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#020817",
+  "theme_color": "#020817",
+  "lang": "tr",
+  "dir": "ltr",
+  "icons": [
+    { "src": "/logo-icon-square.png", "sizes": "any", "type": "image/png", "purpose": "any" },
+    { "src": "/logo-icon-square.png", "sizes": "any", "type": "image/png", "purpose": "maskable" }
+  ]
+}

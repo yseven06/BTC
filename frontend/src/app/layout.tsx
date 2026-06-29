@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/language-context";
 import { AuthProvider } from "@/lib/auth-context";
@@ -6,6 +6,7 @@ import { AnalyticsProvider } from "@/components/AnalyticsProvider";
 import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
 import { ReconsentGate } from "@/components/consent/ReconsentGate";
 import LayoutShell from "@/components/layout/LayoutShell";
+import { PWARegister } from "@/components/PWARegister";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 const SITE_TITLE = "TradeMinds AI - Advanced Trading Intelligence Platform";
@@ -15,6 +16,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: SITE_TITLE,
   description: SITE_DESCRIPTION,
+  applicationName: "TradeMinds AI",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "TradeMinds" },
   openGraph: {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
@@ -32,6 +36,13 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#020817",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -43,6 +54,7 @@ export default function RootLayout({
         <LanguageProvider>
           <AuthProvider>
             <AnalyticsProvider />
+            <PWARegister />
             <LayoutShell>{children}</LayoutShell>
             <CookieConsentBanner />
             <ReconsentGate />
