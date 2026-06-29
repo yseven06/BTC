@@ -247,8 +247,12 @@ def generate_signal(
         risk_score = risk_engine_res.supporting_data["risk_score_raw"]
         risk_level = risk_engine_res.supporting_data["risk_level"]
     else:
-        risk_score = 5.0
-        risk_level = "medium"
+        # Risk engine produced no result — fail loud and default CONSERVATIVE
+        # (high), not a neutral medium that would understate risk on an engine
+        # failure (D5).
+        logger.warning("Risk engine result missing for %s — defaulting to conservative HIGH risk.", symbol)
+        risk_score = 7.0
+        risk_level = "high"
 
     # 6. Trade Levels (Entry, SL, TPs) based on ATR and S/R
     current_price = float(df["close"].iloc[-1])

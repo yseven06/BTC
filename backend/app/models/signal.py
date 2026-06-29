@@ -75,7 +75,9 @@ class Signal(Base):
         signal_type: Composite signal classification.
         confidence_score: Overall confidence (0-100).
         probability_score: Statistical win probability (0-100).
-        risk_score: Risk assessment score (0-100).
+        risk_score: Composite risk score on a 1-10 scale (1=lowest risk,
+            10=highest). Canonical single-source scale — every surface (PDF,
+            explanations, UI) renders it as "X/10". NOT a 0-100 value.
         risk_level: Categorical risk level.
         direction: Predicted market direction.
         entry_zone_low: Lower bound of recommended entry.
@@ -108,7 +110,7 @@ class Signal(Base):
     )
     confidence_score = Column(Numeric(precision=5, scale=2), nullable=False)
     probability_score = Column(Numeric(precision=5, scale=2), nullable=True)
-    risk_score = Column(Numeric(precision=5, scale=2), nullable=True)
+    risk_score = Column(Numeric(precision=5, scale=2), nullable=True)  # 1-10 scale (canonical; see docstring)
     risk_level = Column(
         Enum(RiskLevel, name="risk_level", create_constraint=True),
         nullable=False,

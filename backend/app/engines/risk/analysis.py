@@ -108,17 +108,23 @@ def analyze_risk(
             if rr < 1.5:
                 findings.append("Warning: Risk/Reward ratio is suboptimal (< 1:1.5)")
 
-    # 3. Position Sizing
-    # Fixed fractional sizing: Position Size = (Portfolio * Risk%) / (Entry - SL)
-    # If SL is not provided, use a 2x ATR distance
-    sl_dist = abs(entry - stop_loss) if (entry and stop_loss) else (atr_val * 2.0)
-    sl_pct = (sl_dist / current_price) * 100.0
-    
-    # Position size as percentage of total portfolio
-    recommended_pct = (risk_pct / sl_pct) * 100.0 if sl_pct > 0 else 5.0
-    recommended_pct = max(0.5, min(25.0, recommended_pct))  # Cap position size between 0.5% and 25%
+    # 3. Position Sizing — fixed fractional: size = risk% / (SL distance %).
+    # Use explicit None checks (a legitimate price of 0.0 must not fall through a
+    # truthiness guard); when SL is not supplied fall back to a 2x ATR distance.
+    # Refuse to size a degenerate stop (entry == SL -> sl_pct 0) rather than
+    # silently emitting an arbitrary 5% (BUG-5).
+    if entry is not None and stop_loss is not None:
+        sl_dist = abs(entry - stop_loss)
+    else:
+        sl_dist = atr_val * 2.0
+    sl_pct = (sl_dist / current_price) * 100.0 if current_price > 0 else 0.0
 
-    findings.append(f"Recommended Position Size: {recommended_pct:.1f}% of portfolio (risking {risk_pct}% on trade)")
+    if sl_pct > 0:
+        recommended_pct = max(0.5, min(25.0, (risk_pct / sl_pct) * 100.0))  # cap 0.5%-25%
+        findings.append(f"Recommended Position Size: {recommended_pct:.1f}% of portfolio (risking {risk_pct}% on trade)")
+    else:
+        recommended_pct = 0.0
+        findings.append("Warning: stop-loss distance is zero or undefined — position size cannot be computed.")
 
     # 4. Max Drawdown in lookback period
     peak = df["close"].cummax()
