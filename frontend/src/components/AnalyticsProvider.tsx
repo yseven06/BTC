@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { useTierLimits } from '@/hooks/useTierLimits';
 import { initAnalytics, identify, reset, pageview, setUserTier } from '@/lib/analytics';
+import { onConsentChange } from '@/lib/consent/cookie-consent';
+import { recordCookieConsent } from '@/lib/api';
 
 /**
  * Wires the analytics facade to app lifecycle: init once, keep `user_tier`
@@ -42,6 +44,14 @@ export function AnalyticsProvider() {
   useEffect(() => {
     if (pathname) pageview(pathname);
   }, [pathname]);
+
+  // Mirror cookie-consent changes to the server ConsentLog for logged-in users
+  // (anonymous consent stays client-side).
+  useEffect(() => {
+    return onConsentChange((c) => {
+      if (user) recordCookieConsent(c.analytics, c.version, 'tr').catch(() => {});
+    });
+  }, [user]);
 
   return null;
 }

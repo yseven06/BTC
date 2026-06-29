@@ -777,6 +777,15 @@ export async function loginWithGoogle(idToken: string): Promise<TokenResponse> {
   });
 }
 
+export async function recordCookieConsent(
+  analytics: boolean, version: number, locale?: string,
+): Promise<void> {
+  await apiFetch('/api/v1/consent/cookie', {
+    method: 'POST',
+    body: JSON.stringify({ analytics, version, locale }),
+  });
+}
+
 export function logout(): void {
   clearAuthTokens();
 }

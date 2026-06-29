@@ -105,6 +105,16 @@ class User(Base):
         onupdate=func.now(),
     )
 
+    # --- Consent current-state mirror (immutable history lives in consent_logs) ---
+    # Quick "what does this user currently allow / what did they accept" fields;
+    # the full audit trail is the append-only ConsentLog.
+    terms_accepted_at = Column(DateTime(timezone=True), nullable=True)
+    privacy_acked_at = Column(DateTime(timezone=True), nullable=True)
+    risk_acked_at = Column(DateTime(timezone=True), nullable=True)
+    marketing_consent = Column(Boolean, nullable=False, default=False, server_default="false")
+    analytics_consent = Column(Boolean, nullable=False, default=False, server_default="false")
+    legal_version = Column(String(20), nullable=True)
+
     # Relationships
     watchlists = relationship("Watchlist", back_populates="user", cascade="all, delete-orphan")
     portfolios = relationship("Portfolio", back_populates="user", cascade="all, delete-orphan")

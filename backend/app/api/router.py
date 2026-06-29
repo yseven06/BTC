@@ -20,6 +20,7 @@ from app.api.routes.billing import router as billing_router
 from app.api.routes.macro import router as macro_router
 from app.api.routes.admin import router as admin_router
 from app.api.routes.reports import router as reports_router
+from app.api.routes.consent import router as consent_router
 
 api_router = APIRouter()
 
@@ -37,3 +38,4 @@ api_router.include_router(billing_router, prefix="/billing", tags=["Billing"])
 api_router.include_router(macro_router, prefix="/macro", tags=["Macro"])
 api_router.include_router(admin_router, prefix="/admin", tags=["Admin"])
 api_router.include_router(reports_router, prefix="/reports", tags=["Reports"])
+api_router.include_router(consent_router, prefix="/consent", tags=["Consent"])
