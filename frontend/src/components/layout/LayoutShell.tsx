@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import MainLayout from './MainLayout';
+import { Footer } from './Footer';
 import { useAuth } from '@/lib/auth-context';
 
 const PUBLIC_ROUTES = ['/', '/login', '/register'];
@@ -35,7 +36,12 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
   }, [loading, user, isPublic, pathname, router]);
 
   if (isPublic) {
-    return <>{children}</>;
+    return (
+      <>
+        {children}
+        <Footer />
+      </>
+    );
   }
 
   // Initial auth probe still in flight → spinner

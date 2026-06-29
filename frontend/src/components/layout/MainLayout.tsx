@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import { Footer } from "./Footer";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -32,6 +33,7 @@ export default function MainLayout({ children, fullWidth = false }: MainLayoutPr
           <div className={fullWidth ? 'w-full' : 'max-w-7xl mx-auto w-full'}>
             {children}
           </div>
+          <Footer />
         </main>
       </div>
     </div>
