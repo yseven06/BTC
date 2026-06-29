@@ -19,7 +19,9 @@ import pandas as pd
 
 from app.engines.ai_decision.engine import AIDecisionEngine
 from app.engines.ai_decision.signal_generator import _price_round
-from app.backtesting.resolution_core import step_bar, new_walk_state
+from app.backtesting.resolution_core import (
+    step_bar, new_walk_state, WalkState, resolve_inside_bar_ambiguity,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,33 +41,12 @@ class Trade:
     allocated_capital: float
     entry_index: int
     entry_time: str
-    tp1_hit: bool = False
-    tp2_hit: bool = False
-    tp3_hit: bool = False
-    max_price_reached: float = 0.0
-    min_price_reached: float = 999999999.0
     age: int = 0  # Number of candles held
-    remaining_share: float = 1.0
     realized_pnl_capital: float = 0.0
-    current_sl: float = 0.0
     is_expired: bool = False
-
-    def __post_init__(self):
-        if self.current_sl == 0.0:
-            self.current_sl = self.stop_loss
-
-
-def resolve_inside_bar_ambiguity(direction: str, open_price: float, close_price: float, execution_model: str) -> str:
-    """Resolve inside-bar ambiguity where both Stop Loss and TP are hit on the same candle."""
-    if execution_model == "conservative":
-        return "sl"
-    elif execution_model == "optimistic":
-        return "tp"
-    else:  # neutral
-        if direction == "bullish":
-            return "tp" if close_price >= open_price else "sl"
-        else:
-            return "tp" if close_price <= open_price else "sl"
+    # Per-bar resolution geometry (shared with the live tracker via step_bar).
+    # Holds current_sl, remaining_share, hit flags, MFE/MAE, fills, etc.
+    state: Optional["WalkState"] = None
 
 
 def apply_backtest_bar(trade, k: int, bar, max_age: int) -> bool:
@@ -180,90 +161,12 @@ class BacktestEngine:
             resolved_trades: List[Trade] = []
             for trade in active_trades:
                 trade.age += 1
-                
-                # Track the true high/low envelope of the trade. Direction only
-                # changes how it is interpreted as adverse/favourable excursion
-                # below (BUG-13: the short branch previously fed lows into the
-                # adverse-high field, understating short max-drawdown).
-                trade.max_price_reached = max(trade.max_price_reached, current_high)
-                trade.min_price_reached = min(trade.min_price_reached, current_low)
-
-                # Check Stop Loss hit
-                sl_hit = current_low <= trade.current_sl if trade.direction == "bullish" else current_high >= trade.current_sl
-                
-                # Check Take Profits hit
-                if trade.direction == "bullish":
-                    tp1_triggered = current_high >= trade.tp1 and not trade.tp1_hit
-                    tp2_triggered = current_high >= trade.tp2 and not trade.tp2_hit
-                    tp3_triggered = current_high >= trade.tp3 and not trade.tp3_hit
-                else:
-                    tp1_triggered = current_low <= trade.tp1 and not trade.tp1_hit
-                    tp2_triggered = current_low <= trade.tp2 and not trade.tp2_hit
-                    tp3_triggered = current_low <= trade.tp3 and not trade.tp3_hit
-                
-                tp_hit = tp1_triggered or tp2_triggered or tp3_triggered
-                
-                # Inside bar ambiguity resolution
-                if sl_hit and tp_hit:
-                    winner = resolve_inside_bar_ambiguity(trade.direction, current_open, current_price, execution_model)
-                    if winner == "sl":
-                        tp_hit = False
-                        tp1_triggered = tp2_triggered = tp3_triggered = False
-                    else:
-                        sl_hit = False
-                
-                # Process hits
-                if sl_hit:
-                    # Close remaining share at stop loss
-                    ret_sl = ((trade.current_sl - trade.entry_price) / trade.entry_price) if trade.direction == "bullish" else ((trade.entry_price - trade.current_sl) / trade.entry_price)
-                    trade.realized_pnl_capital += trade.remaining_share * trade.allocated_capital * ret_sl
-                    trade.remaining_share = 0.0
-                elif tp_hit:
-                    # Sequential take profits
-                    if tp1_triggered:
-                        trade.tp1_hit = True
-                        portion = 0.50
-                        ret_tp1 = ((trade.tp1 - trade.entry_price) / trade.entry_price) if trade.direction == "bullish" else ((trade.entry_price - trade.tp1) / trade.entry_price)
-                        trade.realized_pnl_capital += portion * trade.allocated_capital * ret_tp1
-                        trade.remaining_share -= portion
-                        # Move SL to Break Even
-                        trade.current_sl = trade.entry_price
-                        
-                    if tp2_triggered and trade.remaining_share > 0:
-                        trade.tp2_hit = True
-                        portion = min(0.30, trade.remaining_share)
-                        ret_tp2 = ((trade.tp2 - trade.entry_price) / trade.entry_price) if trade.direction == "bullish" else ((trade.entry_price - trade.tp2) / trade.entry_price)
-                        trade.realized_pnl_capital += portion * trade.allocated_capital * ret_tp2
-                        trade.remaining_share -= portion
-                        
-                    if tp3_triggered and trade.remaining_share > 0:
-                        trade.tp3_hit = True
-                        portion = trade.remaining_share
-                        ret_tp3 = ((trade.tp3 - trade.entry_price) / trade.entry_price) if trade.direction == "bullish" else ((trade.entry_price - trade.tp3) / trade.entry_price)
-                        trade.realized_pnl_capital += portion * trade.allocated_capital * ret_tp3
-                        trade.remaining_share = 0.0
-                
-                    # After processing TP, check if the same candle hits the new stop loss (BE)
-                    if trade.remaining_share > 0:
-                        sl_hit_after_tp = current_low <= trade.current_sl if trade.direction == "bullish" else current_high >= trade.current_sl
-                        if sl_hit_after_tp:
-                            ret_sl = ((trade.current_sl - trade.entry_price) / trade.entry_price) if trade.direction == "bullish" else ((trade.entry_price - trade.current_sl) / trade.entry_price)
-                            trade.realized_pnl_capital += trade.remaining_share * trade.allocated_capital * ret_sl
-                            trade.remaining_share = 0.0
-                
-                # Check Expiration
-                if trade.remaining_share > 0 and trade.age >= max_age:
-                    trade.is_expired = True
-                    portion = trade.remaining_share
-                    ret_close = ((current_price - trade.entry_price) / trade.entry_price) if trade.direction == "bullish" else ((trade.entry_price - current_price) / trade.entry_price)
-                    trade.realized_pnl_capital += portion * trade.allocated_capital * ret_close
-                    trade.remaining_share = 0.0
-                    expired_count += 1
-                
-                # Check if resolved
-                if trade.remaining_share <= 0.0:
+                bar = (current_open, current_high, current_low, current_price)
+                if apply_backtest_bar(trade, trade.age - 1, bar, max_age):
+                    if trade.is_expired:
+                        expired_count += 1
                     pnl_pct = (trade.realized_pnl_capital / trade.allocated_capital) * 100.0
-                    
+
                     if pnl_pct > 0.5:
                         outcome = "win"
                         wins_count += 1
@@ -281,22 +184,17 @@ class BacktestEngine:
                         breakevens_count += 1
                         current_win_streak = 0
                         current_loss_streak = 0
-                    
+
                     capital += trade.realized_pnl_capital
-                    
-                    # Calculate drawdown from maximum reached during trade
-                    max_dd_trade = 0.0
-                    if trade.direction == "bullish":
-                        max_dd_trade = ((trade.entry_price - trade.min_price_reached) / trade.entry_price) * 100.0
-                    else:
-                        max_dd_trade = ((trade.max_price_reached - trade.entry_price) / trade.entry_price) * 100.0
-                        
-                    # Calculate average exit price
+
+                    # Max adverse excursion during the trade (== the legacy min/max-price calc).
+                    max_dd_trade = trade.state.max_drawdown
+
                     if trade.direction == "bullish":
                         avg_exit_price = trade.entry_price * (1.0 + (trade.realized_pnl_capital / trade.allocated_capital))
                     else:
                         avg_exit_price = trade.entry_price * (1.0 - (trade.realized_pnl_capital / trade.allocated_capital))
-                        
+
                     trades_log.append({
                         "trade_id": trade.id,
                         "direction": trade.direction,
@@ -411,6 +309,9 @@ class BacktestEngine:
                             allocated_capital=allocated_capital,
                             entry_index=i + 1,
                             entry_time=timestamps[i + 1],
+                            state=new_walk_state(direction=direction, entry=next_open,
+                                                 sl=adj_sl, tp1=adj_tp1, tp2=adj_tp2,
+                                                 tp3=adj_tp3, execution_model=execution_model),
                         )
                         active_trades.append(new_trade)
 
