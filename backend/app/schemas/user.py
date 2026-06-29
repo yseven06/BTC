@@ -11,6 +11,15 @@ from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
+class ConsentAcceptance(BaseModel):
+    """A single accepted legal document, recorded for the consent audit trail."""
+
+    consent_type: str = Field(..., pattern="^(tos|privacy|risk|etk_marketing)$")
+    slug: str = Field(..., max_length=100)
+    version: str = Field(..., max_length=20)
+    hash: str = Field("", max_length=64)
+
+
 class UserCreate(BaseModel):
     """Schema for user registration via email/password."""
 
@@ -18,6 +27,9 @@ class UserCreate(BaseModel):
     password: str = Field(..., min_length=8, max_length=128, description="User password (min 8 chars).")
     full_name: Optional[str] = Field(None, max_length=255, description="Display name.")
     language: str = Field("en", pattern="^(en|tr)$", description="Preferred language (en or tr).")
+    consents: Optional[list[ConsentAcceptance]] = Field(
+        None, description="Kayıt sırasında kabul edilen yasal belgeler (audit için)."
+    )
 
     @field_validator("password")
     @classmethod

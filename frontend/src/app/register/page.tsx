@@ -5,6 +5,19 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { LEGAL_META } from '@/lib/legal/registry';
+import { track } from '@/lib/analytics';
+import { AnalyticsEvent } from '@/lib/analytics-events';
+
+// Required, separately-acknowledged legal documents at signup.
+const REQUIRED = [
+  { key: 'tos', slug: 'kullanim-kosullari', ctype: 'tos', name: 'Kullanım Koşulları',
+    rest: '’nı okudum ve kabul ediyorum.' },
+  { key: 'privacy', slug: 'aydinlatma-metni', ctype: 'privacy', name: 'KVKK Aydınlatma Metni',
+    rest: '’ni okudum.' },
+  { key: 'risk', slug: 'risk-bildirimi', ctype: 'risk', name: 'Risk Bildirimi',
+    rest: '’ni okudum; içeriklerin yatırım tavsiyesi olmadığını ve işlemlerin sorumluluğunun bana ait olduğunu kabul ediyorum.' },
+] as const;
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -15,6 +28,11 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [accepted, setAccepted] = useState({ tos: false, privacy: false, risk: false });
+  const allRequiredAccepted = accepted.tos && accepted.privacy && accepted.risk;
+
+  // Consent-gated, anonymous "document viewed" event (no-op until analytics consent).
+  const onReadDoc = (slug: string) => track(AnalyticsEvent.legal_document_viewed, { slug });
 
   useEffect(() => {
     if (user) router.replace('/dashboard');
@@ -32,9 +50,19 @@ export default function RegisterPage() {
       setError('Şifre en az bir harf ve bir rakam içermeli.');
       return;
     }
+    if (!allRequiredAccepted) {
+      setError('Devam etmek için zorunlu onay kutularını işaretlemelisin.');
+      return;
+    }
     setLoading(true);
     try {
-      await register(email, password, fullName || undefined);
+      const consents = REQUIRED.map((d) => ({
+        consent_type: d.ctype,
+        slug: d.slug,
+        version: LEGAL_META[d.slug]?.version ?? '0.0.0',
+        hash: LEGAL_META[d.slug]?.hash ?? '',
+      }));
+      await register(email, password, fullName || undefined, consents);
       router.replace('/dashboard');
     } catch (err: any) {
       const msg = err?.message ?? '';
@@ -121,10 +149,35 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          <div className="space-y-2 pt-1">
+            {REQUIRED.map((d) => (
+              <label key={d.key} className="flex items-start gap-2 text-xs leading-relaxed text-text-secondary">
+                <input
+                  type="checkbox"
+                  checked={accepted[d.key]}
+                  onChange={(e) => setAccepted((s) => ({ ...s, [d.key]: e.target.checked }))}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-accent-primary"
+                />
+                <span>
+                  <strong className="text-text-primary">{d.name}</strong>{d.rest}{' '}
+                  <Link
+                    href={`/yasal/${d.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => onReadDoc(d.slug)}
+                    className="whitespace-nowrap text-accent-primary hover:underline"
+                  >
+                    Oku ↗
+                  </Link>
+                </span>
+              </label>
+            ))}
+          </div>
+
           <button
             type="submit"
-            disabled={loading}
-            className="focus-ring w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-primary hover:bg-accent-secondary text-white text-sm font-bold transition-colors disabled:opacity-50"
+            disabled={loading || !allRequiredAccepted}
+            className="focus-ring w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-primary hover:bg-accent-secondary text-white text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Hesap oluşturuluyor...' : (<>Hesap Oluştur <ArrowRight className="w-4 h-4" /></>)}
           </button>

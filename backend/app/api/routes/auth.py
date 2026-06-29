@@ -6,6 +6,7 @@ and profile retrieval.
 """
 
 import logging
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -19,6 +20,7 @@ from app.auth.password import hash_password, verify_password
 from app.config import get_settings
 from app.database import get_db
 from app.rate_limit import limiter, LOGIN_LIMIT, REGISTER_LIMIT, REFRESH_LIMIT
+from app.services.consent import record_consent
 from app.models.user import AuthProvider, Language, User
 from app.schemas.user import (
     GoogleLoginRequest,
@@ -86,9 +88,47 @@ async def register(
     db.add(user)
     await db.flush()
     await db.refresh(user)
-
     logger.info("New user registered: %s", user.email)
-    return _create_token_response(user)
+
+    # Persist the account immediately so consent recording (which depends on the
+    # 0001 consent_logs migration) can never roll back account creation.
+    await db.commit()
+    await db.refresh(user)
+    token = _create_token_response(user)
+
+    # Append-only consent audit + current-state mirror. Best-effort: if the
+    # consent migration isn't applied yet, registration still succeeds (logged).
+    if payload.consents:
+        try:
+            now = datetime.now(timezone.utc)
+            for c in payload.consents:
+                await record_consent(
+                    db,
+                    consent_type=c.consent_type,
+                    action="accepted",
+                    source="register",
+                    user_id=user.id,
+                    document_slug=c.slug,
+                    document_version=c.version,
+                    document_hash=c.hash or None,
+                    locale=payload.language,
+                    request=request,
+                    checkbox_states={"checked": True},
+                )
+                if c.consent_type == "tos":
+                    user.terms_accepted_at = now
+                    user.legal_version = c.version
+                elif c.consent_type == "privacy":
+                    user.privacy_acked_at = now
+                elif c.consent_type == "risk":
+                    user.risk_acked_at = now
+            db.add(user)
+            await db.commit()
+        except Exception as exc:
+            await db.rollback()
+            logger.error("Register consent kaydı başarısız (0001 migration uygulandı mı?): %s", exc)
+
+    return token
 
 
 @router.post(

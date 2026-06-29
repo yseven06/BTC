@@ -752,8 +752,16 @@ export interface TokenResponse {
   expires_in: number;
 }
 
+export interface ConsentAcceptance {
+  consent_type: string;
+  slug: string;
+  version: string;
+  hash: string;
+}
+
 export async function registerUser(payload: {
   email: string; password: string; full_name?: string;
+  consents?: ConsentAcceptance[];
 }): Promise<TokenResponse> {
   return apiFetch<TokenResponse>('/api/v1/auth/register', {
     method: 'POST',

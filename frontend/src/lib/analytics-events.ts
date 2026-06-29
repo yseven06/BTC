@@ -19,6 +19,7 @@ export const AnalyticsEvent = {
   alert_created: 'alert_created_v1',
   portfolio_created: 'portfolio_created_v1',
   pdf_downloaded: 'pdf_downloaded_v1',
+  legal_document_viewed: 'legal_document_viewed_v1',
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent];

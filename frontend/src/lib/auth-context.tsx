@@ -6,6 +6,7 @@ import {
   fetchCurrentUser, loginUser, registerUser, loginWithGoogle, logout as apiLogout,
   storeAuthTokens, isLoggedIn,
   type UserProfile,
+  type ConsentAcceptance,
 } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { AnalyticsEvent } from '@/lib/analytics-events';
@@ -14,7 +15,7 @@ interface AuthContextValue {
   user: UserProfile | null;
   loading: boolean;
   login: (email: string, password: string, remember?: boolean) => Promise<void>;
-  register: (email: string, password: string, full_name?: string) => Promise<void>;
+  register: (email: string, password: string, full_name?: string, consents?: ConsentAcceptance[]) => Promise<void>;
   googleLogin: (idToken: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
@@ -65,8 +66,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     track(AnalyticsEvent.login_completed, { method: 'password' });
   };
 
-  const register = async (email: string, password: string, full_name?: string) => {
-    const res = await registerUser({ email, password, full_name });
+  const register = async (
+    email: string, password: string, full_name?: string, consents?: ConsentAcceptance[],
+  ) => {
+    const res = await registerUser({ email, password, full_name, consents });
     storeAuthTokens(res.access_token, res.refresh_token, true);
     await refresh();
     track(AnalyticsEvent.signup_completed, { method: 'password' });
