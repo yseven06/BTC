@@ -1,0 +1,19 @@
+# TradeMinds AI — crawler policy
+# Public pages (landing, legal) are crawlable; authenticated app + API are not.
+User-agent: *
+Allow: /$
+Allow: /yasal/
+Disallow: /admin
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /profile
+Disallow: /portfolio
+Disallow: /watchlist
+Disallow: /alerts
+Disallow: /signals
+Disallow: /signal-history
+Disallow: /backtest
+Disallow: /performance
+Disallow: /strategy-lab
+Disallow: /symbol-analysis
