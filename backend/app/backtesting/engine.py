@@ -19,6 +19,7 @@ import pandas as pd
 
 from app.engines.ai_decision.engine import AIDecisionEngine
 from app.engines.ai_decision.signal_generator import _price_round
+from app.backtesting.resolution_core import step_bar, new_walk_state
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,31 @@ def resolve_inside_bar_ambiguity(direction: str, open_price: float, close_price:
         else:
             return "tp" if close_price <= open_price else "sl"
 
+
+def apply_backtest_bar(trade, k: int, bar, max_age: int) -> bool:
+    """Advance ONE backtest trade by one candle: the shared resolution_core.step_bar
+    geometry + capital-weighted fill accounting + bar-count expiry. Mutates ``trade``
+    (its WalkState ``state``, ``realized_pnl_capital`` and ``is_expired``). Returns
+    True once the trade is fully resolved.
+
+    Single source of the per-bar geometry — the SAME ``step_bar`` the live tracker
+    uses. Capital accounting replays ``state.fills`` in execution order with the EXACT
+    same float ops as the legacy inline loop (no ULP drift). Bar-count expiry (book
+    the remainder at this bar's close) is the backtest's own semantic, kept here."""
+    st = trade.state
+    prev = len(st.fills)
+    done = step_bar(st, k, bar)
+    for portion, ret in st.fills[prev:]:
+        trade.realized_pnl_capital += portion * trade.allocated_capital * ret
+    if not done and st.remaining_share > 0 and (k + 1) >= max_age:
+        close_price = bar[3]
+        ret_close = ((close_price - trade.entry_price) / trade.entry_price) if st.is_bull \
+            else ((trade.entry_price - close_price) / trade.entry_price)
+        trade.realized_pnl_capital += st.remaining_share * trade.allocated_capital * ret_close
+        st.remaining_share = 0.0
+        trade.is_expired = True
+        done = True
+    return done or st.remaining_share <= 0.0
 
 
 @dataclass
