@@ -56,7 +56,7 @@ async def get_settings(
     current_user: User = Depends(get_current_user),
 ) -> NotificationSettingsResponse:
     """Return current notification settings (bot token is masked). Auth required."""
-    s = await get_or_create_settings(db)
+    s = await get_or_create_settings(db, current_user.id)
     return _to_response(s)
 
 
@@ -68,7 +68,7 @@ async def update_settings(
     _gate = Depends(require_feature("can_use_telegram")),
 ) -> NotificationSettingsResponse:
     """Update notification settings. Only provided fields are changed."""
-    s = await get_or_create_settings(db)
+    s = await get_or_create_settings(db, current_user.id)
 
     if payload.telegram_enabled is not None:
         s.telegram_enabled = payload.telegram_enabled
@@ -94,7 +94,7 @@ async def send_test(
     _gate = Depends(require_feature("can_use_telegram")),
 ) -> dict:
     """Send a test Telegram message using the stored settings. Auth + feature gated."""
-    s = await get_or_create_settings(db)
+    s = await get_or_create_settings(db, current_user.id)
     if not s.telegram_bot_token or not s.telegram_chat_id:
         return {"ok": False, "error": "Bot token ve chat id gerekli."}
 
