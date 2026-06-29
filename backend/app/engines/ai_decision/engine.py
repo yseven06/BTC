@@ -223,6 +223,7 @@ class AIDecisionEngine:
             "tp2": signal_data.tp2,
             "tp3": signal_data.tp3,
             "invalidation_conditions": signal_data.invalidation_conditions,
+            "birth_telemetry": signal_data.birth_telemetry,
             "engine_results": [res.model_dump() for res in results],
             "explanation_tr": explanations["tr"],
             "explanation_en": explanations["en"],

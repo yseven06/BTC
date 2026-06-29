@@ -10,13 +10,14 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 
 from app.engines.base import EngineResult, SignalBias
 from app.engines.risk.analysis import calculate_atr, safe_last_atr
+from app.engines.ai_decision.birth_telemetry import build_birth_telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,8 @@ class GeneratedSignalData:
     tp2: float
     tp3: float
     invalidation_conditions: str
+    # Additive generation-time provenance (telemetry only — NOT a decision input).
+    birth_telemetry: Optional[Dict[str, Any]] = None
 
 
 # Base engine weights (sum to 1.00). The single source of truth for the
@@ -259,6 +262,9 @@ def generate_signal(
     
     # Calculate ATR for scaling
     atr_series = calculate_atr(df)
+    _atr_last = float(atr_series.iloc[-1])
+    atr_fallback_used = bool(np.isnan(_atr_last) or _atr_last <= 0)
+    atr_raw = None if np.isnan(_atr_last) else _atr_last
     atr = safe_last_atr(atr_series, current_price)
 
     # Extract support and resistance if available from Market Structure Engine
@@ -268,6 +274,9 @@ def generate_signal(
     if ms_engine_res and "nearest_support" in ms_engine_res.supporting_data:
         nearest_sup = ms_engine_res.supporting_data["nearest_support"]
         nearest_res = ms_engine_res.supporting_data["nearest_resistance"]
+
+    # SR-override provenance flags (additive telemetry — never change the levels).
+    sr_override_tp1 = sr_override_tp2 = sr_override_sl = False
 
     # Initialize levels
     if direction == "bullish":
@@ -281,7 +290,8 @@ def generate_signal(
             
         # Stop Loss: below entry_zone_low by 1.5x ATR or below nearest support
         sl_fallback = entry_zone_low - (atr * 1.5)
-        stop_loss = (nearest_sup - (atr * 0.5)) if nearest_sup and nearest_sup < entry_zone_low else sl_fallback
+        sr_override_sl = bool(nearest_sup and nearest_sup < entry_zone_low)
+        stop_loss = (nearest_sup - (atr * 0.5)) if sr_override_sl else sl_fallback
         # In case stop loss is positive but too close
         if stop_loss >= entry_zone_low:
             stop_loss = entry_zone_low - (atr * 1.5)
@@ -295,8 +305,10 @@ def generate_signal(
         if nearest_res and nearest_res > current_price:
             if nearest_res < tp2:
                 tp1 = nearest_res
+                sr_override_tp1 = True
             else:
                 tp2 = nearest_res
+                sr_override_tp2 = True
 
         invalidation_conditions = f"Close below stop loss level {_price_round(stop_loss)} on a 1-hour candle basis, or failure to break resistance level {_price_round(tp1)} within 48 hours."
 
@@ -310,7 +322,8 @@ def generate_signal(
 
         # Stop Loss: above entry_zone_high by 1.5x ATR or above nearest resistance
         sl_fallback = entry_zone_high + (atr * 1.5)
-        stop_loss = (nearest_res + (atr * 0.5)) if nearest_res and nearest_res > entry_zone_high else sl_fallback
+        sr_override_sl = bool(nearest_res and nearest_res > entry_zone_high)
+        stop_loss = (nearest_res + (atr * 0.5)) if sr_override_sl else sl_fallback
         if stop_loss <= entry_zone_high:
             stop_loss = entry_zone_high + (atr * 1.5)
 
@@ -323,8 +336,10 @@ def generate_signal(
         if nearest_sup and nearest_sup < current_price:
             if nearest_sup > tp2:
                 tp1 = nearest_sup
+                sr_override_tp1 = True
             else:
                 tp2 = nearest_sup
+                sr_override_tp2 = True
 
         invalidation_conditions = f"Close above stop loss level {_price_round(stop_loss)} on a 1-hour candle basis, or failure to break support level {_price_round(tp1)} within 48 hours."
 
@@ -353,6 +368,21 @@ def generate_signal(
             "Pozisyon açmadan önce daha güçlü onay bekleyin."
         )
 
+    # Birth-time telemetry (additive observability — never re-read by the decision).
+    birth_telemetry = build_birth_telemetry(
+        direction=direction, signal_type=signal_type, current_price=current_price,
+        atr_used=atr, atr_raw=atr_raw, atr_fallback_used=atr_fallback_used,
+        nearest_support=nearest_sup, nearest_resistance=nearest_res,
+        sr_override_tp1=sr_override_tp1, sr_override_tp2=sr_override_tp2, sr_override_sl=sr_override_sl,
+        entry_zone_low=_price_round(entry_zone_low), entry_zone_high=_price_round(entry_zone_high),
+        stop_loss=_price_round(stop_loss), tp1=_price_round(tp1),
+        tp2=_price_round(tp2), tp3=_price_round(tp3),
+        risk_score=round(risk_score, 1), risk_level=risk_level,
+        confidence_score=round(confidence_score, 2), probability_score=round(probability_score, 2),
+        composite_score=round(composite_score, 2),
+        risk_supporting=(risk_engine_res.supporting_data if risk_engine_res else None),
+    )
+
     # Return structured data
     return GeneratedSignalData(
         signal_type=signal_type,
@@ -368,5 +398,6 @@ def generate_signal(
         tp2=_price_round(tp2),
         tp3=_price_round(tp3),
         invalidation_conditions=invalidation_conditions,
+        birth_telemetry=birth_telemetry,
     )
 

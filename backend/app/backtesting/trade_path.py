@@ -20,6 +20,11 @@ from __future__ import annotations
 from typing import Optional
 
 from app.models.intelligence import SignalTradePath, TRADE_PATH_SCHEMA_VERSION
+from app.services.trade_geometry import (
+    safe_div as _safe_div,
+    planned_rr as _planned_rr,
+    dist_pct as _geo_dist_pct,
+)
 
 
 def session_for_hour(h: Optional[int]) -> Optional[str]:
@@ -50,12 +55,6 @@ def volatility_bucket(ratio: Optional[float]) -> Optional[str]:
     return "extreme"
 
 
-def _safe_div(a: Optional[float], b: Optional[float]) -> Optional[float]:
-    if a is None or b is None or b == 0:
-        return None
-    return round(a / b, 4)
-
-
 # Telemetry contract version for the SignalTradePath.extra payload. Bump ONLY when
 # the MEANING of an existing key changes (new keys can be added without a bump —
 # consumers must treat missing keys as None). See docs/TELEMETRY-TRADE-PATH.md.
@@ -84,6 +83,7 @@ def build_trade_path_extra(
     sl_before_tp: Optional[bool] = None,
     entry_zone_low: Optional[float] = None,
     entry_zone_high: Optional[float] = None,
+    birth: Optional[dict] = None,
 ) -> dict:
     """Rich, versioned ``extra`` telemetry for a resolved SignalTradePath.
 
@@ -95,19 +95,9 @@ def build_trade_path_extra(
     slots pre-allocate the next two telemetry waves). Field-by-field purpose:
     docs/TELEMETRY-TRADE-PATH.md.
     """
-    risk_dist = abs(entry - sl) if (entry is not None and sl is not None) else None
-
-    def _reward(tp: Optional[float]) -> Optional[float]:
-        return abs(tp - entry) if (tp is not None and entry is not None) else None
-
-    def _dist_pct(tp: Optional[float]) -> Optional[float]:
-        if tp is None or not entry:
-            return None
-        return round(abs(tp - entry) / entry * 100.0, 4)
-
-    tp1_dist_pct = _dist_pct(tp1)
-    tp2_dist_pct = _dist_pct(tp2)
-    tp3_dist_pct = _dist_pct(tp3)
+    tp1_dist_pct = _geo_dist_pct(entry, tp1)
+    tp2_dist_pct = _geo_dist_pct(entry, tp2)
+    tp3_dist_pct = _geo_dist_pct(entry, tp3)
 
     gave_back_pct = None
     if mfe_pct is not None and realized_return is not None:
@@ -124,9 +114,9 @@ def build_trade_path_extra(
     return {
         "telemetry_version": TRADE_PATH_EXTRA_VERSION,
         # --- geometry quality (planned R:R + distances from self-contained prices) ---
-        "planned_rr_tp1": _safe_div(_reward(tp1), risk_dist),
-        "planned_rr_tp2": _safe_div(_reward(tp2), risk_dist),
-        "planned_rr_tp3": _safe_div(_reward(tp3), risk_dist),
+        "planned_rr_tp1": _planned_rr(entry, sl, tp1),
+        "planned_rr_tp2": _planned_rr(entry, sl, tp2),
+        "planned_rr_tp3": _planned_rr(entry, sl, tp3),
         "tp1_dist_pct": tp1_dist_pct,
         "tp2_dist_pct": tp2_dist_pct,
         "tp3_dist_pct": tp3_dist_pct,
@@ -151,7 +141,7 @@ def build_trade_path_extra(
         "tp_touched_but_sl_won": tp_touched_but_sl_won,     # conservative inside-bar rule fired
         "gave_back_after_tp1": gave_back_after_tp1,
         # --- reserved future slots (extensible — fill WITHOUT a schema change) ---
-        "birth": None,    # reserved: birth-time geometry provenance (atr_fallback, sr_override, nearest S/R)
+        "birth": birth,   # birth-time geometry provenance (from SignalSnapshot.extra["birth"])
         "shadow": None,   # reserved: alternative-geometry shadow-policy outcomes (Adaptive Learning v2)
     }
 
@@ -201,6 +191,7 @@ def compute_trade_path(
     tp_touched_but_sl_won: Optional[bool] = None,
     entry_zone_low: Optional[float] = None,
     entry_zone_high: Optional[float] = None,
+    birth: Optional[dict] = None,
     source: str = "live",
 ) -> SignalTradePath:
     """Build (don't persist) a SignalTradePath from resolution-time primitives."""
@@ -218,6 +209,7 @@ def compute_trade_path(
         realized_return=realized_return, gave_back_after_tp1=gave_back_after_tp1,
         resolution_source=resolution_source, tp_touched_but_sl_won=tp_touched_but_sl_won,
         sl_before_tp=sl_before_tp, entry_zone_low=entry_zone_low, entry_zone_high=entry_zone_high,
+        birth=birth,
     )
 
     return SignalTradePath(

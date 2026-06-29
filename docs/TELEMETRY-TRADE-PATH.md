@@ -53,13 +53,28 @@ ucuza gözlenir. Tüketici: **CM**=Coin Memory, **SIM**=Similarity, **ADP**=Adap
 | `tp_touched_but_sl_won` | aynı-bar belirsizliğinde TP değdi ama SL kazandı (konservatif) | BUG-10 sıklık ölçümü |
 | `gave_back_after_tp1` | TP1 sonrası TP2 ıskalandı mı | scale-out kalitesi |
 
-### Rezerve gelecek slotları (extensible — şema değişmeden doldurulacak)
-- **`extra.birth`** (şu an `None`): doğum-anı geometri provenansı — `atr_used`,
-  `atr_fallback_used` (BUG-1 izleme), `sr_override_tp1/sl` (BUG-2 popülasyonu),
-  `nearest_support/resistance`. (Sonraki telemetri dalgası; `SignalSnapshot` zengin
-  bağlamı zaten saklıyor — engine_scores/regime_data/mtf_trends/vol/sentiment.)
-- **`extra.shadow`** (şu an `None`): alternatif-geometri **shadow-policy** sonuçları
-  (Adaptive Learning v2 — canlı geometriyi değiştirmeden "ne olurdu" karşılaştırması).
+### `extra.birth` — doğum-anı provenansı (AKTİF, Commit 6b)
+`app/engines/ai_decision/birth_telemetry.py :: build_birth_telemetry` ile üretilir;
+`SignalSnapshot.extra["birth"]`'e yazılır, çözümde `SignalTradePath.extra["birth"]`'e
+kopyalanır. **Saf gözlem — canlı karar yolu ASLA okumaz** (AI davranışı değişmez).
+Tüketici: CM v2 / Similarity v2 / Adaptive / KEY2 floor kalibrasyonu.
+
+| Grup | Anahtarlar | Amaç |
+|---|---|---|
+| ATR provenans | `atr_used`, `atr_raw`, `atr_fallback_used`, `atr_pct` | BUG-1 izleme; volatilite |
+| S/R + override | `nearest_support`, `nearest_resistance`, `sr_override_tp1/tp2/sl` | **BUG-2 nedeni** (sub-1-RR'nin S/R override'dan mı geldiği); SIM |
+| Entry geometri | `current_price`, `entry_zone_low/high`, `entry_mid`, `entry_zone_width_pct`, `stop_loss`, `tp1/2/3`, `*_dist_pct`, `planned_rr_tp1/2/3` | geometri kalitesi; KEY2 |
+| Risk modeli | `risk_score`(1-10), `risk_level`, `risk_volatility_class`, `risk_atr_pct`, `risk_max_drawdown_pct`, `risk_recommended_position_pct`, `risk_rr_ratio` | risk kalibrasyonu |
+| Confidence | `confidence_score`, `probability_score`, `composite_score`, `signal_type`, `direction` | atıf / similarity |
+
+`entry_mid` = giriş-bölgesi ortası (D2: canlı tracker fill referansı). `SignalSnapshot`
+ayrıca engine_scores/regime_data/mtf_trends/vol/sentiment zaten saklar (tam birth bağlamı).
+`telemetry_version` ile versiyonlu. Geometri matematiği `app/services/trade_geometry.py`
+tek-kaynak (birth + trade-path aynı planned_rr/dist tanımını paylaşır).
+
+### `extra.shadow` — rezerve (extensible)
+Alternatif-geometri **shadow-policy** sonuçları (Adaptive Learning v2 — canlı geometriyi
+değiştirmeden "ne olurdu" karşılaştırması). Şu an `None`.
 
 ## Tasarım değişmezleri
 1. Saf gözlem — outcome/seviye/çözüm değişmez.

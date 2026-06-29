@@ -105,4 +105,5 @@ def build_snapshot(
         composite_confidence=decision.get("confidence_score"),
         composite_probability=decision.get("probability_score"),
         mtf_trends=decision.get("mtf_trends", {}),
+        extra={"birth": decision.get("birth_telemetry")},
     )

@@ -56,6 +56,7 @@ async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, t
         resolution_source = "expiry" if is_expired_flag else "bar_walk"
         ez_low = float(signal.entry_zone_low) if signal.entry_zone_low is not None else None
         ez_high = float(signal.entry_zone_high) if signal.entry_zone_high is not None else None
+        birth = snap.extra.get("birth") if (snap and isinstance(snap.extra, dict)) else None
         row = compute_trade_path(
             signal_id=signal.id, asset_id=signal.asset_id,
             symbol=(signal.asset.symbol if signal.asset else None),
@@ -75,7 +76,7 @@ async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, t
             intrabar_ambiguous=intrabar_ambiguous, still_forming_resolution=still_forming,
             sl_before_tp=sl_before_tp, resolution_source=resolution_source,
             tp_touched_but_sl_won=tp_touched_but_sl_won,
-            entry_zone_low=ez_low, entry_zone_high=ez_high,
+            entry_zone_low=ez_low, entry_zone_high=ez_high, birth=birth,
         )
         db.add(row)
         # Coin Memory v2 rollup (also inside the fail-open envelope) — derivable
@@ -130,6 +131,7 @@ async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, liv
             resolution_source="live_sl",
             entry_zone_low=(float(signal.entry_zone_low) if signal.entry_zone_low is not None else None),
             entry_zone_high=(float(signal.entry_zone_high) if signal.entry_zone_high is not None else None),
+            birth=(snap.extra.get("birth") if (snap and isinstance(snap.extra, dict)) else None),
             source="live",
         )
         db.add(row)
