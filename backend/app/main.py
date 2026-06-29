@@ -17,6 +17,7 @@ from app.config import get_settings
 from app.database import init_db, close_db
 from app.services.scheduler import start_scheduler, stop_scheduler
 from app.rate_limit import limiter, rate_limit_exceeded_handler, RateLimitExceeded
+from app.security_headers import SecurityHeadersMiddleware
 
 settings = get_settings()
 
@@ -75,6 +76,10 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
     debug=settings.DEBUG,
+    # Hide API docs / OpenAPI schema in production (only exposed in DEBUG).
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
+    openapi_url="/openapi.json" if settings.DEBUG else None,
 )
 
 # --- Rate limiting (slowapi) — only selected PUBLIC endpoints are decorated
@@ -94,6 +99,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Defensive security headers on every API response (CSP lives on the frontend).
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Include API Router
 app.include_router(api_router, prefix="/api/v1")
