@@ -11,6 +11,25 @@ Phase 2 ürün geliştirmesinin stratejik öncelik sıralamasıdır. Tüm Phase 
 
 ---
 
+## Yürütme ilkeleri ve onaylı sıra (2026-06-29, onaylı)
+
+**Bağlayıcı Phase 2 ilkeleri:**
+- **BP1 — Beta öncesi sıfır kritik açık:** Beta açılmadan önce hiçbir kritik güvenlik, ödeme
+  veya kullanıcı-veri açığı kalmaz. **Stripe Subscription, Per-user Notifications, Turnstile ve
+  Deploy production seviyesinde tamamlanır.**
+- **BP2 — AI motoruna dokunurken: telemetri-önce, davranış-bozan-refactor-yok:** TP/SL, Risk
+  Management, Coin Memory, Similarity, Adaptive Learning vb.'de mevcut çalışan mantığı bozacak
+  refactor YAPILMAZ. Önce gerekli telemetry/veri toplama korunur/eklenir; sonra iyileştirmeler
+  **geriye dönük analiz yapılabilir** biçimde eklenir. Gerçek-kullanıcı-verisini etkileyen veya
+  AI-davranışını değiştiren hiçbir değişiklik **doğrulanmadan** uygulanmaz.
+
+**Onaylı yürütme sırası:** 1) Stripe Subscription (gerçek recurring) → 2) Per-user Notification
+Settings → 3) Cloudflare Turnstile (adaptive) → 4) Deploy + Production + Beta hazırlığı →
+5) Mobil + PWA → 6) TP/SL & Risk Management → 7) Coin Memory v2 → 8) Adaptive Learning v2 →
+9) Similarity v2 → 10) Landing dönüşüm. Her adım: **önce analiz → küçük commit → doğrulama → rapor.**
+
+---
+
 ## 0. Mevcut durum anlık görüntüsü (kod-temelli, 2026-06-29)
 
 | Alan | Olgunluk | Özet |
