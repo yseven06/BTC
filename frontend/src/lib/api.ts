@@ -2,6 +2,8 @@
  * TradeMinds AI – Centralized API Client
  */
 
+import { solveChallenge, challengeSitekey } from './challenge';
+
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 const COINGECKO = 'https://api.coingecko.com/api/v3';
 
@@ -74,7 +76,7 @@ async function tryRefreshToken(): Promise<boolean> {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-async function apiFetch<T>(path: string, init?: RequestInit, _isRetry = false): Promise<T> {
+async function apiFetch<T>(path: string, init?: RequestInit, _isRetry = false, _challengeRetry = false): Promise<T> {
   const token = getStoredToken('access_token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -100,6 +102,22 @@ async function apiFetch<T>(path: string, init?: RequestInit, _isRetry = false): 
       // işareti; token doğrulama/refresh akışını değiştirmez, yalnızca
       // /login'de anlaşılır bir mesaj göstermek için LayoutShell okur.
       if (typeof window !== 'undefined') sessionStorage.setItem('session_expired', '1');
+    }
+    // Adaptive challenge: the backend asks for a Turnstile token (428). Solve it
+    // once — this is the SINGLE place every endpoint's challenge flows through —
+    // then retry the original request with the token header.
+    if (res.status === 428 && !_challengeRetry) {
+      let sitekey: string | null = null;
+      try { sitekey = challengeSitekey(JSON.parse(await res.clone().text())?.detail); } catch { /* not a challenge */ }
+      if (sitekey) {
+        const token = await solveChallenge(sitekey);
+        return apiFetch<T>(
+          path,
+          { ...init, headers: { ...(init?.headers as Record<string, string> | undefined), 'cf-turnstile-response': token } },
+          _isRetry,
+          true,
+        );
+      }
     }
     if (!res.ok) {
       const body = await res.text();
