@@ -147,9 +147,18 @@ async def start_checkout(
     if price <= 0:
         raise HTTPException(status_code=400, detail="Geçersiz tier/cycle kombinasyonu.")
 
-    # ── Mock mode: no Stripe key configured ──────────────────────────────────
+    # ── No Stripe key configured ─────────────────────────────────────────────
     if not _stripe_configured():
-        # Immediately activate the subscription so the UI flow can be tested.
+        # SECURITY (BP1): a missing Stripe config must NEVER grant a paid tier
+        # without payment. The self-activation below is a DEV-ONLY convenience to
+        # exercise the UI flow locally; in production (DEBUG=false) we hard-fail
+        # instead, so an unconfigured prod can't hand out free Premium.
+        if not settings.DEBUG:
+            raise HTTPException(
+                status_code=503,
+                detail="Ödeme sistemi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
+            )
+        # Dev-only: immediately activate the subscription so the UI flow can be tested.
         sub = await _get_or_create_subscription(db, current_user.id)
         now = datetime.now(timezone.utc)
         sub.tier = payload.tier
