@@ -284,6 +284,49 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Security & data transparency — every claim is verifiable / implemented */}
+      <section className="max-w-6xl mx-auto px-6 py-16 border-t border-border-subtle">
+        <h2 className="text-2xl font-extrabold text-text-primary text-center">Güvenlik ve Veri Şeffaflığı</h2>
+        <p className="text-sm text-text-secondary text-center mt-2 max-w-2xl mx-auto">
+          Verinin nereden geldiğini, nasıl korunduğunu ve gizliliği nasıl ele aldığımızı açıkça paylaşıyoruz.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-10">
+          {/* Data sources */}
+          <div className="glass-panel border border-border-subtle rounded-2xl p-6">
+            <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3"><Globe className="w-5 h-5 text-accent-primary" /></div>
+            <h3 className="text-sm font-bold text-text-primary">Gerçek veri kaynakları</h3>
+            <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">Fiyat ve piyasa verileri tanınmış sağlayıcılardan gelir:</p>
+            <ul className="mt-3 space-y-1.5 text-xs text-text-secondary">
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Binance — kripto fiyat/mum verisi</li>
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Yahoo Finance — BIST hisse verisi</li>
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> CoinGecko — piyasa metadata & Fear/Greed</li>
+            </ul>
+          </div>
+          {/* Security */}
+          <div className="glass-panel border border-border-subtle rounded-2xl p-6">
+            <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3"><Shield className="w-5 h-5 text-accent-primary" /></div>
+            <h3 className="text-sm font-bold text-text-primary">Güvenlik yaklaşımı</h3>
+            <ul className="mt-3 space-y-1.5 text-xs text-text-secondary">
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Tüm trafik HTTPS/TLS ile şifrelenir</li>
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Modern güvenlik başlıkları (CSP, HSTS) etkin</li>
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Kötüye kullanıma karşı hız sınırlama (rate limiting)</li>
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Şifreler güçlü algoritmayla saklanır; düz metin tutulmaz</li>
+            </ul>
+          </div>
+          {/* Privacy / KVKK */}
+          <div className="glass-panel border border-border-subtle rounded-2xl p-6">
+            <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3"><Lock className="w-5 h-5 text-accent-primary" /></div>
+            <h3 className="text-sm font-bold text-text-primary">Gizlilik &amp; KVKK</h3>
+            <ul className="mt-3 space-y-1.5 text-xs text-text-secondary">
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> KVKK uyumlu çerez yönetimi; analitik çerezler varsayılan kapalı</li>
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Onaylar kayıt altına alınır; tercihini istediğin an değiştirebilirsin</li>
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Verilerin yalnızca hizmeti sunmak için işlenir</li>
+            </ul>
+            <Link href="/yasal" className="inline-block mt-3 text-xs font-semibold text-accent-primary hover:underline">Yasal belgeleri incele →</Link>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing teaser */}
       {plans.length > 0 && (
         <section className="max-w-6xl mx-auto px-6 py-16">
