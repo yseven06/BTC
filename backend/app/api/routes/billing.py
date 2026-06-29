@@ -33,7 +33,7 @@ from app.models.subscription import (
 )
 from app.models.user import User
 from app.subscriptions.plans import (
-    get_months, get_plans_payload, get_price,
+    get_months, get_plans_payload, get_price, get_stripe_recurring,
 )
 from app.subscriptions.gating import TIER_LIMITS, get_user_tier
 
@@ -147,6 +147,21 @@ async def start_checkout(
     if price <= 0:
         raise HTTPException(status_code=400, detail="Geçersiz tier/cycle kombinasyonu.")
 
+    # Re-buy guard: if the user already has an ACTIVE subscription on the SAME
+    # tier+cycle (and it isn't set to end), don't spin up a duplicate — they
+    # should manage the existing one. A different tier/cycle is a plan change → allowed.
+    existing = await _get_or_create_subscription(db, current_user.id)
+    if (
+        existing.status == SubscriptionStatus.ACTIVE
+        and existing.tier == payload.tier
+        and existing.billing_cycle == payload.cycle
+        and not existing.cancel_at_period_end
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Zaten bu plana etkin bir aboneliğiniz var. Değişiklik için mevcut aboneliğinizi yönetebilirsiniz.",
+        )
+
     # ── No Stripe key configured ─────────────────────────────────────────────
     if not _stripe_configured():
         # SECURITY (BP1): a missing Stripe config must NEVER grant a paid tier
@@ -193,13 +208,26 @@ async def start_checkout(
     cancel_url  = f"{settings.FRONTEND_BASE_URL}/pricing?canceled=1"
 
     months = get_months(payload.cycle)
+    common_meta = {
+        "user_id": str(current_user.id),
+        "tier": payload.tier.value,
+        "cycle": payload.cycle.value,
+        "months": str(months),
+    }
+    # Reuse the user's existing Stripe Customer when we have one (avoids duplicate
+    # customers); otherwise let Checkout create one from the email.
+    customer_kwargs = (
+        {"customer": existing.stripe_customer_id}
+        if existing.stripe_customer_id
+        else {"customer_email": current_user.email}
+    )
     try:
         session = stripe.checkout.Session.create(
-            mode="payment",
+            mode="subscription",
             success_url=success_url,
             cancel_url=cancel_url,
             client_reference_id=str(current_user.id),
-            customer_email=current_user.email,
+            allow_promotion_codes=True,   # future coupon / discount-code support
             line_items=[{
                 "price_data": {
                     "currency": "usd",
@@ -207,15 +235,15 @@ async def start_checkout(
                         "name": f"TradeMinds {payload.tier.value.upper()} – {months} ay",
                     },
                     "unit_amount": int(price * 100),
+                    "recurring": get_stripe_recurring(payload.cycle),
                 },
                 "quantity": 1,
             }],
-            metadata={
-                "user_id": str(current_user.id),
-                "tier": payload.tier.value,
-                "cycle": payload.cycle.value,
-                "months": str(months),
-            },
+            # Metadata on BOTH the session (checkout.session.completed) and the
+            # Subscription object (so renewal invoice/subscription webhooks carry it).
+            metadata=common_meta,
+            subscription_data={"metadata": common_meta},
+            **customer_kwargs,
         )
         return CheckoutResponse(url=session.url, session_id=session.id, mock=False)
     except Exception as exc:
