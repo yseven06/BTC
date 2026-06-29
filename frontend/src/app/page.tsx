@@ -268,23 +268,9 @@ export default function LandingPage() {
         </Link>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border-subtle py-10">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-6 h-6" />
-            <span className="text-sm font-bold text-text-primary">TradeMinds AI</span>
-          </div>
-          <p className="text-xs text-text-muted text-center md:text-left">
-            Kurumsal düzeyde sinyal istihbaratı, performans analitiği ve risk araçları — disiplinli işlem icrası için.
-          </p>
-          <p className="text-xs text-text-muted">© {new Date().getFullYear()} TradeMinds AI</p>
-        </div>
-        <p className="max-w-6xl mx-auto px-6 mt-6 pt-5 border-t border-border-subtle text-[11px] text-text-muted leading-relaxed text-center md:text-left">
-          TradeMinds AI yatırım tavsiyesi sunmaz; tüm analizler bilgilendirme amaçlıdır.
-          Geçmiş performans gelecekteki getiriyi garanti etmez. Yatırım kararlarını kendi risk profiline göre ver.
-        </p>
-      </footer>
+      {/* Footer is provided globally by LayoutShell (<Footer />): single-source
+          investment disclaimer + legal links + cookie settings. No page-local
+          footer here, to avoid a duplicate footer for logged-out visitors. */}
     </div>
   );
 }
