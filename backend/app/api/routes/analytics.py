@@ -19,6 +19,8 @@ from sqlalchemy.orm import joinedload
 from app.database import get_db
 from app.models.asset import Asset
 from app.models.signal import Signal, SignalOutcome, SignalPerformance
+from app.models.intelligence import SignalTradePath
+from app.services.tpsl_analytics import compute_tpsl_quality, compute_risk_scale_audit
 from app.subscriptions.gating import (
     SubscriptionTier, get_user_tier_optional,
 )
@@ -270,3 +272,32 @@ async def symbol_analysis(
         "symbols": symbols_out,
         "total_symbols": len(symbols_out),
     }
+
+
+@router.get("/tpsl-quality", summary="TP/SL geometry & resolution quality (read-only telemetry)")
+async def tpsl_quality(
+    db: AsyncSession = Depends(get_db),
+    tier: SubscriptionTier = Depends(get_user_tier_optional),
+) -> Dict[str, Any]:
+    """Read-only aggregate of TP/SL geometry & resolution quality over the
+    SignalTradePath telemetry (pure observability — never changes a decision).
+    Each block carries its own n + the sub-checkpoint caveat; high-confidence rows
+    are separated from low-confidence ones. See docs/TELEMETRY-TRADE-PATH.md."""
+    if tier == SubscriptionTier.FREE:
+        return {"locked": True}
+    rows = (await db.execute(select(SignalTradePath))).scalars().all()
+    return compute_tpsl_quality(rows)
+
+
+@router.get("/risk-scale-audit", summary="Audit: risk_score stays on the canonical 1-10 scale")
+async def risk_scale_audit(
+    db: AsyncSession = Depends(get_db),
+    tier: SubscriptionTier = Depends(get_user_tier_optional),
+) -> Dict[str, Any]:
+    """Read-only proof that Signal.risk_score is the canonical 1-10 scale (D1):
+    min/max/histogram + any out-of-range or mislabeled rows."""
+    if tier == SubscriptionTier.FREE:
+        return {"locked": True}
+    res = await db.execute(select(Signal.risk_score, Signal.risk_level))
+    pairs = [(r[0], r[1]) for r in res.all()]
+    return compute_risk_scale_audit(pairs)
