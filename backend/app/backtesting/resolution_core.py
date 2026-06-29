@@ -27,8 +27,8 @@ Design invariants:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Optional, Sequence, Tuple
+from dataclasses import dataclass, field
+from typing import List, Optional, Sequence, Tuple
 
 
 def resolve_inside_bar_ambiguity(direction: str, open_price: float, close_price: float,
@@ -105,6 +105,10 @@ class WalkState:
     post_tp1_mae: float = 0.0
     intrabar_ambiguous: bool = False
     bars_walked: int = 0
+    # Per-fill log [(portion, ret_fraction), ...] in execution order. Lets a
+    # capital-weighted caller (the backtest) reproduce its EXACT accounting in the
+    # same float order; the whole-path resolver ignores it (uses `realized`).
+    fills: List[Tuple[float, float]] = field(default_factory=list)
 
     @property
     def is_bull(self) -> bool:
@@ -169,6 +173,7 @@ def step_bar(st: WalkState, k: int, bar: Bar) -> bool:
     # --- process ---
     if sl_hit:
         ret_sl = ((st.current_sl - entry) / entry) if is_bull else ((entry - st.current_sl) / entry)
+        st.fills.append((st.remaining_share, ret_sl))
         st.realized += st.remaining_share * ret_sl
         st.remaining_share = 0.0
         st.resolved = True
@@ -180,6 +185,7 @@ def step_bar(st: WalkState, k: int, bar: Bar) -> bool:
             st.hit_tp1 = True
             st.tp1_bar_idx = k
             ret_tp1 = ((st.tp1 - entry) / entry) if is_bull else ((entry - st.tp1) / entry)
+            st.fills.append((0.50, ret_tp1))
             st.realized += 0.50 * ret_tp1
             st.remaining_share -= 0.50
             st.current_sl = entry  # move stop to break-even
@@ -188,6 +194,7 @@ def step_bar(st: WalkState, k: int, bar: Bar) -> bool:
             st.tp2_bar_idx = k
             portion = min(0.30, st.remaining_share)
             ret_tp2 = ((st.tp2 - entry) / entry) if is_bull else ((entry - st.tp2) / entry)
+            st.fills.append((portion, ret_tp2))
             st.realized += portion * ret_tp2
             st.remaining_share -= portion
         if tp3_t and st.remaining_share > 0:
@@ -195,6 +202,7 @@ def step_bar(st: WalkState, k: int, bar: Bar) -> bool:
             st.tp3_bar_idx = k
             portion = st.remaining_share
             ret_tp3 = ((st.tp3 - entry) / entry) if is_bull else ((entry - st.tp3) / entry)
+            st.fills.append((portion, ret_tp3))
             st.realized += portion * ret_tp3
             st.remaining_share = 0.0
             st.resolved = True
@@ -205,6 +213,7 @@ def step_bar(st: WalkState, k: int, bar: Bar) -> bool:
             sl_after = l <= st.current_sl if is_bull else h >= st.current_sl
             if sl_after:
                 ret_sl = ((st.current_sl - entry) / entry) if is_bull else ((entry - st.current_sl) / entry)
+                st.fills.append((st.remaining_share, ret_sl))
                 st.realized += st.remaining_share * ret_sl
                 st.remaining_share = 0.0
                 st.resolved = True
