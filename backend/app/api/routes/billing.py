@@ -263,7 +263,28 @@ async def cancel_subscription(
     sub = await _get_or_create_subscription(db, current_user.id)
     if sub.tier == SubscriptionTier.FREE:
         raise HTTPException(status_code=400, detail="Ücretsiz planda iptal yok.")
-    sub.cancel_at_period_end = True
+
+    if _stripe_configured() and sub.stripe_subscription_id:
+        # Real cancel: schedule cancellation at period end on Stripe (source of
+        # truth). Sync our row from Stripe's response; the customer.subscription
+        # .updated webhook re-applies the same state idempotently.
+        try:
+            import stripe   # type: ignore
+            stripe.api_key = settings.STRIPE_SECRET_KEY
+            updated = stripe.Subscription.modify(
+                sub.stripe_subscription_id, cancel_at_period_end=True
+            )
+            _apply_subscription_object(sub, updated)
+        except Exception as exc:
+            logger.error("Stripe cancel failed: %s", exc, exc_info=True)
+            raise HTTPException(
+                status_code=502,
+                detail="Abonelik iptali sırasında ödeme sağlayıcısına ulaşılamadı. Lütfen tekrar deneyin.",
+            )
+    else:
+        # Dev / mock (no Stripe configured or no Stripe subscription): local flag only.
+        sub.cancel_at_period_end = True
+
     await db.commit()
     await db.refresh(sub)
     return _to_response(sub)
