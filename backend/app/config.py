@@ -99,6 +99,19 @@ class Settings(BaseSettings):
     RATE_LIMIT_REFRESH: str = "30/minute"
     RATE_LIMIT_CHECKOUT: str = "10/minute"
 
+    # --- Adaptive bot challenge (Cloudflare Turnstile) — env-gated / no-op.
+    # With TURNSTILE_SECRET_KEY empty (or CHALLENGE_ENABLED=false) the whole
+    # challenge layer is a pass-through (dev/CI = zero friction). Independent of
+    # rate limiting + the auth-failure lockout (defense in depth).
+    # See docs/CAPTCHA-STRATEGY.md. ---
+    CHALLENGE_ENABLED: bool = True
+    TURNSTILE_SECRET_KEY: str = ""              # empty = verification skipped (no-op)
+    TURNSTILE_SITE_KEY: str = ""                # public site key (sent in 428; also used by frontend)
+    CHALLENGE_LOGIN_SOFT: str = "6/minute"      # soft band threshold (< hard RATE_LIMIT_*)
+    CHALLENGE_AUTH_FAIL_THRESHOLD: int = 3      # A3: repeated auth failures → challenge
+    CHALLENGE_CLEARANCE_TTL: int = 600          # chal_ok clearance cookie lifetime (sec)
+    CHALLENGE_BYPASS_SECRET: str = ""           # empty = internal bypass disabled (§8B)
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: object) -> List[str]:
