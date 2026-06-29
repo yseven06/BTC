@@ -55,13 +55,16 @@ olarak işaretlenir; kritik bir senaryo FAIL ise yayın yapılmaz. İlgili:
 ---
 
 ## Deploy-sonrası (prod) ek teyitler
-- [ ] `GET /health` → `debug_mode:false` (prod `DEBUG=false`).
-- [ ] `GET /docs` → 404 (prod'da kapalı).
-- [ ] Güvenlik header'ları prod URL'de canlı (curl).
+- [ ] **App başladı** = prod fail-fast validator geçti (kritik env'ler ayarlı: DEBUG=false, güçlü JWT_SECRET, prod DATABASE_URL/CORS). Boot loglarında RuntimeError yok.
+- [ ] **Migration** deploy'da koştu: `python scripts/migrate.py status` → tüm migration'lar `APPLIED`, `PENDING (none)`. (İlk adoption'da `stamp` çalıştırıldı.)
+- [ ] `GET /health` → 200 (artık `debug_mode` alanı yok — sızıntı kaldırıldı).
+- [ ] `GET /docs`, `/redoc`, `/openapi.json` → 404 (prod'da kapalı, DEBUG-gated).
+- [ ] Güvenlik header'ları + CSP prod URL'de canlı (`curl -I https://<api>` ve frontend).
 - [ ] `CORS_ORIGINS` yalnız prod frontend domain'i; cross-origin isteği reddedilir.
-- [ ] Rate limit prod değerleriyle çalışıyor (429).
-- [ ] Sentry DSN set → hata Sentry'ye düşüyor (test exception); PostHog consent sonrası event görünüyor.
-- [ ] Stripe webhook imzası prod secret ile doğrulanıyor.
-- [ ] ConsentLog yazımı prod DB'de kalıcı (register/cookie/checkout).
-- [ ] Cloudflare/Vercel edge + rate-limit kuralları açık (SECURITY.md §7).
+- [ ] Rate limit + adaptif challenge **doğru per-IP** çalışıyor (uvicorn `--proxy-headers` aktif; farklı IP'ler ayrı sayılır, hepsi proxy IP'sine düşmüyor).
+- [ ] Stripe yapılandırılmamışsa checkout **503** (mock bedava-upgrade yok); yapılandırılmışsa S7 e2e.
+- [ ] Sentry DSN set → hata Sentry'ye düşüyor; PostHog consent sonrası event görünüyor.
+- [ ] Stripe webhook imzası prod secret ile doğrulanıyor; ConsentLog yazımı prod DB'de kalıcı.
+- [ ] Turnstile (anahtar varsa): soft/auth-fail bandında 428 → widget → çözüm → geçer; admin/internal bypass çalışır.
+- [ ] UptimeRobot `/health` monitörü + `healthy` keyword alarmı kurulu.
 - [ ] Landing/register/login gerçek logged-out tarayıcıda görsel + fiili kayıt/giriş.
