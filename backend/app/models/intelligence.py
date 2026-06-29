@@ -66,6 +66,10 @@ class SignalSnapshot(Base):
             they were when the signal fired (the live signal row can change;
             this preserves the original).
         mtf_trends: Multi-timeframe trend alignment snapshot.
+        extra: Additive JSON escape hatch — extra["birth"] holds generation-time
+            provenance (atr_fallback, sr_override, nearest S/R, entry geometry,
+            risk inputs, volatility/confidence snapshot). Pure telemetry; the live
+            decision path never reads it. See docs/TELEMETRY-TRADE-PATH.md.
     """
 
     __tablename__ = "signal_snapshots"
@@ -96,6 +100,10 @@ class SignalSnapshot(Base):
     composite_probability = Column(Numeric(precision=5, scale=2), nullable=True)
 
     mtf_trends = Column(JSON, nullable=True, default=dict)
+
+    # Additive escape hatch for rich birth-time telemetry (extra["birth"]). Avoids
+    # future ALTERs; pure observability — never read by the live decision path.
+    extra = Column(JSON, nullable=True, default=None)
 
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
