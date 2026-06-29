@@ -104,5 +104,17 @@ class Payment(Base):
     method = Column(String(32), nullable=False, default="stripe")
     stripe_session_id = Column(String(128), nullable=True, index=True)
     stripe_payment_intent_id = Column(String(128), nullable=True, index=True)
+    stripe_invoice_id = Column(String(128), nullable=True, index=True)  # recurring renewals
     metadata_json = Column("metadata", JSON, nullable=True)
     paid_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class StripeEvent(Base):
+    """Processed Stripe webhook event ids — idempotency guard so a redelivered
+    event is never applied twice. id = the Stripe event id (evt_...)."""
+
+    __tablename__ = "stripe_events"
+
+    id = Column(String(255), primary_key=True)
+    type = Column(String(128), nullable=False)
+    received_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
