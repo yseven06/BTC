@@ -56,6 +56,106 @@ def _safe_div(a: Optional[float], b: Optional[float]) -> Optional[float]:
     return round(a / b, 4)
 
 
+# Telemetry contract version for the SignalTradePath.extra payload. Bump ONLY when
+# the MEANING of an existing key changes (new keys can be added without a bump —
+# consumers must treat missing keys as None). See docs/TELEMETRY-TRADE-PATH.md.
+TRADE_PATH_EXTRA_VERSION = 1
+
+
+def build_trade_path_extra(
+    *,
+    entry: Optional[float],
+    sl: Optional[float],
+    tp1: Optional[float],
+    tp2: Optional[float],
+    tp3: Optional[float],
+    direction: Optional[str] = None,
+    mfe_pct: Optional[float] = None,
+    mae_pct: Optional[float] = None,
+    atr_pct: Optional[float] = None,
+    sl_dist_pct: Optional[float] = None,
+    mfe_bar_idx: Optional[int] = None,
+    mae_bar_idx: Optional[int] = None,
+    bars_to_tp1: Optional[int] = None,
+    realized_return: Optional[float] = None,
+    gave_back_after_tp1: Optional[bool] = None,
+    resolution_source: Optional[str] = None,
+    tp_touched_but_sl_won: Optional[bool] = None,
+    sl_before_tp: Optional[bool] = None,
+    entry_zone_low: Optional[float] = None,
+    entry_zone_high: Optional[float] = None,
+) -> dict:
+    """Rich, versioned ``extra`` telemetry for a resolved SignalTradePath.
+
+    Every value is a DERIVED or PROVENANCE fact about an ALREADY-resolved trade —
+    it never alters outcome/levels (pure observability). Designed for backward
+    analysis, Coin Memory, Similarity and Adaptive Learning. Extensible by design:
+    unknown values are ``None`` and new keys append WITHOUT a schema change (the
+    row's JSON ``extra`` column is the escape hatch; reserved ``birth``/``shadow``
+    slots pre-allocate the next two telemetry waves). Field-by-field purpose:
+    docs/TELEMETRY-TRADE-PATH.md.
+    """
+    risk_dist = abs(entry - sl) if (entry is not None and sl is not None) else None
+
+    def _reward(tp: Optional[float]) -> Optional[float]:
+        return abs(tp - entry) if (tp is not None and entry is not None) else None
+
+    def _dist_pct(tp: Optional[float]) -> Optional[float]:
+        if tp is None or not entry:
+            return None
+        return round(abs(tp - entry) / entry * 100.0, 4)
+
+    tp1_dist_pct = _dist_pct(tp1)
+    tp2_dist_pct = _dist_pct(tp2)
+    tp3_dist_pct = _dist_pct(tp3)
+
+    gave_back_pct = None
+    if mfe_pct is not None and realized_return is not None:
+        gave_back_pct = round(max(0.0, mfe_pct - realized_return), 4)
+
+    entry_zone_width_pct = None
+    if entry_zone_low is not None and entry_zone_high is not None and entry:
+        entry_zone_width_pct = round(abs(entry_zone_high - entry_zone_low) / entry * 100.0, 4)
+
+    captured_tp1 = None
+    if mfe_pct is not None and tp1_dist_pct is not None:
+        captured_tp1 = bool(mfe_pct + 1e-9 >= tp1_dist_pct)
+
+    return {
+        "telemetry_version": TRADE_PATH_EXTRA_VERSION,
+        # --- geometry quality (planned R:R + distances from self-contained prices) ---
+        "planned_rr_tp1": _safe_div(_reward(tp1), risk_dist),
+        "planned_rr_tp2": _safe_div(_reward(tp2), risk_dist),
+        "planned_rr_tp3": _safe_div(_reward(tp3), risk_dist),
+        "tp1_dist_pct": tp1_dist_pct,
+        "tp2_dist_pct": tp2_dist_pct,
+        "tp3_dist_pct": tp3_dist_pct,
+        "tp1_dist_atr": _safe_div(tp1_dist_pct, atr_pct),
+        "tp2_dist_atr": _safe_div(tp2_dist_pct, atr_pct),
+        "tp3_dist_atr": _safe_div(tp3_dist_pct, atr_pct),
+        "sl_dist_atr": _safe_div(sl_dist_pct, atr_pct),
+        "entry_zone_width_pct": entry_zone_width_pct,
+        # --- excursion quality (realized vs planned) ---
+        "mfe_to_tp1": _safe_div(mfe_pct, tp1_dist_pct),   # >=1 => price reached TP1 distance
+        "mae_to_sl": _safe_div(mae_pct, sl_dist_pct),     # >=1 => price reached SL distance
+        "captured_tp1_potential": captured_tp1,
+        "final_return_pct": realized_return,
+        "gave_back_pct": gave_back_pct,
+        # --- timing ---
+        "time_to_mfe_bars": mfe_bar_idx,
+        "time_to_mae_bars": mae_bar_idx,
+        "bars_to_tp1": bars_to_tp1,
+        # --- resolution provenance (how the outcome was determined) ---
+        "resolution_source": resolution_source,            # bar_walk | live_sl | expiry
+        "sl_before_tp": sl_before_tp,                       # JSON mirror of the column
+        "tp_touched_but_sl_won": tp_touched_but_sl_won,     # conservative inside-bar rule fired
+        "gave_back_after_tp1": gave_back_after_tp1,
+        # --- reserved future slots (extensible — fill WITHOUT a schema change) ---
+        "birth": None,    # reserved: birth-time geometry provenance (atr_fallback, sr_override, nearest S/R)
+        "shadow": None,   # reserved: alternative-geometry shadow-policy outcomes (Adaptive Learning v2)
+    }
+
+
 def compute_trade_path(
     *,
     signal_id,
@@ -96,15 +196,29 @@ def compute_trade_path(
     intrabar_ambiguous: bool = False,
     sl_before_tp: Optional[bool] = None,
     still_forming_resolution: bool = False,
+    # resolution provenance + birth context (all optional → existing callers unchanged)
+    resolution_source: Optional[str] = None,
+    tp_touched_but_sl_won: Optional[bool] = None,
+    entry_zone_low: Optional[float] = None,
+    entry_zone_high: Optional[float] = None,
     source: str = "live",
 ) -> SignalTradePath:
     """Build (don't persist) a SignalTradePath from resolution-time primitives."""
     sl_dist_pct = None
-    if entry and sl and entry != 0:
+    if entry is not None and sl is not None and entry != 0:
         sl_dist_pct = round(abs(entry - sl) / entry * 100.0, 4)
 
     gen_hour = generated_at.hour if generated_at is not None else None
     weekday = generated_at.weekday() if generated_at is not None else None
+
+    extra = build_trade_path_extra(
+        entry=entry, sl=sl, tp1=tp1, tp2=tp2, tp3=tp3, direction=direction,
+        mfe_pct=mfe_pct, mae_pct=mae_pct, atr_pct=atr_pct, sl_dist_pct=sl_dist_pct,
+        mfe_bar_idx=mfe_bar_idx, mae_bar_idx=mae_bar_idx, bars_to_tp1=bars_to_tp1,
+        realized_return=realized_return, gave_back_after_tp1=gave_back_after_tp1,
+        resolution_source=resolution_source, tp_touched_but_sl_won=tp_touched_but_sl_won,
+        sl_before_tp=sl_before_tp, entry_zone_low=entry_zone_low, entry_zone_high=entry_zone_high,
+    )
 
     return SignalTradePath(
         signal_id=signal_id,
@@ -118,6 +232,7 @@ def compute_trade_path(
         detail_label=detail_label,
         schema_version=TRADE_PATH_SCHEMA_VERSION,
         source=source,
+        extra=extra,
         # policy-independent
         mfe_pct=mfe_pct,
         mae_pct=mae_pct,

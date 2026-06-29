@@ -33,7 +33,8 @@ from app.models.intelligence import SignalSnapshot
 async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, tp3,
                                      mfe_pct, mae_pct, bars_total, mfe_bar_idx, mae_bar_idx,
                                      tp1_bar_idx, post_tp1_mfe, post_tp1_mae, intrabar_ambiguous,
-                                     still_forming, realized_return, outcome_val, detail_label):
+                                     still_forming, realized_return, outcome_val, detail_label,
+                                     resolved_by_sl=False, is_expired_flag=False):
     """Fail-open: build + persist one SignalTradePath row. ANY error is swallowed
     (logged) so trade-path instrumentation can NEVER block trade resolution,
     change an outcome, or affect signal_performance / coin_memory."""
@@ -44,6 +45,17 @@ async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, t
         atr_pct = float(snap.atr_pct) if snap and snap.atr_pct is not None else None
         vol_ratio = float(snap.volatility_ratio) if snap and snap.volatility_ratio is not None else None
         regime = snap.regime if snap else None
+        # Resolution provenance (cheap, from the bar-walk result; pure observation).
+        if perf.hit_tp1:
+            sl_before_tp = False          # a TP was reached before any (breakeven) SL
+        elif resolved_by_sl and not intrabar_ambiguous:
+            sl_before_tp = True           # clean SL, no TP and no same-bar ambiguity
+        else:
+            sl_before_tp = None           # ambiguous, or expired with neither hit
+        tp_touched_but_sl_won = bool(intrabar_ambiguous and resolved_by_sl)
+        resolution_source = "expiry" if is_expired_flag else "bar_walk"
+        ez_low = float(signal.entry_zone_low) if signal.entry_zone_low is not None else None
+        ez_high = float(signal.entry_zone_high) if signal.entry_zone_high is not None else None
         row = compute_trade_path(
             signal_id=signal.id, asset_id=signal.asset_id,
             symbol=(signal.asset.symbol if signal.asset else None),
@@ -61,6 +73,9 @@ async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, t
             gave_back_after_tp1=(bool(perf.hit_tp1) and not bool(perf.hit_tp2)),
             realized_return=round(realized_return, 4),
             intrabar_ambiguous=intrabar_ambiguous, still_forming_resolution=still_forming,
+            sl_before_tp=sl_before_tp, resolution_source=resolution_source,
+            tp_touched_but_sl_won=tp_touched_but_sl_won,
+            entry_zone_low=ez_low, entry_zone_high=ez_high,
         )
         db.add(row)
         # Coin Memory v2 rollup (also inside the fail-open envelope) — derivable
@@ -112,6 +127,9 @@ async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, liv
             gave_back_after_tp1=None,   # UNMEASURED → NULL (not False)
             realized_return=round(realized_return, 4),
             intrabar_ambiguous=False, sl_before_tp=None, still_forming_resolution=True,
+            resolution_source="live_sl",
+            entry_zone_low=(float(signal.entry_zone_low) if signal.entry_zone_low is not None else None),
+            entry_zone_high=(float(signal.entry_zone_high) if signal.entry_zone_high is not None else None),
             source="live",
         )
         db.add(row)
@@ -574,6 +592,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                     intrabar_ambiguous=intrabar_ambiguous,
                     still_forming=False, realized_return=pnl_pct,
                     outcome_val=outcome.value, detail_label=perf.detail_label,
+                    resolved_by_sl=resolved_by_sl, is_expired_flag=is_expired_flag,
                 )
 
                 details.append({
