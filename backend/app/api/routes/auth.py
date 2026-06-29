@@ -350,9 +350,10 @@ async def upload_avatar(
         with open(file_path, "wb") as f:
             f.write(content)
     except Exception as e:
+        logger.error("Avatar save failed: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save image: {str(e)}"
+            detail="Failed to save image."
         )
 
     avatar_url = f"http://localhost:8000/static/uploads/{filename}"

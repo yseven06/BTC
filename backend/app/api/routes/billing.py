@@ -210,8 +210,11 @@ async def start_checkout(
         )
         return CheckoutResponse(url=session.url, session_id=session.id, mock=False)
     except Exception as exc:
-        logger.error("Stripe checkout failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"Stripe hatası: {exc}")
+        logger.error("Stripe checkout failed: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=502,
+            detail="Ödeme sağlayıcısıyla iletişim kurulamadı. Lütfen tekrar deneyin.",
+        )
 
 
 @router.post("/cancel", response_model=SubscriptionResponse, summary="Cancel at period end")

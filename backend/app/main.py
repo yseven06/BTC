@@ -126,12 +126,21 @@ async def health_check():
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Catches all unhandled exceptions to return a clean JSON error response."""
-    logger.error(f"Unhandled exception occurred on path {request.url.path}: {str(exc)}", exc_info=True)
+    """Catches all unhandled exceptions. Full detail is logged server-side with a
+    correlation id; the client only gets a generic message + that id (no exception
+    type/message/stack — avoids internal info disclosure)."""
+    import uuid
+
+    correlation_id = uuid.uuid4().hex
+    logger.error(
+        "Unhandled exception [cid=%s] on %s: %s",
+        correlation_id, request.url.path, exc, exc_info=True,
+    )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
-            "detail": "An internal server error occurred. Please try again later.",
-            "error_type": type(exc).__name__,
+            "detail": "An internal server error occurred. Please contact support with this reference.",
+            "correlation_id": correlation_id,
         },
+        headers={"X-Correlation-ID": correlation_id},
     )

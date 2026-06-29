@@ -829,9 +829,10 @@ async def generate_signal(
         else:
             df = await binance.fetch_ohlcv(symbol, timeframe, limit=100)
     except Exception as e:
+        logger.error("Market data fetch failed: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Failed to fetch market data from data feed: {str(e)}",
+            detail="Failed to fetch market data from the data feed.",
         )
     finally:
         await binance.close()
@@ -850,7 +851,7 @@ async def generate_signal(
         logger.error(f"Decision Engine execution failed: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Analysis engine execution failed: {str(e)}",
+            detail="Analysis engine execution failed. Please try again later.",
         )
 
     # Deactivate any previous active signals for this asset on this timeframe
@@ -966,9 +967,10 @@ async def backtest_endpoint(
         else:
             df = await binance.fetch_ohlcv(req.symbol, req.timeframe, limit=300)
     except Exception as e:
+        logger.error("Backtest candle fetch failed: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Failed to fetch historical candles for backtesting: {str(e)}",
+            detail="Failed to fetch historical candles for backtesting.",
         )
     finally:
         await binance.close()
@@ -995,7 +997,7 @@ async def backtest_endpoint(
         logger.error(f"Backtesting engine failed: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Backtest simulation failed: {str(e)}",
+            detail="Backtest simulation failed. Please try again later.",
         )
 
     return BacktestResponse(
@@ -1043,5 +1045,5 @@ async def manual_track_performance(
         logger.error(f"Error during manual performance tracking sweep: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Performance tracking sweep failed: {str(e)}",
+            detail="Performance tracking sweep failed.",
         )
