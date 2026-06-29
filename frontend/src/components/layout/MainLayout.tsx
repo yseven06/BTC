@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { Footer } from "./Footer";
+import { cn } from "@/lib/utils";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -15,18 +16,37 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children, fullWidth = false }: MainLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Mobile (< lg) the sidebar is an off-canvas drawer toggled by the header
+  // hamburger; on desktop it stays as the fixed, collapsible rail.
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen bg-bg-primary text-text-primary overflow-hidden">
-      {/* Collapsible Left Sidebar */}
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      {/* Left Sidebar — fixed rail on desktop, slide-in drawer on mobile */}
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        mobileOpen={mobileOpen}
+        onMobileClose={() => setMobileOpen(false)}
+      />
 
-      {/* Main Right Area */}
-      <div className={`flex-1 flex flex-col min-w-0 relative transition-all duration-300 ${
-        sidebarCollapsed ? "pl-[72px]" : "pl-[260px]"
-      }`}>
+      {/* Mobile drawer backdrop */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-30 bg-black/60 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden
+        />
+      )}
+
+      {/* Main Right Area — no left padding on mobile (drawer overlays), padded for
+          the fixed rail on desktop. */}
+      <div className={cn(
+        "flex-1 flex flex-col min-w-0 relative transition-all duration-300 pl-0",
+        sidebarCollapsed ? "lg:pl-[72px]" : "lg:pl-[260px]"
+      )}>
         {/* Top Header (includes TickerBand internally) */}
-        <Header />
+        <Header onMobileMenu={() => setMobileOpen(true)} />
 
         {/* Scrollable Content Container */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">

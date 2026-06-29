@@ -49,9 +49,11 @@ const adminNavItem: NavItem = {
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const { user: authUser, logout: doLogout } = useAuth();
   const [sub, setSub] = useState<SubscriptionResponse | null>(null);
@@ -93,6 +95,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         'fixed left-0 top-0 z-40 h-screen flex flex-col',
         'glass-panel border-r border-border-subtle',
         'transition-all duration-300 ease-in-out',
+        // Off-canvas drawer on mobile; always visible on desktop (lg+).
+        '-translate-x-full lg:translate-x-0',
+        mobileOpen && 'translate-x-0',
         collapsed ? 'w-[72px]' : 'w-[220px]'
       )}
     >
@@ -120,6 +125,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               key={item.id}
               href={item.href}
               data-tour={item.id}
+              onClick={onMobileClose}
               className={cn(
                 'nav-item group relative',
                 isActive && 'active',
@@ -173,8 +179,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </div>
       )}
 
-      {/* Collapse Toggle */}
-      <div className="px-2 py-2 border-t border-border-subtle">
+      {/* Collapse Toggle (desktop only — mobile uses the drawer) */}
+      <div className="hidden lg:block px-2 py-2 border-t border-border-subtle">
         <button
           onClick={onToggle}
           className={cn(

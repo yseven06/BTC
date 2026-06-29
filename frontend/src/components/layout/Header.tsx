@@ -12,6 +12,7 @@ import {
   LogOut,
   Moon,
   HelpCircle,
+  Menu,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
 import { cn } from '@/lib/utils';
@@ -22,7 +23,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useAlerts } from '@/hooks/useAlerts';
 import { formatRelativeTime } from '@/lib/utils';
 
-export default function Header() {
+export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) {
   const { tr } = useLanguage();
   // AuthContext is the single source of truth for the user; alerts come from
   // the shared useAlerts hook (fetched once app-wide) — no duplicate requests.
@@ -63,7 +64,15 @@ export default function Header() {
       <TickerBand />
 
       {/* Main Header */}
-      <div className="h-14 flex items-center justify-between px-6 glass-panel border-b border-border-subtle">
+      <div className="h-14 flex items-center justify-between px-4 lg:px-6 glass-panel border-b border-border-subtle">
+        {/* Mobile menu (hamburger) — opens the sidebar drawer on < lg */}
+        <button
+          onClick={onMobileMenu}
+          className="lg:hidden p-2 -ml-1 mr-1 rounded-lg text-text-secondary hover:text-text-primary hover:bg-white/[0.04] flex-shrink-0"
+          aria-label="Menüyü aç"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
         {/* Search Bar */}
         <div className="flex-1 max-w-xl relative">
           <div
