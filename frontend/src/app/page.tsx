@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation';
 import {
   Brain, TrendingUp, Shield, BarChart3, Microscope, History, Zap, Wallet,
   ArrowRight, CheckCircle, Activity, Target, Globe, FileDown, Bell,
+  Info, Layers, Eye, UserCheck, Lock,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import {
   fetchPerformanceSummary, fetchSignalHistory, fetchPlans,
   type PerformanceSummary, type ApiSignal, type Plan,
@@ -222,6 +224,63 @@ export default function LandingPage() {
               <p className="text-xs text-text-secondary mt-1.5">{s.desc}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Transparency: how it works + honest limits + key messages (all verifiable) */}
+      <section className="max-w-6xl mx-auto px-6 py-16 border-t border-border-subtle">
+        <h2 className="text-2xl font-extrabold text-text-primary text-center">Şeffaflık: Nasıl Çalışır, Neyi Vaat Etmez</h2>
+        <p className="text-sm text-text-secondary text-center mt-2 max-w-2xl mx-auto">
+          Güçlü bir karar destek aracı sunuyoruz — sihirli bir kutu değil. Sistemin nasıl çalıştığını da, sınırlarını da açıkça paylaşıyoruz.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-10">
+          {/* How it works — honest mechanics */}
+          <div className="glass-panel border border-border-subtle rounded-2xl p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Layers className="w-5 h-5 text-accent-primary" />
+              <h3 className="text-sm font-bold text-text-primary">Nasıl çalışır</h3>
+            </div>
+            <ul className="space-y-3 text-xs text-text-secondary leading-relaxed">
+              <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-accent-primary flex-shrink-0 mt-0.5" /> 9 bağımsız AI motoru her sinyali ayrı puanlar; sonuçlar birleşik bir güven skorunda toplanır.</li>
+              <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-accent-primary flex-shrink-0 mt-0.5" /> Piyasa rejimi (trend/range/volatilite) tespit edilir; ağırlıklar coin bazında geçmiş performansa göre uyarlanır.</li>
+              <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-accent-primary flex-shrink-0 mt-0.5" /> Her sinyal canlı izlenir; başarı metrikleri yalnızca gerçek, kapanmış sinyallerden hesaplanır.</li>
+            </ul>
+          </div>
+
+          {/* Honest limits — clear but not scary */}
+          <div className="glass-panel border border-border-subtle rounded-2xl p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Eye className="w-5 h-5 text-text-secondary" />
+              <h3 className="text-sm font-bold text-text-primary">Dürüst sınırlar</h3>
+            </div>
+            <ul className="space-y-3 text-xs text-text-secondary leading-relaxed">
+              <li className="flex gap-2"><Info className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" /> AI çıktıları yanlış veya eksik olabilir; tek başına değil, kendi araştırmanla birlikte değerlendirilmelidir.</li>
+              <li className="flex gap-2"><Info className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" /> Veriler üçüncü taraf sağlayıcılardan gelir (Binance, Yahoo Finance, CoinGecko); gecikme veya hata olabilir.</li>
+              <li className="flex gap-2"><Info className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" /> Geçmiş performans geleceği garanti etmez; kesintisiz veya hatasız hizmet garantisi verilmez.</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* 3 key messages — prominent, professional */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          {[
+            { icon: Info, title: 'Yatırım tavsiyesi değildir', desc: 'Tüm analizler bilgilendirme amaçlıdır; bireysel yatırım tavsiyesi sunmaz.' },
+            { icon: UserCheck, title: 'Nihai karar senindir', desc: 'Uygunluk analizi yapılmaz; kararı kendi bilgin ve risk profiline göre verirsin.' },
+            { icon: Lock, title: 'Senin adına işlem yapmaz', desc: 'TradeMinds yalnızca analiz ve karar desteği sunar; hesabında emir göndermez.' },
+          ].map((m) => (
+            <div key={m.title} className="rounded-2xl border border-border-subtle bg-bg-secondary/40 p-5">
+              <div className="w-9 h-9 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3">
+                <m.icon className="w-5 h-5 text-accent-primary" />
+              </div>
+              <h3 className="text-sm font-bold text-text-primary">{m.title}</h3>
+              <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">{m.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="max-w-3xl mx-auto mt-8">
+          <InvestmentDisclaimer variant="inline" />
         </div>
       </section>
 
