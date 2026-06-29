@@ -7,6 +7,7 @@ import { LockedOverlay } from '@/components/ui/LockedOverlay';
 import { useTierLimits } from '@/hooks/useTierLimits';
 import { fetchStrategyLab } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 
 interface HourData {
   hour: number; label: string; total: number;
@@ -195,6 +196,8 @@ export default function StrategyLabPage() {
           Saat, gün ve volatilite bazlı performans ısı haritaları
         </p>
       </div>
+
+      <InvestmentDisclaimer variant="backtest" />
 
       {loading && (
         <div className="flex justify-center py-20">

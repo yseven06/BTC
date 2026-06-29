@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import { track } from '@/lib/analytics';
 import { AnalyticsEvent } from '@/lib/analytics-events';
+import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 
 const CYCLE_LABEL: Record<BillingCycle, string> = {
   monthly:     '1 Ay',
@@ -291,6 +292,8 @@ export default function PricingPage() {
       <p className="text-center text-[10px] text-text-muted">
         Ödemeler USD üzerinden alınır. İstediğin zaman iptal edebilirsin.
       </p>
+
+      <InvestmentDisclaimer variant="inline" className="mx-auto max-w-2xl" />
     </div>
   );
 }

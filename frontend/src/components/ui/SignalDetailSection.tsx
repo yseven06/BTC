@@ -7,6 +7,7 @@ import { cn, formatRelativeTime, formatAbsoluteTimeTR, formatPrice } from '@/lib
 import { ApiSignal } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { AnalyticsEvent } from '@/lib/analytics-events';
+import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import {
   Target, TrendingUp, TrendingDown, Activity, ShieldAlert,
   Info, X, Scale, FileText, BarChart3, Check,
@@ -717,6 +718,8 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
           onClose={() => setOpenEngine(null)}
         />
       )}
+
+      <InvestmentDisclaimer variant="inline" className="mt-4" />
     </div>
   );
 };

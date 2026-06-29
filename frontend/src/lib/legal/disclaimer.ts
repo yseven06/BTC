@@ -36,3 +36,9 @@ export const DISCLAIMER_FULL =
 export const DISCLAIMER_BACKTEST_EXTRA =
   'Backtest ve simülasyon sonuçları tamamen varsayımsaldır; gerçek işlem ' +
   'sonuçlarını temsil etmez ve garanti etmez.';
+
+/** Appended on (future) Auto Trade surfaces — the strongest, warning-level notice. */
+export const DISCLAIMER_AUTOTRADE_EXTRA =
+  'Otomatik işlem (Auto Trade) özelliği yalnızca ayrı bir sözleşmeyi ve ayrı bir risk ' +
+  'bildirimini onaylamanız hâlinde etkinleşir. Etkin olduğunda dahi tüm işlemler sizin ' +
+  'talimatınız ve sorumluluğunuzdadır; nihai karar ve risk size aittir.';

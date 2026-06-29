@@ -24,6 +24,7 @@ import {
   Pie,
   Legend
 } from 'recharts';
+import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 
 export default function PerformancePage() {
   const { tr } = useLanguage();
@@ -102,6 +103,7 @@ export default function PerformancePage() {
 
   return (
     <div className="space-y-6">
+      <InvestmentDisclaimer variant="backtest" />
       {/* Title Header */}
       <div className="flex justify-between items-center">
         <div>

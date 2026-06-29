@@ -4,6 +4,7 @@ import React from 'react';
 import { FlaskConical } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import Link from 'next/link';
+import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 
 export default function BacktestPage() {
   return (
@@ -22,6 +23,7 @@ export default function BacktestPage() {
           </Link>
         </p>
       </GlassCard>
+      <InvestmentDisclaimer variant="backtest" />
     </div>
   );
 }
