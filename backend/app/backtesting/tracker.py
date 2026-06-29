@@ -27,6 +27,7 @@ from app.engines.market_structure.structure import analyse_market_structure
 from app.services.coin_memory import update_coin_memory, update_trade_mgmt_stats
 from app.services.lifecycle_log import make_event
 from app.backtesting.trade_path import compute_trade_path
+from app.backtesting.resolution_core import resolve_trade_path
 from app.models.intelligence import SignalSnapshot
 
 
@@ -139,6 +140,51 @@ async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, liv
     except Exception as tp_exc:
         logger.warning("TradePath(live_sl) instrumentation failed for %s (fail-open, ignored): %s",
                        getattr(signal, "id", "?"), tp_exc)
+
+
+def _resolve_signal_bar_walk(*, direction, entry, stop_loss, tp1, tp2, tp3,
+                             opens, highs, lows, closes, times, sig_time_aware,
+                             execution_model="conservative"):
+    """Bar-walk resolution via the single-source resolution_core, mapped to the
+    live tracker's result fields + clamped hit timestamps. PURE (no DB / no clock).
+
+    Byte-identical to the prior inline bar-walk — geometry locked by
+    tests/test_resolution_equivalence.py, mapping locked by test_resolution_mapping.
+    The WALL-CLOCK expiry decision stays in the caller; this only walks the bars it
+    is given (conservative == the live SL-wins inside-bar rule)."""
+    n = len(times)
+    bars = [(float(opens[k]), float(highs[k]), float(lows[k]), float(closes[k])) for k in range(n)]
+    res = resolve_trade_path(
+        direction=direction, entry=entry, sl=stop_loss, tp1=tp1, tp2=tp2, tp3=tp3,
+        bars=bars, execution_model=execution_model,
+    )
+
+    def _clamp(idx):
+        # Re-attach UTC + floor at sig_time (mirrors the tracker's _aware()).
+        if idx is None:
+            return None
+        ts = pd.Timestamp(times[idx])
+        ts = ts.tz_localize(timezone.utc) if ts.tzinfo is None else ts
+        return max(ts, sig_time_aware)
+
+    return {
+        "resolved": res.resolved,
+        "resolved_by_sl": res.resolved_by_sl,
+        "hit_tp1": res.hit_tp1, "hit_tp2": res.hit_tp2, "hit_tp3": res.hit_tp3,
+        "max_favorable": res.mfe_pct, "max_drawdown": res.mae_pct,
+        "mfe_bar_idx": res.mfe_bar_idx, "mae_bar_idx": res.mae_bar_idx,
+        "tp1_bar_idx": res.tp1_bar_idx,
+        "post_tp1_mfe": res.post_tp1_mfe_pct, "post_tp1_mae": res.post_tp1_mae_pct,
+        "intrabar_ambiguous": res.intrabar_ambiguous,
+        "bars_to_outcome": res.bars_walked,
+        "realized_pnl_capital": res.realized_return_frac,
+        "remaining_share": res.remaining_share,
+        "closed_at": _clamp(res.closed_bar_idx),
+        "tp1_hit_at": _clamp(res.tp1_bar_idx),
+        "tp2_hit_at": _clamp(res.tp2_bar_idx),
+        "tp3_hit_at": _clamp(res.tp3_bar_idx),
+    }
+
 
 # Timeframe → seconds, for scaling the lifecycle min-state-duration.
 _TF_SECONDS = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400, "1w": 604800}
@@ -422,108 +468,37 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
             closes = df_after["close"].values
             times = df_after.index.tolist()
 
-            remaining_share = 1.0
-            realized_pnl_capital = 0.0
-            current_sl = stop_loss
-
-            for k in range(len(df_after)):
-                bar_open = float(opens[k])
-                bar_high = float(highs[k])
-                bar_low = float(lows[k])
-                bar_close = float(closes[k])
-                bar_time = times[k]
-
-                bars_to_outcome = k + 1
-
-                # Update drawdown (MAE) and favorable excursion (MFE)
-                if signal.direction.value == "bullish":
-                    drawdown = ((entry - bar_low) / entry) * 100.0 if entry > 0 else 0.0
-                    favorable = ((bar_high - entry) / entry) * 100.0 if entry > 0 else 0.0
-                else:
-                    drawdown = ((bar_high - entry) / entry) * 100.0 if entry > 0 else 0.0
-                    favorable = ((entry - bar_low) / entry) * 100.0 if entry > 0 else 0.0
-                if favorable > max_favorable:
-                    max_favorable = favorable
-                    mfe_bar_idx = k
-                if drawdown > max_drawdown:
-                    max_drawdown = drawdown
-                    mae_bar_idx = k
-                # Post-TP1 excursion (hit_tp1 reflects prior bars here) — pure obs.
-                if hit_tp1:
-                    post_tp1_mfe = max(post_tp1_mfe, favorable)
-                    post_tp1_mae = max(post_tp1_mae, drawdown)
-
-                # Check SL hit
-                sl_hit = bar_low <= current_sl if signal.direction.value == "bullish" else bar_high >= current_sl
-                
-                # Check TP hits
-                if signal.direction.value == "bullish":
-                    tp1_triggered = bar_high >= tp1 and not hit_tp1
-                    tp2_triggered = bar_high >= tp2 and not hit_tp2
-                    tp3_triggered = bar_high >= tp3 and not hit_tp3
-                else:
-                    tp1_triggered = bar_low <= tp1 and not hit_tp1
-                    tp2_triggered = bar_low <= tp2 and not hit_tp2
-                    tp3_triggered = bar_low <= tp3 and not hit_tp3
-                
-                tp_hit = tp1_triggered or tp2_triggered or tp3_triggered
-                
-                # Inside-bar ambiguity resolution (conservative: SL wins)
-                if sl_hit and tp_hit:
-                    intrabar_ambiguous = True  # obs-only: order unknown this bar
-                    tp_hit = False
-                    tp1_triggered = tp2_triggered = tp3_triggered = False
-
-                # Process
-                if sl_hit:
-                    ret_sl = ((current_sl - entry) / entry) if signal.direction.value == "bullish" else ((entry - current_sl) / entry)
-                    realized_pnl_capital += remaining_share * ret_sl
-                    remaining_share = 0.0
-                    resolved = True
-                    resolved_by_sl = True
-                    closed_at = _aware(bar_time)
-                    break
-                elif tp_hit:
-                    if tp1_triggered:
-                        hit_tp1 = True
-                        tp1_bar_idx = k  # obs-only
-                        tp1_hit_at = _aware(bar_time)
-                        portion = 0.50
-                        ret_tp1 = ((tp1 - entry) / entry) if signal.direction.value == "bullish" else ((entry - tp1) / entry)
-                        realized_pnl_capital += portion * ret_tp1
-                        remaining_share -= portion
-                        current_sl = entry
-
-                    if tp2_triggered and remaining_share > 0:
-                        hit_tp2 = True
-                        tp2_hit_at = _aware(bar_time)
-                        portion = min(0.30, remaining_share)
-                        ret_tp2 = ((tp2 - entry) / entry) if signal.direction.value == "bullish" else ((entry - tp2) / entry)
-                        realized_pnl_capital += portion * ret_tp2
-                        remaining_share -= portion
-
-                    if tp3_triggered and remaining_share > 0:
-                        hit_tp3 = True
-                        tp3_hit_at = _aware(bar_time)
-                        portion = remaining_share
-                        ret_tp3 = ((tp3 - entry) / entry) if signal.direction.value == "bullish" else ((entry - tp3) / entry)
-                        realized_pnl_capital += portion * ret_tp3
-                        remaining_share = 0.0
-                        resolved = True
-                        closed_at = _aware(bar_time)
-                        break
-
-                    # After TP hit, check if same candle hits the new SL (BE)
-                    if remaining_share > 0:
-                        sl_hit_after_tp = bar_low <= current_sl if signal.direction.value == "bullish" else bar_high >= current_sl
-                        if sl_hit_after_tp:
-                            ret_sl = ((current_sl - entry) / entry) if signal.direction.value == "bullish" else ((entry - current_sl) / entry)
-                            realized_pnl_capital += remaining_share * ret_sl
-                            remaining_share = 0.0
-                            resolved = True
-                            resolved_by_sl = True
-                            closed_at = _aware(bar_time)
-                            break
+            # Single-source resolution (byte-identical to the prior inline bar-walk —
+            # locked by tests/test_resolution_equivalence.py + test_resolution_mapping).
+            # The wall-clock expiry decision below is unchanged.
+            _bw = _resolve_signal_bar_walk(
+                direction=signal.direction.value, entry=entry,
+                stop_loss=stop_loss, tp1=tp1, tp2=tp2, tp3=tp3,
+                opens=opens, highs=highs, lows=lows, closes=closes,
+                times=times, sig_time_aware=sig_time_aware,
+            )
+            resolved = _bw["resolved"]
+            resolved_by_sl = _bw["resolved_by_sl"]
+            hit_tp1, hit_tp2, hit_tp3 = _bw["hit_tp1"], _bw["hit_tp2"], _bw["hit_tp3"]
+            max_favorable = _bw["max_favorable"]
+            max_drawdown = _bw["max_drawdown"]
+            mfe_bar_idx = _bw["mfe_bar_idx"]
+            mae_bar_idx = _bw["mae_bar_idx"]
+            tp1_bar_idx = _bw["tp1_bar_idx"]
+            post_tp1_mfe = _bw["post_tp1_mfe"]
+            post_tp1_mae = _bw["post_tp1_mae"]
+            intrabar_ambiguous = _bw["intrabar_ambiguous"]
+            bars_to_outcome = _bw["bars_to_outcome"]
+            realized_pnl_capital = _bw["realized_pnl_capital"]
+            remaining_share = _bw["remaining_share"]
+            if _bw["closed_at"] is not None:
+                closed_at = _bw["closed_at"]
+            if _bw["tp1_hit_at"] is not None:
+                tp1_hit_at = _bw["tp1_hit_at"]
+            if _bw["tp2_hit_at"] is not None:
+                tp2_hit_at = _bw["tp2_hit_at"]
+            if _bw["tp3_hit_at"] is not None:
+                tp3_hit_at = _bw["tp3_hit_at"]
 
             # If not resolved by high/low, check for signal expiration
             if not resolved:

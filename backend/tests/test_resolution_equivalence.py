@@ -179,12 +179,65 @@ def test_differential_equivalence():
     assert not mismatches, f"{len(mismatches)} mismatches; first: {mismatches[0][:2]}"
 
 
+def run_mapping_check(n=3000, seed=99):
+    """The live tracker now resolves via _resolve_signal_bar_walk (core + field/
+    timestamp mapping). Assert that helper reproduces the frozen legacy bar-walk
+    field-by-field INCLUDING the clamped hit timestamps."""
+    import pandas as pd
+    from app.backtesting.tracker import _resolve_signal_bar_walk
+
+    rng = random.Random(seed)
+    sig_time = pd.Timestamp("2024-01-01", tz="UTC")
+    mism = []
+    for i in range(n):
+        direction, entry, sl, tp1, tp2, tp3, bars = _random_scenario(rng)
+        leg = legacy_bar_walk(direction, entry, sl, tp1, tp2, tp3, bars)
+        opens = [b[0] for b in bars]
+        highs = [b[1] for b in bars]
+        lows = [b[2] for b in bars]
+        closes = [b[3] for b in bars]
+        times = [sig_time + pd.Timedelta(hours=j + 1) for j in range(len(bars))]
+        bw = _resolve_signal_bar_walk(
+            direction=direction, entry=entry, stop_loss=sl, tp1=tp1, tp2=tp2, tp3=tp3,
+            opens=opens, highs=highs, lows=lows, closes=closes, times=times, sig_time_aware=sig_time)
+        checks = {
+            "resolved": bw["resolved"] == leg["resolved"],
+            "resolved_by_sl": bw["resolved_by_sl"] == leg["resolved_by_sl"],
+            "hit_tp1": bw["hit_tp1"] == leg["hit_tp1"], "hit_tp2": bw["hit_tp2"] == leg["hit_tp2"],
+            "hit_tp3": bw["hit_tp3"] == leg["hit_tp3"],
+            "mfe": bw["max_favorable"] == leg["mfe"], "mae": bw["max_drawdown"] == leg["mae"],
+            "mfe_idx": bw["mfe_bar_idx"] == leg["mfe_bar_idx"], "mae_idx": bw["mae_bar_idx"] == leg["mae_bar_idx"],
+            "tp1_idx": bw["tp1_bar_idx"] == leg["tp1_bar_idx"],
+            "post_tp1_mfe": bw["post_tp1_mfe"] == leg["post_tp1_mfe"],
+            "post_tp1_mae": bw["post_tp1_mae"] == leg["post_tp1_mae"],
+            "intrabar": bw["intrabar_ambiguous"] == leg["intrabar"],
+            "bars": bw["bars_to_outcome"] == leg["bars_walked"],
+            "realized": bw["realized_pnl_capital"] == leg["realized"],
+            "remaining": bw["remaining_share"] == leg["remaining"],
+            "closed_at": (bw["closed_at"] == (max(times[leg["closed_idx"]], sig_time) if leg["closed_idx"] is not None else None)),
+            "tp1_hit_at": (bw["tp1_hit_at"] == (max(times[leg["tp1_bar_idx"]], sig_time) if leg["tp1_bar_idx"] is not None else None)),
+        }
+        bad = [k for k, ok in checks.items() if not ok]
+        if bad:
+            mism.append((i, bad))
+    return mism
+
+
+def test_mapping_matches_legacy():
+    mism = run_mapping_check()
+    assert not mism, f"{len(mism)} mapping mismatches; first: {mism[0]}"
+
+
 if __name__ == "__main__":
     ms = run_differential()
     if ms:
-        print(f"FAIL — {len(ms)} mismatch(es). First:")
-        idx, diff, scen = ms[0]
-        print(f"  scenario #{idx}: {diff}")
-        print(f"  inputs: {scen}")
+        print(f"DIFFERENTIAL FAIL — {len(ms)} mismatch(es). First: scenario #{ms[0][0]}: {ms[0][1]}")
+        print(f"  inputs: {ms[0][2]}")
     else:
-        print("PASS — 8000/8000 randomized scenarios: legacy tracker bar-walk == resolution_core (byte-identical)")
+        print("PASS — differential 8000/8000: legacy tracker bar-walk == resolution_core (byte-identical)")
+
+    mm = run_mapping_check()
+    if mm:
+        print(f"MAPPING FAIL — {len(mm)} mismatch(es). First: {mm[0]}")
+    else:
+        print("PASS — mapping 3000/3000: _resolve_signal_bar_walk == legacy (fields + timestamps)")
