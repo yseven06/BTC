@@ -493,8 +493,8 @@ async def _check_price_alerts() -> Dict[str, Any]:
     and leaves signal/custom alert types untouched (not implemented yet).
     """
     from app.models.alert import Alert, AlertType
+    from app.models.notification import NotificationSettings
     from app.notifications.telegram import send_telegram_message
-    from app.notifications.service import get_or_create_settings
 
     checked = 0
     triggered = 0
@@ -514,7 +514,9 @@ async def _check_price_alerts() -> Dict[str, Any]:
                 return {"checked": 0, "triggered": 0}
 
             price_cache: Dict[str, float] = {}
-            settings = await get_or_create_settings(db)
+            # Per-user Telegram settings, looked up lazily and cached by owner id.
+            # Query-only (never creates) so the alert transaction isn't committed early.
+            settings_cache = {}
 
             for alert in alerts:
                 asset = alert.asset
@@ -551,14 +553,22 @@ async def _check_price_alerts() -> Dict[str, Any]:
                 alert.triggered_at = datetime.now(timezone.utc)
                 triggered += 1
 
-                if settings.telegram_enabled and settings.telegram_bot_token and settings.telegram_chat_id:
+                # Notify the alert OWNER via their own Telegram settings (per-user).
+                owner_id = alert.user_id
+                if owner_id not in settings_cache:
+                    r = await db.execute(
+                        select(NotificationSettings).where(NotificationSettings.user_id == owner_id)
+                    )
+                    settings_cache[owner_id] = r.scalar_one_or_none()
+                s = settings_cache[owner_id]
+                if s and s.telegram_enabled and s.telegram_bot_token and s.telegram_chat_id:
                     arrow = "≥" if direction == "above" else "≤"
                     text = (
                         f"🔔 <b>Alarm Tetiklendi</b>\n"
                         f"{symbol}: fiyat {arrow} {target:,.4f} hedefine ulaştı\n"
                         f"Anlık fiyat: {price:,.4f}"
                     )
-                    await send_telegram_message(settings.telegram_bot_token, settings.telegram_chat_id, text)
+                    await send_telegram_message(s.telegram_bot_token, s.telegram_chat_id, text)
 
             await db.commit()
     finally:
