@@ -1,7 +1,9 @@
 # CAPTCHA / Bot Koruması — Mimari Karar Kaydı (ADR)
 
-**Durum:** Onaylandı (2026-06-29). **Uygulama zamanı:** Legal paketi (Madde 5)
-tamamlandıktan sonra, planlanan sırayla. **Bu belge yalnız tasarımdır — kod içermez.**
+**Durum:** Onaylandı (2026-06-29). **UYGULANDI (2026-06-29):** `backend/app/challenge.py`
+(tek-kaynak adaptif `require_challenge` dependency) + `frontend/src/lib/challenge.ts`
+(apiFetch 428 akışı); login/register/google-login/checkout'a bağlandı. **Env-gated/no-op**
+(Turnstile anahtarları kullanıcı tarafından sağlanır). Bu belge tasarım/karar kaydıdır.
 
 İlgili katman: [Rate Limiting](../backend/app/rate_limit.py) (Madde 4, tamam).
 Gizlilik ifşası: [Legal/KVKK paketi](./) (Madde 5) bu belgenin §9'unu kullanacak.

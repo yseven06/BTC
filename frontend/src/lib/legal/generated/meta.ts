@@ -23,19 +23,19 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
   "aydinlatma-metni": {
     "slug": "aydinlatma-metni",
     "title": "KVKK Aydınlatma Metni",
-    "version": "0.9.1",
+    "version": "0.9.2",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "1d1e9b976058f8f35479c187af5ea397ae48909ff5bde0763240e25a3ec29293",
+    "hash": "3365571ad6f0b39361034fd9d84ff3046e4e7f884bf5c0840bad6930f839be20",
     "reconsentOnMinor": false
   },
   "cerez-politikasi": {
     "slug": "cerez-politikasi",
     "title": "Çerez Politikası",
-    "version": "0.9.1",
+    "version": "0.9.2",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "23e2afb902305f92607084bf640dba28482c94a01b78c5a604921662095d936a",
+    "hash": "d936de5614b5b302468407c368c7b29a823cd373b11f932078cf194c9581ab87",
     "reconsentOnMinor": false
   },
   "iletisim-kunye": {

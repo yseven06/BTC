@@ -1,7 +1,7 @@
 ---
 slug: aydinlatma-metni
 title: KVKK Aydınlatma Metni
-version: 0.9.1
+version: 0.9.2
 effectiveDate: 2026-06-29
 locale: tr
 ---
@@ -69,9 +69,16 @@ durumda aktarım **KVKK'nın yurt dışına aktarım hükümleri** çerçevesind
 - **Barındırma / altyapı / veritabanı:** (ör. Supabase, Vercel, Railway),
 - **Hata izleme ve ürün analitiği:** (ör. Sentry; PostHog — yalnızca onayla),
 - **Ödeme:** ödeme/abonelik hizmet sağlayıcısı (ör. Stripe),
-- **Bot/abuse koruması:** (ileride Cloudflare Turnstile),
+- **Bot/kötüye kullanım koruması:** Cloudflare Turnstile (adaptif doğrulama),
 - **Piyasa veri sağlayıcıları:** Binance, MEXC, Yahoo Finance, CoinGecko, TradingView
   (kural olarak kişisel veri içermeyen piyasa verileri).
+
+**Bot/kötüye kullanım koruması (Cloudflare Turnstile):** Giriş, kayıt ve ödeme gibi
+işlemlerde bot/otomasyon tespiti amacıyla Cloudflare Turnstile kullanılabilir. Bu kapsamda
+IP adresi, TLS/cihaz parmak izi, tarayıcı (User-Agent) bilgisi ve davranışsal sinyaller
+işlenir ve veriler Cloudflare'in yurt dışı altyapısına aktarılır. İşleme amacı bot/dolandırıcılık
+önleme olup KVKK m.5/1(f) **meşru menfaat** hukuki sebebine dayanır; reklam veya çapraz-site
+takip yapılmaz.
 
 Ayrıca yasal yükümlülük hâlinde yetkili kamu kurum ve kuruluşlarına aktarım yapılabilir.
 

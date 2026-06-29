@@ -1,7 +1,7 @@
 ---
 slug: cerez-politikasi
 title: Çerez Politikası
-version: 0.9.1
+version: 0.9.2
 effectiveDate: 2026-06-29
 locale: tr
 ---
@@ -27,6 +27,10 @@ dosyalarıdır. Benzer teknolojiler (localStorage vb.) da bu politika kapsamınd
 Zorunlu çerezler, talep ettiğiniz Hizmet'in sunulabilmesi için kesinlikle gerekli olduğundan
 onaya tabi değildir; bu çerezler kapatıldığında oturum açma, güvenlik ve temel işlevler
 çalışmaz. Analitik çerezler **varsayılan olarak kapalıdır** ve yalnızca açık onayınızla çalışır.
+
+Güvenlik kapsamında, bot/kötüye kullanım doğrulaması (Cloudflare Turnstile) sırasında ve
+sonrasında **zorunlu/işlevsel güvenlik çerezleri** (ör. doğrulama sonrası kısa ömürlü
+"chal_ok" çerezi) kullanılabilir; bunlar reklam/takip amacı taşımaz ve onaya tabi değildir.
 
 Güncel ve ayrıntılı çerez envanteri (çerez adı, sağlayıcı, tür ve saklama süresi) çerez
 ayarları panelinde sunulur ve teknik değişikliklere göre güncellenir.
