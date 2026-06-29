@@ -18,6 +18,7 @@ from app.database import init_db, close_db
 from app.services.scheduler import start_scheduler, stop_scheduler
 from app.rate_limit import limiter, rate_limit_exceeded_handler, RateLimitExceeded
 from app.security_headers import SecurityHeadersMiddleware
+from app.request_limits import MaxBodySizeMiddleware
 
 settings = get_settings()
 
@@ -102,6 +103,9 @@ app.add_middleware(
 
 # Defensive security headers on every API response (CSP lives on the frontend).
 app.add_middleware(SecurityHeadersMiddleware)
+
+# Reject oversized request bodies (DoS first-line defense).
+app.add_middleware(MaxBodySizeMiddleware)
 
 # Include API Router
 app.include_router(api_router, prefix="/api/v1")

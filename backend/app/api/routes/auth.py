@@ -323,6 +323,20 @@ from fastapi import File, UploadFile
 import uuid
 import os
 
+MAX_AVATAR_BYTES = 2 * 1024 * 1024  # 2 MB
+ALLOWED_AVATAR_CONTENT_TYPES = {"image/png", "image/jpeg", "image/gif", "image/webp"}
+
+
+def _looks_like_image(data: bytes) -> bool:
+    """Magic-byte sniff so a renamed non-image can't be stored as an avatar."""
+    return (
+        data.startswith(b"\x89PNG\r\n\x1a\n")                # PNG
+        or data[:3] == b"\xff\xd8\xff"                       # JPEG
+        or data[:6] in (b"GIF87a", b"GIF89a")               # GIF
+        or (data[:4] == b"RIFF" and data[8:12] == b"WEBP")  # WEBP
+    )
+
+
 @router.post(
     "/upload-avatar",
     summary="Upload profile avatar image",
@@ -332,21 +346,36 @@ async def upload_avatar(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     """Upload user profile picture and return the public URL."""
-    ext = os.path.splitext(file.filename)[1].lower()
+    ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in [".png", ".jpg", ".jpeg", ".gif", ".webp"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid image format. Allowed: PNG, JPG, JPEG, GIF, WEBP."
         )
+    if file.content_type not in ALLOWED_AVATAR_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid image content type."
+        )
+
+    content = await file.read()
+    if len(content) > MAX_AVATAR_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Image too large (max 2 MB)."
+        )
+    if not _looks_like_image(content):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File is not a valid image."
+        )
 
     upload_dir = os.path.join("static", "uploads")
     os.makedirs(upload_dir, exist_ok=True)
-
-    filename = f"{uuid.uuid4()}{ext}"
+    filename = f"{uuid.uuid4()}{ext}"  # random name → no path traversal / overwrite
     file_path = os.path.join(upload_dir, filename)
 
     try:
-        content = await file.read()
         with open(file_path, "wb") as f:
             f.write(content)
     except Exception as e:
