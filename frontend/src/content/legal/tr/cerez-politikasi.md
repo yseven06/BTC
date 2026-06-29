@@ -1,7 +1,7 @@
 ---
 slug: cerez-politikasi
 title: Çerez Politikası
-version: 0.9.0
+version: 0.9.1
 effectiveDate: 2026-06-29
 locale: tr
 ---
@@ -24,8 +24,9 @@ dosyalarıdır. Benzer teknolojiler (localStorage vb.) da bu politika kapsamınd
 | **Zorunlu** | Oturum, kimlik doğrulama, güvenlik ve temel işlevler | Gerekmez |
 | **Analitik (isteğe bağlı)** | Ürün kullanımının ölçülmesi ve iyileştirme (ör. PostHog) | Açık onay gerekir |
 
-Zorunlu çerezler Hizmet'in çalışması için gereklidir ve onay gerektirmez. Analitik
-çerezler **varsayılan olarak kapalıdır** ve yalnızca açık onayınızla çalışır.
+Zorunlu çerezler, talep ettiğiniz Hizmet'in sunulabilmesi için kesinlikle gerekli olduğundan
+onaya tabi değildir; bu çerezler kapatıldığında oturum açma, güvenlik ve temel işlevler
+çalışmaz. Analitik çerezler **varsayılan olarak kapalıdır** ve yalnızca açık onayınızla çalışır.
 
 Güncel ve ayrıntılı çerez envanteri (çerez adı, sağlayıcı, tür ve saklama süresi) çerez
 ayarları panelinde sunulur ve teknik değişikliklere göre güncellenir.
@@ -38,7 +39,8 @@ kolaydır. Tercihlerinizi daha sonra **çerez ayarları** bölümünden dilediğ
 değiştirebilirsiniz.
 
 Analitik onayı verildiğinde ürün analitiği etkinleşir; onay verilmediğinde veya geri
-alındığında analitik verisi toplanmaz.
+alındığında analitik verisi toplanmaz. Verdiğiniz veya reddettiğiniz onaylar, ispat
+yükümlülüğümüz gereği tarih ve kapsam bilgisiyle kayıt altına alınır.
 
 ## 4. Üçüncü Taraf
 
@@ -49,5 +51,5 @@ aktarım, [KVKK Aydınlatma Metni](/yasal/aydinlatma-metni) ve
 ## 5. Saklama
 
 Çerezlerin saklama süreleri türlerine göre değişir; oturum çerezleri tarayıcı kapandığında,
-kalıcı çerezler tanımlı süreleri sonunda silinir. Çerez tercihleri periyodik olarak yeniden
-sorulabilir.
+kalıcı çerezler tanımlı süreleri sonunda silinir. Çerez onayınız en fazla **12 ay** geçerlidir;
+bu sürenin sonunda tercihleriniz yeniden sorulur.

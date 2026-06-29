@@ -1,7 +1,7 @@
 ---
 slug: aydinlatma-metni
 title: KVKK Aydınlatma Metni
-version: 0.9.0
+version: 0.9.1
 effectiveDate: 2026-06-29
 locale: tr
 ---
@@ -83,7 +83,10 @@ Ayrıca yasal yükümlülük hâlinde yetkili kamu kurum ve kuruluşlarına akta
 
 Kişisel verileriniz, işleme amacının gerektirdiği süre ve ilgili mevzuatta öngörülen
 zamanaşımı/saklama süreleri boyunca saklanır; sürenin sonunda silinir, yok edilir veya
-anonim hâle getirilir.
+anonim hâle getirilir. Örnek olarak: hesap ve üyelik verileri üyelik süresince ve sona
+ermesinden itibaren ilgili zamanaşımı süresince; mali/ödeme kayıtları vergi ve ticaret
+mevzuatı uyarınca asgari 10 yıl; log ve işlem güvenliği kayıtları ilgili mevzuatta öngörülen
+süre boyunca; açık rızaya dayalı işlemeler ise rıza geri alınana kadar saklanır.
 
 ## 8. İlgili Kişinin Hakları (KVKK m.11)
 
@@ -98,7 +101,10 @@ kanuna aykırı işleme nedeniyle zararın giderilmesini talep etme haklarına s
 
 Haklarınızı kullanmak için taleplerinizi, kimliğinizi tevsik eden bilgilerle birlikte
 Platform'un resmî iletişim/başvuru kanalları üzerinden iletebilirsiniz. Başvurularınız,
-KVKK ve ilgili mevzuatta öngörülen sürelerde sonuçlandırılır.
+talebin niteliğine göre en kısa sürede ve her hâlde en geç **otuz (30) gün** içinde ücretsiz
+olarak sonuçlandırılır; işlemin ayrıca bir maliyet gerektirmesi hâlinde Kurul'ca belirlenen
+tarifedeki ücret alınabilir. Başvurunuzun reddi hâlinde, Kişisel Verileri Koruma Kurulu'na
+şikâyette bulunma hakkınız saklıdır.
 
 > _[Başvuru için resmî e-posta/KEP adresi ve varsa başvuru formu bağlantısı tüzel kişilik
 > kurulduğunda eklenecektir.]_

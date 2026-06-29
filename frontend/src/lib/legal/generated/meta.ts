@@ -13,64 +13,64 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
   "acik-riza": {
     "slug": "acik-riza",
     "title": "KVKK Açık Rıza Metni",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "6c9caae51c77afb3898c371683e9dc74f47881708f57ae582760c44170fe7699",
+    "hash": "614640d655bcb0e85088c1467e0ff590871e25f04ba3cc717af1ccabd9524574",
     "reconsentOnMinor": false
   },
   "aydinlatma-metni": {
     "slug": "aydinlatma-metni",
     "title": "KVKK Aydınlatma Metni",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "11873329369a90dc0e5916a5ee49ef020a2264582d3eb46c7e5cd5bc6010714e",
+    "hash": "1d1e9b976058f8f35479c187af5ea397ae48909ff5bde0763240e25a3ec29293",
     "reconsentOnMinor": false
   },
   "cerez-politikasi": {
     "slug": "cerez-politikasi",
     "title": "Çerez Politikası",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "ba9b62e3007c1da50936a86c9cadaaf3349a85727befc378e6c424ee13d0ee5a",
+    "hash": "23e2afb902305f92607084bf640dba28482c94a01b78c5a604921662095d936a",
     "reconsentOnMinor": false
   },
   "kullanim-kosullari": {
     "slug": "kullanim-kosullari",
     "title": "Kullanım Koşulları",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "4c2fd3ceca1c60eed1ca4168c910f10447d0db1a452ff319a23ba68ea8460bb1",
+    "hash": "b9d191e964c7f8235c0bff1d0f096699566f214978cfcb58754bf4d62c18bbf5",
     "reconsentOnMinor": false
   },
   "mesafeli-satis": {
     "slug": "mesafeli-satis",
     "title": "Mesafeli Satış Sözleşmesi ve Ön Bilgilendirme",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "955c23603d8230fb824cf57be946c9887462c673c9c25deb424b17f9103e3519",
+    "hash": "7715264ea2c8f92c8a402bf0221f46d8d608589d278205baff5a4c53dca8d6c8",
     "reconsentOnMinor": false
   },
   "risk-bildirimi": {
     "slug": "risk-bildirimi",
     "title": "Risk Bildirimi ve Yatırım Tavsiyesi Beyanı",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "85ec6263bf0c3df5a1ab49c55c9a3849e8cd8f398d62d6d1f417707f0bbd4b4b",
+    "hash": "b92f3f4d09ba750425a2fb0deb902cad51ad87f0a1510f02bad2e21e7b96a5c4",
     "reconsentOnMinor": false
   },
   "ticari-ileti": {
     "slug": "ticari-ileti",
     "title": "Ticari Elektronik İleti Aydınlatma Metni",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "9a2053d8f4d2e17c8475654b08411463bb5c7f7ed6933ac37afbb8847e1c47e9",
+    "hash": "ae89f9759f3b90469806bbaf2fb0eb685e2a0d9d0a26fe9394b383fb8eb362a5",
     "reconsentOnMinor": false
   }
 };

@@ -1,7 +1,7 @@
 ---
 slug: acik-riza
 title: KVKK Açık Rıza Metni
-version: 0.9.0
+version: 0.9.1
 effectiveDate: 2026-06-29
 locale: tr
 ---
@@ -35,9 +35,24 @@ ve serbestçe onaylanır veya reddedilir:
 - **Ticari elektronik ileti (isteğe bağlı):** Kampanya/duyuru amaçlı e-posta/SMS
   gönderimi. **Beta sürecinde pazarlama iletisi gönderilmemektedir;** bu onay ileride
   aktif edildiğinde ayrıca alınacaktır. Ayrıntı: [Ticari İleti Aydınlatma](/yasal/ticari-ileti).
+- **Yurt dışına aktarım (isteğe bağlı):** Yukarıdaki analitik/iletişim hizmetlerinin bir
+  kısmı, sunucuları veya alt işleyenleri yurt dışında bulunan sağlayıcılar tarafından
+  sağlanabilir. KVKK m.9 kapsamında uygun bir güvence (yeterlilik kararı / standart sözleşme /
+  taahhütname — _[uygulanacak aktarım mekanizması tüzel kişilik kurulduğunda netleştirilecektir]_)
+  bulunmadığı hâllerde, kişisel verilerinizin bu sağlayıcılara yurt dışına aktarılması yalnızca
+  açık rızanızla gerçekleştirilir.
+
+Bu onaylara ilişkin kutucuklar **önceden işaretli (varsayılan açık) sunulmaz;** her bir onay
+yalnızca tarafınızca yapılacak ayrı ve olumlu bir işaretleme ile verilir. Hiçbir onay, başka
+bir onayın veya işlemin ön koşulu değildir.
 
 ## 3. Onayın Geri Alınması
 
 Verdiğiniz açık rızayı **dilediğiniz zaman** geri alabilirsiniz. Geri alma, geri alma
 anından itibaren sonuç doğurur ve geçmişe etkili değildir. Analitik onayını çerez
 panelinden, ileride sunulacak ticari ileti onayını ilgili kanaldan kapatabilirsiniz.
+
+Onaylarınızı ilgili panel/kanaldan kapatmanın yanı sıra, veri sorumlusuna yazılı olarak veya
+[Aydınlatma Metni](/yasal/aydinlatma-metni)'nde belirtilen başvuru kanalları üzerinden her
+zaman geri alma talebinde bulunabilirsiniz. Geri alma talepleriniz mevzuatta öngörülen sürede
+sonuçlandırılır.

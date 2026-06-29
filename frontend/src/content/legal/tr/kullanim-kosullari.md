@@ -1,7 +1,7 @@
 ---
 slug: kullanim-kosullari
 title: Kullanım Koşulları
-version: 0.9.0
+version: 0.9.1
 effectiveDate: 2026-06-29
 locale: tr
 ---
@@ -167,7 +167,22 @@ Platform, bu Sözleşme'yi güncelleyebilir. Esaslı değişikliklerde, güncell
 sürüm ve yürürlük tarihiyle yayımlanır ve gerektiğinde yeniden onayınız istenir. Değişiklik
 sonrası Hizmet'i kullanmaya devam etmeniz, güncel Sözleşme'yi kabul ettiğiniz anlamına gelir.
 
-## 16. İletişim
+## 16. Mücbir Sebep
+
+Platform; doğal afet, yangın, sel, deprem, salgın hastalık, savaş, terör, grev, siber
+saldırı, kamu otoritesi kararları, elektrik/internet altyapısı kesintileri veya üçüncü taraf
+hizmet sağlayıcılarından kaynaklanan arızalar gibi makul kontrolü dışındaki olaylar nedeniyle
+yükümlülüklerini yerine getirememesinden sorumlu tutulamaz. Mücbir sebep süresince ifa
+yükümlülükleri askıya alınır; emredici tüketici hakları saklıdır.
+
+## 17. Sözleşmenin Devri
+
+Platform, bu Sözleşme'den doğan hak ve yükümlülüklerini, kullanıcının haklarını esaslı
+biçimde olumsuz etkilememek kaydıyla, birleşme, devralma, yeniden yapılanma veya tüzel
+kişiliğin kurulması/devri hâllerinde üçüncü bir tarafa devredebilir. Kullanıcı, Platform'un
+yazılı onayı olmadan bu Sözleşme'yi devredemez.
+
+## 18. İletişim
 
 Bu Sözleşme'ye ilişkin sorularınız için [Yasal Belgeler](/yasal) sayfasındaki iletişim
 kanallarını kullanabilirsiniz.

@@ -1,7 +1,7 @@
 ---
 slug: risk-bildirimi
 title: Risk Bildirimi ve Yatırım Tavsiyesi Beyanı
-version: 0.9.0
+version: 0.9.1
 effectiveDate: 2026-06-29
 locale: tr
 ---
@@ -76,7 +76,10 @@ Bu Risk Bildirimi yalnızca Platform'un bugünkü analiz ve karar destek hizmeti
 ## 6. Geçmiş Performans ve İleriye Dönük İfadeler
 
 Geçmiş performans, gelecekteki sonuçların güvencesi değildir. Platform'da yer alan başarı
-oranları ve getiri istatistikleri geçmişe dönük verilerdir.
+oranları ve getiri istatistikleri geçmişe dönük verilerdir. Bu istatistikler belirli bir
+geçmiş döneme ve seçilmiş örnekleme dayanır; hesaplama yöntemi, seçilen zaman aralığı ve
+dâhil edilen/edilmeyen örnekler sonuçları etkileyebilir. İstatistikler tek başına gelecekteki
+performansın göstergesi olarak yorumlanmamalıdır.
 
 **Backtest ve simülasyon sonuçları tamamen varsayımsaldır (hipotetiktir):** gerçek
 işlemlere değil, geçmiş veriler üzerinde kurgulanan koşullara dayanır; gerçek işlem
@@ -119,6 +122,12 @@ ve **sermayenizin tamamını kaybedebilirsiniz.** Yatırım kararı vermeden ön
 risklerini anladığınızdan ve **yalnızca kaybetmeyi göze alabileceğiniz tutarlarla** işlem
 yaptığınızdan emin olmalısınız. Kaybı göze alınamayacak tutarlarla işlem yapılması
 önerilmez.
+
+Kripto varlıklar, sermaye piyasası araçlarına kıyasla ek ve kendine özgü riskler taşır:
+piyasalar 7 gün 24 saat işlem görür ve fiyatlar çok kısa sürede sert biçimde değişebilir;
+likidite aniden kaybolabilir ve sert düşüşler (flash-crash) yaşanabilir; bu varlıkların
+hukuki statüsü ve vergilendirilmesi ülkeden ülkeye değişebilir ve ilgili mevzuat hızla
+değişebilir; saklama (cüzdan/borsa) ve siber güvenlik kaynaklı kayıp riskleri bulunur.
 
 ## 10. Sorumluluğun Sınırlandırılması
 
