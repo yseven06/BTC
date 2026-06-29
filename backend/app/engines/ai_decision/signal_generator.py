@@ -369,19 +369,24 @@ def generate_signal(
         )
 
     # Birth-time telemetry (additive observability — never re-read by the decision).
-    birth_telemetry = build_birth_telemetry(
-        direction=direction, signal_type=signal_type, current_price=current_price,
-        atr_used=atr, atr_raw=atr_raw, atr_fallback_used=atr_fallback_used,
-        nearest_support=nearest_sup, nearest_resistance=nearest_res,
-        sr_override_tp1=sr_override_tp1, sr_override_tp2=sr_override_tp2, sr_override_sl=sr_override_sl,
-        entry_zone_low=_price_round(entry_zone_low), entry_zone_high=_price_round(entry_zone_high),
-        stop_loss=_price_round(stop_loss), tp1=_price_round(tp1),
-        tp2=_price_round(tp2), tp3=_price_round(tp3),
-        risk_score=round(risk_score, 1), risk_level=risk_level,
-        confidence_score=round(confidence_score, 2), probability_score=round(probability_score, 2),
-        composite_score=round(composite_score, 2),
-        risk_supporting=(risk_engine_res.supporting_data if risk_engine_res else None),
-    )
+    # FAIL-OPEN: a telemetry error must NEVER break signal generation (priority #1).
+    try:
+        birth_telemetry = build_birth_telemetry(
+            direction=direction, signal_type=signal_type, current_price=current_price,
+            atr_used=atr, atr_raw=atr_raw, atr_fallback_used=atr_fallback_used,
+            nearest_support=nearest_sup, nearest_resistance=nearest_res,
+            sr_override_tp1=sr_override_tp1, sr_override_tp2=sr_override_tp2, sr_override_sl=sr_override_sl,
+            entry_zone_low=_price_round(entry_zone_low), entry_zone_high=_price_round(entry_zone_high),
+            stop_loss=_price_round(stop_loss), tp1=_price_round(tp1),
+            tp2=_price_round(tp2), tp3=_price_round(tp3),
+            risk_score=round(risk_score, 1), risk_level=risk_level,
+            confidence_score=round(confidence_score, 2), probability_score=round(probability_score, 2),
+            composite_score=round(composite_score, 2),
+            risk_supporting=(risk_engine_res.supporting_data if risk_engine_res else None),
+        )
+    except Exception as _bt_exc:  # pragma: no cover — telemetry must not break the engine
+        logger.warning("birth telemetry build failed for %s (ignored; signal unaffected): %s", symbol, _bt_exc)
+        birth_telemetry = None
 
     # Return structured data
     return GeneratedSignalData(
