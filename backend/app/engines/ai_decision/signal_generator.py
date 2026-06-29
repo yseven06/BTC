@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from app.engines.base import EngineResult, SignalBias
-from app.engines.risk.analysis import calculate_atr
+from app.engines.risk.analysis import calculate_atr, safe_last_atr
 
 logger = logging.getLogger(__name__)
 
@@ -259,7 +259,7 @@ def generate_signal(
     
     # Calculate ATR for scaling
     atr_series = calculate_atr(df)
-    atr = float(atr_series.iloc[-1]) if not np.isnan(atr_series.iloc[-1]) else current_price * 0.02
+    atr = safe_last_atr(atr_series, current_price)
 
     # Extract support and resistance if available from Market Structure Engine
     ms_engine_res = next((res for res in engine_results if res.engine_name == "market_structure"), None)

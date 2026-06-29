@@ -54,6 +54,22 @@ def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     return atr
 
 
+def safe_last_atr(atr_series: pd.Series, current_price: float) -> float:
+    """Last ATR value with a 2%-of-price fallback for NaN OR a genuine <= 0.
+
+    A flat 14-bar window (illiquid / halted / pegged / frozen feed) yields ATR
+    exactly 0.0 (not NaN), which the old NaN-only guard missed — every derived
+    level then collapses onto entry (SL == entry == TP1 == TP2 == TP3) and the
+    signal can never resolve. Single source for the fallback so the signal
+    generator and the risk engine stay consistent (BUG-1). Byte-identical for any
+    ATR > 0.
+    """
+    atr = float(atr_series.iloc[-1])
+    if np.isnan(atr) or atr <= 0:
+        return current_price * 0.02
+    return atr
+
+
 def analyze_risk(
     df: pd.DataFrame,
     asset_type: str = "crypto",
@@ -69,7 +85,7 @@ def analyze_risk(
     # 1. Volatility Assessment
     atr_series = calculate_atr(df)
     current_price = float(df["close"].iloc[-1])
-    atr_val = float(atr_series.iloc[-1]) if not np.isnan(atr_series.iloc[-1]) else current_price * 0.02
+    atr_val = safe_last_atr(atr_series, current_price)
     
     atr_pct = (atr_val / current_price) * 100.0
     
