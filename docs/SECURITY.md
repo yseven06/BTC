@@ -16,6 +16,13 @@ TradeMinds AI güvenlik sertleştirmesi (Madde 6) özeti + operasyon rehberi.
 - **Prod source map:** Next varsayılanı kapalı (`next.config` `productionBrowserSourceMaps` açmıyor). Sentry'ye kontrollü upload ileride eklenebilir (CLI/Vercel entegrasyonu).
 - **robots.txt:** `/public/robots.txt` — landing + `/yasal` crawlable; admin/api/app Disallow.
 
+## 1.1 Veritabanı erişim kontrolü — RLS (Supabase Data API)
+- **Durum (migration `0006_enable_rls.sql`, 2026-06-30):** 21 public tablonun TAMAMINDA **Row-Level Security ENABLE** (policy yok = `anon`/`authenticated` deny-all). Supabase `rls_disabled_in_public` **CRITICAL** advisory'sini kapatır.
+- **Neden gerekliydi:** RLS kapalıyken Supabase default grant'ları `anon`/`authenticated` rollerine tüm tablolarda SELECT/INSERT/UPDATE/DELETE veriyordu → PostgREST **Data API**'den (anon key + proje URL) tüm verinin okunması/yazılması/silinmesi mümkündü (users/payments/telegram-token vb.). anon key uygulamada yayınlanmıyordu → latent kritik açık.
+- **App etkisi: YOK** — backend `postgres` rolüyle bağlanır (tüm tabloların **owner**'ı + `rolbypassrls=true`) → RLS'i komple atlar. Doğrulandı: postgres tüm tabloları okur (sayımlar değişmedi), `anon` artık **0 satır** alır (deny-all), 42/42 test + smoke + app-boot PASS.
+- **Kapsam:** `ENABLE` (FORCE değil), **policy YOK**, **REVOKE YOK** (Aşama 1 minimal). Rollback: `ALTER TABLE <t> DISABLE ROW LEVEL SECURITY;`.
+- **Aşama 2 (defense-in-depth, ayrı analiz+onay):** `anon`/`authenticated` grant'larını REVOKE + Supabase Dashboard'dan **Data API'yi tamamen kapatma** değerlendirmesi (uygulama Data API kullanmıyor).
+
 ## 2. Güvenlik header'ları (Madde 6b)
 - **Frontend** (`next.config.js` `headers()`, her route): HSTS(preload), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, **CSP** (default-src 'self'; frame-ancestors 'none'; object-src 'none'; img/font/style/script/connect/frame-src allowlist: API, PostHog EU, Sentry, Google Fonts, Turnstile, **TradingView** (s3.tradingview.com script + *.tradingview.com frame/connect — canlı grafik widget'ı), **CoinGecko** (api.coingecko.com connect — piyasa genel bakış verisi)).
 - **Backend** (`SecurityHeadersMiddleware`, her yanıt): nosniff, XFO=DENY, Referrer-Policy=no-referrer, Permissions-Policy, COOP=same-origin, HSTS. (CSP backend'de yok — JSON API.)
