@@ -15,9 +15,9 @@ const csp = [
   "img-src 'self' data: blob: https:",
   "font-src 'self' https://fonts.gstatic.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com",
-  `connect-src 'self' ${API} https://eu.i.posthog.com https://eu-assets.i.posthog.com https://*.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://*.ingest.de.sentry.io${isDev ? ' ws: http://localhost:8000' : ''}`,
-  "frame-src https://challenges.cloudflare.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://s3.tradingview.com",
+  `connect-src 'self' ${API} https://api.coingecko.com https://*.tradingview.com https://eu.i.posthog.com https://eu-assets.i.posthog.com https://*.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://*.ingest.de.sentry.io${isDev ? ' ws: http://localhost:8000' : ''}`,
+  "frame-src https://challenges.cloudflare.com https://*.tradingview.com",
   "worker-src 'self' blob:",
 ].join('; ');
 

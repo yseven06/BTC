@@ -17,7 +17,7 @@ TradeMinds AI güvenlik sertleştirmesi (Madde 6) özeti + operasyon rehberi.
 - **robots.txt:** `/public/robots.txt` — landing + `/yasal` crawlable; admin/api/app Disallow.
 
 ## 2. Güvenlik header'ları (Madde 6b)
-- **Frontend** (`next.config.js` `headers()`, her route): HSTS(preload), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, **CSP** (default-src 'self'; frame-ancestors 'none'; object-src 'none'; img/font/style/script/connect/frame-src allowlist: API, PostHog EU, Sentry, Google Fonts, Turnstile).
+- **Frontend** (`next.config.js` `headers()`, her route): HSTS(preload), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, **CSP** (default-src 'self'; frame-ancestors 'none'; object-src 'none'; img/font/style/script/connect/frame-src allowlist: API, PostHog EU, Sentry, Google Fonts, Turnstile, **TradingView** (s3.tradingview.com script + *.tradingview.com frame/connect — canlı grafik widget'ı), **CoinGecko** (api.coingecko.com connect — piyasa genel bakış verisi)).
 - **Backend** (`SecurityHeadersMiddleware`, her yanıt): nosniff, XFO=DENY, Referrer-Policy=no-referrer, Permissions-Policy, COOP=same-origin, HSTS. (CSP backend'de yok — JSON API.)
 - **Prod'da `/docs`, `/redoc`, `/openapi.json` kapalı** (DEBUG-gated) — API şeması dışarı açılmaz.
 
