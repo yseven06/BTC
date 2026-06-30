@@ -120,6 +120,11 @@ Settings → 3) Cloudflare Turnstile (adaptive) → 4) Deploy + Production + Bet
 ## 3. P1 — Sinyal Kalitesi & Ayrışma (veri-bağımsız, hemen değer)
 
 ### P1.1 — TP/SL & R:R iyileştirmesi · efor **M** · K3,K4
+> **DURUM (2026-06-30): KAPANDI (Lever 1B).** Kök-neden çözüldü: SR-override artık TP1'i yalnız
+> DIŞARI iter (asla içeri çekmez) → planlı R:R median 0.41→1.0, sub-1 %82.5→%17.3, **hacim aynı**,
+> per-asset win/pf/expectancy ↑/nötr, byte-identical çekirdek korundu. Filtre (A) gereksiz çıktı.
+> **Ertelenen (backlog):** 2A (TP1 1.5→2.0×ATR), 3 (SR-on-SL kapı), min-TP/SL floor + R:R eşiği
+> (VERİ-GATED). Kanonik: docs/P11-CLOSURE.md + docs/P11-tpsl-rr-analysis.md.
 - **Neden şimdi:** Çekirdek mature ama TP/SL **sabit ATR çarpanları** (1.5/3.0/5.0x); R:R açıkça
   hesaplanıp filtrelenmiyor; SMC OB/FVG entry'de kullanılmıyor; TP sıralaması bozulabilir. Bunlar
   **veri gerektirmeyen mantık iyileştirmeleri** → anında sinyal kalitesi + ayrışma.
