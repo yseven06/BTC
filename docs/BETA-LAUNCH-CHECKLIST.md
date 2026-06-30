@@ -13,7 +13,10 @@ Ayrıntı: [RELEASE-RUNBOOK.md](./RELEASE-RUNBOOK.md) · [DEPLOYMENT.md](./DEPLO
 - **Doğrulama:** byte-identical/equivalence (golden 8 + diff 8000 + mapping 3000 + backtest 9000) + tüm test PASS; çalışma ağacı temiz; **kod davranışı değişmedi**.
 
 ## 2. Kullanıcıdan beklenenler (dış bağımlılık — tek kalan)
-- **B1 — İşletici bilgileri (gerekiyorsa):** gerçek kişi ad/işletme adı, vergi kimlik, adres, resmî iletişim → `lib/contact.ts` + künye + v0.9→v1.0. (MERSİS/KEP/VERBİS/aktarım = "varsa/uygulanmaz", hukuki karar.)
+- **B1 — Operatör bilgileri ve faaliyet gösterilecek ülkeye göre gerekli hukuki/vergisel bilgiler:**
+  gerçek kişi ad/işletme adı, vergi kimlik, adres, resmî iletişim → `lib/contact.ts` + künye + v0.9→v1.0.
+  Gereklilikler **faaliyet gösterilecek ülkeye göre değişir** (şirket gerektirmez ≠ hiçbir hukuki bilgi
+  gerekmez). MERSİS/KEP/VERBİS/aktarım = "varsa/uygulanmaz", **hukuki karar**.
 - **B2 — Stripe S7:** `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` + webhook endpoint kaydı ([STRIPE-S7-RUNBOOK.md](./STRIPE-S7-RUNBOOK.md)). Bireysel hesap destekler.
 - **B3 — Turnstile + prod env + ilk deploy:** Cloudflare anahtarları + prod env (ENVIRONMENT=production · DEBUG=false · güçlü JWT_SECRET · pooler DATABASE_URL · prod CORS · FRONTEND_BASE_URL · NEXT_PUBLIC_*).
 

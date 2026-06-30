@@ -32,9 +32,10 @@ kişi modelinde nasıl · **(Aksiyon)** kaldır / yeniden-yaz / hukuki-karar.
 | 12 | **Devir/birleşme klozu** (Kullanım Koşulları) | Hayır | — | Geçerli kalır (işletici ileride devir/kuruluş YAPARSA kapsar; varsayım değil) | **KORUNDU** (varsayım değil) |
 
 ## 2. Beta için gerçek gereksinim (şirket DEĞİL)
-Beta yayını için gereken = **işleticinin gerçek yasal kimlik + iletişim bilgileri** (gerçek kişi
-modeli) + vergi mükellefiyeti kararı + (hukuki karar gerektiren) MERSİS/KEP/VERBİS/aktarım
-değerlendirmesi. **"Şirket kurulması" bir önkoşul DEĞİLDİR.**
+Beta yayını için gereken = **operatör (gerçek kişi) bilgileri ve faaliyet gösterilecek ülkeye göre
+gerekli hukuki/vergisel bilgiler** — kimlik + iletişim + vergi mükellefiyeti + (hukuki karar
+gerektiren) MERSİS/KEP/VERBİS/aktarım değerlendirmesi. **Şirket gerektirmez ≠ hiçbir hukuki bilgi
+gerekmez:** gereklilikler **faaliyet ülkesine göre değişir**. **"Şirket kurulması" bir önkoşul DEĞİLDİR.**
 
 ## 3. Hâlâ hukuki karar gerektiren (işletici/danışman kararı)
 MERSİS (kayıt türü) · KEP (zorunluluk) · VERBİS (istisna/eşik) · yurt-dışı aktarım mekanizması ·

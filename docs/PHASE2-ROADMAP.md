@@ -4,7 +4,8 @@
 > Beta-hazırlık **A-bloğu (A1-A5) TAMAM** · şirket varsayımı kaldırıldı → **gerçek kişi/bireysel
 > işletici** modeli ([OPERATING-MODEL.md](./OPERATING-MODEL.md)) · dep güncellemeleri (numpy/stripe
 > sabit) + byte-identical/equivalence PASS · çalışma ağacı temiz · **kod davranışı değişmedi.**
-> **Kalan = yalnız dış bağımlılık (B1 işletici bilgisi · B2 Stripe anahtarları · B3 Turnstile+prod-env+deploy).**
+> **Kalan = yalnız dış bağımlılık (B1 operatör + faaliyet-ülkesine göre gerekli hukuki/vergisel bilgiler ·
+> B2 Stripe anahtarları · B3 Turnstile+prod-env+deploy).**
 > Tek-sayfa: **[BETA-LAUNCH-CHECKLIST.md](./BETA-LAUNCH-CHECKLIST.md)**. **Bundan sonraki tüm geliştirmeler
 > bu baseline üzerinden ilerler.**
 
