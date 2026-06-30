@@ -33,6 +33,45 @@ SIGNAL_LABEL_TR = {
 }
 
 
+LIFECYCLE_EMOJI = {
+    "approaching_tp": "🎯",
+    "invalidating": "⚠️",
+    "weakening": "🟡",
+    "active": "🟢",
+}
+
+
+def format_lifecycle_message(
+    symbol: str,
+    timeframe: str,
+    direction: str,
+    new_status: str,
+    new_status_tr: str,
+    old_status_tr: str,
+    reason: Optional[str],
+    price: Optional[float],
+) -> str:
+    """Build a rich HTML message for a proactive lifecycle-transition alert (P1.2).
+    Lifecycle-shaped (status change + reason + price), distinct from the signal-birth
+    formatter. TR labels are passed in (single source: lifecycle.status_tr)."""
+    emoji = LIFECYCLE_EMOJI.get(new_status, "🔔")
+    dir_emoji = "📈" if direction == "bullish" else ("📉" if direction == "bearish" else "➡️")
+
+    def fmt(v: Optional[float]) -> str:
+        return f"{v:,.4f}".rstrip("0").rstrip(".") if v is not None else "—"
+
+    lines = [
+        f"{emoji} <b>{symbol}</b> · <b>{new_status_tr}</b>",
+        f"⏱ {timeframe}  |  {dir_emoji} {direction}",
+        f"🔄 {old_status_tr} → <b>{new_status_tr}</b>",
+    ]
+    if reason:
+        lines.append(f"📋 {reason}")
+    lines.append(f"💵 Fiyat: <code>{fmt(price)}</code>")
+    lines += ["", "<i>TradeMinds AI · Sinyal Takibi</i>"]
+    return "\n".join(lines)
+
+
 async def send_telegram_message(
     bot_token: str,
     chat_id: str,
