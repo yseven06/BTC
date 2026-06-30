@@ -102,6 +102,9 @@ Secrets are never committed — set them as platform environment variables.
   pooler limit.
 - Backups: rely on Supabase's managed backups (verify the plan's retention).
 
+> 🧭 **Go-live sırası, migration ilk-çalıştırma kararı (apply vs stamp) ve ROLLBACK** için:
+> **[RELEASE-RUNBOOK.md](./RELEASE-RUNBOOK.md)** (A4). Yıkıcı migration / veri-kaybı uyarıları orada.
+
 ## 4. Post-deploy checklist
 
 - [ ] Backend `/health` returns 200 on the Railway domain.
