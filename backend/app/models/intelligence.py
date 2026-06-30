@@ -39,7 +39,10 @@ from sqlalchemy.orm import relationship
 # scale-out policy/geometry, or the session/volatility bucket schemes. Lets
 # future analysis segment rows by the era/definitions that produced them, so a
 # later policy change never silently mixes incomparable numbers.
-TRADE_PATH_SCHEMA_VERSION = 1
+TRADE_PATH_SCHEMA_VERSION = 2  # v2 (KEY1-d): live-SL resolution honors TP1/TP2 scale-out.
+# v1 live-SL rows (still_forming_resolution + cur_reached_tp1 + cur_gave_back_after_tp1 IS NULL)
+# may be contradictory (TP1 banked but recorded as a full original-stop loss) — learning layers
+# should filter/down-weight them; see is_legacy_contradictory_live_sl().
 
 from app.database import Base
 

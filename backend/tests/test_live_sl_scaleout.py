@@ -41,8 +41,71 @@ def test_tp1_banked_bear():
     assert round(realized, R) == round(0.015, R) and eff == 100.0 and gb is True
 
 
+def _old_live_sl_realized(direction, entry, original_sl):
+    """FROZEN snapshot of the OLD live-SL accounting (always full position at the
+    original stop) — the before/after baseline."""
+    ret = (original_sl - entry) / entry if direction == "bullish" else (entry - original_sl) / entry
+    return ret  # full notional
+
+
+_SCENARIOS = [
+    # (label, direction, entry, original_sl, tp1, tp2, hit_tp1, hit_tp2)
+    ("TP1-not-hit",  "bullish", 100.0, 96.0, 103.0, 106.0, False, False),
+    ("TP1-banked",   "bullish", 100.0, 96.0, 103.0, 106.0, True,  False),
+    ("TP1+TP2",      "bullish", 100.0, 96.0, 103.0, 106.0, True,  True),
+    ("TP1-not-hit-bear", "bearish", 100.0, 104.0, 97.0, 94.0, False, False),
+    ("TP1-banked-bear",  "bearish", 100.0, 104.0, 97.0, 94.0, True,  False),
+]
+
+
+def _build_live_sl_row(direction, entry, original_sl, tp1, tp2, hit_tp1, hit_tp2):
+    from app.backtesting.trade_path import compute_trade_path
+    realized, eff_sl, gave_back = live_sl_realized(direction, entry, original_sl, tp1, tp2, hit_tp1, hit_tp2)
+    row = compute_trade_path(
+        signal_id="00000000-0000-0000-0000-000000000001",
+        direction=direction, entry=entry, sl=eff_sl, tp1=tp1, tp2=tp2, tp3=tp2,
+        mfe_pct=None, mae_pct=None, atr_pct=2.0,
+        reached_tp1=hit_tp1, reached_tp2=hit_tp2, reached_tp3=False,
+        gave_back_after_tp1=gave_back, realized_return=realized,
+        still_forming_resolution=True, resolution_source="live_sl", source="live",
+        generated_at=None,
+    )
+    return realized, eff_sl, gave_back, row
+
+
+def test_live_sl_trade_path_consistency():
+    """trade_path row must be self-consistent: reached_tp1 ↔ realized ↔ gave_back ↔
+    schema_version=2; and TP1-not-hit realized == OLD (byte-identical)."""
+    from app.models.intelligence import TRADE_PATH_SCHEMA_VERSION
+    assert TRADE_PATH_SCHEMA_VERSION == 2
+    for label, d, e, osl, t1, t2, h1, h2 in _SCENARIOS:
+        realized, eff_sl, gave_back, row = _build_live_sl_row(d, e, osl, t1, t2, h1, h2)
+        assert row.schema_version == 2, label
+        assert bool(row.cur_reached_tp1) == h1 and bool(row.cur_reached_tp2) == h2, label
+        assert round(float(row.cur_realized_return), 4) == round(realized, 4), label
+        if h1:
+            assert row.cur_gave_back_after_tp1 == (h1 and not h2), label
+            assert realized >= 0.0, label                       # banked, not a full loss
+            assert round(eff_sl, 6) == round(e, 6), label       # effective stop = breakeven (entry)
+        else:
+            assert row.cur_gave_back_after_tp1 is None, label
+            assert round(realized, 6) == round(_old_live_sl_realized(d, e, osl), 6), label  # byte-identical
+            assert round(eff_sl, 6) == round(osl, 6), label     # original stop unchanged
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:
         t(); print(f"PASS {t.__name__}")
-    print(f"\n{len(tests)}/{len(tests)} live_sl_realized tests PASSED")
+    print(f"\n{len(tests)}/{len(tests)} live_sl tests PASSED")
+
+    print("\n==== BEFORE/AFTER (live-SL accounting) ====")
+    print(f"{'scenario':<18} {'OLD realized%':>13} {'NEW realized%':>13} {'NEW outcome':>12} "
+          f"{'reached_tp1':>11} {'gave_back':>10}")
+    for label, d, e, osl, t1, t2, h1, h2 in _SCENARIOS:
+        old_r = _old_live_sl_realized(d, e, osl) * 100.0
+        realized, eff_sl, gb, row = _build_live_sl_row(d, e, osl, t1, t2, h1, h2)
+        new_r = realized * 100.0
+        oc = "WIN" if new_r > 0.5 else ("LOSS" if new_r < -0.5 else "BREAKEVEN")
+        print(f"{label:<18} {round(old_r,2):>13} {round(new_r,2):>13} {oc:>12} "
+              f"{str(h1):>11} {str(gb):>10}")

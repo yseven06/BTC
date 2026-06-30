@@ -88,7 +88,8 @@ async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, t
                        getattr(signal, "id", "?"), tp_exc)
 
 
-async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, live_price, realized_return):
+async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, live_price,
+                                             realized_return, gave_back_after_tp1=None):
     """Fail-open trade-path write for the LIVE-SL shortcut (mid-candle stop).
     No bar-walk here, so most path metrics are genuinely UNMEASURED → kept NULL
     (never 0), so the learning layer can tell 'not measured' from '0 happened'.
@@ -126,7 +127,7 @@ async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, liv
             reached_tp1=perf.hit_tp1, reached_tp2=perf.hit_tp2, reached_tp3=perf.hit_tp3,
             bars_to_tp1=None,
             post_tp1_mae_pct=None, post_tp1_mfe_pct=None,
-            gave_back_after_tp1=None,   # UNMEASURED → NULL (not False)
+            gave_back_after_tp1=gave_back_after_tp1,   # KEY1-d: set when TP1 banked (scale-out)
             realized_return=round(realized_return, 4),
             intrabar_ambiguous=False, sl_before_tp=None, still_forming_resolution=True,
             resolution_source="live_sl",
@@ -328,15 +329,28 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
             live_hit = live_hit_by_sig.get(signal.id)
             if live_hit:
                 entry = float(signal.entry_zone_high + signal.entry_zone_low) / 2.0
-                sl = float(signal.stop_loss)
-                ret_sl = ((sl - entry) / entry) if signal.direction.value == "bullish" else ((entry - sl) / entry)
-                pnl_pct = ret_sl * 100.0
                 perf = signal.performance
                 if not perf:
                     perf = SignalPerformance(signal_id=signal.id, outcome=SignalOutcome.ACTIVE)
                     db.add(perf)
+                # KEY1-d: honor the stored TP1/TP2 scale-out. A TP1-banked trade closes
+                # its REMAINING share at breakeven (entry), not the full position at the
+                # original stop (BUG-6/7/8). TP1-not-hit is UNCHANGED (full original-stop
+                # loss). Single source: live_sl_realized mirrors step_bar's 0.50/0.30 + BE.
+                realized_frac, effective_sl, gave_back = live_sl_realized(
+                    signal.direction.value, entry, float(signal.stop_loss),
+                    float(signal.tp1) if signal.tp1 is not None else entry,
+                    float(signal.tp2) if signal.tp2 is not None else entry,
+                    bool(perf.hit_tp1), bool(perf.hit_tp2),
+                )
+                pnl_pct = realized_frac * 100.0
                 signal.is_active = False
-                perf.outcome = SignalOutcome.LOSS if pnl_pct < -0.5 else SignalOutcome.BREAKEVEN
+                if pnl_pct > 0.5:
+                    perf.outcome = SignalOutcome.WIN
+                elif pnl_pct < -0.5:
+                    perf.outcome = SignalOutcome.LOSS
+                else:
+                    perf.outcome = SignalOutcome.BREAKEVEN
                 perf.actual_return = pnl_pct
                 perf.closed_at = datetime.now(timezone.utc)
                 perf.detail_label = labels.LIVE_SL_HIT
@@ -353,8 +367,9 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 # Trade-path instrumentation for the live-SL path (fail-open;
                 # unmeasured metrics stay NULL — see helper).
                 await _write_trade_path_live_sl_failopen(
-                    db, signal, perf, entry=entry, sl=sl,
+                    db, signal, perf, entry=entry, sl=effective_sl,
                     live_price=live_hit["live_price"], realized_return=pnl_pct,
+                    gave_back_after_tp1=gave_back,
                 )
                 resolved_count += 1
                 details.append({
@@ -366,8 +381,8 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                     "live_price": live_hit["live_price"],
                 })
                 logger.info(
-                    "Signal %s (%s) PATLADI via live ticker — live=%.6f SL=%.6f PnL=%.2f%%",
-                    signal.id, symbol, live_hit["live_price"], sl, pnl_pct,
+                    "Signal %s (%s) PATLADI via live ticker — live=%.6f effSL=%.6f PnL=%.2f%%",
+                    signal.id, symbol, live_hit["live_price"], effective_sl, pnl_pct,
                 )
                 continue
 
@@ -761,12 +776,18 @@ async def _check_live_sl_hit(
     if live_price <= 0:
         return {"signal_id": signal.id, "hit": False}
 
-    sl = float(signal.stop_loss)
     direction = signal.direction.value
-    # LONG: anlık fiyat SL'nin altındaysa stop kırıldı
-    # SHORT: anlık fiyat SL'nin üstündeyse stop kırıldı
-    hit = (direction == "bullish" and live_price <= sl) or \
-          (direction == "bearish" and live_price >= sl)
+    # Effective stop honors the stored scale-out (KEY1-d): once TP1 is banked the live
+    # stop is BREAKEVEN (entry), not the original stop — so a TP1-banked trade resolves
+    # at BE, never as a full original-stop loss. TP1-not-hit → original stop (unchanged).
+    perf = signal.performance
+    if perf and perf.hit_tp1 and signal.entry_zone_low is not None and signal.entry_zone_high is not None:
+        effective_sl = float(signal.entry_zone_high + signal.entry_zone_low) / 2.0  # breakeven = entry
+    else:
+        effective_sl = float(signal.stop_loss)
+    # LONG: anlık fiyat etkin-SL'nin altındaysa stop kırıldı; SHORT: üstündeyse.
+    hit = (direction == "bullish" and live_price <= effective_sl) or \
+          (direction == "bearish" and live_price >= effective_sl)
     return {"signal_id": signal.id, "hit": hit, "live_price": live_price}
 
 
