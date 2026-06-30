@@ -119,6 +119,38 @@ def test_cm2_2_legacy_bucket_no_crash_and_extends():
     assert "realized_sum" in b and "planned_rr_tp1_n" in b and "mfe_atr_sum" in b
 
 
+def test_cm2_3_aggregate_rebuild_and_contract():
+    """_aggregate_tm_stats folds many paths, skips contradictory rows, and keeps the
+    additive-list contract: _all.n == sum of regime buckets' n."""
+    from app.services.coin_memory import _aggregate_tm_stats
+    paths = [
+        _path(regime="trend", mfe_r=2.0, mae_r=0.5),
+        _path(regime="trend", mfe_r=1.0, mae_r=1.0),
+        _path(regime="range", mfe_r=0.5, mae_r=0.5),
+        _path(schema_version=1, still_forming_resolution=True, cur_reached_tp1=True,
+              cur_gave_back_after_tp1=None, mfe_r=None, mae_r=None),  # contradictory → skip
+    ]
+    cells, counts, skipped = _aggregate_tm_stats(paths)
+    assert skipped == 1
+    key = ("BTC", "4h")
+    assert counts[key] == 3
+    tm = cells[key]
+    regime_n = sum(b["n"] for k, b in tm.items() if k != "_all")
+    assert tm["_all"]["n"] == 3 == regime_n           # additive-list contract
+    assert tm["trend"]["n"] == 2 and tm["range"]["n"] == 1
+    assert tm["_all"]["mfe_r_n"] == 3                  # CM2-2 per-field count consistent
+
+
+def test_cm2_3_rebuild_idempotent():
+    """Rebuilding twice over the same paths yields identical cells/counts."""
+    from app.services.coin_memory import _aggregate_tm_stats
+    paths = [_path(regime="trend"), _path(regime="range"), _path(regime="trend")]
+    a_cells, a_counts, a_skip = _aggregate_tm_stats(paths)
+    b_cells, b_counts, b_skip = _aggregate_tm_stats(paths)
+    assert a_counts == b_counts and a_skip == b_skip
+    assert a_cells[("BTC", "4h")]["_all"] == b_cells[("BTC", "4h")]["_all"]
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

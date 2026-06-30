@@ -25,7 +25,7 @@ Overfitting guards are central, not afterthoughts:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,7 +35,7 @@ from app.backtesting.trade_path import is_legacy_contradictory_live_sl
 from app.services.trade_geometry import planned_rr
 from app.engines.ai_decision.signal_generator import BASE_ENGINE_WEIGHTS
 from app.engines.base import SignalBias
-from app.models.intelligence import CoinMemory, SignalSnapshot
+from app.models.intelligence import CoinMemory, SignalSnapshot, SignalTradePath
 from app.models.signal import Signal, SignalOutcome, SignalPerformance
 
 logger = logging.getLogger(__name__)
@@ -318,6 +318,20 @@ def _f(x) -> Optional[float]:
     return float(x) if x is not None else None
 
 
+def _fold_key(path) -> Optional[Tuple[str, str]]:
+    """(symbol, timeframe) for a foldable path, or None if it must be SKIPPED:
+    missing identity, or a legacy-contradictory live-SL row (CM2-1 fold-hardening —
+    KEY1-d predicate). Single source for the skip rule, shared by the online fold
+    and the rebuild so they can never diverge."""
+    symbol = (path.symbol or "").upper()
+    timeframe = path.timeframe
+    if not symbol or not timeframe:
+        return None
+    if is_legacy_contradictory_live_sl(path):
+        return None
+    return (symbol, timeframe)
+
+
 def _empty_bucket() -> Dict[str, Any]:
     return {
         "n": 0,
@@ -401,20 +415,12 @@ async def update_trade_mgmt_stats(db: AsyncSession, path) -> None:
     """Fold a SignalTradePath row into its coin_memory cell's tm_stats. Regime
     is a sub-key plus an "_all" aggregate. Caller wraps this so any failure is
     fail-open (never blocks resolution). Does not commit (shares caller's txn)."""
-    symbol = (path.symbol or "").upper()
-    timeframe = path.timeframe
-    if not symbol or not timeframe:
+    # CM2-1 fold-hardening: skip rows with no identity or legacy-contradictory
+    # live-SL rows (single-source _fold_key). v2 + valid v1 rows pass through.
+    key = _fold_key(path)
+    if key is None:
         return
-
-    # CM2-1 fold-hardening (KEY1-d v1-handling): never fold a legacy-contradictory
-    # live-SL row (TP1 banked but recorded as a full original-stop loss) into the
-    # rollup — its cur_* / give_back fields are internally inconsistent and would
-    # pollute tm_stats. Single-source predicate; v2 rows always pass through, and
-    # valid v1 rows (bar-walk, TP1-not-hit live-SL) are NOT affected. Forward-only:
-    # current live data has 0 such rows, so this is byte-identical today.
-    if is_legacy_contradictory_live_sl(path):
-        logger.debug("tm_stats: skip legacy-contradictory live-SL path for %s/%s", symbol, timeframe)
-        return
+    symbol, timeframe = key
 
     # The session uses autoflush=False, and update_coin_memory may have just
     # created this same (symbol, timeframe) cell earlier in this transaction
@@ -447,3 +453,56 @@ async def update_trade_mgmt_stats(db: AsyncSession, path) -> None:
         tm[key] = bucket
     mem.tm_stats = tm
     mem.tm_sample_count = int(mem.tm_sample_count or 0) + 1
+
+
+def _aggregate_tm_stats(
+    paths: List[Any],
+) -> Tuple[Dict[Tuple[str, str], Dict[str, Any]], Dict[Tuple[str, str], int], int]:
+    """Pure in-memory rebuild of tm_stats from SignalTradePath rows. Returns
+    (cells, counts, skipped): cells[(symbol,tf)] = {regime: bucket, '_all': bucket};
+    counts[(symbol,tf)] = folded count. SAME logic as the online fold (_fold_key
+    skip + _fold_into_bucket) so the rebuilt cache equals the online rollup."""
+    cells: Dict[Tuple[str, str], Dict[str, Any]] = {}
+    counts: Dict[Tuple[str, str], int] = {}
+    skipped = 0
+    for p in paths:
+        key = _fold_key(p)
+        if key is None:
+            skipped += 1
+            continue
+        tm = cells.setdefault(key, {})
+        for bk in (p.regime or "unknown", "_all"):
+            _fold_into_bucket(tm.setdefault(bk, _empty_bucket()), p)
+        counts[key] = counts.get(key, 0) + 1
+    return cells, counts, skipped
+
+
+async def rebuild_tm_stats(db: AsyncSession) -> Dict[str, int]:
+    """Drop & rebuild every coin_memory.tm_stats from signal_trade_path (the SoT).
+
+    tm_stats is a DERIVABLE CACHE → safe + idempotent: RESET each cell, then re-fold
+    all valid paths through the SAME logic as the online rollup (CM2-1 legacy filter +
+    CM2-2 aggregates). Reads the SoT, writes ONLY the tm_stats cache — never touches
+    resolution_core/trade_path geometry or the v1 engine/regime weights. Caller commits."""
+    paths = (await db.execute(
+        select(SignalTradePath).order_by(SignalTradePath.created_at.asc())
+    )).scalars().all()
+    cells, counts, skipped = _aggregate_tm_stats(paths)
+
+    mems = (await db.execute(select(CoinMemory))).scalars().all()
+    existing = {(m.symbol, m.timeframe): m for m in mems}
+    updated = created = 0
+    for key, mem in existing.items():
+        tm = cells.get(key)
+        mem.tm_stats = tm if tm else None
+        mem.tm_sample_count = counts.get(key, 0)
+        updated += 1
+    for key, tm in cells.items():
+        if key not in existing:
+            db.add(CoinMemory(symbol=key[0], timeframe=key[1],
+                              total_signals=0, wins=0, losses=0,
+                              engine_stats={}, regime_stats={}, outcome_label_stats={},
+                              tm_stats=tm, tm_sample_count=counts.get(key, 0)))
+            created += 1
+    return {"paths": len(paths), "folded": len(paths) - skipped, "skipped": skipped,
+            "cells_updated": updated, "cells_created": created}
