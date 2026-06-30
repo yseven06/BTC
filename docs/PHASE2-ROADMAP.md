@@ -152,6 +152,10 @@ Settings → 3) Cloudflare Turnstile (adaptive) → 4) Deploy + Production + Bet
     şu an per-cell yalnız 1 hücre eşik üstü. tm_stats artık türetilebilir cache + okunabilir yüzey.
 - **P2.3 — Adaptive Learning v2** (L, K3,K5): regime-koşullu adaptif ağırlık + outcome-label →
   karar; **shadow/A-B ölçüm harness'i** (adaptif vs base fayda ölçümü). Ön koşul: veri + ölçüm altyapısı.
+  - **DURUM (2026-06-30): POLİTİKA ⛔ DEFERRED → checkpoint-gated** (130 hücreden 2 aktif, max 22 → erken).
+    **A8-1 telemetri kancası TAMAM** [d98113c]: `extra.birth`'e additive `engine_weights_used`+
+    `adaptive_active`+`regime` (byte-identical karar yolu) → ileride adaptif-vs-base ölçümü mümkün.
+    Politika v2 + shadow/A-B harness veri checkpoint + ayrı onay bekliyor (docs/P08-adaptive-v2-analysis.md).
 - **P2.4 — Similarity v2** (L, K3,K5): brute-force → feature-store/ANN indeks; ölçeklenme. Ön koşul:
   veri + perf.
 - **P2.5 — Lifecycle kalibrasyon** (S-M, K3): invalidating/approaching eşiklerini gerçek veriyle

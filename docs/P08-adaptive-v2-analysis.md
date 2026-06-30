@@ -1,4 +1,12 @@
-# P0.8 / P2.3 — Adaptive Learning v2 — HAZIRLIK ANALİZİ (kod YOK)
+# P0.8 / P2.3 — Adaptive Learning v2 — HAZIRLIK ANALİZİ
+
+> ## ⛔ STATÜ (2026-06-30): **POLİTİKA DEFERRED → checkpoint-gated** · **A8-1 telemetri kancası TAMAM**
+> Kullanıcı kararı: 130 hücreden yalnız 2'si adaptive-aktif (max total_signals=22) → davranış değiştiren
+> politika **erken**. **Yalnız A8-1 (veri-bağımsız telemetri kancası) uygulandı** [d98113c]: her sinyalin
+> `extra.birth`'üne additive `engine_weights_used` + `adaptive_active` + `regime` (BYTE-IDENTICAL karar
+> yolu; meta-weights == load_effective_weights). **Politika v2 (regime-koşullu ağırlık/outcome→karar +
+> shadow/A-B fayda harness'i) ⛔ DEFERRED → veri checkpoint + ayrı onay.** Yeniden başlarken: Faz 3 policy
+> matematiği/composite_score/Similarity/TP-SL DOKUNULMAYACAK; BP2 (önce-ölç) korunacak.
 
 **Tarih:** 2026-06-30 · **Statü:** ANALİZ. Onaylı sıra #8. Roadmap'te **P2 tier = VERİ-GATED**.
 
