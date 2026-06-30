@@ -292,6 +292,34 @@ async def load_effective_weights(
     return get_effective_weights(regime, mem)
 
 
+def adaptive_is_active(memory: Optional[CoinMemory]) -> bool:
+    """True when the coin-learned (adaptive) weight layer is applied for this cell —
+    the EXACT gate get_effective_weights uses. Pure, read-only; A8-1 telemetry only
+    (never influences weights/decision)."""
+    return bool(
+        memory is not None
+        and memory.total_signals >= MIN_SAMPLES_FOR_ADAPTIVE
+        and memory.adaptive_weights
+    )
+
+
+async def load_effective_weights_meta(
+    db: AsyncSession,
+    symbol: str,
+    timeframe: str,
+    regime: Optional[str],
+) -> Tuple[Dict[str, float], bool]:
+    """Like load_effective_weights but ALSO reports whether the adaptive layer was
+    applied, for A8-1 birth telemetry. The weights are computed by the SAME
+    get_effective_weights call → BYTE-IDENTICAL to load_effective_weights; only an
+    additive read-only flag is returned alongside."""
+    res = await db.execute(
+        select(CoinMemory).where(CoinMemory.symbol == symbol, CoinMemory.timeframe == timeframe)
+    )
+    mem = res.scalar_one_or_none()
+    return get_effective_weights(regime, mem), adaptive_is_active(mem)
+
+
 # ════════════════════════════════════════════════════════════════════════════
 # Coin Memory v2 — trade-management rollup (Trade Management Faz 1, OBSERVATION)
 # ════════════════════════════════════════════════════════════════════════════

@@ -47,6 +47,8 @@ def build_snapshot(
     decision: Dict[str, Any],
     df: pd.DataFrame,
     regime: Optional[RegimeResult] = None,
+    engine_weights: Optional[Dict[str, float]] = None,
+    adaptive_active: Optional[bool] = None,
 ) -> SignalSnapshot:
     """Construct (but do not persist) a SignalSnapshot from the decision payload.
 
@@ -105,5 +107,21 @@ def build_snapshot(
         composite_confidence=decision.get("confidence_score"),
         composite_probability=decision.get("probability_score"),
         mtf_trends=decision.get("mtf_trends", {}),
-        extra={"birth": decision.get("birth_telemetry")},
+        extra={"birth": _enrich_birth(decision.get("birth_telemetry"),
+                                      engine_weights, adaptive_active, regime_label)},
     )
+
+
+def _enrich_birth(birth, engine_weights, adaptive_active, regime_label):
+    """A8-1 (ADDITIVE telemetry): stamp the engine weights actually used + whether
+    the coin's learned (adaptive) layer was applied + the regime, so a future
+    adaptive-vs-base measurement is possible. NEVER re-read by any decision. Safe if
+    birth is None or the inputs are absent (returns the input unchanged)."""
+    if not isinstance(birth, dict) or (engine_weights is None and adaptive_active is None):
+        return birth
+    return {
+        **birth,
+        "engine_weights_used": engine_weights,
+        "adaptive_active": bool(adaptive_active) if adaptive_active is not None else None,
+        "regime": regime_label,
+    }

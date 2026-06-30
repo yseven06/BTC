@@ -29,7 +29,7 @@ from app.backtesting.tracker import track_and_resolve_active_signals
 from app.notifications.service import notify_signal
 from app.engines.market_regime import detect_regime
 from app.services.intelligence import build_snapshot
-from app.services.coin_memory import load_effective_weights, update_coin_memory
+from app.services.coin_memory import load_effective_weights_meta, update_coin_memory
 from app.services.lifecycle_log import make_event
 from app.services.market_hours import is_bist_open
 
@@ -187,9 +187,11 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
     # the static base mix on any error or when no memory has accumulated yet.
     regime_label = regime_result.regime.value if regime_result else None
     engine_weights = None
+    adaptive_active = False   # A8-1: captured for additive birth telemetry only
     try:
         async with async_session_factory() as wdb:
-            engine_weights = await load_effective_weights(wdb, symbol.upper(), timeframe, regime_label)
+            engine_weights, adaptive_active = await load_effective_weights_meta(
+                wdb, symbol.upper(), timeframe, regime_label)
     except Exception as exc:
         logger.warning("[Scheduler] Effective-weight load failed for %s: %s", symbol, exc)
 
@@ -409,7 +411,8 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
             # on — wrapped defensively so a snapshot failure can never block
             # the actual signal from being saved.
             try:
-                snapshot = build_snapshot(new_sig.id, decision, df, regime=regime_result)
+                snapshot = build_snapshot(new_sig.id, decision, df, regime=regime_result,
+                                          engine_weights=engine_weights, adaptive_active=adaptive_active)
                 db.add(snapshot)
             except Exception as snap_exc:
                 logger.warning("[Scheduler] Snapshot build failed for %s: %s", symbol, snap_exc)
