@@ -24,6 +24,18 @@ def test_backtest_report_new_fields_default():
     assert r.avg_realized_r is None and r.median_realized_r is None
 
 
+def test_enforce_tp_order():
+    from app.engines.ai_decision.signal_generator import _enforce_tp_order
+    # bull already ordered → strict no-op (byte-identical)
+    assert _enforce_tp_order("bullish", 103, 106, 110) == (103, 106, 110)
+    # bull inverted (tp2 beyond tp3) → fixed ascending, tp1 preserved
+    assert _enforce_tp_order("bullish", 103, 116, 110) == (103, 110, 116)
+    # bear already ordered (descending) → no-op
+    assert _enforce_tp_order("bearish", 97, 94, 90) == (97, 94, 90)
+    # bear inverted → fixed descending, tp1 preserved
+    assert _enforce_tp_order("bearish", 97, 84, 90) == (97, 90, 84)
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

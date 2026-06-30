@@ -22,6 +22,17 @@ from app.engines.ai_decision.birth_telemetry import build_birth_telemetry
 logger = logging.getLogger(__name__)
 
 
+def _enforce_tp_order(direction: str, tp1: float, tp2: float, tp3: float):
+    """P11-1: guarantee TP monotonicity in the profit direction. An SR override can
+    set tp2 = a resistance/support beyond tp3, inverting the order. Pure sort of the
+    three ALREADY-computed values — no fabricated levels, no magic numbers; a strict
+    no-op (byte-identical) when already ordered. Bull ascending, bear descending.
+    Caller applies it ONLY for actionable directions (HOLD levels are informational
+    and never SR-overridden, so they are left untouched)."""
+    tps = sorted((tp1, tp2, tp3), reverse=(direction == "bearish"))
+    return tps[0], tps[1], tps[2]
+
+
 def _price_round(value: float) -> float:
     """Round a price level to a precision that scales with its magnitude.
 
@@ -367,6 +378,13 @@ def generate_signal(
             "Bilgi amaçlıdır. Net AL/SAT sinyali yok — motorlar arasında uzlaşı sağlanamadı. "
             "Pozisyon açmadan önce daha güçlü onay bekleyin."
         )
+
+    # P11-1: enforce TP monotonicity for ACTIONABLE signals (an SR override can invert
+    # tp2/tp3 when a resistance/support sits beyond tp3). No-op when already ordered →
+    # byte-identical for the vast majority; only fixes objectively broken ordering.
+    # HOLD (informational, never SR-overridden) is intentionally left untouched.
+    if direction in ("bullish", "bearish"):
+        tp1, tp2, tp3 = _enforce_tp_order(direction, tp1, tp2, tp3)
 
     # Birth-time telemetry (additive observability — never re-read by the decision).
     # FAIL-OPEN: a telemetry error must NEVER break signal generation (priority #1).
