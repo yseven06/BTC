@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   createChart, ColorType, CrosshairMode, LineStyle,
   type IChartApi, type ISeriesApi, type CandlestickData,
@@ -70,6 +70,55 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  // Amber segment marking the signal price, anchored at its LEFT end to the
+  // signal-start candle (see the marker effect below).
+  const signalLineRef = useRef<ISeriesApi<'Line'> | null>(null);
+  // HTML price chip pinned exactly at the signal point (the left dot). An
+  // above-bar marker can't sit at an arbitrary price, so the price label is a
+  // DOM overlay positioned from chart coordinates and kept in sync on pan/zoom.
+  const labelRef = useRef<HTMLDivElement | null>(null);
+  // Vertical dashed line calling out WHICH candle is the signal (a horizontal
+  // line couldn't — it crossed later candles).
+  const vLineRef = useRef<HTMLDivElement | null>(null);
+  const signalAnchorRef = useRef<{ time: number; price: number; text: string } | null>(null);
+  // Last applied chip state, so the per-frame loop only touches the DOM when the
+  // position actually moved (idle frames are a couple of cheap coordinate reads).
+  const lastPosRef = useRef<string | null>(null);
+
+  // Reposition the price chip onto the signal point using current chart
+  // coordinates. Stable (reads refs only). Called every animation frame so the
+  // chip stays glued through zoom/pan even while lightweight-charts animates the
+  // view across several frames (a one-shot read lands on an intermediate frame).
+  const updateSignalLabel = useCallback(() => {
+    const chart = chartRef.current;
+    const series = candleSeriesRef.current;
+    const label = labelRef.current;
+    const vline = vLineRef.current;
+    if (!chart || !series || !label || !vline) return;
+    const anchor = signalAnchorRef.current;
+    const hide = () => {
+      if (lastPosRef.current !== null) {
+        label.style.display = 'none';
+        vline.style.display = 'none';
+        lastPosRef.current = null;
+      }
+    };
+    if (!anchor) { hide(); return; }
+    const x = chart.timeScale().timeToCoordinate(anchor.time as any);
+    const y = series.priceToCoordinate(anchor.price);
+    if (x == null || y == null) { hide(); return; }
+    const key = `${anchor.text}|${Math.round(x)}|${Math.round(y)}`;
+    if (key === lastPosRef.current) return;  // nothing moved this frame
+    lastPosRef.current = key;
+    // Vertical line marks the candle (x only — full height via CSS).
+    vline.style.display = 'block';
+    vline.style.left = `${x}px`;
+    // Chip pinned at the exact price point on that candle.
+    label.textContent = anchor.text;
+    label.style.display = 'block';
+    label.style.left = `${x}px`;
+    label.style.top = `${y}px`;
+  }, []);
   // Only auto-fit the view on the very first data load. The parent polls
   // for fresh candles every 30s — calling fitContent() on every refresh
   // snapped the chart back to the default view a few seconds after a user
@@ -135,14 +184,31 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
       wickDownColor:  '#EF4444',
     });
 
+    // A thin amber line series used to draw ONLY the signal-price segment
+    // (from the signal-start candle rightward). Added after the candles so it
+    // sits on top. No price line / last-value label → it never crowds the
+    // right-axis Giriş/SL/TP labels, even when the signal price hugs the entry.
+    const signalLine = chart.addLineSeries({
+      color: '#fbbf24',
+      lineWidth: 3,
+      lineStyle: LineStyle.Solid,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+      pointMarkersVisible: true,
+      pointMarkersRadius: 4,
+    });
+
     chartRef.current = chart;
     candleSeriesRef.current = candleSeries;
+    signalLineRef.current = signalLine;
 
     // Resize handler
     const resize = () => {
       if (containerRef.current && chartRef.current) {
         chartRef.current.applyOptions({ width: containerRef.current.clientWidth });
       }
+      requestAnimationFrame(updateSignalLabel);
     };
     window.addEventListener('resize', resize);
 
@@ -151,6 +217,7 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
       chart.remove();
       chartRef.current = null;
       candleSeriesRef.current = null;
+      signalLineRef.current = null;
     };
     // Mount-once: `height` is read here only as the initial value. Putting
     // it in the dependency array (as before) tore down and recreated the
@@ -160,6 +227,19 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
     // the brand-new empty series. The chart looked blank until a refresh.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Keep the signal price chip pinned to its point every frame. lightweight-
+  // charts has no "viewport changed" event that covers wheel-zoom, axis-drag
+  // zoom AND price-scale rescale together, and it animates the view over several
+  // frames — so a per-frame reposition is the only thing that never drifts. The
+  // body early-returns cheaply when nothing moved, so idle frames are ~free.
+  useEffect(() => {
+    let rafId = requestAnimationFrame(function tick() {
+      updateSignalLabel();
+      rafId = requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [updateSignalLabel]);
 
   // Resize an already-mounted chart when the parent changes `height`
   // (e.g. fullscreen toggle) without tearing down the series/data. Width
@@ -171,7 +251,8 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
       height,
       width: containerRef.current?.clientWidth,
     });
-  }, [height]);
+    requestAnimationFrame(updateSignalLabel);
+  }, [height, updateSignalLabel]);
 
   // Update candles when data changes
   useEffect(() => {
@@ -254,6 +335,9 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
     const series = candleSeriesRef.current;
     if (!signal?.generatedAt || candles.length === 0) {
       series.setMarkers([]);
+      signalLineRef.current?.setData([]);
+      signalAnchorRef.current = null;
+      updateSignalLabel();
       return;
     }
     // Anchor the marker to the candle that CONTAINS the signal time, not the
@@ -270,19 +354,79 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
       ? candles.length - 1            // signal at/after the last bar's open
       : Math.max(0, nextIdx - 1);     // the bar that contains the signal
     const startCandle = candles[startIdx];
-    series.setMarkers(startCandle ? [{
-      time: startCandle.time as any,
-      position: 'aboveBar',
-      color: '#fbbf24',
-      shape: 'arrowDown',
-      text: 'Sinyal başlangıcı',
-      size: 2,
-    }] : []);
-  }, [signal?.generatedAt, candles]);
+    if (!startCandle) {
+      series.setMarkers([]);
+      signalLineRef.current?.setData([]);
+      signalAnchorRef.current = null;
+      updateSignalLabel();
+      return;
+    }
+    // The exact market price at signal time = the close of the bar that
+    // contained generatedAt. A bare above-bar arrow can't sit at a price (so
+    // "top or bottom of the candle?" stayed ambiguous); instead the segment's
+    // left dot marks the point and an HTML price chip is pinned right on it.
+    const signalPrice = startCandle.close;
+    const p = signalPrice >= 100 ? 2 : signalPrice >= 0.01 ? 4 : signalPrice >= 0.0001 ? 6 : 8;
+    const priceStr = signalPrice.toLocaleString('tr-TR', {
+      minimumFractionDigits: p, maximumFractionDigits: p,
+    });
+    // No above-bar arrow anymore — clear any from a prior render.
+    series.setMarkers([]);
+
+    // Mark the signal with a SINGLE dot at its exact point. A rightward
+    // horizontal segment was ambiguous once zoomed (it crossed later candles,
+    // so "which candle gave the signal?" was unclear); the candle is now called
+    // out by the vertical line overlay instead (see updateSignalLabel).
+    signalLineRef.current?.setData([{ time: startCandle.time as any, value: signalPrice }]);
+
+    // Pin the chip + vertical line onto the signal point.
+    signalAnchorRef.current = { time: startCandle.time, price: signalPrice, text: `Sinyal · ${priceStr}` };
+    requestAnimationFrame(updateSignalLabel);
+  }, [signal?.generatedAt, candles, updateSignalLabel]);
 
   return (
     <div className="relative">
       <div ref={containerRef} style={{ width: '100%', height }} />
+      {/* Vertical dashed line marking the signal candle (left set imperatively).
+          Stops above the time axis. Identifies WHICH candle unambiguously. */}
+      <div
+        ref={vLineRef}
+        style={{
+          display: 'none',
+          position: 'absolute',
+          top: 0,
+          bottom: '24px',
+          left: 0,
+          width: 0,
+          borderLeft: '1.5px dashed rgba(251, 191, 36, 0.55)',
+          transform: 'translateX(-0.75px)',
+          pointerEvents: 'none',
+          zIndex: 4,
+        }}
+      />
+      {/* Price chip pinned to the signal point (left dot). Positioned from
+          chart coordinates (left/top set imperatively); the transform parks it
+          just left of and vertically centered on the dot. */}
+      <div
+        ref={labelRef}
+        style={{
+          display: 'none',
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          transform: 'translate(calc(-100% - 10px), -50%)',
+          background: '#fbbf24',
+          color: '#1f2937',
+          fontSize: '11px',
+          fontWeight: 700,
+          lineHeight: 1,
+          padding: '3px 7px',
+          borderRadius: '5px',
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none',
+          zIndex: 5,
+        }}
+      />
     </div>
   );
 }
