@@ -107,6 +107,15 @@ def _stripe_configured() -> bool:
     return bool(getattr(settings, "STRIPE_SECRET_KEY", ""))
 
 
+def _mock_activation_allowed(debug: bool, environment: str) -> bool:
+    """A3: the Stripe-unconfigured mock self-activation (grants a paid tier without
+    payment) is a LOCAL-DEV-ONLY convenience. Allowed STRICTLY when DEBUG is on AND
+    ENVIRONMENT == 'development'. Every other environment (production, staging, …)
+    must hard-fail 503 so no unconfigured non-dev deploy can hand out free Premium.
+    Pure function (explicit params) so the gate matrix is unit-testable."""
+    return bool(debug) and environment == "development"
+
+
 # ─── Routes ───────────────────────────────────────────────────────────────────
 
 @router.get("/plans", summary="Get pricing catalog (public)")
@@ -182,9 +191,11 @@ async def start_checkout(
     if not _stripe_configured():
         # SECURITY (BP1): a missing Stripe config must NEVER grant a paid tier
         # without payment. The self-activation below is a DEV-ONLY convenience to
-        # exercise the UI flow locally; in production (DEBUG=false) we hard-fail
-        # instead, so an unconfigured prod can't hand out free Premium.
-        if not settings.DEBUG:
+        # exercise the UI flow locally. A3 hardening: it runs ONLY in genuine local
+        # development (DEBUG=true AND ENVIRONMENT=="development"). Any other env —
+        # production (DEBUG=false) OR a non-dev env like "staging" with DEBUG=true —
+        # hard-fails 503, so no unconfigured non-dev deploy can hand out free Premium.
+        if not _mock_activation_allowed(settings.DEBUG, settings.ENVIRONMENT):
             raise HTTPException(
                 status_code=503,
                 detail="Ödeme sistemi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
