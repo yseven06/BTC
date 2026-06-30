@@ -128,6 +128,12 @@ Settings → 3) Cloudflare Turnstile (adaptive) → 4) Deploy + Production + Bet
 - **Ön koşullar:** Yok (mevcut motor + ATR + regime detector + SMC motoru hazır). Regresyon: backtest.
 
 ### P1.2 — Lifecycle aksiyon katmanı + proaktif bildirim · efor **M** · K1,K4
+> **DURUM (2026-06-30): BACKEND FONKSİYONEL TAMAM** [P12-1 b311a28 · P12-2 ca50081 · P12-3 0df43a8].
+> notify_lifecycle opt-in kolonu (default KAPALI) + format_lifecycle_message + notify_lifecycle fan-out
+> (Pro+ gate, fail-open) + tracker hook (gerçek transition → {invalidating, approaching_tp}, commit
+> sonrası fire-and-forget). Detection/resolution **byte-identical**; opt-in=0 → davranış değişmedi.
+> **Kalan (ops.):** P12-4 frontend toggle + /lifecycle/metrics `lifecycle_alerts_sent` sayacı.
+> Analiz: docs/P12-lifecycle-action-layer-analysis.md.
 - **Neden şimdi:** Lifecycle v2 mature ama **gözlem-only**; WEAKENING/INVALIDATING tespit edince
   kullanıcıya **proaktif uyarı** vermiyor. Bu, güçlü bir ayrışma özelliği ("sinyalin bozuluyor").
 - **Kullanıcı etkisi:** Yüksek (erken uyarı = güven + değer).
