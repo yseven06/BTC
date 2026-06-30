@@ -24,6 +24,7 @@ from statistics import median
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from app.backtesting.trade_path import is_legacy_contradictory_live_sl
+from app.services.trade_geometry import planned_rr
 
 # Below this many resolved trade-paths the sample is too small to draw policy
 # conclusions (matches the tm-v2 data checkpoint).
@@ -49,16 +50,6 @@ def _median(xs: Sequence[Optional[float]]) -> Optional[float]:
     return round(median(vals), 4) if vals else None
 
 
-def _planned_rr(entry: Optional[float], sl: Optional[float], tp: Optional[float]) -> Optional[float]:
-    """Planned reward:risk = |tp-entry| / |entry-sl| (recomputed from stored prices)."""
-    if entry is None or sl is None or tp is None:
-        return None
-    risk = abs(entry - sl)
-    if risk == 0:
-        return None
-    return round(abs(tp - entry) / risk, 4)
-
-
 def _is_high_confidence(r) -> bool:
     """Complete bar-walk row: MFE measured, not still-forming, not intrabar-ambiguous."""
     return (
@@ -80,7 +71,7 @@ def compute_tpsl_quality(rows: List[Any]) -> Dict[str, Any]:
 
     # Planned R:R recomputed from stored prices → covers ALL rows (incl. legacy)
     rr1 = [
-        _planned_rr(_f(r.entry_price), _f(r.sl_price), _f(r.tp1_price)) for r in rows
+        planned_rr(_f(r.entry_price), _f(r.sl_price), _f(r.tp1_price)) for r in rows
     ]
     rr1 = [x for x in rr1 if x is not None]
     sub1 = sum(1 for x in rr1 if x < 1.0)
