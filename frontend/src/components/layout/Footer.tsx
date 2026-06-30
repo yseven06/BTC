@@ -5,57 +5,59 @@ import { CookieSettingsLink } from '@/components/consent/CookieSettingsLink';
 
 /**
  * Global footer — rendered on every page (public via LayoutShell, authenticated
- * via MainLayout). Carries the single-source investment disclaimer and the legal
- * links (sourced from the legal registry, so the list stays in sync with the docs).
+ * via MainLayout). Minimal/restrained: the legal links (sourced from the registry
+ * so they stay in sync with the docs) flow as one quiet inline row separated by
+ * thin middots, with a single brand/copyright line beneath. Carries the
+ * single-source investment disclaimer.
  */
 export function Footer() {
   const docs = listLegalDocs();
   const year = new Date().getFullYear();
 
+  const linkClass = 'text-text-muted transition-colors hover:text-text-secondary';
+
+  // Flatten registry docs + the two standing links into one ordered list so we
+  // can interleave subtle separators between them.
+  const links = [
+    ...docs.map((d) => ({
+      key: d.slug,
+      node: (
+        <Link href={`/yasal/${d.slug}`} className={linkClass}>
+          {d.title}
+        </Link>
+      ),
+    })),
+    { key: '__all', node: <Link href="/yasal" className={linkClass}>Tüm Yasal Belgeler</Link> },
+    { key: '__cookie', node: <CookieSettingsLink className={linkClass} /> },
+  ];
+
   return (
-    <footer className="mt-8 border-t border-white/10 bg-bg-secondary/40">
-      <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-6">
-        <InvestmentDisclaimer variant="footer" className="mb-6 max-w-3xl" />
+    <footer className="mt-8 border-t border-white/10 bg-bg-secondary/30">
+      <div className="mx-auto w-full max-w-7xl px-4 py-5 md:px-6">
+        <InvestmentDisclaimer variant="footer" className="mb-4 max-w-3xl" />
 
-        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-text-primary">TradeMinds AI</p>
-            <p className="mt-1 max-w-xs text-xs text-text-muted">
-              Yapay zekâ destekli analiz ve karar destek platformu.
-            </p>
-            <p className="mt-3 text-xs text-text-muted">
-              © {year} TradeMinds AI. Tüm hakları saklıdır.
-            </p>
-          </div>
+        <nav aria-label="Yasal belgeler">
+          <ul className="flex flex-wrap items-center text-[11px] leading-relaxed">
+            {links.map((l, i) => (
+              <li key={l.key} className="flex items-center">
+                {l.node}
+                {i < links.length - 1 && (
+                  <span aria-hidden className="mx-2.5 select-none text-white/15">
+                    ·
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-          <nav aria-label="Yasal belgeler" className="min-w-[180px]">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-              Yasal
-            </p>
-            <ul className="space-y-1.5">
-              {docs.map((d) => (
-                <li key={d.slug}>
-                  <Link
-                    href={`/yasal/${d.slug}`}
-                    className="text-xs text-text-muted transition-colors hover:text-text-primary hover:underline"
-                  >
-                    {d.title}
-                  </Link>
-                </li>
-              ))}
-              <li>
-                <Link
-                  href="/yasal"
-                  className="text-xs text-text-muted transition-colors hover:text-text-primary hover:underline"
-                >
-                  Tüm Yasal Belgeler
-                </Link>
-              </li>
-              <li>
-                <CookieSettingsLink className="text-xs text-text-muted transition-colors hover:text-text-primary hover:underline" />
-              </li>
-            </ul>
-          </nav>
+        <div className="mt-4 flex flex-col gap-1 border-t border-white/5 pt-4 text-[11px] text-text-muted sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            <span className="font-medium text-text-secondary">TradeMinds AI</span>
+            <span aria-hidden className="mx-1.5 text-white/20">·</span>
+            Yapay zekâ destekli analiz ve karar destek platformu
+          </p>
+          <p>© {year} TradeMinds AI. Tüm hakları saklıdır.</p>
         </div>
       </div>
     </footer>
