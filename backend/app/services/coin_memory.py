@@ -30,6 +30,7 @@ from typing import Any, Dict, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.backtesting.trade_path import is_legacy_contradictory_live_sl
 from app.engines.ai_decision.signal_generator import BASE_ENGINE_WEIGHTS
 from app.engines.base import SignalBias
 from app.models.intelligence import CoinMemory, SignalSnapshot
@@ -348,6 +349,16 @@ async def update_trade_mgmt_stats(db: AsyncSession, path) -> None:
     symbol = (path.symbol or "").upper()
     timeframe = path.timeframe
     if not symbol or not timeframe:
+        return
+
+    # CM2-1 fold-hardening (KEY1-d v1-handling): never fold a legacy-contradictory
+    # live-SL row (TP1 banked but recorded as a full original-stop loss) into the
+    # rollup — its cur_* / give_back fields are internally inconsistent and would
+    # pollute tm_stats. Single-source predicate; v2 rows always pass through, and
+    # valid v1 rows (bar-walk, TP1-not-hit live-SL) are NOT affected. Forward-only:
+    # current live data has 0 such rows, so this is byte-identical today.
+    if is_legacy_contradictory_live_sl(path):
+        logger.debug("tm_stats: skip legacy-contradictory live-SL path for %s/%s", symbol, timeframe)
         return
 
     # The session uses autoflush=False, and update_coin_memory may have just
