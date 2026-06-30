@@ -8,6 +8,10 @@ import {
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { cn } from '@/lib/utils';
+import {
+  SUPPORT_EMAIL, SUPPORT_TELEGRAM, KUNYE_PATH,
+  hasSupportEmail, hasSupportTelegram, hasAnySupportChannel, telegramUrl,
+} from '@/lib/contact';
 
 interface FaqItem {
   q: string;
@@ -160,28 +164,47 @@ export default function HelpPage() {
         <p className="text-xs text-text-secondary mb-4">
           Sorularını bize ulaştır — geri dönüş süremiz Pro/Premium kullanıcılar için 24 saat içindedir.
         </p>
+        {/* A2a: contact channels come from the single source (lib/contact.ts). Until
+            real company info lands (B1), no channel is set → we do NOT fabricate a
+            contact; we link to the legal künye instead. */}
         <div className="space-y-2">
-          <a
-            href="mailto:destek@trademinds.io"
-            className="flex items-center gap-3 p-3 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-accent-primary/40 transition-colors"
-          >
-            <Mail className="w-4 h-4 text-accent-primary" />
-            <div>
-              <p className="text-sm font-semibold text-text-primary">E-posta</p>
-              <p className="text-xs text-text-muted">destek@trademinds.io</p>
-            </div>
-          </a>
-          <a
-            href="https://t.me/trademinds_support"
-            target="_blank" rel="noreferrer"
-            className="flex items-center gap-3 p-3 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-accent-primary/40 transition-colors"
-          >
-            <MessageCircle className="w-4 h-4 text-accent-primary" />
-            <div>
-              <p className="text-sm font-semibold text-text-primary">Telegram Destek</p>
-              <p className="text-xs text-text-muted">@trademinds_support</p>
-            </div>
-          </a>
+          {hasSupportEmail() && (
+            <a
+              href={`mailto:${SUPPORT_EMAIL}`}
+              className="flex items-center gap-3 p-3 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-accent-primary/40 transition-colors"
+            >
+              <Mail className="w-4 h-4 text-accent-primary" />
+              <div>
+                <p className="text-sm font-semibold text-text-primary">E-posta</p>
+                <p className="text-xs text-text-muted">{SUPPORT_EMAIL}</p>
+              </div>
+            </a>
+          )}
+          {hasSupportTelegram() && (
+            <a
+              href={telegramUrl()}
+              target="_blank" rel="noreferrer"
+              className="flex items-center gap-3 p-3 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-accent-primary/40 transition-colors"
+            >
+              <MessageCircle className="w-4 h-4 text-accent-primary" />
+              <div>
+                <p className="text-sm font-semibold text-text-primary">Telegram Destek</p>
+                <p className="text-xs text-text-muted">{SUPPORT_TELEGRAM}</p>
+              </div>
+            </a>
+          )}
+          {!hasAnySupportChannel() && (
+            <Link
+              href={KUNYE_PATH}
+              className="flex items-center gap-3 p-3 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-accent-primary/40 transition-colors"
+            >
+              <Mail className="w-4 h-4 text-accent-primary" />
+              <div>
+                <p className="text-sm font-semibold text-text-primary">İletişim & Künye</p>
+                <p className="text-xs text-text-muted">Resmi iletişim bilgilerimiz künye sayfamızda yer alır.</p>
+              </div>
+            </Link>
+          )}
         </div>
       </GlassCard>
 

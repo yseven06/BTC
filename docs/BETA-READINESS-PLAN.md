@@ -74,6 +74,13 @@
 
 ## B. SENİN ANAHTAR/BİLGİNİ BEKLEYEN (bağımsız yapılamaz)
 
+### A2 DURUM: **A2a TAMAM**, A2b → B1 ertelendi (kullanıcı kararı 2026-06-30)
+- **A2a (TAMAM):** `frontend/src/lib/contact.ts` tek-kaynak (SUPPORT_EMAIL/TELEGRAM, B1'e kadar BOŞ);
+  help page yalnız tanımlı kanalı gösterir, boşken uydurma değer YOK → `/yasal/iletisim-kunye`'ye
+  yönlendirir. Hardcoded `destek@trademinds.io`/Telegram kaldırıldı. tsc temiz.
+- **A2b (→ B1):** cross-border (KVKK m.9) + alt-işleyen listesi + VERBİS notu + EN-locale → **B1 Legal
+  v1.0** sırasında gerçek tüzel-kişilik + aktarım mekanizması + avukat incelemesiyle. Şimdi metne dokunulmadı.
+
 ### B1 — Legal v1.0 (şirket-bilgisi + v1.0 bump)
 - **Kapsam:** 11 placeholder ( unvan/MERSİS/vergi dairesi+no/adres/KEP/destek-eposta/KVKK-eposta/tüketici-
   eposta/VERBİS/yurt-dışı-mekanizma/telefon) doldur + 8 dokümanda taslak-banner kaldır + v0.9→**v1.0**
