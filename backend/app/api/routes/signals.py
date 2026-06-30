@@ -686,6 +686,15 @@ async def signal_intelligence(
         if rs.get("total"):
             regime_win_rate = round(rs["wins"] / rs["total"] * 100, 1)
 
+    # Coin Memory v2 — read-only trade-management track record over tm_stats (per-cell
+    # gated; produces NO decision/score). Additive + best-effort: any failure degrades
+    # to has_data=False and never affects the response or signal generation.
+    from app.services.coin_memory import compute_coin_tm_summary
+    try:
+        trade_mgmt = compute_coin_tm_summary(mem, regime)
+    except Exception:
+        trade_mgmt = {"has_data": False, "n": 0}
+
     return {
         "signal_id": str(signal_id),
         "symbol": symbol,
@@ -712,6 +721,7 @@ async def signal_intelligence(
         "fear_greed": snap.fear_greed if snap else None,
         "engine_scores_at_signal": snap.engine_scores if snap else None,
         "coin_memory": coin,
+        "trade_mgmt": trade_mgmt,
         "similar_setups": similar,
         "outcome": perf.outcome.value if perf else None,
         "detail_label": perf.detail_label if perf else None,

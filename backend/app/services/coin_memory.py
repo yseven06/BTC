@@ -25,6 +25,7 @@ Overfitting guards are central, not afterthoughts:
 from __future__ import annotations
 
 import logging
+import math
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import select
@@ -506,3 +507,78 @@ async def rebuild_tm_stats(db: AsyncSession) -> Dict[str, int]:
             created += 1
     return {"paths": len(paths), "folded": len(paths) - skipped, "skipped": skipped,
             "cells_updated": updated, "cells_created": created}
+
+
+# ── CM2-4: read-only tm_stats reader (NO decision, NO score, NO recommendation) ──
+# Per-cell gate: below MIN_TM_SAMPLES a bucket exposes ONLY raw counts (no rates /
+# averages / dispersion). Mirrors similarity's MIN_SIMILAR_MATCHES / Faz-3's
+# MIN_SAMPLES_FOR_ADAPTIVE so the whole stack degrades on one consistent rule.
+MIN_TM_SAMPLES = 10
+
+
+def _avg(total: float, n: int) -> Optional[float]:
+    return round(total / n, 4) if n else None
+
+
+def _std(total: float, sumsq: float, n: int) -> Optional[float]:
+    """Population std from running sum + sum-of-squares (None if n < 2)."""
+    if not n or n < 2:
+        return None
+    var = sumsq / n - (total / n) ** 2
+    return round(math.sqrt(var), 4) if var > 0 else 0.0
+
+
+def _pct(num: int, den: int) -> Optional[float]:
+    return round(num / den * 100.0, 1) if den else None
+
+
+def compute_coin_tm_summary(mem, regime: Optional[str] = None) -> Dict[str, Any]:
+    """READ-ONLY interpretation of one tm_stats bucket (the given regime, else
+    '_all'). Produces NO decision/score/recommendation — descriptive stats only,
+    and below the per-cell sample threshold ONLY raw counts (no rates/averages).
+    Never raises: returns has_data=False when the cache is missing/empty, so a
+    caller can surface it best-effort without ever affecting signal generation."""
+    tm = (getattr(mem, "tm_stats", None) or {}) if mem is not None else {}
+    key = regime if (regime and regime in tm) else "_all"
+    bucket = tm.get(key) or {}
+    n = int(bucket.get("n", 0) or 0)
+    sample_count = int(getattr(mem, "tm_sample_count", 0) or 0) if mem is not None else 0
+    if n <= 0:
+        return {"has_data": False, "n": 0, "regime": key,
+                "cell_threshold": MIN_TM_SAMPLES, "tm_sample_count": sample_count}
+
+    # Raw counts — ALWAYS shown (no gate).
+    counts = {
+        "tp1": int(bucket.get("tp1", 0)), "tp2": int(bucket.get("tp2", 0)),
+        "tp3": int(bucket.get("tp3", 0)), "give_back": int(bucket.get("give_back", 0)),
+        "tight_sl": int(bucket.get("tight_sl", 0)), "sub1_rr": int(bucket.get("sub1_rr", 0)),
+    }
+    out = {
+        "has_data": True, "n": n, "regime": key,
+        "cell_threshold": MIN_TM_SAMPLES, "below_cell_threshold": n < MIN_TM_SAMPLES,
+        "tm_sample_count": sample_count, "counts": counts, "metrics": None,
+    }
+    if n < MIN_TM_SAMPLES:
+        return out  # below threshold → raw counts only, no rates/scores
+
+    mfe_n = int(bucket.get("mfe_r_n", 0)); mae_n = int(bucket.get("mae_r_n", 0))
+    rr_n = int(bucket.get("planned_rr_tp1_n", 0)); real_n = int(bucket.get("realized_n", 0))
+    out["metrics"] = {
+        "avg_mfe_r": _avg(float(bucket.get("mfe_r_sum", 0.0)), mfe_n),
+        "avg_mae_r": _avg(float(bucket.get("mae_r_sum", 0.0)), mae_n),
+        "std_mfe_r": _std(float(bucket.get("mfe_r_sum", 0.0)), float(bucket.get("mfe_r_sumsq", 0.0)), mfe_n),
+        "std_mae_r": _std(float(bucket.get("mae_r_sum", 0.0)), float(bucket.get("mae_r_sumsq", 0.0)), mae_n),
+        "avg_mfe_atr": _avg(float(bucket.get("mfe_atr_sum", 0.0)), int(bucket.get("mfe_atr_n", 0))),
+        "avg_mae_atr": _avg(float(bucket.get("mae_atr_sum", 0.0)), int(bucket.get("mae_atr_n", 0))),
+        "avg_realized": _avg(float(bucket.get("realized_sum", 0.0)), real_n),
+        "std_realized": _std(float(bucket.get("realized_sum", 0.0)), float(bucket.get("realized_sumsq", 0.0)), real_n),
+        "avg_planned_rr_tp1": _avg(float(bucket.get("planned_rr_tp1_sum", 0.0)), rr_n),
+        "sub1_rr_pct": _pct(counts["sub1_rr"], rr_n),
+        "avg_bars_to_tp1": _avg(float(bucket.get("bars_to_tp1_sum", 0)), int(bucket.get("bars_to_tp1_n", 0))),
+        "avg_bars_total": _avg(float(bucket.get("bars_total_sum", 0)), int(bucket.get("bars_total_n", 0))),
+        "tp1_rate": _pct(counts["tp1"], n), "tp2_rate": _pct(counts["tp2"], n),
+        "tp3_rate": _pct(counts["tp3"], n),
+        "give_back_rate": _pct(counts["give_back"], counts["tp1"]),  # among TP1-banked
+        "tight_sl_rate": _pct(counts["tight_sl"], n),
+    }
+    return out

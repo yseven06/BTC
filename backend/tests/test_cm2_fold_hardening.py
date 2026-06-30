@@ -151,6 +151,62 @@ def test_cm2_3_rebuild_idempotent():
     assert a_cells[("BTC", "4h")]["_all"] == b_cells[("BTC", "4h")]["_all"]
 
 
+# ── CM2-4 read-only reader ───────────────────────────────────────────────────
+def _bucket(n, **kw):
+    b = {"n": n, "tp1": 0, "tp2": 0, "tp3": 0, "give_back": 0, "tight_sl": 0, "sub1_rr": 0,
+         "mfe_r_sum": 0.0, "mfe_r_n": 0, "mfe_r_sumsq": 0.0,
+         "mae_r_sum": 0.0, "mae_r_n": 0, "mae_r_sumsq": 0.0,
+         "mfe_atr_sum": 0.0, "mfe_atr_n": 0, "mae_atr_sum": 0.0, "mae_atr_n": 0,
+         "realized_sum": 0.0, "realized_n": 0, "realized_sumsq": 0.0,
+         "planned_rr_tp1_sum": 0.0, "planned_rr_tp1_n": 0,
+         "bars_to_tp1_sum": 0, "bars_to_tp1_n": 0, "bars_total_sum": 0, "bars_total_n": 0}
+    b.update(kw)
+    return b
+
+
+def test_cm2_4_no_data_graceful():
+    from app.services.coin_memory import compute_coin_tm_summary
+    assert compute_coin_tm_summary(None)["has_data"] is False           # mem None
+    assert compute_coin_tm_summary(NS(tm_stats=None, tm_sample_count=0))["has_data"] is False
+    empty = NS(tm_stats={"_all": _bucket(0)}, tm_sample_count=0)
+    assert compute_coin_tm_summary(empty)["has_data"] is False          # n == 0
+
+
+def test_cm2_4_below_threshold_counts_only():
+    from app.services.coin_memory import compute_coin_tm_summary, MIN_TM_SAMPLES
+    b = _bucket(5, tp1=3, give_back=1, tight_sl=1, sub1_rr=2,
+                mfe_r_sum=10.0, mfe_r_n=5)
+    out = compute_coin_tm_summary(NS(tm_stats={"_all": b}, tm_sample_count=5))
+    assert out["has_data"] and out["below_cell_threshold"] is True
+    assert out["n"] == 5 and out["counts"]["tp1"] == 3 and out["counts"]["sub1_rr"] == 2
+    assert out["metrics"] is None                                       # NO rates below threshold
+
+
+def test_cm2_4_above_threshold_metrics():
+    from app.services.coin_memory import compute_coin_tm_summary
+    b = _bucket(12, tp1=8, tp2=4, tp3=1, give_back=2, tight_sl=2, sub1_rr=3,
+                mfe_r_sum=24.0, mfe_r_n=12, mfe_r_sumsq=60.0,
+                mae_r_sum=6.0, mae_r_n=12, mae_r_sumsq=6.0,
+                realized_sum=12.0, realized_n=12, realized_sumsq=24.0,
+                planned_rr_tp1_sum=12.0, planned_rr_tp1_n=12,
+                bars_to_tp1_sum=36, bars_to_tp1_n=8, bars_total_sum=120, bars_total_n=12)
+    out = compute_coin_tm_summary(NS(tm_stats={"_all": b}, tm_sample_count=12))
+    assert out["below_cell_threshold"] is False
+    m = out["metrics"]
+    assert m["avg_mfe_r"] == 2.0 and m["avg_realized"] == 1.0 and m["std_realized"] == 1.0
+    assert m["avg_planned_rr_tp1"] == 1.0 and m["sub1_rr_pct"] == 25.0
+    assert m["tp1_rate"] == 66.7 and m["give_back_rate"] == 25.0 and m["tight_sl_rate"] == 16.7
+    assert m["avg_bars_to_tp1"] == 4.5
+
+
+def test_cm2_4_regime_selection_fallback():
+    from app.services.coin_memory import compute_coin_tm_summary
+    mem = NS(tm_stats={"_all": _bucket(20, tp1=10), "trend": _bucket(12, tp1=9)}, tm_sample_count=20)
+    assert compute_coin_tm_summary(mem, "trend")["regime"] == "trend"   # exact regime bucket
+    assert compute_coin_tm_summary(mem, "panic")["regime"] == "_all"    # missing → _all fallback
+    assert compute_coin_tm_summary(mem)["regime"] == "_all"             # None → _all
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:
