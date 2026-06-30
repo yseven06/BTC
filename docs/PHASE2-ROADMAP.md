@@ -146,6 +146,10 @@ Settings → 3) Cloudflare Turnstile (adaptive) → 4) Deploy + Production + Bet
   gerçek win/loss ile kalibre et. Ön koşul: veri.
 - **P2.2 — Coin Memory v2** (L, K3,K4): `tm_stats`'ı gözlemden **politikaya** bağla (coin-spesifik
   TP/SL/scale-out önerisi). Ön koşul: trade_path verisi + P1.1.
+  - **DURUM (2026-06-30): M1+M2 TAMAM → veri-bağımsız altyapı KAPANDI** (fold-hardening + additive
+    `tm_stats` + drop&rebuild + read-only reader + signals.py additive payload; docs/P07-coin-memory-v2-analysis.md).
+    **M3 (politikaya/Similarity'ye bağlama) ⛔ DEFERRED → checkpoint-gated (≥250-300 trade_path);**
+    şu an per-cell yalnız 1 hücre eşik üstü. tm_stats artık türetilebilir cache + okunabilir yüzey.
 - **P2.3 — Adaptive Learning v2** (L, K3,K5): regime-koşullu adaptif ağırlık + outcome-label →
   karar; **shadow/A-B ölçüm harness'i** (adaptif vs base fayda ölçümü). Ön koşul: veri + ölçüm altyapısı.
 - **P2.4 — Similarity v2** (L, K3,K5): brute-force → feature-store/ANN indeks; ölçeklenme. Ön koşul:

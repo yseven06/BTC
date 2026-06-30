@@ -1,4 +1,13 @@
-# P0.7 — Coin Memory v2 — HAZIRLIK ANALİZİ & PLAN (kod YOK)
+# P0.7 — Coin Memory v2 — HAZIRLIK ANALİZİ & PLAN
+
+> ## ✅ STATÜ: **M1 + M2 TAMAM → P0.7 FONKSİYONEL KAPANDI** · M3 ⛔ DEFERRED — 2026-06-30
+> - **M1** [3a0ca0c · 0014cf7 · e467bdf · 50fc445]: fold-hardening + additive aggregat + drop&rebuild
+>   (canlı 198 path→83 hücre) + DRY. **M2** [34eb74c]: read-only reader (per-cell gate) + signals.py
+>   additive `trade_mgmt` payload. Test CM2 11/11 + regresyon değişmedi (golden/diff/mapping/backtest/live_sl).
+> - **M3 ⛔ DEFERRED → checkpoint-gated (≥250-300 trade_path):** Similarity OUTPUT zenginleştirme +
+>   ince dilimler. Şu an global ~198, per-cell yalnız **1 hücre eşik üstü** → değeri sınırlı (kullanıcı
+>   kararı). **M3 yeniden başladığında korunacak kurallar:** per-cell gating + legacy filter + graceful
+>   degradation + read-only (karar üretmez) + Similarity/Adaptive/resolution_core/TP-SL DOKUNMA.
 
 **Tarih:** 2026-06-30 · **Statü:** ANALİZ (yalnız analiz+planlama; kod yazılmadı) · veri-gated.
 **Kaynak:** 4-ajan paralel kod-haritalama (similarity, adaptive, metric-envanteri, mevcut-CM) +
