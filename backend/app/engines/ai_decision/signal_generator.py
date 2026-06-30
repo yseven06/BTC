@@ -312,11 +312,17 @@ def generate_signal(
         tp2 = current_price + (atr * 3.0)
         tp3 = current_price + (atr * 5.0)
         
-        # Override TP1/TP2 with nearest resistance if it fits
+        # Override TP1/TP2 with nearest resistance if it fits.
+        # P11-3 Lever 1B: an SR override may only push TP1 OUTWARD (a farther, still-
+        # realistic target), never pull it IN. A resistance closer than the ATR TP1
+        # would collapse the planned R:R, so in that case TP1 keeps its ATR distance
+        # (the close resistance is a within-move watch level, not the target).
         if nearest_res and nearest_res > current_price:
             if nearest_res < tp2:
-                tp1 = nearest_res
-                sr_override_tp1 = True
+                if nearest_res >= tp1:        # only farther than the ATR TP1 → use it
+                    tp1 = nearest_res
+                    sr_override_tp1 = True
+                # else: closer than the ATR TP1 → keep ATR TP1 (no inward pull)
             else:
                 tp2 = nearest_res
                 sr_override_tp2 = True
@@ -343,11 +349,15 @@ def generate_signal(
         tp2 = current_price - (atr * 3.0)
         tp3 = current_price - (atr * 5.0)
 
-        # Override with nearest support
+        # Override with nearest support (P11-3 Lever 1B mirror: only push TP1 OUTWARD
+        # — i.e. lower for a short — never pull it in. A support closer than the ATR
+        # TP1 keeps the ATR distance, so the override can't collapse the planned R:R.)
         if nearest_sup and nearest_sup < current_price:
             if nearest_sup > tp2:
-                tp1 = nearest_sup
-                sr_override_tp1 = True
+                if nearest_sup <= tp1:        # only farther (lower) than the ATR TP1 → use it
+                    tp1 = nearest_sup
+                    sr_override_tp1 = True
+                # else: closer than the ATR TP1 → keep ATR TP1 (no inward pull)
             else:
                 tp2 = nearest_sup
                 sr_override_tp2 = True
