@@ -7,6 +7,7 @@ an async session factory, and a FastAPI dependency for request-scoped sessions.
 
 from typing import AsyncGenerator
 
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -39,6 +40,29 @@ engine = create_async_engine(
     pool_recycle=600,
     pool_pre_ping=True,
 )
+
+
+# Safety net against orphaned "idle in transaction" sessions. When a worker is
+# killed mid-transaction — uvicorn --reload restarting on a code edit, or a
+# crash — its server-side connection is left stuck "idle in transaction" inside
+# the Supavisor pooler, which never reaps it. These accumulate (we found ones
+# 6 days old) until the pooler's 15-client cap is exhausted and the backend can
+# no longer open ANY connection — surfacing as "server unreachable" on login.
+# Postgres' idle_in_transaction_session_timeout auto-rolls-back + closes any
+# session left idle inside a transaction past the limit, so an orphan can never
+# linger. It MUST be applied per-connection via SET: the Supavisor pooler
+# ignores asyncpg startup server_settings but honours a post-connect SET
+# (empirically verified). 180s is far above any legitimate hold (the tracker /
+# alert sweeps keep a txn open only for seconds while fetching prices) yet
+# reaps genuine orphans promptly. See the db-idle-in-transaction-leak note.
+@event.listens_for(engine.sync_engine, "connect")
+def _set_idle_in_transaction_timeout(dbapi_connection, connection_record):
+    dbapi_connection.run_async(
+        lambda conn: conn.execute(
+            "SET idle_in_transaction_session_timeout = '180000'"
+        )
+    )
+
 
 # Session factory bound to the engine
 async_session_factory = async_sessionmaker(
