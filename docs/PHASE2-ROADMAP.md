@@ -1,5 +1,13 @@
 # Phase 2 Product Roadmap — TradeMinds AI
 
+> ## 🏁 CHECKPOINT — BETA-READY BASELINE (2026-06-30)
+> Beta-hazırlık **A-bloğu (A1-A5) TAMAM** · şirket varsayımı kaldırıldı → **gerçek kişi/bireysel
+> işletici** modeli ([OPERATING-MODEL.md](./OPERATING-MODEL.md)) · dep güncellemeleri (numpy/stripe
+> sabit) + byte-identical/equivalence PASS · çalışma ağacı temiz · **kod davranışı değişmedi.**
+> **Kalan = yalnız dış bağımlılık (B1 işletici bilgisi · B2 Stripe anahtarları · B3 Turnstile+prod-env+deploy).**
+> Tek-sayfa: **[BETA-LAUNCH-CHECKLIST.md](./BETA-LAUNCH-CHECKLIST.md)**. **Bundan sonraki tüm geliştirmeler
+> bu baseline üzerinden ilerler.**
+
 **Durum:** Production Readiness Sprint (Madde 1-8 + legal sertleştirme) **KAPANDI.** Bu belge,
 Phase 2 ürün geliştirmesinin stratejik öncelik sıralamasıdır. Tüm Phase 2 işleri Phase 1'in
 **güvenlik / hukuk / kalite** standartlarıyla yürütülür ([PRODUCT-LEGAL-PRINCIPLES.md](./PRODUCT-LEGAL-PRINCIPLES.md),
