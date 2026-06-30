@@ -42,8 +42,8 @@ tarihten itibaren mevzuatta öngörülen süre içinde (en geç üç iş günü)
 
 ## 5. İleti İçeriği ve Gönderen Bilgileri
 
-Tarafımızca gönderilen her ticari elektronik iletide; hizmet sağlayıcının ticaret unvanı/adı
-ve MERSİS numarası, iletinin konusu ve ticari ileti niteliği (ör. e-posta konu satırında
+Tarafımızca gönderilen her ticari elektronik iletide; hizmet sağlayıcının ticaret unvanı/işletici
+adı (varsa MERSİS numarası), iletinin konusu ve ticari ileti niteliği (ör. e-posta konu satırında
 tanınabilir biçimde) ile kolay erişilebilir bir ret yöntemi yer alır.
 
 ## 6. Kişisel Verilerin İşlenmesi

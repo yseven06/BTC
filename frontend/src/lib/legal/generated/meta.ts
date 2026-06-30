@@ -17,7 +17,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "614640d655bcb0e85088c1467e0ff590871e25f04ba3cc717af1ccabd9524574",
+    "hash": "0501e693ee608b0cd08d1576c9f931c63de8b73e041c7dba558008d008659691",
     "reconsentOnMinor": false
   },
   "aydinlatma-metni": {
@@ -26,7 +26,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.2",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "3365571ad6f0b39361034fd9d84ff3046e4e7f884bf5c0840bad6930f839be20",
+    "hash": "975029ad181aa93bb7f4f37afa302293f61e95af03769a2b47a58f0d6044f812",
     "reconsentOnMinor": false
   },
   "cerez-politikasi": {
@@ -44,7 +44,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "e9d574799da7b1db6349dbdc94b99d7cba98519126c1316ee755e1b185f589de",
+    "hash": "641f79d1ba29b2c05392832a337959f3fdaf6da8f4dc745f31d0712ababcb639",
     "reconsentOnMinor": false
   },
   "kullanim-kosullari": {
@@ -53,7 +53,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "b9d191e964c7f8235c0bff1d0f096699566f214978cfcb58754bf4d62c18bbf5",
+    "hash": "10bc57f0551e5c28f30a5376b8a6a47b00d4c6413f9c045fa4cd5f6ae69dcf4d",
     "reconsentOnMinor": false
   },
   "mesafeli-satis": {
@@ -62,7 +62,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "7715264ea2c8f92c8a402bf0221f46d8d608589d278205baff5a4c53dca8d6c8",
+    "hash": "e72a9fa12133f43642b6f13ce78f7a5a0b74c00523a03bf4287f1e6fc5f3362a",
     "reconsentOnMinor": false
   },
   "risk-bildirimi": {
@@ -80,7 +80,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "ae89f9759f3b90469806bbaf2fb0eb685e2a0d9d0a26fe9394b383fb8eb362a5",
+    "hash": "e68f9716cb287e0844ea922eecc3e4c2f0e9d5dfc3254c7cf03fb5a2ee501905",
     "reconsentOnMinor": false
   }
 };

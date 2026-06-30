@@ -18,9 +18,11 @@ locale: tr
 Kişisel verileriniz, veri sorumlusu sıfatıyla TradeMinds AI ("**Platform**") tarafından
 işlenir.
 
-> _[Şirket tüzel kişiliği kurulduğunda; ticaret unvanı, MERSİS numarası, vergi dairesi ve
-> numarası, açık adres ile resmî iletişim (KEP/e-posta/telefon) bilgileri burada yer
-> alacaktır. Gerekirse VERBİS kaydı bilgisi eklenecektir.]_
+> _[Hizmet sağlayıcının (işletici) yasal bilgileri kesinleştiğinde; ticaret unvanı/işletici adı,
+> vergi kimlik bilgileri, açık adres ile resmî iletişim (e-posta/telefon; varsa KEP/MERSİS)
+> bilgileri — işleticinin hukuki statüsüne ve ilgili mevzuata uygun biçimde — burada yer alacaktır.
+> VERBİS kayıt yükümlülüğü, işleticinin KVKK mevzuatındaki statüsüne göre değerlendirilecek; varsa
+> kayıt bilgisi eklenecektir (hukuki değerlendirme gerektirir).]_
 
 ## 2. İşlenen Kişisel Veriler
 
@@ -83,8 +85,8 @@ takip yapılmaz.
 Ayrıca yasal yükümlülük hâlinde yetkili kamu kurum ve kuruluşlarına aktarım yapılabilir.
 
 > _[Aktif alt işleyici listesi ve her biri için aktarım mekanizması (yeterlilik kararı /
-> standart sözleşme / taahhütname / istisna) tüzel kişilik ve sözleşmeler netleştiğinde
-> kesinleştirilecektir.]_
+> standart sözleşme / taahhütname / istisna) ilgili sözleşmeler netleştiğinde
+> kesinleştirilecektir (hukuki değerlendirme gerektirir).]_
 
 ## 7. Saklama Süresi
 
@@ -113,5 +115,5 @@ olarak sonuçlandırılır; işlemin ayrıca bir maliyet gerektirmesi hâlinde K
 tarifedeki ücret alınabilir. Başvurunuzun reddi hâlinde, Kişisel Verileri Koruma Kurulu'na
 şikâyette bulunma hakkınız saklıdır.
 
-> _[Başvuru için resmî e-posta/KEP adresi ve varsa başvuru formu bağlantısı tüzel kişilik
-> kurulduğunda eklenecektir.]_
+> _[Başvuru için resmî e-posta (varsa KEP) adresi ve varsa başvuru formu bağlantısı, hizmet
+> sağlayıcının (işletici) resmî iletişim kanalları kesinleştiğinde eklenecektir.]_

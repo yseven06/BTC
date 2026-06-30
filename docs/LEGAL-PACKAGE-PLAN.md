@@ -5,8 +5,9 @@
 metinler **uluslararası best practice + SPK + KVKK + ETK + tüketici mevzuatına** göre
 hazırlanır ve bu standartlara göre sürekli geliştirilir; her değişiklik için **"avukat
 bekleniyor" varsayımı YAPILMAZ** (avukat nihai gözden geçirme şimdilik beklemede ve
-opsiyoneldir, metin geliştirmenin önünde blokaj değildir). Şirket kuruluşundan önce
-**yalnızca şirket bilgileri** doldurulur. Bağlayıcı ilkeler:
+opsiyoneldir, metin geliştirmenin önünde blokaj değildir). Proje **şirket kuruluşunu
+VARSAYMAZ** — model **gerçek kişi / bireysel işletici** (bkz. [OPERATING-MODEL.md](./OPERATING-MODEL.md));
+yayından önce **yalnızca işleticinin gerçek kimlik/iletişim bilgileri** doldurulur. Bağlayıcı ilkeler:
 [PRODUCT-LEGAL-PRINCIPLES.md](./PRODUCT-LEGAL-PRINCIPLES.md).
 
 İlgili: [CAPTCHA-STRATEGY.md](./CAPTCHA-STRATEGY.md) (§9 KVKK ifşası buraya bağlanır),
@@ -26,9 +27,10 @@ opsiyoneldir, metin geliştirmenin önünde blokaj değildir). Şirket kuruluşu
   (UI'da yer tutucu; İYS entegrasyonu sonraya). ETK aydınlatma dokümanı yine yazılır.
 - **Dil:** Beta **yalnız Türkçe**; mimari çok-dile hazır (registry locale destekli),
   ileride profesyonel çeviriyle EN eklenir.
-- **Şirket bilgileri:** Şimdilik **placeholder** (`[ŞİRKET UNVANI / MERSİS / vergi /
-  adres / KEP]`); tüzel kişilik kurulunca doldurulacak. Mimari hazır (metinlerde yer
-  tutucu, KVKK Aydınlatma'da zorunlu alanlar).
+- **İşletici (hizmet sağlayıcı) bilgileri:** Proje **şirket VARSAYMAZ** — gerçek kişi/bireysel
+  işletici ([OPERATING-MODEL.md](./OPERATING-MODEL.md)). Şimdilik **placeholder** (`[AD/İŞLETME ADI /
+  vergi kimlik / adres / resmî iletişim; varsa MERSİS/KEP]`); işleticinin gerçek bilgileri kesinleşince
+  doldurulur. MERSİS/KEP/VERBİS = kayıt türü/mevzuat (**hukuki karar**). Mimari hazır (yer tutucu).
 - **Yaş:** **18+** (18 yaşından küçükler Hizmet'i kullanamaz).
 - **Abonelik modeli:** **1 / 3 / 6 / 12 ay** paketleri; kullanıcı iptal etmedikçe
   **aynı süreyle otomatik yenileme**; iptal **dönem sonunda** yürürlüğe girer; yenileme
@@ -119,9 +121,10 @@ toplamaya dokunulmaz.
 
 ## 8. Açık kalan (işletme/mevzuat) noktalar
 > Bu maddeler yukarıdaki çerçevelere göre **proaktif** ele alınır; "avukat bekleniyor" diye
-> ertelenmez. Public yayın için **tek zorunlu blokaj: gerçek şirket bilgileri**.
+> ertelenmez. Public yayın için **tek zorunlu gereksinim: işleticinin gerçek kimlik/iletişim
+> bilgileri** (gerçek kişi modeli — **şirket DEĞİL**; bkz. [OPERATING-MODEL.md](./OPERATING-MODEL.md)).
 - SPK yetkilendirme posizyonu nihai onayı (lansman öncesi hard gate).
-- Veri sorumlusu tüzel kişilik + VERBİS kaydı gerekliliği.
+- Veri sorumlusu kimliği (gerçek kişi/işletici) + VERBİS kayıt yükümlülüğü değerlendirmesi (kayıt türü/eşik → **hukuki karar**).
 - Yurt dışı aktarım mekanizması (Sentry/PostHog/Vercel/Supabase alt-işleyiciler).
 - Abonelik otomatik yenileme → ek tüketici bildirim yükümlülükleri.
 - Consent log yasal saklama süresi (finans bağlamı zamanaşımı).

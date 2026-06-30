@@ -16,9 +16,9 @@ locale: tr
 ## 1. Taraflar ve Kabul
 
 Bu Kullanım Koşulları ("**Sözleşme**"); TradeMinds AI ("**Platform**", "**biz**") —
-_[Şirket tüzel kişiliği kurulduğunda; ticaret unvanı, MERSİS numarası, vergi dairesi ve
-numarası, açık adres ile resmî iletişim (KEP/e-posta/telefon) bilgileri burada yer
-alacaktır]_ — ile
+_[Hizmet sağlayıcının (işletici) yasal bilgileri kesinleştiğinde; ticaret unvanı/işletici adı,
+vergi kimlik bilgileri, açık adres ile resmî iletişim (e-posta/telefon; varsa KEP/MERSİS)
+bilgileri — işleticinin hukuki statüsüne ve ilgili mevzuata uygun biçimde — burada yer alacaktır]_ — ile
 Platform'a kayıt olan veya Platform'u kullanan gerçek/tüzel kişi ("**Kullanıcı**",
 "**siz**") arasında kurulur. Platform'a kayıt olmanız, hesabınızı kullanmanız veya
 Platform'a erişmeniz, bu Sözleşme'yi ve atıf yapılan diğer belgeleri okuduğunuz ve kabul

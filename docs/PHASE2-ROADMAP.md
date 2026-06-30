@@ -113,7 +113,8 @@ Settings → 3) Cloudflare Turnstile (adaptive) → 4) Deploy + Production + Bet
 - **Ertelenirse risk:** Tüm P1/P2 (veri) bloke; manuel SQL şema kayması/hata riski.
 - **Ön koşullar:** Alembic init + baseline + mevcut elle migration'ları içe alma; prod env
   (DEBUG=false, CORS, Sentry/PostHog DSN, Stripe, Turnstile); SMOKE-TEST.md deploy-sonrası checklist;
-  şirket bilgileri (legal v1.0 için — ayrı). UptimeRobot alarmı.
+  işleticinin gerçek kimlik/iletişim bilgileri (gerçek kişi modeli — **şirket varsayılmaz**;
+  bkz. OPERATING-MODEL.md) (legal v1.0 için — ayrı). UptimeRobot alarmı.
 
 ---
 

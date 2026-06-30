@@ -38,7 +38,7 @@ ve serbestçe onaylanır veya reddedilir:
 - **Yurt dışına aktarım (isteğe bağlı):** Yukarıdaki analitik/iletişim hizmetlerinin bir
   kısmı, sunucuları veya alt işleyenleri yurt dışında bulunan sağlayıcılar tarafından
   sağlanabilir. KVKK m.9 kapsamında uygun bir güvence (yeterlilik kararı / standart sözleşme /
-  taahhütname — _[uygulanacak aktarım mekanizması tüzel kişilik kurulduğunda netleştirilecektir]_)
+  taahhütname — _[uygulanacak aktarım mekanizması, ilgili sözleşmeler/güvenceler netleştiğinde netleştirilecektir; hukuki değerlendirme gerektirir]_)
   bulunmadığı hâllerde, kişisel verilerinizin bu sağlayıcılara yurt dışına aktarılması yalnızca
   açık rızanızla gerçekleştirilir.
 

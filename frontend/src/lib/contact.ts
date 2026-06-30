@@ -1,9 +1,10 @@
 /**
  * Single source of truth for public support-contact channels (A2a).
  *
- * EMPTY until the legal entity is formed (B1 Legal v1.0). When set, fill the SAME
- * values into the legal künye (src/content/legal/tr/iletisim-kunye.md) so the help
- * page and the künye never diverge.
+ * EMPTY until the operator's real contact info is set (B1 Legal v1.0). The project
+ * does NOT assume a company will be formed — these are the individual operator's
+ * (gerçek kişi / işletici) public channels. When set, fill the SAME values into the
+ * legal künye (src/content/legal/tr/iletisim-kunye.md) so help page and künye never diverge.
  *
  * Empty string = "not yet published": the UI must NOT fabricate or show a placeholder
  * contact — it links users to the künye instead. Do not hardcode contact values

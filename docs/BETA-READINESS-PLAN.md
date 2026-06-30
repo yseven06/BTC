@@ -3,7 +3,8 @@
 **Tarih:** 2026-06-30 · **Statü:** ANALİZ+PLAN. Davranış/prod etkili hiçbir değişiklik onaysız uygulanmaz.
 **Kaynak:** 4-ajan kod-haritalama (deps · Legal · Stripe S7 · Turnstile/env/smoke/release) + birinci-el.
 **Amaç:** Beta açılınca veri-gated zekâ-v2 (CM-M3/Similarity/Adaptive) kilidini hızlandıracak hazırlık;
-**bağımsız yapılabilenleri** ayır, **anahtar/şirket-bilgisi bekleyenleri** netleştir.
+**bağımsız yapılabilenleri** ayır, **anahtar/işletici-bilgisi bekleyenleri** netleştir.
+> ℹ️ Proje **şirket kuruluşunu VARSAYMAZ** — gerçek kişi/bireysel işletici modeli ([OPERATING-MODEL.md](./OPERATING-MODEL.md)).
 
 ## Genel bulgu (en önemli)
 - **Majör dep migrasyonu YOK:** pydantic **zaten v2**, SQLAlchemy **zaten 2.x** (kod v1-kalıntısı=0).
@@ -11,12 +12,12 @@
   → sinyal/backtest sayılarını sessizce değiştirebilir) → **ertelenir**.
 - **Bump-gate hazır:** 12 standalone test (byte-identical equivalence en güçlü sayısal-gate) + SMOKE 21/21
   (HTTP/ASGI katmanı testle DEĞİL, smoke ile doğrulanır).
-- **Legal:** 8 TR doküman özlü hazır; tek blokaj **şirket bilgisi** (tüzel-kişilik) → senin.
+- **Legal:** 8 TR doküman özlü hazır; tek gereksinim **işleticinin gerçek kimlik/iletişim bilgisi** (gerçek kişi modeli — şirket DEĞİL) → senin.
 - **Stripe/Turnstile/prod-deploy:** anahtarlar + env değerleri → senin.
 
 ---
 
-## A. BAĞIMSIZ İLERLETİLEBİLİR (anahtar/şirket-bilgisi gerekmez — onayınla)
+## A. BAĞIMSIZ İLERLETİLEBİLİR (anahtar/işletici-bilgisi gerekmez — onayınla)
 
 > ✅ **A-BLOĞU TAMAM (2026-06-30):** A4 [a88e50e] · A5 [7319353] · A2a [3d2ab16] (A2b→B1) · A3 [d09e693]
 > · A1 [a72466b] (dep bump; numpy/stripe SABİT; sıfır drift, tüm test PASS, geri-alma gerekmedi).
@@ -34,12 +35,12 @@
   byte-identical) + **SMOKE 21/21** (ASGI/middleware/rate-limit/headers). HERHANGİ bir equivalence farkı = **hard block**.
 - **Efor:** **M** (1 gün; dikkatli regresyon). Ayrı küçük commit'ler (web-stack / security / lockfile).
 
-### A2 — Legal best-practice metin iyileştirmesi (şirket-bilgisi GEREKMEZ) + hardcoded-iletişim uzlaştırma
+### A2 — Legal best-practice metin iyileştirmesi (işletici-bilgisi GEREKMEZ) + hardcoded-iletişim uzlaştırma
 - **Kapsam:** (a) `acik-riza`/`aydinlatma` yurt-dışı-aktarım (KVKK m.9) ifadesini standart-sözleşme diline
   sıkılaştır; (b) alt-işleyen listesini (Supabase/Vercel/Railway/Sentry/PostHog/Stripe/Cloudflare) "ör."
   → kesinleştir; (c) VERBİS-yükümlülük belirleme notu; (d) **`help/page.tsx` hardcoded `destek@trademinds.io`
-  + Telegram** ↔ künye placeholder ÇELİŞKİSİNİ uzlaştır (tek kanonik kanal kararı senin). **HARİÇ:** şirket
-  placeholder doldurma + v1.0 bump (B1).
+  + Telegram** ↔ künye placeholder ÇELİŞKİSİNİ uzlaştır (tek kanonik kanal kararı senin). **HARİÇ:** işletici
+  (gerçek kişi) bilgisi placeholder doldurma + v1.0 bump (B1).
 - **Risk:** Düşük (metin; davranış yok). v0.9→v1.0 bump'ı BURADA YAPMA (global re-consent tetikler).
 - **Bağımlılık:** Yok (best-practice); hardcoded-iletişim kararı senin tercihini ister.
 - **Doğrulama:** `npm run legal:gen` + /yasal dev-route (tsc/dev, `next build` değil); placeholder grep'i
@@ -83,13 +84,14 @@
   help page yalnız tanımlı kanalı gösterir, boşken uydurma değer YOK → `/yasal/iletisim-kunye`'ye
   yönlendirir. Hardcoded `destek@trademinds.io`/Telegram kaldırıldı. tsc temiz.
 - **A2b (→ B1):** cross-border (KVKK m.9) + alt-işleyen listesi + VERBİS notu + EN-locale → **B1 Legal
-  v1.0** sırasında gerçek tüzel-kişilik + aktarım mekanizması + avukat incelemesiyle. Şimdi metne dokunulmadı.
+  v1.0** sırasında gerçek işletici (gerçek kişi) bilgileri + aktarım mekanizması + avukat incelemesiyle. Şimdi metne dokunulmadı.
 
-### B1 — Legal v1.0 (şirket-bilgisi + v1.0 bump)
-- **Kapsam:** 11 placeholder ( unvan/MERSİS/vergi dairesi+no/adres/KEP/destek-eposta/KVKK-eposta/tüketici-
-  eposta/VERBİS/yurt-dışı-mekanizma/telefon) doldur + 8 dokümanda taslak-banner kaldır + v0.9→**v1.0**
-  (global re-consent tek release'te koordine).
-- **Bağımlılık:** **Tüzel kişilik kuruluşu** (senin) — tek zorunlu launch blokajı (principle 5/6).
+### B1 — Legal v1.0 (işletici/gerçek-kişi bilgisi + v1.0 bump)
+- **Kapsam:** işletici (gerçek kişi) placeholder'ları doldur — ad/işletme adı, vergi kimlik, adres,
+  destek/KVKK/tüketici e-posta, telefon; **varsa/uygulanırsa** MERSİS/KEP; **hukuki karar:** VERBİS +
+  yurt-dışı-aktarım mekanizması ([OPERATING-MODEL.md](./OPERATING-MODEL.md)) + 8 dokümanda taslak-banner
+  kaldır + v0.9→**v1.0** (global re-consent tek release'te koordine). **Şirket kuruluşu önkoşul DEĞİL.**
+- **Bağımlılık:** **İşleticinin gerçek kimlik/iletişim bilgileri** (senin) — tek zorunlu launch gereksinimi; **şirket DEĞİL** (principle 5/6, [OPERATING-MODEL.md](./OPERATING-MODEL.md)).
 - **Efor:** Bilgi gelince **S** (mekanik doldur + bump + re-consent smoke).
 
 ### B2 — Stripe S7 canlı E2E · B3 — Turnstile E2E + prod env değerleri + ilk prod deploy

@@ -19,9 +19,9 @@ yapılırsa beta verisi daha kalibre mantıkla birikir** (zekâ-v2'nin öğrenec
 | P0.1 Stripe sub | P0 | Kod S1-S6 ✅ · S7 e2e ⏳ | — | **Senin Stripe anahtarların** |
 | P0.2 Per-user notif | P0 | ✅ **TAMAM** | — | — |
 | P0.3 Turnstile | P0 | Kod ✅ · e2e ⏳ | — | **Senin Cloudflare anahtarların** |
-| P0.4 Deploy+Beta | P0 | Keyless ✅ · yayın ⏳ | P0.1/0.3 | **env değerleri + Legal v1.0 (şirket bilgisi)** |
+| P0.4 Deploy+Beta | P0 | Keyless ✅ · yayın ⏳ | P0.1/0.3 | **env değerleri + Legal v1.0 (işletici/gerçek-kişi bilgisi)** |
 | P0.5 Mobil+PWA | P0 | Kod ✅ · cihaz doğrulama ⏳ | — | **Antigravity (gerçek cihaz/Lighthouse)** |
-| **BETA AÇILIŞI** | P0 | ⏳ **KEYSTONE** | P0.1/0.3/0.4/Legal | **Senin anahtarların + şirket bilgisi** |
+| **BETA AÇILIŞI** | P0 | ⏳ **KEYSTONE** | P0.1/0.3/0.4/Legal | **Senin anahtarların + işletici (gerçek kişi) bilgisi** |
 | P1.1 **TP/SL & R:R** | P1 | ⛔ ertelendi (policy) | **KEY1 ✅** | Davranış-değişimi (onay+backtest); floor kısmı veri-gated |
 | P1.2 Lifecycle aksiyon | P1 | ✅ **backend TAMAM** | P0.2 ✅ | P12-4 frontend → backlog |
 | P2.1 Sinyal eşik kalibrasyonu | P2 | ⛔ | beta verisi | **veri-gated** |
@@ -71,7 +71,7 @@ kalır; ama R:R-açık-filtre / SMC OB-FVG entry / TP-sıralama-koruması **veri
 
 **Sıralama önerisi (öncelikler korunur):**
 1. **P1.1 veri-bağımsız sinyal-kalitesi** (davranış-değişimi → analiz+onay+backtest before/after). *Beta-öncesi veri kalitesini yükseltir.*
-2. **Beta-hazırlık sertleştirme** (bağımsız yapılabilen kısım): backend dep bump + fastapi yükseltme, Legal metinlerini SPK/KVKK/ETK best-practice'e taşıma (yalnız şirket-bilgisi sana bağlı), pre-beta smoke. *Anahtarların geldiğinde beta anında açılır.*
+2. **Beta-hazırlık sertleştirme** (bağımsız yapılabilen kısım): backend dep bump + fastapi yükseltme, Legal metinlerini SPK/KVKK/ETK best-practice'e taşıma (yalnız işletici/gerçek-kişi bilgisi sana bağlı), pre-beta smoke. *Anahtarların geldiğinde beta anında açılır.*
 3. **(Sen anahtar/karar sağlayınca)** Beta → veri → **P2.2/2.3/2.4 politikaları sırayla**.
 4. P3.2 perf + P3.3 BIST → paralel/fırsatçı (düşük tier).
 

@@ -164,9 +164,9 @@ export default function HelpPage() {
         <p className="text-xs text-text-secondary mb-4">
           Sorularını bize ulaştır — geri dönüş süremiz Pro/Premium kullanıcılar için 24 saat içindedir.
         </p>
-        {/* A2a: contact channels come from the single source (lib/contact.ts). Until
-            real company info lands (B1), no channel is set → we do NOT fabricate a
-            contact; we link to the legal künye instead. */}
+        {/* A2a: contact channels come from the single source (lib/contact.ts). Until the
+            operator's real contact info is set (B1), no channel is defined → we do NOT
+            fabricate a contact; we link to the legal künye instead. */}
         <div className="space-y-2">
           {hasSupportEmail() && (
             <a

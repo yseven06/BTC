@@ -15,9 +15,9 @@ locale: tr
 ## A. Ön Bilgilendirme Formu
 
 ### 1. Satıcı
-> _[Şirket tüzel kişiliği kurulduğunda; ticaret unvanı, MERSİS numarası, vergi dairesi ve
-> numarası, açık adres ile resmî iletişim (KEP/e-posta/telefon) bilgileri burada yer
-> alacaktır.]_
+> _[Hizmet sağlayıcının (işletici) yasal bilgileri kesinleştiğinde; ticaret unvanı/işletici adı,
+> vergi kimlik bilgileri, açık adres ile resmî iletişim (e-posta/telefon; varsa KEP/MERSİS)
+> bilgileri — işleticinin hukuki statüsüne ve ilgili mevzuata uygun biçimde — burada yer alacaktır.]_
 
 ### 2. Hizmetin Temel Nitelikleri
 Yapay zekâ destekli **genel analiz ve karar destek** hizmetine **dönemsel abonelik** erişimi.

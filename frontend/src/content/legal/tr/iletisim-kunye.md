@@ -10,17 +10,20 @@ locale: tr
 
 > 6563 sayılı Elektronik Ticaretin Düzenlenmesi Hakkında Kanun ve ilgili mevzuat uyarınca,
 > hizmet sağlayıcının tanıtıcı ve iletişim bilgileri aşağıda sunulur.
-> _Metin yürürlüğe hazır taslaktır; şirket bilgileri tüzel kişilik kurulduğunda doldurulacaktır._
+> _Metin yürürlüğe hazır taslaktır; hizmet sağlayıcının (işletici) yasal kimlik ve iletişim
+> bilgileri, işleticinin hukuki statüsüne ve ilgili mevzuata uygun biçimde doldurulacaktır._
 
 ## Hizmet Sağlayıcı
 
-> _[Şirket tüzel kişiliği kurulduğunda aşağıdaki alanlar gerçek bilgilerle doldurulacaktır.]_
+> _[Aşağıdaki alanlar, hizmet sağlayıcının (işletici) hukuki statüsüne ve ilgili mevzuata uygun
+> biçimde gerçek bilgilerle doldurulacaktır. İşleticinin kayıt türüne göre uygulanmayan alanlar
+> (ör. yalnızca ticaret siciline kayıtlı tüzel kişilere özgü alanlar) "uygulanmaz" olarak işaretlenebilir.]_
 
-- **Ticaret unvanı:** _[doldurulacak]_
-- **MERSİS numarası:** _[doldurulacak]_
+- **Ticaret unvanı / işletici adı:** _[doldurulacak]_
+- **MERSİS numarası (varsa):** _[doldurulacak / uygulanmaz]_
 - **Vergi dairesi / numarası:** _[doldurulacak]_
 - **Adres:** _[doldurulacak]_
-- **KEP adresi:** _[doldurulacak]_
+- **KEP adresi (varsa):** _[doldurulacak / uygulanmaz]_
 
 ## İletişim Kanalları
 
