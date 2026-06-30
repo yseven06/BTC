@@ -142,6 +142,41 @@ async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, liv
                        getattr(signal, "id", "?"), tp_exc)
 
 
+# Canonical scale-out fractions — MUST match resolution_core.step_bar (TP1 0.50,
+# TP2 0.30). Kept local (not imported) to honor KEY1-d's scope (resolution_core
+# untouched); any divergence is caught by tests/test_live_sl_scaleout.py.
+_LIVE_TP1_PORTION = 0.50
+_LIVE_TP2_PORTION = 0.30
+
+
+def live_sl_realized(direction, entry, original_sl, tp1, tp2, hit_tp1, hit_tp2):
+    """Realized return (share-weighted fraction) + effective stop + gave_back for a
+    LIVE-SL resolution that HONORS the stored TP1/TP2 scale-out (KEY1-d / BUG-6/7/8).
+
+    If TP1 was banked, the position is already partially closed (50% at TP1, +30% at
+    TP2) and the effective stop is BREAKEVEN (entry) — so only the REMAINING share
+    closes at breakeven (≈0), NOT the full position at the original stop. Mirrors
+    step_bar's scale-out accounting (same 0.50/0.30 fractions, single source).
+
+    Returns (realized_frac, effective_stop, gave_back_after_tp1).
+    TP1-not-hit → full size at the original stop (UNCHANGED, byte-identical to before)."""
+    is_bull = direction == "bullish"
+
+    def ret(level):
+        return (level - entry) / entry if is_bull else (entry - level) / entry
+
+    if not hit_tp1:
+        return ret(original_sl), original_sl, None  # full size @ original stop (unchanged)
+
+    realized = _LIVE_TP1_PORTION * ret(tp1)
+    remaining = 1.0 - _LIVE_TP1_PORTION
+    if hit_tp2:
+        realized += _LIVE_TP2_PORTION * ret(tp2)
+        remaining -= _LIVE_TP2_PORTION
+    realized += remaining * ret(entry)  # remaining closes at breakeven (entry) -> 0
+    return realized, entry, (hit_tp1 and not hit_tp2)
+
+
 def _resolve_signal_bar_walk(*, direction, entry, stop_loss, tp1, tp2, tp3,
                              opens, highs, lows, closes, times, sig_time_aware,
                              execution_model="conservative"):
