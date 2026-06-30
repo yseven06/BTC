@@ -123,6 +123,10 @@ def compute_tpsl_quality(rows: List[Any]) -> Dict[str, Any]:
             "n_low_confidence": n - len(hi),
             "checkpoint_n": CHECKPOINT_N,
             "below_checkpoint": n < CHECKPOINT_N,
+            # KEY2 calibration-readiness gate (read-only signal). The TP/SL floor /
+            # risk-retune POLICY phase (KEY2, deferred) stays gated until this is True.
+            "calibration_ready": n >= CHECKPOINT_N,
+            "checkpoint_progress_pct": round(min(100.0, n / CHECKPOINT_N * 100.0), 1) if CHECKPOINT_N else 0.0,
         },
         "tp_reachability": {"tp1_rate": _rate(tp1, n), "tp2_rate": _rate(tp2, n),
                             "tp3_rate": _rate(tp3, n), "n": n},
