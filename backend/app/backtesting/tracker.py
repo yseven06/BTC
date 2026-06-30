@@ -26,6 +26,7 @@ from app.engines.market_regime import detect_regime
 from app.engines.market_structure.structure import analyse_market_structure
 from app.services.coin_memory import update_coin_memory, update_trade_mgmt_stats
 from app.services.lifecycle_log import make_event
+from app.notifications.service import notify_lifecycle, LIFECYCLE_ALERT_STATES
 from app.backtesting.trade_path import compute_trade_path
 from app.backtesting.resolution_core import resolve_trade_path
 from app.models.intelligence import SignalSnapshot
@@ -319,6 +320,10 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
             else:
                 sig_id, df = res
                 dfs_by_signal_id[sig_id] = df
+
+        # P1.2: collect real lifecycle transitions into alert states during the loop;
+        # dispatched AFTER commit (outside the DB session), fire-and-forget.
+        lifecycle_alerts: List[Dict[str, Any]] = []
 
         for signal in active_signals:
             processed_count += 1
@@ -720,8 +725,31 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                         momentum_dir=momentum_dir,
                     ))
 
+                    # P1.2: queue a proactive alert for a REAL transition (not birth)
+                    # INTO an alert state. Opt-in users only; dispatched after commit.
+                    # Purely additive — detection/persist above are unchanged.
+                    if prev_status is not None and lc.status in LIFECYCLE_ALERT_STATES:
+                        lifecycle_alerts.append({
+                            "symbol": symbol,
+                            "timeframe": signal.timeframe.value if hasattr(signal.timeframe, "value") else str(signal.timeframe),
+                            "direction": signal.direction.value,
+                            "old_status": prev_status,
+                            "new_status": lc.status,
+                            "reason": lc.reason,
+                            "price": float(closes[-1]),
+                        })
+
         # Commit DB updates
         await db.commit()
+
+        # P1.2: dispatch queued lifecycle alerts AFTER commit, OUTSIDE the DB session
+        # (fire-and-forget; notify_lifecycle is opt-in gated + fail-open, so this can
+        # never block or roll back a tracking pass).
+        for _alert in lifecycle_alerts:
+            try:
+                await notify_lifecycle(**_alert)
+            except Exception as _exc:
+                logger.warning("[Tracker] lifecycle alert dispatch failed: %s", _exc)
 
     finally:
         await binance.close()
