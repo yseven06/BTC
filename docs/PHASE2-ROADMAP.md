@@ -179,8 +179,11 @@ Settings → 3) Cloudflare Turnstile (adaptive) → 4) Deploy + Production + Bet
     Politika v2 + shadow/A-B harness veri checkpoint + ayrı onay bekliyor (docs/P08-adaptive-v2-analysis.md).
 - **P2.4 — Similarity v2** (L, K3,K5): brute-force → feature-store/ANN indeks; ölçeklenme. Ön koşul:
   veri + perf.
-- **P2.5 — Lifecycle kalibrasyon** (S-M, K3): invalidating/approaching eşiklerini gerçek veriyle
-  kalibre et + doğruluk panosu. Ön koşul: resolved sinyal verisi.
+- ✅ **P2.5 — Lifecycle kalibrasyon — TAMAM (2026-06-30):** L1 Calibration Harness (`scripts/lifecycle_calibration.py`,
+  salt-okur Tier-1) ile 569 resolved sinyalde grid sweep + per-regime. **Sonuç: mevcut eşikler veriyle DOĞRULANDI,
+  davranış değişikliği gerekmedi** (invalidating %72 prec/%85 recall, J 0.60'ta tepe; approaching yapısal; weakening
+  UI-only; regime-conditioning gereksiz). Karar katmanı değişmedi. Kanonik: docs/P25-lifecycle-calibration-analysis.md.
+  🔎 Backlog: flip-flop %39.4 churn → ayrı Tier-2 UX/telemetri (exit/hysteresis), TP/SL·resolution·AI-karardan bağımsız.
 - **Ortak ön koşul (S):** Backfill/seed + **versiyonlu migration** (zekâ tabloları şu an create_all).
 
 ---

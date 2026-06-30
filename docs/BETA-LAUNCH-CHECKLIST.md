@@ -53,5 +53,10 @@ Eşik: ~250-300 trade_path (+ per-cell yoğunluk). Şu an ~200.
 - **Adaptive Learning v2 — politika** (regime-koşullu ağırlık + shadow/A-B fayda harness'i).
 - **Similarity v2** (brute-force → ANN/feature-store ölçeklenme).
 - **KEY2 — min-TP/SL floor + R:R eşik kalibrasyonu** + **P1.1 2A/3** (TP1 1.5→2.0×ATR, SR-on-SL kapı).
-- **Sinyal eşik / Lifecycle kalibrasyonu.**
+- **Sinyal eşik kalibrasyonu** (data-gated).
+- ✅ **Lifecycle kalibrasyonu (P2.5) — TAMAM:** L1 harness ile mevcut eşikler **veriyle doğrulandı**,
+  davranış değişikliği gerekmedi (invalidating %72 prec/%85 recall; approaching yapısal; weakening UI-only).
+  Kanonik: [P25-lifecycle-calibration-analysis.md](./P25-lifecycle-calibration-analysis.md).
+- 🔎 **(backlog) Lifecycle flip-flop/hysteresis** — gözlenen %39.4 churn; ayrı Tier-2 **UX/telemetri** işi,
+  TP/SL · resolution · AI karar mekanizmasından **bağımsız**.
 > Hepsi BP2 (telemetri-önce + backtest-gate) + ayrı analiz/onay döngüsüyle; KEY1 mimarisi bunu mümkün kılar.
