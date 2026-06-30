@@ -30,7 +30,9 @@ from typing import Any, Dict, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.backtesting import labels
 from app.backtesting.trade_path import is_legacy_contradictory_live_sl
+from app.services.trade_geometry import planned_rr
 from app.engines.ai_decision.signal_generator import BASE_ENGINE_WEIGHTS
 from app.engines.base import SignalBias
 from app.models.intelligence import CoinMemory, SignalSnapshot
@@ -311,6 +313,11 @@ def _bin_index(v: float) -> int:
     return len(TM_R_EDGES)  # overflow
 
 
+def _f(x) -> Optional[float]:
+    """Numeric/Decimal column → float (None preserved)."""
+    return float(x) if x is not None else None
+
+
 def _empty_bucket() -> Dict[str, Any]:
     return {
         "n": 0,
@@ -319,19 +326,37 @@ def _empty_bucket() -> Dict[str, Any]:
         "hist_mae_r": [0] * _TM_NBINS,
         # policy-dependent diagnostics (secondary; derived from cur_* fields)
         "tp1": 0, "tp2": 0, "tp3": 0, "give_back": 0,
+        # CM2-2 additive aggregates. Per-field N so avg = sum / N stays exact even
+        # when a field is NULL on some rows; SUMSQ enables variance/std on read.
+        # All keys default-safe (.get) so pre-CM2-2 buckets gain them on next fold.
+        "mfe_r_n": 0, "mae_r_n": 0,
+        "mfe_r_sumsq": 0.0, "mae_r_sumsq": 0.0,
+        "mfe_atr_sum": 0.0, "mfe_atr_n": 0,
+        "mae_atr_sum": 0.0, "mae_atr_n": 0,
+        "bars_total_sum": 0, "bars_total_n": 0,
+        "bars_to_tp1_sum": 0, "bars_to_tp1_n": 0,        # policy-dependent (cur_*)
+        "realized_sum": 0.0, "realized_sumsq": 0.0, "realized_n": 0,  # policy-dependent (cur_*)
+        "planned_rr_tp1_sum": 0.0, "planned_rr_tp1_n": 0, "sub1_rr": 0,  # entry-quality
+        "tight_sl": 0,                                    # stop-too-tight (canonical label)
     }
 
 
 def _fold_into_bucket(b: Dict[str, Any], path) -> None:
     b["n"] = int(b.get("n", 0)) + 1
     if path.mfe_r is not None:
-        b["mfe_r_sum"] = round(float(b.get("mfe_r_sum", 0.0)) + float(path.mfe_r), 4)
+        mr = float(path.mfe_r)
+        b["mfe_r_sum"] = round(float(b.get("mfe_r_sum", 0.0)) + mr, 4)
+        b["mfe_r_n"] = int(b.get("mfe_r_n", 0)) + 1
+        b["mfe_r_sumsq"] = round(float(b.get("mfe_r_sumsq", 0.0)) + mr * mr, 4)
         h = b.setdefault("hist_mfe_r", [0] * _TM_NBINS)
-        h[_bin_index(float(path.mfe_r))] += 1
+        h[_bin_index(mr)] += 1
     if path.mae_r is not None:
-        b["mae_r_sum"] = round(float(b.get("mae_r_sum", 0.0)) + float(path.mae_r), 4)
+        ar = float(path.mae_r)
+        b["mae_r_sum"] = round(float(b.get("mae_r_sum", 0.0)) + ar, 4)
+        b["mae_r_n"] = int(b.get("mae_r_n", 0)) + 1
+        b["mae_r_sumsq"] = round(float(b.get("mae_r_sumsq", 0.0)) + ar * ar, 4)
         h = b.setdefault("hist_mae_r", [0] * _TM_NBINS)
-        h[_bin_index(float(path.mae_r))] += 1
+        h[_bin_index(ar)] += 1
     if path.cur_reached_tp1:
         b["tp1"] = int(b.get("tp1", 0)) + 1
     if path.cur_reached_tp2:
@@ -340,6 +365,36 @@ def _fold_into_bucket(b: Dict[str, Any], path) -> None:
         b["tp3"] = int(b.get("tp3", 0)) + 1
     if path.cur_gave_back_after_tp1:
         b["give_back"] = int(b.get("give_back", 0)) + 1
+
+    # ── CM2-2 additive aggregates (policy-independent unless noted) ──────────────
+    if path.mfe_atr is not None:
+        b["mfe_atr_sum"] = round(float(b.get("mfe_atr_sum", 0.0)) + float(path.mfe_atr), 4)
+        b["mfe_atr_n"] = int(b.get("mfe_atr_n", 0)) + 1
+    if path.mae_atr is not None:
+        b["mae_atr_sum"] = round(float(b.get("mae_atr_sum", 0.0)) + float(path.mae_atr), 4)
+        b["mae_atr_n"] = int(b.get("mae_atr_n", 0)) + 1
+    if path.bars_total is not None:
+        b["bars_total_sum"] = int(b.get("bars_total_sum", 0)) + int(path.bars_total)
+        b["bars_total_n"] = int(b.get("bars_total_n", 0)) + 1
+    if path.cur_bars_to_tp1 is not None:                  # policy-dependent
+        b["bars_to_tp1_sum"] = int(b.get("bars_to_tp1_sum", 0)) + int(path.cur_bars_to_tp1)
+        b["bars_to_tp1_n"] = int(b.get("bars_to_tp1_n", 0)) + 1
+    if path.cur_realized_return is not None:              # policy-dependent
+        rr = float(path.cur_realized_return)
+        b["realized_sum"] = round(float(b.get("realized_sum", 0.0)) + rr, 4)
+        b["realized_sumsq"] = round(float(b.get("realized_sumsq", 0.0)) + rr * rr, 4)
+        b["realized_n"] = int(b.get("realized_n", 0)) + 1
+    # Entry-quality: planned R:R recomputed from stored prices (single-source
+    # trade_geometry.planned_rr — works for every row, no extra-JSON dependency).
+    prr = planned_rr(_f(path.entry_price), _f(path.sl_price), _f(path.tp1_price))
+    if prr is not None:
+        b["planned_rr_tp1_sum"] = round(float(b.get("planned_rr_tp1_sum", 0.0)) + prr, 4)
+        b["planned_rr_tp1_n"] = int(b.get("planned_rr_tp1_n", 0)) + 1
+        if prr < 1.0:
+            b["sub1_rr"] = int(b.get("sub1_rr", 0)) + 1
+    # Stop-too-tight: canonical label (DRY — reuse the classification, don't re-derive).
+    if getattr(path, "detail_label", None) == labels.CORRECT_DIR_TIGHT_SL:
+        b["tight_sl"] = int(b.get("tight_sl", 0)) + 1
 
 
 async def update_trade_mgmt_stats(db: AsyncSession, path) -> None:
