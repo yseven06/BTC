@@ -22,8 +22,20 @@ from app.engines.ai_decision.signal_generator import _price_round
 from app.backtesting.resolution_core import (
     step_bar, new_walk_state, WalkState, resolve_inside_bar_ambiguity,
 )
+from app.services.trade_geometry import planned_rr
 
 logger = logging.getLogger(__name__)
+
+
+def _realized_r(entry: float, sl: float, pnl_pct: float) -> Optional[float]:
+    """Realized return expressed in R-multiples = realized% / risk% (risk = |entry-sl|
+    as a percent of entry). None when the stop distance is zero. P11-0 observability."""
+    if not entry or sl is None:
+        return None
+    risk_pct = abs(entry - sl) / entry * 100.0
+    if risk_pct == 0:
+        return None
+    return round(pnl_pct / risk_pct, 4)
 
 
 @dataclass
@@ -97,6 +109,16 @@ class BacktestReport:
     max_consecutive_losses: int
     equity_curve: List[Dict[str, Any]] = field(default_factory=list)
     trades_log: List[Dict[str, Any]] = field(default_factory=list)
+    # P11-0 additive observability (TP1-based R:R + per-TP reach + realized-R) — make
+    # a future TP/SL/R:R change measurable before/after; existing metrics unchanged.
+    avg_planned_rr_tp1: Optional[float] = None
+    median_planned_rr_tp1: Optional[float] = None
+    sub_1_rr_pct: Optional[float] = None
+    tp1_reach_rate: float = 0.0
+    tp2_reach_rate: float = 0.0
+    tp3_reach_rate: float = 0.0
+    avg_realized_r: Optional[float] = None
+    median_realized_r: Optional[float] = None
 
 
 class BacktestEngine:
@@ -219,6 +241,12 @@ class BacktestEngine:
                         "max_drawdown": round(max(0.0, max_dd_trade), 2),
                         "age": trade.age,
                         "is_expired": trade.is_expired,
+                        # P11-0 additive (does not affect resolution/accounting):
+                        "reached_tp1": bool(getattr(trade.state, "hit_tp1", False)),
+                        "reached_tp2": bool(getattr(trade.state, "hit_tp2", False)),
+                        "reached_tp3": bool(getattr(trade.state, "hit_tp3", False)),
+                        "planned_rr_tp1": planned_rr(trade.entry_price, trade.stop_loss, trade.tp1),
+                        "realized_r": _realized_r(trade.entry_price, trade.stop_loss, pnl_pct),
                     })
                     resolved_trades.append(trade)
 
@@ -360,6 +388,21 @@ class BacktestEngine:
                 rr_vals.append(reward / risk)
         avg_rr = sum(rr_vals) / len(rr_vals) if rr_vals else 0.0
 
+        # P11-0 additive observability: TP1-based planned R:R (the field P1.1 targets,
+        # vs avg_rr above which is TP3-based), per-TP reach rates, and realized-R.
+        # Pure aggregation over trades_log — no effect on the metrics above.
+        n_log = len(trades_log)
+        prr1 = [t["planned_rr_tp1"] for t in trades_log if t.get("planned_rr_tp1") is not None]
+        avg_planned_rr_tp1 = round(sum(prr1) / len(prr1), 4) if prr1 else None
+        median_planned_rr_tp1 = round(float(np.median(prr1)), 4) if prr1 else None
+        sub_1_rr_pct = round(sum(1 for x in prr1 if x < 1.0) / len(prr1) * 100.0, 2) if prr1 else None
+        tp1_reach_rate = round(sum(1 for t in trades_log if t.get("reached_tp1")) / n_log * 100.0, 2) if n_log else 0.0
+        tp2_reach_rate = round(sum(1 for t in trades_log if t.get("reached_tp2")) / n_log * 100.0, 2) if n_log else 0.0
+        tp3_reach_rate = round(sum(1 for t in trades_log if t.get("reached_tp3")) / n_log * 100.0, 2) if n_log else 0.0
+        rr_realized = [t["realized_r"] for t in trades_log if t.get("realized_r") is not None]
+        avg_realized_r = round(sum(rr_realized) / len(rr_realized), 4) if rr_realized else None
+        median_realized_r = round(float(np.median(rr_realized)), 4) if rr_realized else None
+
         # Expectancy: (Win Rate * Avg Win) - (Loss Rate * Avg Loss)
         avg_win_pct = np.mean([t["return_pct"] for t in trades_log if t["outcome"] == "win"]) if wins_count > 0 else 0.0
         avg_loss_pct = abs(np.mean([t["return_pct"] for t in trades_log if t["outcome"] == "loss"])) if losses_count > 0 else 0.0
@@ -384,5 +427,13 @@ class BacktestEngine:
             max_consecutive_losses=consecutive_losses,
             equity_curve=equity_curve,
             trades_log=trades_log,
+            avg_planned_rr_tp1=avg_planned_rr_tp1,
+            median_planned_rr_tp1=median_planned_rr_tp1,
+            sub_1_rr_pct=sub_1_rr_pct,
+            tp1_reach_rate=tp1_reach_rate,
+            tp2_reach_rate=tp2_reach_rate,
+            tp3_reach_rate=tp3_reach_rate,
+            avg_realized_r=avg_realized_r,
+            median_realized_r=median_realized_r,
         )
 
