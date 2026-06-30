@@ -30,6 +30,7 @@ class NotificationSettingsResponse(BaseModel):
     has_bot_token: bool          # never expose the token itself
     min_confidence: int
     notify_hold: bool
+    notify_lifecycle: bool       # P1.2 proactive lifecycle alerts (opt-in)
 
 
 class NotificationSettingsUpdate(BaseModel):
@@ -38,6 +39,7 @@ class NotificationSettingsUpdate(BaseModel):
     telegram_chat_id: Optional[str] = None
     min_confidence: Optional[int] = None
     notify_hold: Optional[bool] = None
+    notify_lifecycle: Optional[bool] = None
 
 
 def _to_response(s) -> NotificationSettingsResponse:
@@ -47,6 +49,7 @@ def _to_response(s) -> NotificationSettingsResponse:
         has_bot_token=bool(s.telegram_bot_token),
         min_confidence=s.min_confidence,
         notify_hold=s.notify_hold,
+        notify_lifecycle=s.notify_lifecycle,
     )
 
 
@@ -81,6 +84,8 @@ async def update_settings(
         s.min_confidence = max(0, min(100, payload.min_confidence))
     if payload.notify_hold is not None:
         s.notify_hold = payload.notify_hold
+    if payload.notify_lifecycle is not None:
+        s.notify_lifecycle = payload.notify_lifecycle
 
     await db.commit()
     await db.refresh(s)

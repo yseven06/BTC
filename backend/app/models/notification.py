@@ -39,6 +39,9 @@ class NotificationSettings(Base):
     telegram_chat_id = Column(String(64), nullable=True)
     min_confidence = Column(Integer, nullable=False, default=70)
     notify_hold = Column(Boolean, nullable=False, default=False)
+    # P1.2: per-user opt-in for proactive lifecycle-transition alerts (default OFF,
+    # so existing behaviour is unchanged — a user must explicitly enable it).
+    notify_lifecycle = Column(Boolean, nullable=False, default=False, server_default="false")
     updated_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
