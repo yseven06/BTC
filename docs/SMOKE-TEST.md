@@ -55,6 +55,12 @@ olarak işaretlenir; kritik bir senaryo FAIL ise yayın yapılmaz. İlgili:
 ---
 
 ## Deploy-sonrası (prod) ek teyitler
+
+> 🤖 **Güvenli/otomatik alt-küme (A5):** `python scripts/prod_smoke.py https://<api-domain>`
+> — yan-etkisiz GET kontrolleri (health + healthy + debug_mode-sızıntısı yok · /docs,/redoc,
+> /openapi.json⇒404 · güvenlik header'ları · /billing/plans 200 public · /notifications/settings
+> 401-403 auth-gated · CORS bilinmeyen-origin reddi). Yan-etkili kontroller (rate-limit burst,
+> register/login, checkout, webhook, Turnstile) AŞAĞIDA elle. Go-live/rollback: [RELEASE-RUNBOOK.md](./RELEASE-RUNBOOK.md).
 - [ ] **App başladı** = prod fail-fast validator geçti (kritik env'ler ayarlı: DEBUG=false, güçlü JWT_SECRET, prod DATABASE_URL/CORS). Boot loglarında RuntimeError yok.
 - [ ] **Migration** deploy'da koştu: `python scripts/migrate.py status` → tüm migration'lar `APPLIED`, `PENDING (none)`. (İlk adoption'da `stamp` çalıştırıldı.)
 - [ ] `GET /health` → 200 (artık `debug_mode` alanı yok — sızıntı kaldırıldı).
