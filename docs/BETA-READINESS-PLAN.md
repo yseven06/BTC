@@ -18,6 +18,10 @@
 
 ## A. BAĞIMSIZ İLERLETİLEBİLİR (anahtar/şirket-bilgisi gerekmez — onayınla)
 
+> ✅ **A-BLOĞU TAMAM (2026-06-30):** A4 [a88e50e] · A5 [7319353] · A2a [3d2ab16] (A2b→B1) · A3 [d09e693]
+> · A1 [a72466b] (dep bump; numpy/stripe SABİT; sıfır drift, tüm test PASS, geri-alma gerekmedi).
+> **Beta için kalan = yalnız B-bloğu (kullanıcı).**
+
 ### A1 — Backend dependency bump (güvenli alt-küme) + lockfile
 - **Kapsam:** fastapi 0.111→~0.115, starlette(transitive)→güncel, uvicorn 0.30→0.32, sqlalchemy
   2.0.30→2.0.3x, pydantic 2.7.4→2.9+, pydantic-settings, httpx 0.27→0.28, sentry-sdk. **Güvenlik:**
