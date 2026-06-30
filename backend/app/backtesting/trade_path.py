@@ -61,6 +61,21 @@ def volatility_bucket(ratio: Optional[float]) -> Optional[str]:
 TRADE_PATH_EXTRA_VERSION = 1
 
 
+def is_legacy_contradictory_live_sl(row) -> bool:
+    """True for a pre-KEY1-d (schema_version < 2) live-SL row that is internally
+    CONTRADICTORY: TP1 was banked (cur_reached_tp1) yet the row was recorded as a
+    full original-stop loss (a still_forming live-SL write with cur_gave_back_after_tp1
+    left NULL). Single source for the v1-handling policy — learning layers
+    (Coin Memory / Similarity / Adaptive) should FILTER or down-weight these; v2+
+    live-SL rows are correct (scale-out honored). See docs/KEY1d-analysis.md."""
+    return (
+        (getattr(row, "schema_version", None) or 0) < 2
+        and bool(getattr(row, "still_forming_resolution", False))
+        and bool(getattr(row, "cur_reached_tp1", False))
+        and getattr(row, "cur_gave_back_after_tp1", None) is None
+    )
+
+
 def build_trade_path_extra(
     *,
     entry: Optional[float],

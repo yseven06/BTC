@@ -23,6 +23,8 @@ from __future__ import annotations
 from statistics import median
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from app.backtesting.trade_path import is_legacy_contradictory_live_sl
+
 # Below this many resolved trade-paths the sample is too small to draw policy
 # conclusions (matches the tm-v2 data checkpoint).
 CHECKPOINT_N = 250
@@ -102,6 +104,10 @@ def compute_tpsl_quality(rows: List[Any]) -> Dict[str, Any]:
     # Confidence caveats (the low-confidence population)
     intrabar = sum(1 for r in rows if r.intrabar_ambiguous)
     still_forming = sum(1 for r in rows if r.still_forming_resolution)
+    # v1-handling (KEY1-d): legacy live-SL rows that recorded a TP1-banked trade as a
+    # full original-stop loss. Surfaced so the sample is read with this caveat; the
+    # single-source predicate is what learning layers filter on going forward.
+    legacy_contra_live_sl = sum(1 for r in rows if is_legacy_contradictory_live_sl(r))
 
     # Resolution-source mix (from extra on rows written after Commit 4)
     src = {"bar_walk": 0, "live_sl": 0, "expiry": 0, "unknown": 0}
@@ -137,7 +143,8 @@ def compute_tpsl_quality(rows: List[Any]) -> Dict[str, Any]:
         "give_back": {"after_tp1_count": gave_back, "after_tp1_pct": _rate(gave_back, len(tp1_hit_rows)),
                       "n_tp1_hit": len(tp1_hit_rows)},
         "timing": {"avg_bars_to_tp1": avg_bars_tp1, "n": len(tp1_hit_rows)},
-        "confidence_caveats": {"intrabar_ambiguous": intrabar, "still_forming": still_forming},
+        "confidence_caveats": {"intrabar_ambiguous": intrabar, "still_forming": still_forming,
+                               "legacy_contradictory_live_sl": legacy_contra_live_sl},
         "resolution_source_mix": src,
     }
 

@@ -93,6 +93,22 @@ def test_live_sl_trade_path_consistency():
             assert round(eff_sl, 6) == round(osl, 6), label     # original stop unchanged
 
 
+def test_legacy_contradictory_predicate():
+    from types import SimpleNamespace as NS
+    from app.backtesting.trade_path import is_legacy_contradictory_live_sl
+    P = is_legacy_contradictory_live_sl
+    # v1 live-SL, TP1 banked, gave_back NULL -> CONTRADICTORY
+    assert P(NS(schema_version=1, still_forming_resolution=True, cur_reached_tp1=True, cur_gave_back_after_tp1=None)) is True
+    # v2 (post-KEY1-d) -> not contradictory
+    assert P(NS(schema_version=2, still_forming_resolution=True, cur_reached_tp1=True, cur_gave_back_after_tp1=None)) is False
+    # v1 but TP1 not hit -> not contradictory
+    assert P(NS(schema_version=1, still_forming_resolution=True, cur_reached_tp1=False, cur_gave_back_after_tp1=None)) is False
+    # v1 bar-walk (not still_forming) -> not contradictory
+    assert P(NS(schema_version=1, still_forming_resolution=False, cur_reached_tp1=True, cur_gave_back_after_tp1=None)) is False
+    # v1 live-SL but gave_back already set -> not contradictory
+    assert P(NS(schema_version=1, still_forming_resolution=True, cur_reached_tp1=True, cur_gave_back_after_tp1=True)) is False
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:

@@ -98,3 +98,25 @@ perf.hit_tp1` (True olabilir) kopyalar ama `realized_return=tam-kayıp` + `gave_
   `_write_trade_path_live_sl_failopen` (bankalı realized + gave_back + schema_version=2).
 - **Dokunulmayan:** bar-walk (Pass-2), `resolution_core.step_bar`, backtest. Küçük/izole commit +
   before/after + birim test; mevcut tüm testler yeniden PASS olmadan merge yok.
+
+## 11. UYGULAMA SONUCU (KEY1-d uygulandı + doğrulandı)
+**Commit'ler:** d-1a [2247817] `live_sl_realized` helper + test (wire yok). d-1b-1 [1d984e9]
+canlı wiring (`_check_live_sl_hit` etkin-stop + Pass-1 `live_sl_realized` + writer gave_back +
+`TRADE_PATH_SCHEMA_VERSION=2`). d-1b-2 v1-handling (predicate + analytics + bu doküman).
+
+**Before/After (trade-bazlı):** TP1-not-hit `−4.0 → −4.0` (LOSS, gave_back None) = **byte-identical**;
+TP1-bankalı `−4.0 → +1.5` (WIN, gave_back True); TP1+TP2 `−4.0 → +3.3` (WIN). trade_path
+**tutarlı** (reached_tp1 ↔ realized ↔ gave_back ↔ schema_version=2).
+
+**Doğrulama (hepsi PASS):** live_sl 7/7 (byte-identical + consistency + predicate) · regresyon
+golden 8/8 + differential 8000/8000 + mapping 3000/3000 + backtest 9000/9000 (bar-walk/step_bar/
+backtest değişmedi) · canlı smoke (read-only): 20 aktif sinyal, **4 TP1-bankalı** (ileriye-dönük
+korunacak), etkin-stop hatasız.
+
+**v1-handling UYGULANDI:** versiyon-ayrımı (`schema_version` 1→2) + tek-kaynak predicate
+`is_legacy_contradictory_live_sl()` (trade_path.py) + read-only analytics sayımı
+(`confidence_caveats.legacy_contradictory_live_sl`). **CANLI VERİ:** 187 trade_path,
+40 still_forming, **legacy_contradictory_live_sl = 0** → mevcut veride çelişkili v1 satırı YOK
+(bug nadir; henüz çözülmüş satır üretmemiş) → öğrenme katmanları için temizlenecek kontaminasyon
+yok. CM/Similarity/Lifecycle/Adaptive **data-gated → davranış değişmedi**; predicate + politika
+dokümante (aktivasyonda filtre uygulanır). Beklenmeyen fark yok.
