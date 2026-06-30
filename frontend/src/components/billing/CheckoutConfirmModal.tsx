@@ -51,10 +51,9 @@ export function CheckoutConfirmModal({
         {/* Critical info — clearly visible, normal size, not hidden */}
         <div className="mt-4 divide-y divide-white/5 rounded-xl border border-white/10 bg-bg-primary/40 px-4 py-2 text-sm">
           <Row label="Paket" value={planName} />
-          <Row label="Abonelik süresi" value={`${cycleLabel} (${months} ay)`} />
-          <Row label="Tahsil edilecek tutar" value={`$${amountUsd} / ${cycleLabel}`} />
-          <Row label="Sonraki otomatik yenileme" value={nextRenewalStr} />
-          <Row label="Yenileme bedeli" value={`$${amountUsd} (o tarihte geçerli bedel)`} />
+          <Row label="Abonelik süresi" value={cycleLabel} />
+          <Row label="Tahsil edilecek tutar" value={`$${amountUsd}`} />
+          <Row label="Sonraki otomatik yenileme" value={`${nextRenewalStr} · $${amountUsd}`} />
         </div>
 
         <div className="mt-3 space-y-2 rounded-xl border border-white/10 bg-bg-primary/40 px-4 py-3 text-xs leading-relaxed text-text-secondary">
