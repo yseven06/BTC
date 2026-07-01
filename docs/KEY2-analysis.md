@@ -1,6 +1,18 @@
 # KEY2 Analiz Raporu — kapsam, mimari etki, uygulama planı (kod YOK)
 
-> ## ⛔ STATÜ: **DEFERRED → POLICY FAZI (KEY1 sonrası)** — 2026-06-30, kullanıcı kararı
+> ## 🔁 STATÜ GÜNCELLEME: **DEFERRED / YENİDEN DEĞERLENDİRİLECEK** — 2026-07-02, Shadow Evaluation sonrası
+> **Varsayım (KEY2'nin dayandığı):** dar TP/SL sistematik olarak zararlıydı (gürültü-bandı seviyeler → erken stop / sahte TP).
+> **Shadow Evaluation sonucu (read-only, üretimin `resolution_core`'u ile floored yeniden-çözüm, fidelity %88):**
+> varsayım **mevcut veriyle DOĞRULANMADI.** Hibrit floor (`max(k×ATR, %X×fiyat)`) etkisi:
+> - %0.5 floor (28 fidelity-geçen): stop-rate 86→75% AMA win-rate 79→71%, **expectancy 0.483→0.495% (≈düz), profit-factor 6.32→4.96 (kötüleşti)** — net **wash**.
+> - %0.3 floor (extreme tail): **sıfır etki** (seviyeler genişlese de aynı sonuç).
+> - Sıkı-seviyeli işlemler aslında **net-pozitif** (TP1 scale-out gürültüyü kâra çeviriyor) → "dar = zararlı" premise'i zayıf.
+> - Fayda yalnız **bear + ranging**'de görünüyor (stop↓, expectancy↑); bull/low-vol düz.
+>
+> **Kod değişikliği YAPILMADI. Production davranışı DEĞİŞMEDİ.** KEY2 production geliştirme listesinden çıkarılmadı;
+> **daha fazla veri (özellikle v2 + bear/ranging yoğunluğu) oluştuğunda yeniden değerlendirilecek.** Kanıt: docs/KEY2-shadow-eval.md.
+
+> ## ⛔ STATÜ (önceki): **DEFERRED → POLICY FAZI (KEY1 sonrası)** — 2026-06-30, kullanıcı kararı
 > KEY2'nin uygulanabilir özü (min-TP1/SL **floor** BUG-2/3, risk-boundary/forex/asset **retune**)
 > = TP/SL ÜRETİM POLİTİKASI + R:R alanı → **bu fazda UYGULANMAZ**, ayrı policy fazına ertelendi.
 > Ayrıca **veri-gated** (187 / ~250-300 trade_path). Yapılan tek şey: **(C) calibration-readiness

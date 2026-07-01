@@ -135,6 +135,11 @@ Settings → 3) Cloudflare Turnstile (adaptive) → 4) Deploy + Production + Bet
 > per-asset win/pf/expectancy ↑/nötr, byte-identical çekirdek korundu. Filtre (A) gereksiz çıktı.
 > **Ertelenen (backlog):** 2A (TP1 1.5→2.0×ATR), 3 (SR-on-SL kapı), min-TP/SL floor + R:R eşiği
 > (VERİ-GATED). Kanonik: docs/P11-CLOSURE.md + docs/P11-tpsl-rr-analysis.md.
+> **KEY2 (min-TP/SL floor) — DEFERRED / YENİDEN DEĞERLENDİRİLECEK (2026-07-02):** Shadow Evaluation
+> (fidelity %88, `resolution_core` ile floored re-resolution) **"dar TP/SL sistematik zararlı" varsayımını
+> mevcut veriyle DOĞRULAMADI** — hibrit floor expectancy'yi ~düz bıraktı, PF'yi düşürdü, extreme-tail'de
+> sıfır etki; fayda yalnız bear/ranging'de. **Kod/production değişmedi.** Yeniden değerlendirme koşulu:
+> daha fazla **v2 trade_path + bear/ranging** yoğunluğu. Kanonik: docs/KEY2-shadow-eval.md.
 - **Neden şimdi:** Çekirdek mature ama TP/SL **sabit ATR çarpanları** (1.5/3.0/5.0x); R:R açıkça
   hesaplanıp filtrelenmiyor; SMC OB/FVG entry'de kullanılmıyor; TP sıralaması bozulabilir. Bunlar
   **veri gerektirmeyen mantık iyileştirmeleri** → anında sinyal kalitesi + ayrışma.
