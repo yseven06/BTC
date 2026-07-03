@@ -7,8 +7,7 @@ import {
   LineChart as ChartIcon, ArrowRight, RefreshCw, Activity,
 } from 'lucide-react';
 import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
-  Tooltip, PieChart, Pie, Cell,
+  ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { CoinIcon } from '@/components/ui/CoinIcon';
@@ -17,9 +16,8 @@ import { ScoreRing } from '@/components/ui/ScoreRing';
 import {
   fetchActiveSignals, fetchPerformanceSummary, fetchSignalHistoryStats,
   fetchGlobalMarket, fetchFearGreed, fetchTopGainers,
-  buildMarketCapChart,
   type ApiSignal, type PerformanceSummary, type GlobalMarketData,
-  type FearGreedData, type CoinMarket, type MarketCapPoint,
+  type FearGreedData, type CoinMarket,
 } from '@/lib/api';
 import { formatLargeNumber, formatPercentage, cn, formatPrice } from '@/lib/utils';
 import { SignalType, RiskLevel } from '@/types';
@@ -85,7 +83,6 @@ export default function DashboardPage() {
   const [global, setGlobal] = useState<GlobalMarketData | null>(null);
   const [fng, setFng] = useState<FearGreedData | null>(null);
   const [gainers, setGainers] = useState<CoinMarket[]>([]);
-  const [chartData, setChartData] = useState<MarketCapPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   // CoinGecko's free API rate-limits (503) under repeated calls — when that
@@ -133,7 +130,6 @@ export default function DashboardPage() {
     if (globalRes.status === 'fulfilled') {
       const g = globalRes.value;
       setGlobal(g);
-      setChartData(buildMarketCapChart(g.total_market_cap_usd, g.market_cap_change_24h));
       setGlobalError(false);
     } else {
       setGlobalError(true);
@@ -428,56 +424,21 @@ export default function DashboardPage() {
                 <p className="text-base font-bold font-mono text-text-primary mt-0.5">
                   {global ? formatLargeNumber(global.total_volume_usd) : '—'}
                 </p>
-                <p className="text-[11px] text-text-muted">-6.12%</p>
               </div>
               <div>
                 <p className="text-[10px] text-text-muted uppercase font-semibold">BTC Dominance</p>
                 <p className="text-base font-bold font-mono text-text-primary mt-0.5">
                   {global ? `${global.btc_dominance.toFixed(2)}%` : '—'}
                 </p>
-                <p className="text-[11px] text-bullish">+0.35%</p>
               </div>
               <div>
                 <p className="text-[10px] text-text-muted uppercase font-semibold">ETH Dominance</p>
                 <p className="text-base font-bold font-mono text-text-primary mt-0.5">
                   {global ? `${global.eth_dominance.toFixed(2)}%` : '—'}
                 </p>
-                <p className="text-[11px] text-bearish">-0.42%</p>
               </div>
             </div>
 
-            {/* Area chart */}
-            <div className="h-52">
-              {loading ? (
-                <div className="h-full flex items-center justify-center">
-                  <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="capGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#f97316" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="time" stroke="#334155" fontSize={10} tickLine={false} interval={3} />
-                    <YAxis
-                      stroke="#334155" fontSize={10} tickLine={false}
-                      tickFormatter={(v) => formatLargeNumber(v)}
-                    />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#0B1730', borderColor: 'rgba(148,163,184,0.1)', borderRadius: 8, fontSize: 11 }}
-                      formatter={(v: number) => [formatLargeNumber(v), 'Market Cap']}
-                    />
-                    <Area
-                      type="monotone" dataKey="cap" stroke="#f97316" strokeWidth={2}
-                      fillOpacity={1} fill="url(#capGrad)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
           </GlassCard>
 
           {/* Featured Live Chart */}

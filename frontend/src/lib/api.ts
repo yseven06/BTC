@@ -1271,34 +1271,3 @@ export async function fetchFearGreed(): Promise<FearGreedData> {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Market cap chart — synthesize realistic 24h data from live snapshot
-// (CoinGecko Pro needed for historical global; this avoids that dependency)
-// ---------------------------------------------------------------------------
-
-export interface MarketCapPoint {
-  time: string;
-  cap: number;
-  volume: number;
-}
-
-export function buildMarketCapChart(currentCap: number, changePercent: number): MarketCapPoint[] {
-  const points: MarketCapPoint[] = [];
-  const startCap = currentCap / (1 + changePercent / 100);
-  const now = Date.now();
-  const hoursBack = 24;
-  for (let i = hoursBack; i >= 0; i--) {
-    const t = new Date(now - i * 3600 * 1000);
-    const progress = (hoursBack - i) / hoursBack;
-    // smooth interpolation with slight noise
-    const noise = (Math.sin(i * 2.5) * 0.008 + Math.cos(i * 1.3) * 0.005) * currentCap;
-    const interpolated = startCap + (currentCap - startCap) * progress + noise;
-    const label = t.getHours().toString().padStart(2, '0') + ':00';
-    points.push({
-      time: label,
-      cap: Math.round(interpolated),
-      volume: Math.round(interpolated * 0.04 * (0.9 + Math.random() * 0.2)),
-    });
-  }
-  return points;
-}
