@@ -55,7 +55,7 @@ export default function PerformancePage() {
       // instead of showing invented numbers that look like real platform stats.
       setStats(null);
       setStatsError(err?.message?.includes('Failed to fetch') || err?.message?.includes('NetworkError')
-        ? 'Backend çalışmıyor. BAŞLAT.bat dosyasını çift tıklayarak backend\'i açın.'
+        ? 'Sunucuya şu an ulaşılamıyor. Lütfen birazdan tekrar deneyin.'
         : 'Performans verileri yüklenemedi.');
     } finally {
       setLoadingStats(false);

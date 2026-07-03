@@ -912,7 +912,7 @@ export default function SignalsPage() {
     } catch (e: any) {
       const msg = e?.message ?? '';
       if (msg.includes('Backend') || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
-        setGenMsg({ ok: false, text: 'Backend çalışmıyor. BAŞLAT.bat dosyasını çift tıklayarak backend\'i aç.' });
+        setGenMsg({ ok: false, text: 'Sunucuya şu an ulaşılamıyor. Lütfen birazdan tekrar deneyin.' });
       } else if (msg.includes('402') || msg.includes('upgrade_required')) {
         setGenMsg({ ok: false, text: 'Pro veya üzeri abonelik gerekiyor.' });
       } else {

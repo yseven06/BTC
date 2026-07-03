@@ -84,9 +84,7 @@ export default function MacroPage() {
               <GlassCard className="flex items-center gap-3 mb-3 bg-yellow-500/5 border-yellow-500/30">
                 <AlertCircle className="w-4 h-4 text-yellow-400 flex-shrink-0" />
                 <p className="text-xs text-yellow-300">
-                  FRED API anahtarı tanımlı değil. ABD makro verileri görmek için{' '}
-                  <code className="text-accent-primary">FRED_API_KEY</code> ortam değişkenini ayarla.{' '}
-                  Ücretsiz anahtar: <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank" rel="noreferrer" className="underline">fred.stlouisfed.org</a>
+                  ABD makro verileri şu an kullanılamıyor.
                 </p>
               </GlassCard>
             )}
