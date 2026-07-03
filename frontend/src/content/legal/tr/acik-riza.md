@@ -11,8 +11,6 @@ locale: tr
 > Bu metin, [KVKK Aydınlatma Metni](/yasal/aydinlatma-metni)'nden **ayrıdır** ve yalnızca
 > başka bir hukuki sebebe dayanmayan, **isteğe bağlı** işlemeler için açık rızanızı almak
 > amacıyla sunulur.
-> _Metin yürürlüğe hazır taslaktır; nihai hukuki inceleme tamamlanmak üzeredir._
-
 ## 1. Açık Rızanın Niteliği
 
 Açık rıza vermeniz **zorunlu değildir** ve Hizmet'ten yararlanmanın **ön koşulu

@@ -17,7 +17,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "0501e693ee608b0cd08d1576c9f931c63de8b73e041c7dba558008d008659691",
+    "hash": "b3a54b319ea9f24af9283acc5a3644ec4b112a2d6b8add8006cac1f0cea1d732",
     "reconsentOnMinor": false
   },
   "aydinlatma-metni": {
@@ -26,7 +26,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.2",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "975029ad181aa93bb7f4f37afa302293f61e95af03769a2b47a58f0d6044f812",
+    "hash": "7a086bf49fe7042dedd964d52fecfba437f8296c31b060299b4d6857f7f7730d",
     "reconsentOnMinor": false
   },
   "cerez-politikasi": {
@@ -35,7 +35,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.2",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "d936de5614b5b302468407c368c7b29a823cd373b11f932078cf194c9581ab87",
+    "hash": "a9097bd4a6f43527001efd0c5157673ef85401c26190d207d7cfee98ca55ad60",
     "reconsentOnMinor": false
   },
   "iletisim-kunye": {
@@ -44,7 +44,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "641f79d1ba29b2c05392832a337959f3fdaf6da8f4dc745f31d0712ababcb639",
+    "hash": "f80803b99a6f39b64bbe9923c92933a45d9b62d26653d07cf26cfd64b799e337",
     "reconsentOnMinor": false
   },
   "kullanim-kosullari": {
@@ -53,7 +53,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "10bc57f0551e5c28f30a5376b8a6a47b00d4c6413f9c045fa4cd5f6ae69dcf4d",
+    "hash": "c0fc2147966f62186bb072ccaeaafb5abcac21dbcfbc1873880e55cd103e4fcc",
     "reconsentOnMinor": false
   },
   "mesafeli-satis": {
@@ -62,7 +62,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "e72a9fa12133f43642b6f13ce78f7a5a0b74c00523a03bf4287f1e6fc5f3362a",
+    "hash": "100aacd9ef46e95f94d151c6eda3635a89954d712e83e88bd91e42151374b4fc",
     "reconsentOnMinor": false
   },
   "risk-bildirimi": {
@@ -71,7 +71,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "b92f3f4d09ba750425a2fb0deb902cad51ad87f0a1510f02bad2e21e7b96a5c4",
+    "hash": "aa3861c201745a185f64f687ffa78d49cc75ebdc02ddbf3b8e3195ab2caad4ab",
     "reconsentOnMinor": false
   },
   "ticari-ileti": {
@@ -80,7 +80,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "e68f9716cb287e0844ea922eecc3e4c2f0e9d5dfc3254c7cf03fb5a2ee501905",
+    "hash": "18a1e2399e4878d24616c7d34c7e77c82df85c962a5d94a3363c51ed549fda90",
     "reconsentOnMinor": false
   }
 };

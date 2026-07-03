@@ -10,8 +10,6 @@ locale: tr
 
 > Bu belge, Platform'u kullanmadan önce dikkatle okunmalıdır. Belge,
 > [Kullanım Koşulları](/yasal/kullanim-kosullari) ile birlikte bir bütün oluşturur.
-> _Metin yürürlüğe hazır taslaktır; nihai hukuki inceleme tamamlanmak üzeredir._
-
 ## 1. Amaç ve Kapsam
 
 Bu Risk Bildirimi, TradeMinds AI ("**Platform**") tarafından sunulan analiz, sinyal,

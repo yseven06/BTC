@@ -10,8 +10,6 @@ locale: tr
 
 > Bu politika, çerez ve benzeri teknolojilerin kullanımını açıklar.
 > [KVKK Aydınlatma Metni](/yasal/aydinlatma-metni) ile birlikte değerlendirilir.
-> _Metin yürürlüğe hazır taslaktır; nihai hukuki inceleme tamamlanmak üzeredir._
-
 ## 1. Çerez Nedir?
 
 Çerez (cookie), ziyaret ettiğiniz sitelerin tarayıcınıza kaydettiği küçük metin

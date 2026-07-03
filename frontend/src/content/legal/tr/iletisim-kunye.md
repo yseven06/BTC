@@ -10,8 +10,6 @@ locale: tr
 
 > 6563 sayılı Elektronik Ticaretin Düzenlenmesi Hakkında Kanun ve ilgili mevzuat uyarınca,
 > hizmet sağlayıcının tanıtıcı ve iletişim bilgileri aşağıda sunulur.
-> _Metin yürürlüğe hazır taslaktır; hizmet sağlayıcının (işletici) yasal kimlik ve iletişim
-> bilgileri, işleticinin hukuki statüsüne ve ilgili mevzuata uygun biçimde doldurulacaktır._
 
 ## Hizmet Sağlayıcı
 
@@ -20,7 +18,7 @@ locale: tr
 > (ör. yalnızca ticaret siciline kayıtlı tüzel kişilere özgü alanlar) "uygulanmaz" olarak işaretlenebilir.]_
 
 - **Ticaret unvanı / işletici adı:** _[doldurulacak]_
-- **MERSİS numarası (varsa):** _[doldurulacak / uygulanmaz]_
+- **MERSİS numarası:** Uygulanmaz — hizmet, ticaret siciline kayıtlı bir tüzel kişi tarafından değil, bireysel işletici tarafından sunulmaktadır.
 - **Vergi dairesi / numarası:** _[doldurulacak]_
 - **Adres:** _[doldurulacak]_
 - **KEP adresi (varsa):** _[doldurulacak / uygulanmaz]_
@@ -30,8 +28,9 @@ locale: tr
 - **Genel destek:** _[destek e-posta adresi doldurulacak]_
 - **KVKK başvuruları:** _[başvuru e-posta/KEP veya form bağlantısı doldurulacak]_ — ayrıntı:
   [KVKK Aydınlatma Metni](/yasal/aydinlatma-metni)
-- **Tüketici şikâyetleri ve mesafeli satış talepleri:** _[e-posta doldurulacak]_ — ayrıntı:
-  [Mesafeli Satış Sözleşmesi](/yasal/mesafeli-satis)
+- **Tüketici şikâyetleri ve mesafeli satış talepleri:** Beta sürümünde ücretli abonelik/ödeme
+  sunulmadığından mesafeli satışa konu bir işlem bulunmamaktadır; bu kanal, ödeme özelliği
+  etkinleştirildiğinde yayımlanacaktır — ayrıntı: [Mesafeli Satış Sözleşmesi](/yasal/mesafeli-satis)
 - **Ticari elektronik ileti ret/onay:** İleti Yönetim Sistemi (İYS) ve iletilerdeki ret
   bağlantısı — ayrıntı: [Ticari İleti Aydınlatma](/yasal/ticari-ileti)
 

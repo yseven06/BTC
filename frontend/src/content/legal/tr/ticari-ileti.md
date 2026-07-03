@@ -10,8 +10,6 @@ locale: tr
 
 > 6563 sayılı Elektronik Ticaretin Düzenlenmesi Hakkında Kanun ve ilgili mevzuat uyarınca
 > hazırlanmıştır.
-> _Metin yürürlüğe hazır taslaktır; nihai hukuki inceleme tamamlanmak üzeredir._
-
 ## 1. Kapsam
 
 Ticari elektronik ileti; tanıtım, kampanya, duyuru gibi pazarlama amacıyla e-posta, SMS

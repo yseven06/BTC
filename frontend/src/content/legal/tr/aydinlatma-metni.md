@@ -11,8 +11,6 @@ locale: tr
 > 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") m.10 kapsamında
 > hazırlanmıştır. Bu metin bir **bilgilendirmedir**; açık rıza gerektiren işlemeler için
 > ayrıca [Açık Rıza Metni](/yasal/acik-riza) sunulur.
-> _Metin yürürlüğe hazır taslaktır; nihai hukuki inceleme tamamlanmak üzeredir._
-
 ## 1. Veri Sorumlusu
 
 Kişisel verileriniz, veri sorumlusu sıfatıyla TradeMinds AI ("**Platform**") tarafından

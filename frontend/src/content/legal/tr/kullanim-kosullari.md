@@ -11,8 +11,6 @@ locale: tr
 > Bu Kullanım Koşulları, Platform'u kullanımınızı düzenleyen sözleşmedir.
 > [Risk Bildirimi](/yasal/risk-bildirimi), [KVKK Aydınlatma Metni](/yasal/aydinlatma-metni)
 > ve [Çerez Politikası](/yasal/cerez-politikasi) bu sözleşmenin ayrılmaz parçalarıdır.
-> _Metin yürürlüğe hazır taslaktır; nihai hukuki inceleme tamamlanmak üzeredir._
-
 ## 1. Taraflar ve Kabul
 
 Bu Kullanım Koşulları ("**Sözleşme**"); TradeMinds AI ("**Platform**", "**biz**") —

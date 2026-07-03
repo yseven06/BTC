@@ -10,7 +10,9 @@ locale: tr
 
 > Ücretli aboneliklere ilişkin olarak, 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve
 > Mesafeli Sözleşmeler Yönetmeliği uyarınca hazırlanmıştır.
-> _Metin yürürlüğe hazır taslaktır; nihai hukuki inceleme tamamlanmak üzeredir._
+>
+> **Beta sürümü:** Davet usulüyle yürütülen beta sürümünde ücretli abonelik/ödeme sunulmamakta
+> ve ödeme alınmamaktadır. Bu belge, ödeme özelliği etkinleştirildiğinde uygulanır.
 
 ## A. Ön Bilgilendirme Formu
 
