@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Lock, Crown } from 'lucide-react';
+import { PAYMENTS_ENABLED } from '@/lib/config';
 
 interface LockedOverlayProps {
   title?: string;
@@ -22,12 +23,16 @@ export function LockedOverlay({
       </div>
       <h3 className="text-base font-bold text-text-primary mb-1">{title}</h3>
       <p className="text-xs text-text-secondary max-w-xs mb-4">{description}</p>
-      <Link
-        href="/pricing"
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold transition-colors"
-      >
-        <Crown className="w-4 h-4" /> Plana Yükselt
-      </Link>
+      {PAYMENTS_ENABLED ? (
+        <Link
+          href="/pricing"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold transition-colors"
+        >
+          <Crown className="w-4 h-4" /> Plana Yükselt
+        </Link>
+      ) : (
+        <span className="text-[11px] text-text-muted">Beta sürümünde yakında açılacak.</span>
+      )}
     </div>
   );
 }

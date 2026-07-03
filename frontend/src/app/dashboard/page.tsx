@@ -20,6 +20,7 @@ import {
   type FearGreedData, type CoinMarket,
 } from '@/lib/api';
 import { formatLargeNumber, formatPercentage, cn, formatPrice } from '@/lib/utils';
+import { PAYMENTS_ENABLED } from '@/lib/config';
 import { SignalType, RiskLevel } from '@/types';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useTierLimits } from '@/hooks/useTierLimits';
@@ -211,8 +212,8 @@ export default function DashboardPage() {
       <OnboardingChecklist />
       <CoachmarkTour />
 
-      {/* Free tier banner */}
-      {isFreeTier && (
+      {/* Free tier banner — hidden in beta while the payment funnel is disabled */}
+      {isFreeTier && PAYMENTS_ENABLED && (
         <Link
           href="/pricing"
           className="block bg-gradient-to-r from-orange-500/15 via-accent-primary/15 to-orange-500/15 border border-orange-500/30 rounded-2xl p-4 hover:border-orange-500/50 transition-all"

@@ -10,6 +10,7 @@ import {
   Globe, Shield, History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PAYMENTS_ENABLED } from '@/lib/config';
 import {
   fetchMySubscription, fetchActiveSignals,
   type SubscriptionResponse,
@@ -166,16 +167,19 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
           {isAdmin ? (
             <p className="text-[10px] text-text-muted">Sınırsız erişim · tüm özellikler aktif.</p>
           ) : isFree ? (
-            <p className="text-[10px] text-text-muted">Sınırsız sinyal için yükselt.</p>
+            <p className="text-[10px] text-text-muted">{PAYMENTS_ENABLED ? 'Sınırsız sinyal için yükselt.' : 'Ücretsiz plan.'}</p>
           ) : expiry ? (
             <p className="text-[10px] text-text-muted">Sona erme: {expiry}</p>
           ) : null}
-          <Link
-            href={isAdmin ? '/admin' : '/pricing'}
-            className="mt-2 block w-full text-[10px] font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-lg py-1.5 transition-colors text-center"
-          >
-            {isAdmin ? 'Yönetim Paneli' : isFree ? 'Yükselt' : 'Planı Yönet'}
-          </Link>
+          {/* Beta: hide the "Yükselt" upgrade CTA for free users while payments are off */}
+          {(isAdmin || !isFree || PAYMENTS_ENABLED) && (
+            <Link
+              href={isAdmin ? '/admin' : '/pricing'}
+              className="mt-2 block w-full text-[10px] font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-lg py-1.5 transition-colors text-center"
+            >
+              {isAdmin ? 'Yönetim Paneli' : isFree ? 'Yükselt' : 'Planı Yönet'}
+            </Link>
+          )}
         </div>
       )}
 

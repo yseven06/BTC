@@ -8,6 +8,7 @@ import { useLivePrices } from '@/hooks/useLivePrices';
 import { useTierLimits } from '@/hooks/useTierLimits';
 import { SignalType } from '@/types';
 import { cn, formatAbsoluteTimeTR, formatPrice } from '@/lib/utils';
+import { PAYMENTS_ENABLED } from '@/lib/config';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -963,8 +964,8 @@ export default function SignalsPage() {
       {/* Prensip 4: belirgin, sayfa-üstü yatırım uyarısı (tek kaynak: disclaimer.ts) */}
       <InvestmentDisclaimer variant="inline" />
 
-      {/* Free-tier limit nudge — bağlamsal yükseltme tetikleyicisi */}
-      {!limits.loading && limits.tier === 'free' && (
+      {/* Free-tier limit nudge — beta'da ödeme hunisi kapalıyken gizli */}
+      {!limits.loading && limits.tier === 'free' && PAYMENTS_ENABLED && (
         <Link
           href="/pricing"
           className="flex items-center justify-between gap-3 bg-gradient-to-r from-orange-500/12 via-accent-primary/10 to-orange-500/12 border border-orange-500/25 hover:border-orange-500/45 rounded-xl px-4 py-2.5 transition-colors"

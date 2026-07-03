@@ -10,6 +10,7 @@ import {
   type SubscriptionResponse,
 } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { PAYMENTS_ENABLED } from '@/lib/config';
 import { track } from '@/lib/analytics';
 import { AnalyticsEvent } from '@/lib/analytics-events';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
@@ -67,7 +68,8 @@ export default function PricingPage() {
 
   // Open the pre-payment confirmation modal (shows terms + auto-renewal, collects consent).
   const subscribe = (tier: SubscriptionTier, overrideCycle?: BillingCycle) => {
-    if (tier === 'free') return;
+    // Beta: payments disabled — never open the checkout/consent flow.
+    if (tier === 'free' || !PAYMENTS_ENABLED) return;
     setPending({ tier, cycle: overrideCycle ?? cycle });
   };
 
@@ -135,6 +137,12 @@ export default function PricingPage() {
           AI motorlarına tam erişim ve sınırsız sinyal için yükselt.
         </p>
       </div>
+
+      {!PAYMENTS_ENABLED && (
+        <div className="bg-accent-primary/10 border border-accent-primary/30 rounded-xl p-3 text-center text-sm text-accent-primary max-w-2xl mx-auto">
+          Ödeme sistemi çok yakında. Beta süresince planları inceleyebilirsin; şu an ödeme alınmıyor.
+        </div>
+      )}
 
       {canceled && (
         <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 text-center text-sm text-yellow-400">
@@ -296,12 +304,12 @@ export default function PricingPage() {
 
                 <button
                   onClick={() => subscribe(plan.tier)}
-                  disabled={isCurrent || plan.tier === 'free' || processing !== null}
+                  disabled={isCurrent || plan.tier === 'free' || processing !== null || !PAYMENTS_ENABLED}
                   className={cn(
                     'w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50',
                     isCurrent
                       ? 'bg-bg-tertiary text-text-muted cursor-default'
-                      : plan.tier === 'free'
+                      : plan.tier === 'free' || !PAYMENTS_ENABLED
                       ? 'bg-bg-tertiary text-text-muted'
                       : plan.recommended
                       ? 'bg-accent-primary hover:bg-accent-secondary text-white'
@@ -311,6 +319,7 @@ export default function PricingPage() {
                   {processing === plan.tier ? 'İşleniyor...'
                    : isCurrent ? 'Mevcut Planın'
                    : plan.tier === 'free' ? 'Varsayılan'
+                   : !PAYMENTS_ENABLED ? 'Yakında'
                    : 'Yükselt'}
                 </button>
               </GlassCard>
@@ -319,9 +328,11 @@ export default function PricingPage() {
         </div>
       )}
 
-      <p className="text-center text-[10px] text-text-muted">
-        Ödemeler USD üzerinden alınır. İstediğin zaman iptal edebilirsin.
-      </p>
+      {PAYMENTS_ENABLED && (
+        <p className="text-center text-[10px] text-text-muted">
+          Ödemeler USD üzerinden alınır. İstediğin zaman iptal edebilirsin.
+        </p>
+      )}
 
       <InvestmentDisclaimer variant="inline" className="mx-auto max-w-2xl" />
 
