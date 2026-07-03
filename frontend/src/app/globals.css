@@ -13,6 +13,14 @@
    ============================================ */
 @layer base {
   :root {
+    /* ── Single-source color tokens (P1.2/a) ──────────────────────────────
+       Bu blok paletin TEK kaynağıdır: hem ham CSS (var(--x)) hem Tailwind
+       utility'leri (tailwind.config renkleri var()'e bağlıdır) buradan okur.
+       Değerler (a)'da DEĞİŞMEDİ (görsel no-op). Bible §01 paletine geçiş
+       (P1.2/b) yalnız burada yapılacak — başka yerde hardcode renk kalmaz.
+       Bible §01 eşleme (hedef, henüz uygulanmadı): bg-primary→--bg ·
+       bg-tertiary→--surface · accent-secondary→--accent-2 · text-muted→--faint ·
+       bullish→--bull · bearish→--bear. */
     --bg-primary: #020817;
     --bg-secondary: #071126;
     --bg-tertiary: #0B1730;
@@ -21,13 +29,20 @@
     --accent-primary: #3B82F6;
     --accent-secondary: #06B6D4;
     --accent-glow: rgba(59, 130, 246, 0.3);
+    --accent-glow-strong: rgba(59, 130, 246, 0.5);
     --text-primary: #F8FAFC;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
+    --text-dark: #334155;
     --border-subtle: rgba(148, 163, 184, 0.1);
     --border-medium: rgba(148, 163, 184, 0.2);
     --bullish: #10B981;
+    --bullish-dark: #059669;
+    --bullish-light: #34D399;
     --bearish: #EF4444;
+    --bearish-dark: #DC2626;
+    --bearish-light: #F87171;
+    --warning: #F59E0B;
     --signal-strong-buy: #10B981;
     --signal-buy: #34D399;
     --signal-hold: #F59E0B;
