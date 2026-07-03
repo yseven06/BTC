@@ -21,6 +21,7 @@ import {
 } from '@/lib/api';
 import { formatLargeNumber, formatPercentage, cn, formatPrice } from '@/lib/utils';
 import { PAYMENTS_ENABLED } from '@/lib/config';
+import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import { SignalType, RiskLevel } from '@/types';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useTierLimits } from '@/hooks/useTierLimits';
@@ -77,7 +78,6 @@ function LiveClock() {
 
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState<'24s' | '7g' | '30g'>('24s');
-  const [marketTab, setMarketTab] = useState<'genel' | 'kripto' | 'hisse' | 'forex'>('genel');
 
   const [signals, setSignals] = useState<ApiSignal[]>([]);
   const [perf, setPerf] = useState<PerformanceSummary | null>(null);
@@ -92,6 +92,9 @@ export default function DashboardPage() {
   // the cards stuck on "—" / "Yükleniyor..." forever with no explanation.
   const [globalError, setGlobalError] = useState(false);
   const [gainersError, setGainersError] = useState(false);
+  // Core platform data (signals + performance) unreachable — surface an honest
+  // error + retry instead of rendering misleading zeros as if they were real.
+  const [dataError, setDataError] = useState(false);
   // Actual count of actionable (non-HOLD) active signals — matches what
   // Sinyal Merkezi shows by default ("SADECE AL/SAT"), unlike perf.active_count
   // which includes HOLD and so reads much higher than what's really tradeable.
@@ -142,6 +145,9 @@ export default function DashboardPage() {
     } else {
       setGainersError(true);
     }
+
+    // Both core platform fetches failing = backend unreachable, not "0 signals".
+    setDataError(signalsRes.status === 'rejected' && perfRes.status === 'rejected');
 
     setLoading(false);
     setRefreshing(false);
@@ -272,6 +278,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <InvestmentDisclaimer variant="inline" />
+
       {/* ── 5 Stat Cards ── */}
       {loading ? (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -283,6 +291,21 @@ export default function DashboardPage() {
             </GlassCard>
           ))}
         </div>
+      ) : dataError && !perf ? (
+        <GlassCard className="flex flex-col items-center justify-center text-center gap-3 py-8">
+          <AlertTriangle className="w-6 h-6 text-bearish" />
+          <div>
+            <p className="text-sm font-semibold text-text-primary">Veriler şu an yüklenemiyor</p>
+            <p className="text-xs text-text-muted mt-0.5">Sunucuya ulaşılamıyor olabilir. Lütfen tekrar deneyin.</p>
+          </div>
+          <button
+            onClick={() => load(true)}
+            disabled={refreshing}
+            className="text-xs font-semibold text-text-primary bg-white/[0.06] hover:bg-white/[0.1] border border-border-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+          >
+            Tekrar dene
+          </button>
+        </GlassCard>
       ) : (
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {/* Closed trades within selected period */}
@@ -388,19 +411,6 @@ export default function DashboardPage() {
                 <TrendingUp className="w-4 h-4 text-accent-primary" />
                 Piyasa Genel Bakış
               </h2>
-              <div className="flex bg-bg-secondary border border-border-subtle p-0.5 rounded-lg">
-                {(['genel', 'kripto', 'hisse', 'forex'] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setMarketTab(t)}
-                    className={`px-2.5 py-1 text-[11px] font-semibold rounded-md capitalize transition-all ${
-                      marketTab === t ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary'
-                    }`}
-                  >
-                    {t.charAt(0).toUpperCase() + t.slice(1)}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {globalError && (
