@@ -5,6 +5,21 @@ Kural: **her revizyon = commit + sürüm artışı + bu dosyada bir satır.** St
 
 ---
 
+## v1.2 — Rev-2/K1 · 2026-07-04
+
+**Kapsam:** Design Standards Review'daki içerik-boşluğu High'larının K1 dilimi — P1.2 (Design system tek-kaynak) uygulamasının önkoşulu olan **eksik standartlar** tamamlandı. Yalnız Design Bible §01 + §08 değişti; **VL içeriği değişmedi** (sürüm senkron için v1.2). Kod/CSS/component'e dokunulmadı. Diğer Rev-2 Medium/Low (M8/M12/M13/M15/M16/M17…) hâlâ deferred.
+**Sürümleme kararı (kullanıcı):** Dosya adları sabit tutulur (yeniden adlandırma yok); sürüm belge başlığında + bu changelog'da izlenir.
+
+### Eklenen standartlar
+- **H6 — Chart Tokens (Bible §01):** grafikler (recharts/lightweight/sparkline/equity) için tek token seti — mum bull/bear · çizgi/alan serisi (nötr=accent, sparkline=yön bull/bear) · eksen=--muted mono tnum (H11 uyumlu, --faint değil) · grid hairline .10 · tooltip E3 · grafik-üstü seviye çizgileri (TP/Giriş/SL) · **#f97316 kaldırılır** (warn'a eşitlenmez) · grafik ışık sırası (VL squint). TradingView embed tam-teması kapsam dışı (M16).
+- **H7 — Locale & Format (Bible §01):** tek locale **tr-TR**; `Intl` zorunlu, elle ayraç yasak; fiyat ondalık-basamak tablosu; USD/kripto gösterim kuralı; tek-kaynak formatter (`lib/utils.ts`).
+- **H8 — Migration Map (Bible §08):** eski→yeni eşleme (#020817→--bg · indigo→--accent · #f97316→chart token · en-US→formatter) + dosya-sınıfı envanteri (grep 2026-07-04) + kapanış kriteri; P1.2'nin kapanış ölçütü.
+
+### Düzeltme
+- **Bible §01 Table:** "kart deseni signal-history'de zaten var" iddiası kaldırıldı — kod doğrulaması (2026-07-04) desenin **olmadığını** gösterdi; P1.5'te yazılacağı belirtildi.
+
+---
+
 ## v1.1 — Rev-1 · 2026-07-03
 
 **Kapsam:** Design Standards Review'da doğrulanan 35 bulgunun **standart-bütünlüğünü** etkileyen kısmı (2 Critical + 8 High). İçerik-boşluğu tipi High'lar (chart teması, locale, migration haritası), tüm Medium ve Low maddeler **Rev-2**'ye ertelendi.

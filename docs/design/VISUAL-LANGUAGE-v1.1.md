@@ -1,8 +1,8 @@
 # TradeMinds Visual Language — "Gece Seansı"
 
-**Sürüm:** v1.1 (Rev-1 uygulandı) · **Tarih:** 2026-07-03
-**Statü:** Design Bible v1.1'in **Ek A'sı (Annex A)** — Art Direction / atmosfer katmanı. Yeni tasarım sistemi değildir.
-**Kanonik kaynak:** bu dosya (`docs/design/VISUAL-LANGUAGE-v1.1.md`). Artifact yalnızca görsel aynadır.
+**Sürüm:** v1.2 (Rev-2/K1 ile senkron — **VL içeriği değişmedi**; yalnız sürüm hizalaması) · **Tarih:** 2026-07-04
+**Statü:** Design Bible'ın **Ek A'sı (Annex A)** — Art Direction / atmosfer katmanı. Yeni tasarım sistemi değildir.
+**Kanonik kaynak:** bu dosya (`docs/design/`). Dosya adı sabittir; güncel sürüm bu başlıkta ve CHANGELOG'da izlenir. Artifact yalnızca görsel aynadır.
 **Kanoniklik (bkz. Bible §08/C1):** atmosfer · ışık · motion-bütçesi konularında **bu belge kanoniktir**; token/komponent/layout konularında Bible kanoniktir; çelişkide daha kısıtlayıcı kural kazanır.
 **Ana belge:** [DESIGN-BIBLE-v1.1.md](./DESIGN-BIBLE-v1.1.md) · **Changelog:** [CHANGELOG.md](./CHANGELOG.md)
 

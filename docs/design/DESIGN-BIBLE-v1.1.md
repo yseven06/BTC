@@ -1,8 +1,8 @@
 # TradeMinds Design Bible
 
-**Sürüm:** v1.1 (Rev-1 uygulandı) · **Tarih:** 2026-07-03
+**Sürüm:** v1.2 (Rev-2/K1 uygulandı) · **Tarih:** 2026-07-04
 **Statü:** Ürünün resmî ve tek tasarım standardı (normatif).
-**Kanonik kaynak:** bu dosya (`docs/design/DESIGN-BIBLE-v1.1.md`). Artifact yalnızca görsel aynadır; çelişki halinde bu markdown kazanır.
+**Kanonik kaynak:** bu dosya (`docs/design/`). Dosya adı sabittir; güncel sürüm bu başlıkta ve [CHANGELOG](./CHANGELOG.md)'da izlenir (sürüm dosya adına yazılmaz). Artifact yalnızca görsel aynadır; çelişki halinde bu markdown kazanır.
 **Eki:** [VISUAL-LANGUAGE-v1.1.md](./VISUAL-LANGUAGE-v1.1.md) (Annex A — atmosfer/Art Direction).
 **Değişiklik geçmişi:** [CHANGELOG.md](./CHANGELOG.md).
 
@@ -56,7 +56,17 @@ Tek accent (mavi) + AI-cyan partner (çok az). Semantik bull/bear accent'ten **a
 - **Ölçek:** 12 · 13 · 14 · 16 · 20 · 26 · 34 · 46 · 60 (oran ≈1,25). Hero display üst sınırı için `clamp(40px, 7vw, 72px)`.
 - **Ağırlık:** 400 (body) · 500 (label) · 600 (alt-başlık/buton) · 650 (display). *650 için variable font gerekir; statik-ağırlık senaryosunda 700'e yuvarlanır.*
 - **Font:** `next/font` ile self-host (Geist/Söhne benzeri), `@import` yok (CLS=0, KVKK dostu).
-- Tüm sayı/fiyat `tabular-nums`. (Locale/format standardı Rev-2/H7'de eklenecek.)
+- Tüm sayı/fiyat `tabular-nums`. (Locale/biçim kuralları: bkz. **Locale & Format** — H7.)
+
+### Locale & Format (Rev-2/H7)
+Tek locale: **tr-TR** (UI dili Türkçe). Elle string kurma yasak; her sayı/tarih `Intl` üzerinden.
+- **Zorunlu:** `Intl.NumberFormat('tr-TR')` / `Intl.DateTimeFormat('tr-TR')`. `toLocaleString('en-US')` veya elle `,`/`.` ayracı **yasak.**
+- **Fiyat ondalık basamak:** ≥1000 → 0-2 · 1–1000 → 2-4 · <1 → 4-6 · <0,001 → 6-8 (anlamlı).
+- **Para birimi:** USD tutarları `$` öneki (`$1.234,56`); kripto çiftleri (BTC/USDT) değeri sembolsüz, birim sütun/başlıkta.
+- **Büyük sayı:** `formatLargeNumber` (Mn/Bn kısaltma) — tek kaynak.
+- **Tarih/saat:** `gg AAA yyyy` (+ gerekirse `SS:dd`), kullanıcı yerel saat dilimi; `Intl.DateTimeFormat('tr-TR')`.
+- **Tek kaynak formatter:** tüm formatlama `lib/utils.ts` üzerinden; komponentler doğrudan `toLocaleString` çağırmaz.
+- **tabular-nums** tüm sayısal alanlarda (§01 Typography ile ortak).
 
 ### Spacing · 4px temel
 `4 (xs) · 8 (sm) · 12 (md) · 16 (lg) · 24 (xl) · 32 (2xl) · 48 (3xl) · 64 (section)`. Aralık **her zaman** flex/grid `gap` ile; per-element margin çakışması yok.
@@ -96,7 +106,19 @@ Her kontrol etiketli (`label`/`aria-label`). Hata durumu bear rengi + yardım me
 Tek `<Card>` primitifi: hairline border + düz yüzey (**gölgesiz**, H3). Türevler: `StatTile`, `SignalCard`. Kart içeriği arka-plan feed'iyle değişmez (fiyat↔TP/SL swap yasak).
 
 ### Table
-Semantik `<table>` (div-grid değil). `md` altında satır → **kart**'a dönüşür. Doğru desen repo'da `signal-history`'de zaten var.
+Semantik `<table>` (div-grid değil). `md` altında satır → **kart**'a dönüşür. *(Bu kart deseni repoda **henüz yok** — doğrulama 2026-07-04: `signal-history` mobil-kart deseni içermiyor; desen P1.5'te yazılır.)*
+
+### Chart Tokens (Rev-2/H6)
+Grafikler (recharts/lightweight-charts · sparkline · equity) tek token setinden türer; turuncu (#f97316) drift'i biter. Değerler **mevcut token'lardan** türetilir — yeni renk yok.
+- **Mum:** yükseliş `--bull #10B981` · düşüş `--bear #F4556E` (per-mum).
+- **Çizgi/alan serisi:** yön-nötr tek seri (equity, market-cap) → `--accent`; yön-anlamlı sparkline (piyasa 24s) → satır yönüne göre `--bull`/`--bear`; alan-dolgu → seri renginin dikey gradyanı (tepe %12-15 → 0).
+- **Eksen etiketi:** `--muted`, `font-mono`, `tabular-nums`. **(`--faint` DEĞİL — H11: okunur mikro-etiket ≥ --muted.)**
+- **Grid çizgisi:** hairline `rgba(148,163,184,.10)` — eksenden sönük; VL L3 atmosfer grid'inden ayrıdır.
+- **Tooltip:** E3 yüzey kuralı — `--surface-3` + `--shadow-e3` + hairline .22.
+- **Grafik-üstü seviye çizgileri (SL/Giriş/TP):** SignalCard merdiveniyle aynı — TP `--bull` · Giriş `--accent` · SL `--bear`; sinyal işareti `--warn #FBBF24` (§01 "sinyal işareti" rolü).
+- **Turuncu #f97316 → kaldırılır** (yukarıdaki token'lara taşınır; **warn'a eşitlenmez** — warn yalnız uyarı içindir).
+- **Grafik ışık sırası (VL §01 squint uygulaması):** grid < eksen < seri < aktif-seviye parlaklığı.
+- **Kapsam notu:** TradingView embed'in **tam** tema eşlemesi (widget candle/grid config) K1 dışı → Rev-2/M16. Burada yalnız kendi (recharts/lightweight) grafiklerimizin token'ları; embed'in yalnız **zemin** rengi H8'e tabidir.
 
 ### State Sistemi — Loading / Empty / Error
 Üçü **ayrı** durum. En kritik kural: **backend hatası asla "0 sinyal / %0 başarı" olarak gösterilmez.** Hata → "—" + "Tekrar dene". Empty → sakin mesaj + CTA. Loading → skeleton (spinner değil).
@@ -222,6 +244,19 @@ Her yeni ekran bu Bible + VL'ye göre geliştirilir. Yeni bir renk/spacing/kompo
 ### Sürümleme (Rev-1/C2)
 - Bu markdown dosyaları (`docs/design/`) **tek resmî kaynaktır.** Artifact yalnızca görsel aynadır.
 - **Revizyon = commit + sürüm artışı + CHANGELOG satırı.** Standart, onaysız değişmez; sapma önerisi getirilmez, gerekirse önce sürüm revizyonu önerilir.
+- **Dosya adları sabittir** (`DESIGN-BIBLE-*.md` / `VISUAL-LANGUAGE-*.md`) — sürüm dosya adına değil, belge başlığına + CHANGELOG'a yazılır; her revizyonda yeniden adlandırma yapılmaz.
+
+### Migration Map (Rev-2/H8)
+P1.2 palet migration'ının kapanış kriteri. Sıra: **önce token tanımı (görsel no-op) → sonra dosya-sınıfı sırasıyla değer migration'ı.** Ara dönem kuralı: "yeni ekran yeni token'dan türer."
+
+| Eski | Yeni | Konum (grep 2026-07-04) |
+|---|---|---|
+| `#020817` (zemin) | `--bg #070B14` | tailwind.config · globals.css · layout.tsx (themeColor) · manifest (theme+background) · ShareCardModal · TradingViewChart (embed zemin) — **6** |
+| eski indigo | `--accent #3B82F6` | ui/Button.tsx — **1** |
+| `#f97316` (turuncu) | chart token (H6: accent/bull/bear) | dashboard/page.tsx · charts/TradingChart.tsx — **2** |
+| `en-US` locale | tek-kaynak formatter (H7) | dashboard · portfolio · PriceDisplay · ShareCardModal · lib/utils.ts — **5** |
+
+**Kapanış kriteri:** `grep '#020817|#f97316|indigo'` (src+public) → **0**; `en-US` yalnız `lib/utils.ts` formatter'ında tr-TR'ye döner. TradingView widget'ının **tam** tema eşlemesi (yalnız zemin dışı) bu haritanın dışıdır → Rev-2/M16.
 
 ### Definition of Done (görsel) — Rev-1/H10 ile genişletildi
 1. Token'dan türer (hardcode renk/spacing yok).
