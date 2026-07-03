@@ -30,9 +30,9 @@
     --accent-secondary: #22D3EE;
     --accent-glow: rgba(59, 130, 246, 0.3);
     --accent-glow-strong: rgba(59, 130, 246, 0.5);
-    --text-primary: #F8FAFC;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
+    --text-primary: #E8EDF5;
+    --text-secondary: #9AA6B8;
+    --text-muted: #5C6980;
     --text-dark: #334155;
     --border-subtle: rgba(148, 163, 184, 0.1);
     --border-medium: rgba(148, 163, 184, 0.2);
@@ -563,10 +563,10 @@
    ============================================ */
 ::selection {
   background: rgba(59, 130, 246, 0.3);
-  color: #F8FAFC;
+  color: #E8EDF5;
 }
 
 ::-moz-selection {
   background: rgba(59, 130, 246, 0.3);
-  color: #F8FAFC;
+  color: #E8EDF5;
 }
