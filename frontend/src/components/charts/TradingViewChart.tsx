@@ -84,7 +84,7 @@ export default function TradingViewChart({
           theme: 'dark',
           style: '1', // candlesticks
           locale: 'tr',
-          toolbar_bg: '#020817',
+          toolbar_bg: '#070B14',
           enable_publishing: false,
           allow_symbol_change: !compact,
           hide_side_toolbar: compact,
@@ -92,14 +92,14 @@ export default function TradingViewChart({
           withdateranges: !compact,
           studies: compact ? [] : studies,
           autosize: true,
-          backgroundColor: '#020817',
+          backgroundColor: '#070B14',
           gridColor: 'rgba(148, 163, 184, 0.06)',
         });
       })
       .catch(() => {
         if (containerRef.current) {
           containerRef.current.innerHTML =
-            '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;font-size:13px;">Grafik yüklenemedi</div>';
+            '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#5C6980;font-size:13px;">Grafik yüklenemedi</div>';
         }
       });
 

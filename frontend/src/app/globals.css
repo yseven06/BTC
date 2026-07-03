@@ -45,9 +45,9 @@
     --warning: #FBBF24;
     --signal-strong-buy: #10B981;
     --signal-buy: #34D399;
-    --signal-hold: #F59E0B;
-    --signal-sell: #EF4444;
-    --signal-strong-sell: #DC2626;
+    --signal-hold: #FBBF24;
+    --signal-sell: #F4556E;
+    --signal-strong-sell: #E23E58;
   }
 
   * {
@@ -230,7 +230,7 @@
 
   .signal-strong-sell {
     color: var(--signal-strong-sell);
-    text-shadow: 0 0 10px rgba(220, 38, 38, 0.3);
+    text-shadow: 0 0 10px rgba(226, 62, 88, 0.3);
   }
 
   .signal-bg-strong-buy {
@@ -245,19 +245,19 @@
   }
 
   .signal-bg-hold {
-    background: rgba(245, 158, 11, 0.12);
-    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(251, 191, 36, 0.12);
+    border-color: rgba(251, 191, 36, 0.3);
   }
 
   .signal-bg-sell {
-    background: rgba(239, 68, 68, 0.12);
-    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(244, 85, 110, 0.12);
+    border-color: rgba(244, 85, 110, 0.3);
   }
 
   .signal-bg-strong-sell {
-    background: rgba(220, 38, 38, 0.12);
-    border-color: rgba(220, 38, 38, 0.3);
-    box-shadow: 0 0 15px rgba(220, 38, 38, 0.1);
+    background: rgba(226, 62, 88, 0.12);
+    border-color: rgba(226, 62, 88, 0.3);
+    box-shadow: 0 0 15px rgba(226, 62, 88, 0.1);
   }
 }
 
@@ -410,8 +410,8 @@
    small celebration rather than a progress meter.
    ============================================ */
 @keyframes tp-pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.35); }
-  50%      { box-shadow: 0 0 14px 3px rgba(0, 230, 118, 0.45); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35); }
+  50%      { box-shadow: 0 0 14px 3px rgba(16, 185, 129, 0.45); }
 }
 
 .tp-pulse-badge {
@@ -444,7 +444,7 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(0, 230, 118, 0.9) 50%,
+    rgba(16, 185, 129, 0.9) 50%,
     transparent 100%
   );
   animation: tp-pulse-travel 2.4s linear infinite;
