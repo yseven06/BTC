@@ -30,7 +30,7 @@ const ENGINES = [
 
 const STEPS = [
   { n: '1', title: 'Ücretsiz Kaydol', desc: '30 saniyede hesap aç, kredi kartı gerekmez.' },
-  { n: '2', title: '97 Varlığı Canlı İzle', desc: '9 AI motoru kripto ve BIST\'i 7/24 tarayıp sinyal üretir.' },
+  { n: '2', title: 'Kripto & BIST\'i Canlı İzle', desc: '9 AI motoru kripto ve BIST\'i 7/24 tarayıp sinyal üretir.' },
   { n: '3', title: 'Akıllı Takip Et', desc: 'Telegram\'dan anında haberdar ol, performansını Sinyal Geçmişi\'nde gör.' },
 ];
 
@@ -75,6 +75,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-2.5">
             <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-8 h-8" />
             <span className="text-base font-bold gradient-text-brand">TradeMinds AI</span>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-sm font-semibold text-text-secondary hover:text-text-primary transition-colors">Giriş Yap</Link>
@@ -89,7 +90,7 @@ export default function LandingPage() {
       <section className="max-w-6xl mx-auto px-6 pt-16 pb-12 text-center">
         <h1 className="text-3xl md:text-5xl font-extrabold text-text-primary leading-tight max-w-3xl mx-auto">
           9 AI motoru kripto ve BIST'i 7/24 tarar,{' '}
-          <span className="gradient-text-brand">kanıtlanmış sinyaller</span> üretir
+          <span className="gradient-text-brand">doğrulanabilir sinyaller</span> üretir
         </h1>
         <p className="text-base md:text-lg text-text-secondary mt-5 max-w-2xl mx-auto">
           Akıllı Para (SMC), otomatik risk skorlaması ve gerçek zamanlı performans takibiyle

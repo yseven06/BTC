@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     url: SITE_URL,
     siteName: "TradeMinds AI",
-    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "TradeMinds AI — Institutional Trading Intelligence Platform" }],
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "TradeMinds AI — Advanced Trading Intelligence Platform" }],
     locale: "tr_TR",
     type: "website",
   },

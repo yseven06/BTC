@@ -82,8 +82,14 @@ export default function RegisterPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 mb-3">
             <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-full h-full object-contain" />
           </div>
-          <div className="text-2xl font-extrabold gradient-text-brand">TradeMinds</div>
+          <div className="flex items-center justify-center gap-2">
+            <div className="text-2xl font-extrabold gradient-text-brand">TradeMinds</div>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
+          </div>
           <p className="text-sm text-text-secondary mt-1">Yeni Hesap Oluştur</p>
+          <p className="text-xs text-text-muted mt-2">
+            Erken erişim beta sürümü — özellikler geliştirilmeye devam ediyor.
+          </p>
         </div>
 
         <form onSubmit={submit} className="glass-panel border border-border-subtle rounded-2xl p-6 space-y-4">

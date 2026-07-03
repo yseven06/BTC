@@ -936,7 +936,7 @@ export default function SignalsPage() {
             <Zap className="w-6 h-6 text-accent-primary" /> Sinyal Merkezi
           </h1>
           <p className="text-sm text-text-secondary mt-1">
-            Canlı setup önceliklendiricisi · kurumsal kalite skoru · fiyatlar anlık
+            Canlı setup önceliklendiricisi · kalite skoru · fiyatlar anlık
           </p>
         </div>
         <div className="flex items-center gap-2">

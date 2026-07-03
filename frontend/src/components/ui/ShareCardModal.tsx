@@ -56,7 +56,7 @@ async function drawCard(canvas: HTMLCanvasElement, data: ShareCardData) {
   ctx.fillText('TRADEMINDS AI', 164, 100);
   ctx.fillStyle = '#94A3B8';
   ctx.font = '400 22px Arial';
-  ctx.fillText('Institutional Trading Intelligence', 164, 130);
+  ctx.fillText('AI Trading Intelligence', 164, 130);
 
   // Status badge (top right)
   const badgeText = data.isClosed ? 'KAPANDI' : 'AÇIK POZİSYON';
