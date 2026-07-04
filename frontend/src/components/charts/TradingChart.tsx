@@ -134,18 +134,18 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
       height,
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor:  '#94a3b8',
+        textColor:  '#5C6980',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: 'rgba(148, 163, 184, 0.06)' },
-        horzLines: { color: 'rgba(148, 163, 184, 0.06)' },
+        vertLines: { color: 'rgba(148, 163, 184, 0.10)' },
+        horzLines: { color: 'rgba(148, 163, 184, 0.10)' },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: '#f97316', width: 1, style: LineStyle.Dashed, labelBackgroundColor: '#f97316' },
-        horzLine: { color: '#f97316', width: 1, style: LineStyle.Dashed, labelBackgroundColor: '#f97316' },
+        vertLine: { color: '#5C6980', width: 1, style: LineStyle.Dashed, labelBackgroundColor: '#5C6980' },
+        horzLine: { color: '#5C6980', width: 1, style: LineStyle.Dashed, labelBackgroundColor: '#5C6980' },
       },
       rightPriceScale: {
         borderColor: 'rgba(148, 163, 184, 0.15)',
@@ -177,11 +177,11 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
 
     const candleSeries = chart.addCandlestickSeries({
       upColor:        '#10B981',
-      downColor:      '#EF4444',
+      downColor:      '#F4556E',
       borderUpColor:  '#10B981',
-      borderDownColor: '#EF4444',
+      borderDownColor: '#F4556E',
       wickUpColor:    '#10B981',
-      wickDownColor:  '#EF4444',
+      wickDownColor:  '#F4556E',
     });
 
     // A thin amber line series used to draw ONLY the signal-price segment
@@ -313,9 +313,9 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
       created.push(line);
     };
 
-    addLine(signal.entryLow,  { color: '#f97316', title: 'Giriş ↓', lineStyle: LineStyle.Dotted });
-    addLine(signal.entryHigh, { color: '#f97316', title: 'Giriş ↑', lineStyle: LineStyle.Dotted });
-    addLine(signal.stopLoss,  { color: '#EF4444', title: 'SL' });
+    addLine(signal.entryLow,  { color: '#3B82F6', title: 'Giriş ↓', lineStyle: LineStyle.Dotted });
+    addLine(signal.entryHigh, { color: '#3B82F6', title: 'Giriş ↑', lineStyle: LineStyle.Dotted });
+    addLine(signal.stopLoss,  { color: '#F4556E', title: 'SL' });
     addLine(signal.tp1,       { color: '#10B981', title: 'TP1' });
     addLine(signal.tp2,       { color: '#10B981', title: 'TP2' });
     addLine(signal.tp3,       { color: '#10B981', title: 'TP3' });

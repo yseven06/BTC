@@ -60,8 +60,8 @@ const config: Config = {
       },
       keyframes: {
         glow: {
-          '0%': { boxShadow: '0 0 5px rgba(99, 102, 241, 0.2)' },
-          '100%': { boxShadow: '0 0 20px rgba(99, 102, 241, 0.4)' },
+          '0%': { boxShadow: '0 0 5px rgba(59, 130, 246, 0.2)' },
+          '100%': { boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)' },
         },
         slideUp: {
           '0%': { transform: 'translateY(10px)', opacity: '0' },
@@ -88,11 +88,11 @@ const config: Config = {
         xs: '2px',
       },
       boxShadow: {
-        'glow-sm': '0 0 10px rgba(99, 102, 241, 0.15)',
-        'glow-md': '0 0 20px rgba(99, 102, 241, 0.2)',
-        'glow-lg': '0 0 30px rgba(99, 102, 241, 0.3)',
-        'glow-bullish': '0 0 15px rgba(0, 230, 118, 0.2)',
-        'glow-bearish': '0 0 15px rgba(255, 82, 82, 0.2)',
+        'glow-sm': '0 0 10px rgba(59, 130, 246, 0.15)',
+        'glow-md': '0 0 20px rgba(59, 130, 246, 0.2)',
+        'glow-lg': '0 0 30px rgba(59, 130, 246, 0.3)',
+        'glow-bullish': '0 0 15px rgba(16, 185, 129, 0.2)',
+        'glow-bearish': '0 0 15px rgba(244, 85, 110, 0.2)',
         'card': '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2)',
         'card-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3)',
       },

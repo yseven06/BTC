@@ -36,7 +36,7 @@ import TradingViewChart from '@/components/charts/TradingViewChart';
 // Helpers
 // ---------------------------------------------------------------------------
 
-const PIE_COLORS = ['#f97316', '#3B82F6', '#06B6D4', '#64748b'];
+const PIE_COLORS = ['#22D3EE', '#3B82F6', '#06B6D4', '#64748b'];
 
 function fngLabel(v: number): string {
   if (v >= 75) return 'AŞIRI AÇGÖZLÜLÜK';
