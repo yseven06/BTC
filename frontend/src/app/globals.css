@@ -5,9 +5,6 @@
    TradeMinds AI - Global Design System
    ============================================ */
 
-/* Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
-
 /* ============================================
    Base Styles
    ============================================ */
@@ -63,7 +60,7 @@
   }
 
   body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
     background-color: var(--bg-primary);
     color: var(--text-primary);
     min-height: 100vh;
@@ -73,7 +70,7 @@
   /* Number / Data font */
   .font-mono,
   [data-mono] {
-    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-family: var(--font-mono), 'JetBrains Mono', 'Fira Code', monospace;
   }
 }
 
