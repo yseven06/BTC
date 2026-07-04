@@ -1,13 +1,13 @@
 import React from "react";
 import clsx from "clsx";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { formatCurrency, formatPercentage } from "@/lib/utils";
 
 interface PriceDisplayProps {
   price?: number;
   change24h?: number;
   changePct24h?: number;
   currency?: "USD" | "TRY";
-  precision?: number;
   className?: string;
   size?: "sm" | "md" | "lg";
 }
@@ -17,29 +17,14 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({
   change24h = 0,
   changePct24h = 0,
   currency = "USD",
-  precision,
   className,
   size = "md",
 }) => {
   const isPositive = changePct24h >= 0;
 
-  // Determine decimal precision based on price value
-  const getPrecision = (val: number) => {
-    if (precision !== undefined) return precision;
-    if (val === 0) return 2;
-    if (val < 0.1) return 6;
-    if (val < 1.0) return 4;
-    return 2;
-  };
-
-  const formattedPrice = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency,
-    minimumFractionDigits: getPrecision(price),
-    maximumFractionDigits: getPrecision(price),
-  }).format(price);
-
-  const formattedPct = `${isPositive ? "+" : ""}${changePct24h.toFixed(2)}%`;
+  // Single-source formatting (Bible §01 H7 · lib/utils).
+  const formattedPrice = formatCurrency(price, currency);
+  const formattedPct = formatPercentage(changePct24h);
 
   return (
     <div className={clsx("flex flex-col", className)}>

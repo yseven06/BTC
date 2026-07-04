@@ -9,7 +9,7 @@ import {
   fetchNotificationSettings, updateNotificationSettings, sendTelegramTest,
   type NotificationSettings,
 } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, formatPercentage } from '@/lib/utils';
 
 function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
@@ -159,7 +159,7 @@ export default function SettingsPage() {
           <div>
             <div className="flex justify-between items-center">
               <label className="text-xs font-semibold text-text-muted uppercase">Minimum Güven</label>
-              <span className="text-sm font-bold font-mono text-accent-primary">%{minConf}</span>
+              <span className="text-sm font-bold font-mono text-accent-primary">{formatPercentage(minConf, 0, false)}</span>
             </div>
             <input
               type="range" min={0} max={100} step={5}

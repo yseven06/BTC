@@ -9,7 +9,7 @@ import { fetchAssets, type ApiAsset } from '@/lib/api';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useBistStatus } from '@/hooks/useBistStatus';
 import { PriceSkeleton } from '@/components/ui/PriceSkeleton';
-import { cn, formatPrice } from '@/lib/utils';
+import { cn, formatPrice, formatPercentage } from '@/lib/utils';
 
 type CategoryFilter = 'all' | 'crypto' | 'stock';
 
@@ -155,7 +155,7 @@ export default function MarketsPage() {
                       ) : (
                         <p className={cn('text-[11px] font-mono font-semibold flex items-center justify-end gap-0.5', up ? 'text-bullish' : 'text-bearish')}>
                           {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                          {up ? '+' : ''}{live.changePct24h?.toFixed(2)}%
+                          {formatPercentage(live.changePct24h ?? 0)}
                         </p>
                       )}
                     </>

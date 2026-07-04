@@ -9,7 +9,7 @@ import {
   LogOut, User, Newspaper, Crown, Microscope, CreditCard,
   Globe, Shield, History,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatDateTR } from '@/lib/utils';
 import { PAYMENTS_ENABLED } from '@/lib/config';
 import {
   fetchMySubscription, fetchActiveSignals,
@@ -85,7 +85,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
                   : tier === 'pro' ? 'text-accent-primary'
                   : 'text-text-muted';
   const expiry = sub?.current_period_end
-    ? new Date(sub.current_period_end).toLocaleDateString('tr-TR')
+    ? formatDateTR(sub.current_period_end)
     : null;
 
   const displayName = effectiveUser?.full_name ?? effectiveUser?.email?.split('@')[0] ?? 'Trader';

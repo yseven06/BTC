@@ -5,6 +5,7 @@ import { User, Mail, Shield, Calendar, Save, Lock, Eye, EyeOff, Check, X } from 
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useAuth } from '@/lib/auth-context';
 import { updateProfile, changePassword, uploadAvatar } from '@/lib/api';
+import { formatDateTR } from '@/lib/utils';
 
 const PRESET_AVATARS = [
   { name: 'Trader 1', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80' },
@@ -157,7 +158,7 @@ export default function ProfilePage() {
                 <Calendar className="w-3 h-3" /> Üyelik Tarihi
               </p>
               <p className="text-sm font-semibold text-text-primary mt-0.5">
-                {new Date(createdAt).toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul', year: 'numeric', month: 'long', day: 'numeric' })}
+                {formatDateTR(createdAt)}
               </p>
             </div>
           )}

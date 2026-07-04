@@ -7,7 +7,7 @@ import { fetchActiveSignals, triggerBatchGeneration, downloadSignalPdf, type Api
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useTierLimits } from '@/hooks/useTierLimits';
 import { SignalType } from '@/types';
-import { cn, formatAbsoluteTimeTR, formatPrice } from '@/lib/utils';
+import { cn, formatAbsoluteTimeTR, formatPrice, formatPercentage } from '@/lib/utils';
 import { PAYMENTS_ENABLED } from '@/lib/config';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
@@ -571,7 +571,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
             </div>
             <div className="text-center">
               <p className="text-[10px] text-text-muted uppercase font-semibold">Olasılık</p>
-              <p className="text-sm font-bold font-mono text-accent-primary">{Number(sig.probability_score ?? 0).toFixed(0)}%</p>
+              <p className="text-sm font-bold font-mono text-accent-primary">{formatPercentage(Number(sig.probability_score ?? 0), 0, false)}</p>
             </div>
             <div className="text-center">
               <p className="text-[10px] text-text-muted uppercase font-semibold">Risk</p>
@@ -672,7 +672,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
                       <div className="bg-bg-tertiary/60 rounded-lg p-2">
                         <p className="text-[10px] text-text-muted">ATH Mesafesi</p>
                         <p className={cn('font-bold font-mono', onchain.athDistance < -30 ? 'text-bullish' : onchain.athDistance > -10 ? 'text-bearish' : 'text-text-primary')}>
-                          {onchain.athDistance.toFixed(1)}%
+                          {formatPercentage(onchain.athDistance, 1, false)}
                         </p>
                       </div>
                     )}
@@ -1219,7 +1219,7 @@ export default function SignalsPage() {
                         {formatPrice(live.price)}
                       </p>
                       <p className={cn('text-[10px] font-mono font-semibold', up ? 'text-bullish' : 'text-bearish')}>
-                        {up ? '+' : ''}{live.changePct24h?.toFixed(2)}%
+                        {formatPercentage(live.changePct24h ?? 0)}
                       </p>
                     </div>
                   ) : (

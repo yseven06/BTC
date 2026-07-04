@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { GlassCard } from './GlassCard';
-import { cn, formatRelativeTime } from '@/lib/utils';
+import { cn, formatRelativeTime, formatPercentage, formatNumber } from '@/lib/utils';
 import { fetchSignalIntelligence, type SignalIntelligence } from '@/lib/api';
 import {
   Brain, Activity, TrendingUp, TrendingDown, AlertTriangle,
@@ -156,7 +156,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
           label="Coin Özel Başarı"
           value={
             coin.has_memory && coin.win_rate != null
-              ? <span className={coin.win_rate >= 55 ? 'text-bullish' : coin.win_rate <= 45 ? 'text-bearish' : 'text-text-primary'}>%{coin.win_rate}</span>
+              ? <span className={coin.win_rate >= 55 ? 'text-bullish' : coin.win_rate <= 45 ? 'text-bearish' : 'text-text-primary'}>{formatPercentage(coin.win_rate, 0, false)}</span>
               : <span className="text-text-muted">Henüz veri yok</span>
           }
           sub={coin.has_memory ? `${coin.total_signals} sinyal · ${coin.wins ?? 0}G/${coin.losses ?? 0}K` : 'Öğreniyor'}
@@ -173,8 +173,8 @@ export function IntelligencePanel({ signalId, compact }: Props) {
         {data.atr_pct != null && (
           <Stat
             label="Volatilite (ATR)"
-            value={`%${data.atr_pct.toFixed(2)}`}
-            sub={data.volatility_ratio != null ? `Tabanın ${data.volatility_ratio.toFixed(2)}×'i` : undefined}
+            value={formatPercentage(data.atr_pct, 2, false)}
+            sub={data.volatility_ratio != null ? `Tabanın ${formatNumber(data.volatility_ratio)}×'i` : undefined}
           />
         )}
 
@@ -182,8 +182,8 @@ export function IntelligencePanel({ signalId, compact }: Props) {
         {data.mfe_pct != null && (
           <Stat
             label="Lehte Hareket"
-            value={<span className="text-bullish">+%{data.mfe_pct.toFixed(2)}</span>}
-            sub={data.max_drawdown != null ? `Aleyhte: -%${data.max_drawdown.toFixed(2)}` : undefined}
+            value={<span className="text-bullish">{formatPercentage(data.mfe_pct)}</span>}
+            sub={data.max_drawdown != null ? `Aleyhte: -${formatPercentage(data.max_drawdown, 2, false)}` : undefined}
           />
         )}
 
@@ -206,7 +206,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
               Benzer <b className="text-text-primary">{data.similar_setups.match_count}</b> geçmiş setup'ta
               {' '}
               <b className={data.similar_setups.win_rate >= 55 ? 'text-bullish' : data.similar_setups.win_rate <= 45 ? 'text-bearish' : 'text-text-primary'}>
-                %{data.similar_setups.win_rate}
+                {formatPercentage(data.similar_setups.win_rate, 0, false)}
               </b>{' '}başarı
               {data.similar_setups.wins != null && (
                 <span className="text-text-muted"> ({data.similar_setups.wins}G/{data.similar_setups.losses}K)</span>

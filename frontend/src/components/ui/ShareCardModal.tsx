@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Download, Share2 } from 'lucide-react';
+import { formatUsd, formatQuantity, formatPrice, formatPercentage, formatDateTR } from '@/lib/utils';
 
 export interface ShareCardData {
   symbol: string;
@@ -92,13 +93,13 @@ async function drawCard(canvas: HTMLCanvasElement, data: ShareCardData) {
   ctx.fillText('LONG', 96, 352);
 
   // Big PnL %
-  const pnlText = `${win ? '+' : ''}${data.pnlPct.toFixed(2)}%`;
+  const pnlText = formatPercentage(data.pnlPct);
   ctx.font = '800 190px Arial';
   ctx.fillStyle = accent;
   ctx.fillText(pnlText, 64, 620);
 
   // PnL amount
-  const amountText = `${win ? '+' : ''}$${Math.abs(data.pnlAmount).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  const amountText = `${win ? '+' : ''}${formatUsd(Math.abs(data.pnlAmount))}`;
   ctx.font = '600 44px Arial';
   ctx.fillStyle = '#E8EDF5';
   ctx.fillText(amountText, 68, 680);
@@ -114,9 +115,9 @@ async function drawCard(canvas: HTMLCanvasElement, data: ShareCardData) {
   // Stats row: Entry / Exit-or-Current / Quantity
   const statY = 800;
   const cols = [
-    { label: 'GİRİŞ FİYATI', value: fmt(data.entryPrice) },
-    { label: data.isClosed ? 'ÇIKIŞ FİYATI' : 'ANLIK FİYAT', value: fmt(data.refPrice) },
-    { label: 'MİKTAR', value: data.quantity.toLocaleString('en-US', { maximumFractionDigits: 6 }) },
+    { label: 'GİRİŞ FİYATI', value: formatPrice(data.entryPrice) },
+    { label: data.isClosed ? 'ÇIKIŞ FİYATI' : 'ANLIK FİYAT', value: formatPrice(data.refPrice) },
+    { label: 'MİKTAR', value: formatQuantity(data.quantity) },
   ];
   const colWidth = (CARD_SIZE - 128) / 3;
   cols.forEach((c, i) => {
@@ -133,13 +134,9 @@ async function drawCard(canvas: HTMLCanvasElement, data: ShareCardData) {
   ctx.font = '500 22px Arial';
   ctx.fillStyle = '#5C6980';
   const footerText = data.isClosed && data.closedAt
-    ? `Kapanış: ${new Date(data.closedAt).toLocaleDateString('tr-TR')}`
+    ? `Kapanış: ${formatDateTR(data.closedAt)}`
     : 'TradeMinds AI ile kendi pozisyonunu takip et';
   ctx.fillText(footerText, 64, CARD_SIZE - 64);
-}
-
-function fmt(n: number): string {
-  return n.toLocaleString('en-US', { maximumFractionDigits: n < 1 ? 6 : 2 });
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCardModal';
-import { cn, formatPrice } from '@/lib/utils';
+import { cn, formatPrice, formatUsd, formatPercentage } from '@/lib/utils';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import {
   fetchPortfolios, fetchPortfolio, createPortfolio, deletePortfolio,
@@ -236,22 +236,22 @@ export default function PortfolioPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <GlassCard className="p-4">
                   <span className="text-[10px] font-bold text-text-muted uppercase">Toplam Maliyet</span>
-                  <div className="text-xl font-extrabold font-mono mt-1 text-text-primary">${totals.cost.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
+                  <div className="text-xl font-extrabold font-mono mt-1 text-text-primary">{formatUsd(totals.cost)}</div>
                 </GlassCard>
                 <GlassCard className="p-4">
                   <span className="text-[10px] font-bold text-text-muted uppercase">Anlık Değer</span>
-                  <div className="text-xl font-extrabold font-mono mt-1 text-text-primary">${totals.value.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
+                  <div className="text-xl font-extrabold font-mono mt-1 text-text-primary">{formatUsd(totals.value)}</div>
                 </GlassCard>
                 <GlassCard className="p-4">
                   <span className="text-[10px] font-bold text-text-muted uppercase">Kâr / Zarar</span>
                   <div className={cn('text-xl font-extrabold font-mono mt-1', totals.pnl >= 0 ? 'text-bullish' : 'text-bearish')}>
-                    {totals.pnl >= 0 ? '+' : ''}${totals.pnl.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                    {totals.pnl >= 0 ? '+' : ''}{formatUsd(totals.pnl)}
                   </div>
                 </GlassCard>
                 <GlassCard className="p-4">
                   <span className="text-[10px] font-bold text-text-muted uppercase">Getiri %</span>
                   <div className={cn('text-xl font-extrabold font-mono mt-1', totals.pnlPct >= 0 ? 'text-bullish' : 'text-bearish')}>
-                    {totals.pnlPct >= 0 ? '+' : ''}{totals.pnlPct.toFixed(2)}%
+                    {formatPercentage(totals.pnlPct)}
                   </div>
                 </GlassCard>
               </div>
@@ -335,12 +335,12 @@ export default function PortfolioPage() {
                         <div key={h.id} className="grid grid-cols-[1.2fr_0.9fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center px-5 py-3 text-xs hover:bg-white/[0.02]">
                           <span className="font-bold text-text-primary">{asset?.symbol ?? '—'}</span>
                           <span className="font-mono text-text-secondary">{h.quantity}</span>
-                          <span className="font-mono text-text-secondary">${formatPrice(h.average_entry_price, 'en-US')}</span>
-                          <span className="font-mono text-text-primary">${formatPrice(currentPrice, 'en-US')}</span>
-                          <span className="font-mono text-text-primary">${value.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                          <span className="font-mono text-text-secondary">${formatPrice(h.average_entry_price)}</span>
+                          <span className="font-mono text-text-primary">${formatPrice(currentPrice)}</span>
+                          <span className="font-mono text-text-primary">{formatUsd(value)}</span>
                           <span className={cn('flex items-center gap-1 font-bold font-mono', pnlPct >= 0 ? 'text-bullish' : 'text-bearish')}>
                             {pnlPct >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                            {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}%
+                            {formatPercentage(pnlPct)}
                           </span>
                           <div className="flex items-center gap-1">
                             <button onClick={() => openShareCard(h, currentPrice, pnlPct, pnlAmount)} title="Paylaş"
@@ -369,7 +369,7 @@ export default function PortfolioPage() {
                   <div className="flex items-center justify-between pt-2">
                     <h2 className="text-base font-bold text-text-primary">Kapanan Pozisyonlar</h2>
                     <span className={cn('text-sm font-bold font-mono', realizedTotal >= 0 ? 'text-bullish' : 'text-bearish')}>
-                      Gerçekleşen K/Z: {realizedTotal >= 0 ? '+' : ''}${realizedTotal.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                      Gerçekleşen K/Z: {realizedTotal >= 0 ? '+' : ''}{formatUsd(realizedTotal)}
                     </span>
                   </div>
                   <div className="glass-panel border border-border-subtle rounded-2xl overflow-hidden">
@@ -386,14 +386,14 @@ export default function PortfolioPage() {
                           <div key={h.id} className="grid grid-cols-[1.2fr_0.9fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center px-5 py-3 text-xs hover:bg-white/[0.02] opacity-90">
                             <span className="font-bold text-text-primary">{asset?.symbol ?? '—'}</span>
                             <span className="font-mono text-text-secondary">{h.quantity}</span>
-                            <span className="font-mono text-text-secondary">${formatPrice(h.average_entry_price, 'en-US')}</span>
-                            <span className="font-mono text-text-secondary">${formatPrice(h.exit_price ?? 0, 'en-US')}</span>
+                            <span className="font-mono text-text-secondary">${formatPrice(h.average_entry_price)}</span>
+                            <span className="font-mono text-text-secondary">${formatPrice(h.exit_price ?? 0)}</span>
                             <span className={cn('font-mono font-bold', (h.realized_pnl ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
-                              {(h.realized_pnl ?? 0) >= 0 ? '+' : ''}${(h.realized_pnl ?? 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                              {(h.realized_pnl ?? 0) >= 0 ? '+' : ''}{formatUsd(h.realized_pnl ?? 0)}
                             </span>
                             <span className={cn('flex items-center gap-1 font-bold font-mono', pnlPct >= 0 ? 'text-bullish' : 'text-bearish')}>
                               {pnlPct >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                              {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}%
+                              {formatPercentage(pnlPct)}
                             </span>
                             <div className="flex items-center gap-1">
                               <button onClick={() => openShareCard(h, h.exit_price ?? 0, pnlPct, h.realized_pnl ?? 0)} title="Paylaş"

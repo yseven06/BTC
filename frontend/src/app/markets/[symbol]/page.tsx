@@ -12,7 +12,7 @@ import { TradingChart, type ChartCandle } from '@/components/charts/TradingChart
 import { fetchActiveSignals, fetchOhlcv, fetchSignalHistory, type ApiSignal } from '@/lib/api';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { SignalType } from '@/types';
-import { cn, formatRelativeTime, formatAbsoluteTimeTR, formatPrice } from '@/lib/utils';
+import { cn, formatRelativeTime, formatAbsoluteTimeTR, formatPrice, formatPercentage } from '@/lib/utils';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 
@@ -354,7 +354,7 @@ export default function AssetDetailPage() {
             </p>
             <p className={cn('text-sm font-mono font-semibold flex items-center gap-1', up ? 'text-bullish' : 'text-bearish')}>
               {up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-              {up ? '+' : ''}{live.changePct24h?.toFixed(2)}% (24s)
+              {formatPercentage(live.changePct24h ?? 0)} (24s)
             </p>
           </div>
         )}
@@ -574,7 +574,7 @@ export default function AssetDetailPage() {
                       <div className="text-right flex-shrink-0">
                         {s.actual_return != null && (
                           <span className={cn('font-mono font-bold mr-2', s.actual_return > 0 ? 'text-bullish' : s.actual_return < 0 ? 'text-bearish' : 'text-text-muted')}>
-                            {s.actual_return > 0 ? '+' : ''}{s.actual_return.toFixed(2)}%
+                            {formatPercentage(s.actual_return)}
                           </span>
                         )}
                         <span className="text-text-muted">{s.closed_at ? formatAbsoluteTimeTR(s.closed_at) : ''}</span>

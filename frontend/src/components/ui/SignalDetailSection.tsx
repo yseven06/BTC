@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ScoreRing } from './ScoreRing';
 import { GlassCard } from './GlassCard';
-import { cn, formatRelativeTime, formatAbsoluteTimeTR, formatPrice } from '@/lib/utils';
+import { cn, formatRelativeTime, formatAbsoluteTimeTR, formatPrice, formatNumber } from '@/lib/utils';
 import { ApiSignal } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { AnalyticsEvent } from '@/lib/analytics-events';
@@ -123,11 +123,11 @@ function calculateRR(signal: ApiSignal): string {
     if (isLong) {
       const risk = entryAvg - sl, reward = tp - entryAvg;
       if (risk <= 0 || reward <= 0) return '—';
-      return (reward / risk).toFixed(2);
+      return formatNumber(reward / risk);
     } else {
       const risk = sl - entryAvg, reward = entryAvg - tp;
       if (risk <= 0 || reward <= 0) return '—';
-      return (reward / risk).toFixed(2);
+      return formatNumber(reward / risk);
     }
   } catch { return '—'; }
 }
@@ -259,7 +259,7 @@ function EngineDetailModal({ engine, symbol, timeframe, onClose }: {
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-bg-secondary/60 rounded-xl p-3 border border-border-subtle text-center">
             <p className="text-[10px] text-text-muted uppercase font-bold mb-1">Skor</p>
-            <p className="text-2xl font-extrabold font-mono text-text-primary">{engine.score.toFixed(1)}<span className="text-sm text-text-muted">/100</span></p>
+            <p className="text-2xl font-extrabold font-mono text-text-primary">{formatNumber(engine.score, 1)}<span className="text-sm text-text-muted">/100</span></p>
           </div>
           <div className="bg-bg-secondary/60 rounded-xl p-3 border border-border-subtle text-center">
             <p className="text-[10px] text-text-muted uppercase font-bold mb-1">
@@ -404,7 +404,7 @@ function PriceLadder({ signal }: { signal: ApiSignal }) {
                           : 'text-text-muted bg-bg-tertiary/60 border-border-subtle'
                       )}
                     >
-                      {item.key === 'sl' ? '1R risk' : `${rMult.toFixed(1)}R`}
+                      {item.key === 'sl' ? '1R risk' : `${formatNumber(rMult, 1)}R`}
                     </span>
                   )}
                   <span className={cn(

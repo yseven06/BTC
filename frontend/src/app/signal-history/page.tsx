@@ -12,7 +12,7 @@ import {
 import { GlassCard } from '@/components/ui/GlassCard';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import { ClosedSignalChartModal } from '@/components/ui/ClosedSignalChartModal';
-import { cn, formatAbsoluteTimeTR } from '@/lib/utils';
+import { cn, formatAbsoluteTimeTR, formatPercentage, formatNumber } from '@/lib/utils';
 import {
   fetchSignalHistory, fetchSignalHistoryStats,
   type ApiSignal, type SignalHistoryStats, type SignalHistoryFilters,
@@ -70,8 +70,8 @@ function formatDuration(ms: number): string {
   const minutes = ms / 60000;
   if (minutes < 60) return `${Math.round(minutes)} dk`;
   const hours = ms / 3600000;
-  if (hours < 24) return `${hours.toFixed(1)} saat`;
-  return `${(hours / 24).toFixed(1)} gün`;
+  if (hours < 24) return `${formatNumber(hours, 1)} saat`;
+  return `${formatNumber(hours / 24, 1)} gün`;
 }
 
 function timeToOutcome(s: ApiSignal): string {
@@ -268,34 +268,34 @@ export default function SignalHistoryPage() {
             </GlassCard>
             <GlassCard className="p-4">
               <span className="text-[10px] font-bold text-text-muted uppercase">Başarı Oranı</span>
-              <div className="text-2xl font-extrabold font-mono mt-1 text-bullish">{stats?.win_rate ?? 0}%</div>
+              <div className="text-2xl font-extrabold font-mono mt-1 text-bullish">{formatPercentage(stats?.win_rate ?? 0, 0, false)}</div>
             </GlassCard>
             <GlassCard className="p-4">
               <span className="text-[10px] font-bold text-text-muted uppercase">TP Vuruş Oranı</span>
-              <div className="text-2xl font-extrabold font-mono mt-1 text-bullish">{stats?.tp_hit_rate ?? 0}%</div>
+              <div className="text-2xl font-extrabold font-mono mt-1 text-bullish">{formatPercentage(stats?.tp_hit_rate ?? 0, 0, false)}</div>
             </GlassCard>
             <GlassCard className="p-4">
               <span className="text-[10px] font-bold text-text-muted uppercase">Stop Oranı</span>
-              <div className="text-2xl font-extrabold font-mono mt-1 text-bearish">{stats?.sl_rate ?? 0}%</div>
+              <div className="text-2xl font-extrabold font-mono mt-1 text-bearish">{formatPercentage(stats?.sl_rate ?? 0, 0, false)}</div>
             </GlassCard>
             <GlassCard className="p-4">
               <span className="text-[10px] font-bold text-text-muted uppercase">Ort. Getiri</span>
               <div className={cn('text-2xl font-extrabold font-mono mt-1', (stats?.average_return ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
-                {stats?.average_return != null ? `${stats.average_return > 0 ? '+' : ''}${stats.average_return}%` : '-'}
+                {stats?.average_return != null ? formatPercentage(stats.average_return) : '-'}
               </div>
             </GlassCard>
             <GlassCard className="p-4">
               <span className="text-[10px] font-bold text-text-muted uppercase">Kâr Faktörü</span>
-              <div className="text-2xl font-extrabold font-mono mt-1 text-accent-primary">{stats?.profit_factor ?? '-'}</div>
+              <div className="text-2xl font-extrabold font-mono mt-1 text-accent-primary">{stats?.profit_factor != null ? formatNumber(stats.profit_factor) : '-'}</div>
             </GlassCard>
             <GlassCard className="p-4">
               <span className="text-[10px] font-bold text-text-muted uppercase">En İyi / En Kötü</span>
               <div className="mt-1 space-y-0.5">
                 <div className="text-xs font-bold text-bullish font-mono">
-                  {stats?.best_signal ? `${stats.best_signal.symbol} +${stats.best_signal.return}%` : '-'}
+                  {stats?.best_signal ? `${stats.best_signal.symbol} ${formatPercentage(stats.best_signal.return)}` : '-'}
                 </div>
                 <div className="text-xs font-bold text-bearish font-mono">
-                  {stats?.worst_signal ? `${stats.worst_signal.symbol} ${stats.worst_signal.return}%` : '-'}
+                  {stats?.worst_signal ? `${stats.worst_signal.symbol} ${formatPercentage(stats.worst_signal.return)}` : '-'}
                 </div>
               </div>
             </GlassCard>
@@ -464,7 +464,7 @@ export default function SignalHistoryPage() {
                       </td>
                       <td className={cn('py-2.5 px-3 text-right font-bold font-mono',
                         (s.actual_return ?? 0) > 0 ? 'text-bullish' : (s.actual_return ?? 0) < 0 ? 'text-bearish' : 'text-text-muted')}>
-                        {s.actual_return != null ? `${s.actual_return > 0 ? '+' : ''}${s.actual_return.toFixed(2)}%` : '-'}
+                        {s.actual_return != null ? formatPercentage(s.actual_return) : '-'}
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono text-text-primary">{qualityScore(s.confidence_score)}/10</td>
                       <td className="py-2.5 px-3 text-right uppercase text-text-muted">{s.risk_level}</td>

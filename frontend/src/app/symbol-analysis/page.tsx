@@ -8,7 +8,7 @@ import { CoinIcon } from '@/components/ui/CoinIcon';
 import { LockedOverlay } from '@/components/ui/LockedOverlay';
 import { useTierLimits } from '@/hooks/useTierLimits';
 import { fetchSymbolAnalysis } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, formatPercentage, formatNumber } from '@/lib/utils';
 
 interface SymbolData {
   symbol: string; name: string; asset_type: string;
@@ -28,7 +28,7 @@ function QualityBar({ score }: { score: number }) {
       <div className="w-16 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
         <div className={cn('h-full rounded-full', color)} style={{ width: `${safeScore * 10}%` }} />
       </div>
-      <span className={cn('text-xs font-bold font-mono', text)}>{safeScore.toFixed(1)}/10</span>
+      <span className={cn('text-xs font-bold font-mono', text)}>{formatNumber(safeScore, 1)}/10</span>
     </div>
   );
 }
@@ -102,7 +102,7 @@ export default function SymbolAnalysisPage() {
   // definition used on the dashboard and Sinyal Geçmişi. Excluding breakeven
   // here previously read ~53% while everywhere else showed ~38%.
   const resolvedTot = totalWins + totalLoss + totalBE;
-  const globalWR   = resolvedTot > 0 ? ((totalWins / resolvedTot) * 100).toFixed(1) : '—';
+  const globalWR   = resolvedTot > 0 ? formatPercentage((totalWins / resolvedTot) * 100, 1, false) : '—';
 
   return (
     <div className="space-y-6">
@@ -137,7 +137,7 @@ export default function SymbolAnalysisPage() {
           <p className="text-xs text-text-muted mt-1">Toplam Sinyal</p>
         </GlassCard>
         <GlassCard className="text-center py-4">
-          <p className="text-3xl font-extrabold font-mono text-bullish">{globalWR}%</p>
+          <p className="text-3xl font-extrabold font-mono text-bullish">{globalWR}</p>
           <p className="text-xs text-text-muted mt-1">Genel Kazanma Oranı</p>
         </GlassCard>
       </div>
@@ -226,7 +226,7 @@ export default function SymbolAnalysisPage() {
                 {/* Win Rate */}
                 <div>
                   <p className={cn('text-sm font-bold font-mono', wrColor)}>
-                    {resolved > 0 ? `${sym.win_rate}%` : '—'}
+                    {resolved > 0 ? formatPercentage(sym.win_rate, 0, false) : '—'}
                   </p>
                   {resolved > 0 && (
                     <p className="text-[10px] text-text-muted">

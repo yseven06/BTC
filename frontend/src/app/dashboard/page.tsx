@@ -206,10 +206,10 @@ export default function DashboardPage() {
     : 0;
 
   const perfCards = [
-    { label: 'Toplam Getiri', value: `${totalReturnPct >= 0 ? '+' : ''}${totalReturnPct.toFixed(2)}%`, color: totalReturnPct >= 0 ? 'text-bullish' : 'text-bearish' },
-    { label: 'Kazanılan İşlemler', value: `${winCount}`, sub: `↗ ${winRate.toFixed(0)}%`, color: 'text-bullish' },
-    { label: 'Kaybedilen İşlemler', value: `${lossCount}`, sub: `↘ ${lossShare}%`, color: 'text-bearish' },
-    { label: 'Ortalama Getiri', value: `${avgReturn >= 0 ? '+' : ''}${avgReturn.toFixed(2)}%`, color: 'text-accent-secondary' },
+    { label: 'Toplam Getiri', value: formatPercentage(totalReturnPct), color: totalReturnPct >= 0 ? 'text-bullish' : 'text-bearish' },
+    { label: 'Kazanılan İşlemler', value: `${winCount}`, sub: `↗ ${formatPercentage(winRate, 0, false)}`, color: 'text-bullish' },
+    { label: 'Kaybedilen İşlemler', value: `${lossCount}`, sub: `↘ ${formatPercentage(lossShare, 0, false)}`, color: 'text-bearish' },
+    { label: 'Ortalama Getiri', value: formatPercentage(avgReturn), color: 'text-accent-secondary' },
   ];
 
   return (
@@ -340,7 +340,7 @@ export default function DashboardPage() {
         <GlassCard className="flex items-center justify-between p-4 group" glowEffect glowColor="bullish">
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Başarı Oranı</span>
-            <h3 className="text-3xl font-bold font-mono mt-1 text-bullish">{winRate.toFixed(0)}%</h3>
+            <h3 className="text-3xl font-bold font-mono mt-1 text-bullish">{formatPercentage(winRate, 0, false)}</h3>
             <span className="text-[10px] text-text-muted font-semibold mt-1 block">
               {/* Win rate = win / (win + loss + breakeven) — the canonical
                   platform definition (breakeven dilutes it, which is why this
@@ -358,7 +358,7 @@ export default function DashboardPage() {
         <GlassCard className="flex items-center justify-between p-4 group" glowEffect glowColor={avgReturn >= 0 ? 'bullish' : 'bearish'}>
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Ortalama Getiri</span>
-            <h3 className="text-3xl font-bold font-mono mt-1 text-accent-secondary">{avgReturn >= 0 ? '+' : ''}{avgReturn.toFixed(2)}%</h3>
+            <h3 className="text-3xl font-bold font-mono mt-1 text-accent-secondary">{formatPercentage(avgReturn)}</h3>
             <span className="text-[10px] text-text-muted font-semibold mt-1 block">
               tüm zamanlar · işlem başına
             </span>
@@ -439,13 +439,13 @@ export default function DashboardPage() {
               <div>
                 <p className="text-[10px] text-text-muted uppercase font-semibold">BTC Dominance</p>
                 <p className="text-base font-bold font-mono text-text-primary mt-0.5">
-                  {global ? `${global.btc_dominance.toFixed(2)}%` : '—'}
+                  {global ? formatPercentage(global.btc_dominance, 2, false) : '—'}
                 </p>
               </div>
               <div>
                 <p className="text-[10px] text-text-muted uppercase font-semibold">ETH Dominance</p>
                 <p className="text-base font-bold font-mono text-text-primary mt-0.5">
-                  {global ? `${global.eth_dominance.toFixed(2)}%` : '—'}
+                  {global ? formatPercentage(global.eth_dominance, 2, false) : '—'}
                 </p>
               </div>
             </div>
@@ -560,17 +560,16 @@ export default function DashboardPage() {
                             </span>
                             <span className={cn('text-[10px] font-mono font-semibold',
                               (livePrices[sig.asset?.symbol ?? ''].changePct24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
-                              {(livePrices[sig.asset?.symbol ?? ''].changePct24h ?? 0) >= 0 ? '+' : ''}
-                              {livePrices[sig.asset?.symbol ?? ''].changePct24h?.toFixed(2)}%
+                              {formatPercentage(livePrices[sig.asset?.symbol ?? ''].changePct24h ?? 0)}
                             </span>
                           </>
                         ) : (
                           <>
                             <span className="text-[10px] text-text-muted">
-                              TP: <span className="text-bullish font-mono">{sig.tp1 ? formatPrice(sig.tp1, 'en-US') : '—'}</span>
+                              TP: <span className="text-bullish font-mono">{sig.tp1 ? formatPrice(sig.tp1) : '—'}</span>
                             </span>
                             <span className="text-[10px] text-text-muted">
-                              SL: <span className="text-bearish font-mono">{sig.stop_loss ? formatPrice(sig.stop_loss, 'en-US') : '—'}</span>
+                              SL: <span className="text-bearish font-mono">{sig.stop_loss ? formatPrice(sig.stop_loss) : '—'}</span>
                             </span>
                           </>
                         )}
@@ -612,7 +611,7 @@ export default function DashboardPage() {
                       <span className="text-xs text-text-secondary">{entry.name}</span>
                     </div>
                     <span className="text-xs font-semibold text-text-primary">
-                      {((entry.value / pieData.reduce((a, b) => a + b.value, 0)) * 100).toFixed(0)}%
+                      {formatPercentage((entry.value / pieData.reduce((a, b) => a + b.value, 0)) * 100, 0, false)}
                     </span>
                   </div>
                 ))}
@@ -647,7 +646,7 @@ export default function DashboardPage() {
                       <span className="text-xs font-bold text-text-primary uppercase">{coin.symbol}/USDT</span>
                     </div>
                     <span className={`text-xs font-bold font-mono ${(coin.price_change_percentage_24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish'}`}>
-                      {(coin.price_change_percentage_24h ?? 0) >= 0 ? '+' : ''}{(coin.price_change_percentage_24h ?? 0).toFixed(2)}%
+                      {formatPercentage(coin.price_change_percentage_24h ?? 0)}
                     </span>
                   </div>
                 ))}

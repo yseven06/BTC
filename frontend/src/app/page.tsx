@@ -14,7 +14,7 @@ import {
   fetchPerformanceSummary, fetchSignalHistory, fetchPlans,
   type PerformanceSummary, type ApiSignal, type Plan,
 } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, formatPercentage, formatPrice } from '@/lib/utils';
 
 const ENGINES = [
   { icon: Microscope, title: 'Teknik Analiz', desc: 'Klasik indikatörler + trend/momentum birleşimiyle çok katmanlı teknik puanlama.' },
@@ -102,7 +102,7 @@ export default function LandingPage() {
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-6 text-sm">
             <span className="inline-flex items-center gap-1.5 font-semibold text-text-secondary">
               <CheckCircle className="w-4 h-4 text-bullish" />
-              <span className="font-mono font-bold text-bullish">%{stats.win_rate}</span> başarı oranı
+              <span className="font-mono font-bold text-bullish">{formatPercentage(stats.win_rate, 0, false)}</span> başarı oranı
             </span>
             <span className="inline-flex items-center gap-1.5 font-semibold text-text-secondary">
               <Activity className="w-4 h-4 text-accent-primary" />
@@ -112,7 +112,7 @@ export default function LandingPage() {
               <span className="inline-flex items-center gap-1.5 font-semibold text-text-secondary">
                 <TrendingUp className={cn('w-4 h-4', stats.average_return >= 0 ? 'text-bullish' : 'text-bearish')} />
                 <span className={cn('font-mono font-bold', stats.average_return >= 0 ? 'text-bullish' : 'text-bearish')}>
-                  {stats.average_return >= 0 ? '+' : ''}{stats.average_return.toFixed(2)}%
+                  {formatPercentage(stats.average_return)}
                 </span> ort. getiri
               </span>
             )}
@@ -138,10 +138,10 @@ export default function LandingPage() {
         {stats && resolved > 0 && (
           <div className="max-w-3xl mx-auto mt-14">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-6 glass-panel border border-border-subtle rounded-2xl">
-              <StatBlock label="Başarı Oranı" value={`${stats.win_rate}%`} accent />
+              <StatBlock label="Başarı Oranı" value={formatPercentage(stats.win_rate, 0, false)} accent />
               <StatBlock label="Kapanan Sinyal" value={resolved.toLocaleString('tr-TR')} />
-              <StatBlock label="Ort. Getiri" value={`${(stats.average_return ?? 0) >= 0 ? '+' : ''}${(stats.average_return ?? 0).toFixed(2)}%`} accent={(stats.average_return ?? 0) >= 0} />
-              <StatBlock label="TP1 Vuruş" value={`${stats.tp1_hit_rate}%`} />
+              <StatBlock label="Ort. Getiri" value={formatPercentage(stats.average_return ?? 0)} accent={(stats.average_return ?? 0) >= 0} />
+              <StatBlock label="TP1 Vuruş" value={formatPercentage(stats.tp1_hit_rate, 0, false)} />
             </div>
             <p className="text-[11px] text-text-muted text-center mt-3">
               Tüm zamanlar · yalnızca gerçek, kapanmış sinyallerden hesaplanır
@@ -167,10 +167,10 @@ export default function LandingPage() {
                   </span>
                 </div>
                 <div className="text-2xl font-extrabold font-mono text-bullish">
-                  +{(s.actual_return ?? 0).toFixed(2)}%
+                  {formatPercentage(s.actual_return ?? 0)}
                 </div>
                 <div className="text-[11px] text-text-muted mt-1.5 font-mono">
-                  Giriş: {s.entry_zone_low?.toFixed(4)} → TP: {s.tp1?.toFixed(4)}
+                  Giriş: {formatPrice(s.entry_zone_low)} → TP: {formatPrice(s.tp1)}
                 </div>
                 <div className="text-[10px] text-text-muted uppercase mt-1">{s.timeframe} · {s.signal_type.replace('_', ' ')}</div>
               </div>

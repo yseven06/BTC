@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import clsx from "clsx";
+import { formatPercentage } from '@/lib/utils';
 
 interface ScoreRingProps {
   score: number;
@@ -69,7 +70,7 @@ export const ScoreRing: React.FC<ScoreRingProps> = ({
             className="font-bold text-text-primary font-mono leading-none"
             style={{ fontSize: Math.max(8, size * 0.21) }}
           >
-            {score}%
+            {formatPercentage(score, 0, false)}
           </span>
         </div>
       </div>

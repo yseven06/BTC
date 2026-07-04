@@ -7,7 +7,7 @@ import {
   fetchMacroSnapshot, fetchKapDisclosures, fetchBybitFunding,
   type MacroSnapshot, type KapDisclosure,
 } from '@/lib/api';
-import { formatRelativeTime } from '@/lib/utils';
+import { formatRelativeTime, formatPercentage, formatNumber } from '@/lib/utils';
 
 const FUNDING_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'] as const;
 
@@ -23,7 +23,8 @@ function MetricCard({
   );
 }
 
-const num = (v: number | null, dec = 2) => (v == null ? '—' : v.toFixed(dec));
+// Tek kaynak: lib/utils formatNumber (tr-TR). Yerel toFixed formatter'ı kaldırıldı.
+const num = formatNumber;
 
 export default function MacroPage() {
   const [snap, setSnap]   = useState<MacroSnapshot | null>(null);
@@ -112,7 +113,7 @@ export default function MacroPage() {
               <MetricCard
                 key={s}
                 label={s.replace('USDT', ' / USDT')}
-                value={pct == null ? '—' : `${pct > 0 ? '+' : ''}${pct.toFixed(4)}%`}
+                value={pct == null ? '—' : formatPercentage(pct, 4)}
                 accent={accent}
               />
             );

@@ -9,7 +9,7 @@ import {
   type Plan, type BillingCycle, type PlanPricing, type SubscriptionTier,
   type SubscriptionResponse,
 } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, formatDateTR, formatUsd, formatPercentage } from '@/lib/utils';
 import { PAYMENTS_ENABLED } from '@/lib/config';
 import { track } from '@/lib/analytics';
 import { AnalyticsEvent } from '@/lib/analytics-events';
@@ -162,9 +162,9 @@ export default function PricingPage() {
             {sub.current_period_end && (
               <p className="text-xs text-text-secondary mt-0.5">
                 {sub.cancel_at_period_end ? (
-                  <>Aboneliğin <span className="text-bearish font-semibold">{new Date(sub.current_period_end).toLocaleDateString('tr-TR')}</span> tarihinde sona erecek.</>
+                  <>Aboneliğin <span className="text-bearish font-semibold">{formatDateTR(sub.current_period_end)}</span> tarihinde sona erecek.</>
                 ) : (
-                  <>Sonraki yenileme: {new Date(sub.current_period_end).toLocaleDateString('tr-TR')}</>
+                  <>Sonraki yenileme: {formatDateTR(sub.current_period_end)}</>
                 )}
               </p>
             )}
@@ -277,11 +277,11 @@ export default function PricingPage() {
                       </p>
                       {pricing.months > 1 && (
                         <p className="text-[11px] text-text-muted mt-0.5">
-                          (~${monthlyEffective.toFixed(2)}/ay)
+                          (~{formatUsd(monthlyEffective)}/ay)
                         </p>
                       )}
                       {pricing.savings_pct > 0 && (
-                        <p className="text-[11px] text-bullish font-bold mt-0.5">%{pricing.savings_pct} tasarruf</p>
+                        <p className="text-[11px] text-bullish font-bold mt-0.5">{formatPercentage(pricing.savings_pct, 0, false)} tasarruf</p>
                       )}
                     </>
                   )}
@@ -348,7 +348,7 @@ export default function PricingPage() {
             cycleLabel={CYCLE_LABEL[pending.cycle]}
             months={months}
             amountUsd={pricing?.amount_usd ?? 0}
-            nextRenewalStr={next.toLocaleDateString('tr-TR')}
+            nextRenewalStr={formatDateTR(next)}
             processing={processing === pending.tier}
             onConfirm={confirmCheckout}
             onClose={() => setPending(null)}

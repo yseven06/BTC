@@ -6,7 +6,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { LockedOverlay } from '@/components/ui/LockedOverlay';
 import { useTierLimits } from '@/hooks/useTierLimits';
 import { fetchStrategyLab } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, formatPercentage } from '@/lib/utils';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 
 interface HourData {
@@ -63,7 +63,7 @@ function HourHeatmap({ data }: { data: HourData[] }) {
             <span className="text-[9px] font-bold text-text-muted">{h.hour.toString().padStart(2, '0')}</span>
             {h.total > 0 && (
               <span className={cn('text-[8px] font-mono font-bold', heatText(h.win_rate, h.total))}>
-                {h.win_rate > 0 ? `${h.win_rate.toFixed(0)}%` : '—'}
+                {h.win_rate > 0 ? formatPercentage(h.win_rate, 0, false) : '—'}
               </span>
             )}
           </div>
@@ -74,8 +74,8 @@ function HourHeatmap({ data }: { data: HourData[] }) {
           <span className="font-bold text-text-primary">{hovered.label}</span>
           <span>Toplam: <b className="text-text-primary">{hovered.total}</b></span>
           <span>Kazanılan: <b className="text-bullish">{hovered.wins}</b></span>
-          <span>Kazanma: <b className={heatText(hovered.win_rate, hovered.total)}>{hovered.win_rate}%</b></span>
-          <span>Ort. Güven: <b className="text-accent-primary">{hovered.avg_confidence}%</b></span>
+          <span>Kazanma: <b className={heatText(hovered.win_rate, hovered.total)}>{formatPercentage(hovered.win_rate, 0, false)}</b></span>
+          <span>Ort. Güven: <b className="text-accent-primary">{formatPercentage(hovered.avg_confidence, 0, false)}</b></span>
         </div>
       )}
 
@@ -111,7 +111,7 @@ function DayHeatmap({ data }: { data: DayData[] }) {
         )}>
           <span className="text-[10px] font-bold text-text-muted">{dayAbbr(d.label)}</span>
           <span className={cn('text-lg font-extrabold font-mono', heatText(d.win_rate, d.total))}>
-            {d.total > 0 ? `${d.win_rate.toFixed(0)}%` : '—'}
+            {d.total > 0 ? formatPercentage(d.win_rate, 0, false) : '—'}
           </span>
           <span className="text-[9px] text-text-muted">{d.total} sinyal</span>
         </div>
@@ -135,8 +135,8 @@ function DirectionBreakdown({ data }: { data: DirectionData[] }) {
             <span className={cn('font-bold', textColors[d.direction])}>{labels[d.direction] ?? d.direction}</span>
             <div className="flex gap-3 text-text-muted">
               <span>{d.total} sinyal</span>
-              <span className={cn('font-bold', heatText(d.win_rate, d.total))}>{d.win_rate}% kazanma</span>
-              <span className="text-accent-primary">{d.avg_confidence}% güven</span>
+              <span className={cn('font-bold', heatText(d.win_rate, d.total))}>{formatPercentage(d.win_rate, 0, false)} kazanma</span>
+              <span className="text-accent-primary">{formatPercentage(d.avg_confidence, 0, false)} güven</span>
             </div>
           </div>
           <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
@@ -164,7 +164,7 @@ function RiskBreakdown({ data }: { data: RiskData[] }) {
         <div key={r.risk_level} className="bg-bg-secondary/50 rounded-xl p-3 border border-border-subtle">
           <p className={cn('text-xs font-bold mb-1', colors[r.risk_level])}>{labels[r.risk_level] ?? r.risk_level}</p>
           <p className="text-2xl font-extrabold font-mono text-text-primary">{r.total}</p>
-          <p className="text-[10px] text-text-muted mt-1">sinyal · {r.win_rate}% kazanma</p>
+          <p className="text-[10px] text-text-muted mt-1">sinyal · {formatPercentage(r.win_rate, 0, false)} kazanma</p>
         </div>
       ))}
     </div>
@@ -221,13 +221,13 @@ export default function StrategyLabPage() {
             </GlassCard>
             <GlassCard className="flex-1 text-center py-4">
               <p className="text-3xl font-extrabold font-mono text-bullish">
-                {data.by_direction.find(d => d.direction === 'bullish')?.win_rate ?? 0}%
+                {formatPercentage(data.by_direction.find(d => d.direction === 'bullish')?.win_rate ?? 0, 0, false)}
               </p>
               <p className="text-xs text-text-muted mt-1">LONG Kazanma</p>
             </GlassCard>
             <GlassCard className="flex-1 text-center py-4">
               <p className="text-3xl font-extrabold font-mono text-bearish">
-                {data.by_direction.find(d => d.direction === 'bearish')?.win_rate ?? 0}%
+                {formatPercentage(data.by_direction.find(d => d.direction === 'bearish')?.win_rate ?? 0, 0, false)}
               </p>
               <p className="text-xs text-text-muted mt-1">SHORT Kazanma</p>
             </GlassCard>

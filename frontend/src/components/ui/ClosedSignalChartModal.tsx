@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { TradingChart, type ChartCandle } from '@/components/charts/TradingChart';
 import { fetchOhlcv, type ApiSignal } from '@/lib/api';
-import { formatAbsoluteTimeTR, cn } from '@/lib/utils';
+import { formatAbsoluteTimeTR, cn, formatPercentage } from '@/lib/utils';
 import { CoinIcon } from './CoinIcon';
 
 const TF_SECONDS: Record<string, number> = { '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400 };
@@ -79,7 +79,7 @@ export function ClosedSignalChartModal({ signal, onClose }: Props) {
               </p>
               <p className={cn('text-xs font-semibold', OUTCOME_COLOR[signal.outcome ?? ''] ?? 'text-text-muted')}>
                 {OUTCOME_LABEL[signal.outcome ?? ''] ?? signal.outcome}
-                {signal.actual_return != null && ` · ${signal.actual_return > 0 ? '+' : ''}${signal.actual_return.toFixed(2)}%`}
+                {signal.actual_return != null && ` · ${formatPercentage(signal.actual_return)}`}
                 {signal.closed_at && ` · ${formatAbsoluteTimeTR(signal.closed_at)}`}
               </p>
             </div>

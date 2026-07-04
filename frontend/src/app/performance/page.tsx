@@ -10,6 +10,7 @@ import {
   TrendingDown, PieChart as ChartIcon, Briefcase, FileDown, AlertTriangle,
 } from 'lucide-react';
 import { fetchPerformanceSummary, runBacktest, downloadPerformancePdf, type PerformanceSummary, type BacktestResult } from '@/lib/api';
+import { formatPrice, formatPercentage } from '@/lib/utils';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -169,7 +170,7 @@ export default function PerformancePage() {
                 <GlassCard className="flex justify-between items-center" glowEffect glowColor="bullish">
                   <div>
                     <span className="text-xs font-semibold text-text-secondary uppercase">Başarı Oranı (Win Rate)</span>
-                    <h3 className="text-3xl font-extrabold font-mono mt-1 text-bullish">{stats.win_rate}%</h3>
+                    <h3 className="text-3xl font-extrabold font-mono mt-1 text-bullish">{formatPercentage(stats.win_rate, 0, false)}</h3>
                     <p className="text-[10px] text-text-muted mt-1">
                       {stats.win_count} Win / {stats.loss_count} Loss / {stats.breakeven_count} BE
                     </p>
@@ -182,7 +183,7 @@ export default function PerformancePage() {
                 <GlassCard className="flex justify-between items-center" glowEffect glowColor="primary">
                   <div>
                     <span className="text-xs font-semibold text-text-secondary uppercase">Ort. Sinyal Getirisi</span>
-                    <h3 className="text-3xl font-extrabold font-mono mt-1 text-accent-primary">+{stats.average_return}%</h3>
+                    <h3 className="text-3xl font-extrabold font-mono mt-1 text-accent-primary">{formatPercentage(stats.average_return ?? 0)}</h3>
                     <p className="text-[10px] text-text-muted mt-1">İşlem başına ortalama kâr/zarar</p>
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-accent-primary/10 border border-accent-primary/20 flex items-center justify-center text-accent-primary">
@@ -193,7 +194,7 @@ export default function PerformancePage() {
                 <GlassCard className="flex justify-between items-center" glowEffect glowColor="bearish">
                   <div>
                     <span className="text-xs font-semibold text-text-secondary uppercase">Maksimum Drawdown</span>
-                    <h3 className="text-3xl font-extrabold font-mono mt-1 text-bearish">-{stats.drawdown_analysis.max_drawdown}%</h3>
+                    <h3 className="text-3xl font-extrabold font-mono mt-1 text-bearish">-{formatPercentage(stats.drawdown_analysis.max_drawdown, 2, false)}</h3>
                     <p className="text-[10px] text-text-muted mt-1">Geçmiş sermaye zirvesinden düşüş</p>
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-bearish/10 border border-bearish/20 flex items-center justify-center text-bearish">
@@ -252,7 +253,7 @@ export default function PerformancePage() {
                         <div className="flex justify-between items-center">
                           <span className="text-xs font-semibold uppercase text-text-secondary">{key.replace('_', ' ')}</span>
                           <span className="text-xs font-bold font-mono text-text-primary">
-                            {value.win_rate}% Win Rate | {value.total} İşlem
+                            {formatPercentage(value.win_rate, 0, false)} Win Rate | {value.total} İşlem
                           </span>
                         </div>
                         <div className="w-full h-2 rounded-full bg-bg-tertiary overflow-hidden">
@@ -262,7 +263,7 @@ export default function PerformancePage() {
                           />
                         </div>
                         <p className="text-[10px] text-text-muted">
-                          Ortalama Kâr: <span className="text-bullish font-bold">+{value.average_return}%</span>
+                          Ortalama Kâr: <span className="text-bullish font-bold">{formatPercentage(value.average_return)}</span>
                         </p>
                       </div>
                     ))}
@@ -276,15 +277,15 @@ export default function PerformancePage() {
                     <div className="grid grid-cols-3 gap-4 text-center mt-2">
                       <div className="p-4 bg-bg-secondary/40 border border-border-subtle rounded-xl flex flex-col items-center">
                         <span className="text-[10px] font-bold text-text-muted uppercase">Hedef 1 (TP1)</span>
-                        <div className="mt-2 text-2xl font-extrabold font-mono text-bullish">{stats.tp1_hit_rate}%</div>
+                        <div className="mt-2 text-2xl font-extrabold font-mono text-bullish">{formatPercentage(stats.tp1_hit_rate, 0, false)}</div>
                       </div>
                       <div className="p-4 bg-bg-secondary/40 border border-border-subtle rounded-xl flex flex-col items-center">
                         <span className="text-[10px] font-bold text-text-muted uppercase">Hedef 2 (TP2)</span>
-                        <div className="mt-2 text-2xl font-extrabold font-mono text-bullish">{stats.tp2_hit_rate}%</div>
+                        <div className="mt-2 text-2xl font-extrabold font-mono text-bullish">{formatPercentage(stats.tp2_hit_rate, 0, false)}</div>
                       </div>
                       <div className="p-4 bg-bg-secondary/40 border border-border-subtle rounded-xl flex flex-col items-center">
                         <span className="text-[10px] font-bold text-text-muted uppercase">Hedef 3 (TP3)</span>
-                        <div className="mt-2 text-2xl font-extrabold font-mono text-bullish">{stats.tp3_hit_rate}%</div>
+                        <div className="mt-2 text-2xl font-extrabold font-mono text-bullish">{formatPercentage(stats.tp3_hit_rate, 0, false)}</div>
                       </div>
                     </div>
                   </div>
@@ -294,11 +295,11 @@ export default function PerformancePage() {
                     <div className="flex justify-between items-center text-sm font-semibold text-text-primary">
                       <div className="flex items-center">
                         <div className="w-2.5 h-2.5 rounded-full bg-bullish mr-2" />
-                        <span>Bullish (Long): {stats.win_rate_by_direction.bullish}%</span>
+                        <span>Bullish (Long): {formatPercentage(stats.win_rate_by_direction.bullish, 0, false)}</span>
                       </div>
                       <div className="flex items-center">
                         <div className="w-2.5 h-2.5 rounded-full bg-bearish mr-2" />
-                        <span>Bearish (Short): {stats.win_rate_by_direction.bearish}%</span>
+                        <span>Bearish (Short): {formatPercentage(stats.win_rate_by_direction.bearish, 0, false)}</span>
                       </div>
                     </div>
                   </div>
@@ -312,7 +313,7 @@ export default function PerformancePage() {
                   {Object.entries(stats.win_rate_by_asset).map(([key, val]: any) => (
                     <div key={key} className="p-4 bg-bg-secondary/50 border border-border-subtle rounded-xl text-center">
                       <h4 className="text-xs font-bold text-text-primary">{key}</h4>
-                      <div className="text-lg font-extrabold font-mono mt-1 text-bullish">{val}%</div>
+                      <div className="text-lg font-extrabold font-mono mt-1 text-bullish">{formatPercentage(val, 0, false)}</div>
                       <span className="text-[9px] text-text-muted">Win Rate</span>
                     </div>
                   ))}
@@ -454,7 +455,7 @@ export default function PerformancePage() {
 
                   <GlassCard className="text-center p-4">
                     <span className="text-[10px] font-bold text-text-muted uppercase font-semibold">Kazanma Oranı</span>
-                    <div className="text-2xl font-extrabold font-mono mt-1 text-bullish">{backtestResult.win_rate}%</div>
+                    <div className="text-2xl font-extrabold font-mono mt-1 text-bullish">{formatPercentage(backtestResult.win_rate, 0, false)}</div>
                   </GlassCard>
 
                   <GlassCard className="text-center p-4">
@@ -464,7 +465,7 @@ export default function PerformancePage() {
 
                   <GlassCard className="text-center p-4">
                     <span className="text-[10px] font-bold text-text-muted uppercase">Max Drawdown</span>
-                    <div className="text-2xl font-extrabold font-mono mt-1 text-bearish">-{backtestResult.max_drawdown_pct}%</div>
+                    <div className="text-2xl font-extrabold font-mono mt-1 text-bearish">-{formatPercentage(backtestResult.max_drawdown_pct, 2, false)}</div>
                   </GlassCard>
                 </div>
 
@@ -537,10 +538,10 @@ export default function PerformancePage() {
                                 {trade.direction.toUpperCase()}
                               </span>
                             </td>
-                            <td className="py-2.5 font-mono">{trade.entry_price.toLocaleString()}</td>
-                            <td className="py-2.5 font-mono">{trade.exit_price.toLocaleString()}</td>
+                            <td className="py-2.5 font-mono">{formatPrice(trade.entry_price)}</td>
+                            <td className="py-2.5 font-mono">{formatPrice(trade.exit_price)}</td>
                             <td className={`py-2.5 text-right font-bold font-mono ${trade.return_pct > 0 ? 'text-bullish' : 'text-bearish'}`}>
-                              {trade.return_pct > 0 ? `+${trade.return_pct}%` : `${trade.return_pct}%`}
+                              {formatPercentage(trade.return_pct)}
                             </td>
                             <td className="py-2.5 text-right">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${

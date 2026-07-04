@@ -19,7 +19,7 @@ import {
   type AdminStats, type AdminUserRow, type SubscriptionTier, type UserRole,
   type AdminSignalRow, type AdminAssetRow, type AdminJobStatus, type AdminAuditLogRow,
 } from '@/lib/api';
-import { cn, formatAbsoluteTimeTR } from '@/lib/utils';
+import { cn, formatAbsoluteTimeTR, formatPercentage, formatNumber } from '@/lib/utils';
 
 const TIER_COLOR: Record<string, string> = {
   free:    'bg-bg-tertiary text-text-muted',
@@ -163,9 +163,9 @@ function OverviewTab() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard label="Toplam Kullanıcı" value={stats.total_users.toString()} icon={Users} accent="bg-accent-primary/15 text-accent-primary" />
           <StatCard label="Ödeyen Kullanıcı" value={stats.paying_users.toString()} icon={Crown} accent="bg-yellow-500/15 text-yellow-400" />
-          <StatCard label="Toplam Gelir" value={`$${stats.total_revenue_usd.toFixed(0)}`} icon={DollarSign} accent="bg-bullish/15 text-bullish" />
+          <StatCard label="Toplam Gelir" value={`$${formatNumber(stats.total_revenue_usd, 0)}`} icon={DollarSign} accent="bg-bullish/15 text-bullish" />
           <StatCard label="Aktif Sinyaller" value={stats.active_signals.toString()} icon={Zap} accent="bg-orange-500/15 text-orange-400" />
-          <StatCard label="Kazanma Oranı" value={`${stats.win_rate}%`} icon={TrendingUp} accent="bg-bullish/15 text-bullish" />
+          <StatCard label="Kazanma Oranı" value={formatPercentage(stats.win_rate, 0, false)} icon={TrendingUp} accent="bg-bullish/15 text-bullish" />
           <StatCard label="Toplam Sinyal" value={stats.total_signals.toString()} icon={Database} accent="bg-accent-secondary/15 text-accent-secondary" />
           <StatCard label="Aktif Kullanıcı" value={stats.active_users.toString()} icon={Users} accent="bg-bullish/15 text-bullish" />
           <StatCard label="Admin Sayısı" value={stats.admin_count.toString()} icon={Shield} accent="bg-bearish/15 text-bearish" />
@@ -430,7 +430,7 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           <p className="text-[11px] text-text-muted">Belirtilen güven skorunun altındaki aktif sinyalleri kullanıcılardan gizler.</p>
           <div className="flex items-center gap-2">
             <input type="range" min={0} max={100} step={5} value={cleanThreshold} onChange={(e) => setCleanThreshold(Number(e.target.value))} className="flex-1 accent-bearish" />
-            <span className="text-xs font-bold font-mono w-10 text-center">{cleanThreshold}%</span>
+            <span className="text-xs font-bold font-mono w-10 text-center">{formatPercentage(cleanThreshold, 0, false)}</span>
             <button onClick={runBulkClean} disabled={cleaning}
               className="text-xs font-semibold bg-bearish/15 text-bearish px-3 py-1.5 rounded-lg hover:bg-bearish/25 transition-colors disabled:opacity-50 whitespace-nowrap">
               {cleaning ? 'Temizleniyor...' : 'Temizle'}
@@ -489,7 +489,7 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               <div key={s.id} className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1.3fr_auto] gap-4 items-center px-5 py-2.5 hover:bg-white/[0.02] transition-colors text-xs">
                 <span className="font-bold text-text-primary">{s.symbol}</span>
                 <span className="uppercase text-text-secondary">{s.signal_type.replace('_', ' ')}</span>
-                <span className="font-mono text-text-primary">{s.confidence_score.toFixed(0)}%</span>
+                <span className="font-mono text-text-primary">{formatPercentage(s.confidence_score, 0, false)}</span>
                 <span className="uppercase text-text-muted">{s.timeframe}</span>
                 <span className={cn('font-bold uppercase', s.is_active ? 'text-bullish' : s.admin_invalidated ? 'text-bearish' : 'text-text-muted')}>
                   {s.admin_invalidated ? 'Kaldırıldı' : s.is_active ? 'Aktif' : s.outcome}
