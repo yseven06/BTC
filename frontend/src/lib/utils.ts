@@ -3,13 +3,16 @@
 // ============================================
 
 import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 import { SignalType, RiskLevel } from '@/types';
 
 /**
- * Merge class names with clsx (tailwind-merge alternative)
+ * Merge class names with clsx, then resolve Tailwind conflicts with
+ * tailwind-merge (last-wins). clsx handles conditional composition; twMerge
+ * dedupes conflicting utilities so `cn('px-2', cond && 'px-4')` → 'px-4'.
  */
 export function cn(...inputs: ClassValue[]) {
-  return clsx(inputs);
+  return twMerge(clsx(inputs));
 }
 
 /**
