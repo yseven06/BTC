@@ -1,0 +1,26 @@
+#!/bin/sh
+# TradeMinds pre-commit — design-lint gate'leri (Bible v1.3 §08 K4 · P1-F/g)
+# Versiyonlu hook: repo kökü .githooks/ + `git config core.hooksPath .githooks`
+# (yeni klonda bir kez çalıştırılır; bkz. commit mesajı P1-F/g-2).
+#
+# WARN-mod: gate'ler warning üretir, commit ENGELLENMEZ (exit 0).
+# Bir gate .stylelintrc.cjs'te ERROR'a yükseltilirse stylelint exit!=0 döner
+# ve commit bilinçli olarak durur (yükseltme kapısı = component fazı DoD).
+
+# Yalnız frontend dosyaları stage'liyse koş (backend/doc commit'lerini yavaşlatma).
+if git diff --cached --name-only | grep -q '^frontend/'; then
+  if command -v npm >/dev/null 2>&1; then
+    echo "— design-lint (pre-commit, WARN-mod) —"
+    (cd frontend && npm run --silent lint:design) || {
+      echo ""
+      echo "design-lint ERROR (yükseltilmiş gate ihlali) — commit durduruldu."
+      echo "Bilinçli atlama (yalnız acil durum): git commit --no-verify"
+      exit 1
+    }
+  else
+    # npm PATH'te değil (ör. GUI git istemcisi) — hook altyapı-eksikliği commit'i
+    # kilitlemez; CI'daki lint:design aynı gate'leri zaten koşar (güvenli-varsayılan).
+    echo "design-lint atlandı: npm PATH'te yok (CI lint:design devrede)."
+  fi
+fi
+exit 0
