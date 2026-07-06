@@ -17,6 +17,8 @@ export interface ShareCardData {
   closedAt?: string | null;
 }
 
+import { chartColor, withAlpha } from '@/lib/chartColors';
+
 const CARD_SIZE = 1080;
 
 /** Draws the share card onto a canvas. Pure Canvas 2D — no extra dependencies. */
@@ -27,20 +29,23 @@ async function drawCard(canvas: HTMLCanvasElement, data: ShareCardData) {
   canvas.height = CARD_SIZE;
 
   const win = data.pnlPct >= 0;
-  const green = '#10B981';
-  const red = '#F4556E';
+  // Renk migration (P9.6/D9-08): owned tek-kaynak (chartColors runtime-resolve).
+  const green = chartColor('bull');
+  const red = chartColor('bear');
+  const tx = chartColor('tx'), tx2 = chartColor('tx2'), tx3 = chartColor('tx3');
+  const hl16 = chartColor('hl16');
   const accent = win ? green : red;
 
   // Background
   const bg = ctx.createLinearGradient(0, 0, CARD_SIZE, CARD_SIZE);
-  bg.addColorStop(0, '#070B14');
-  bg.addColorStop(1, '#111A2B');
+  bg.addColorStop(0, chartColor('e0'));
+  bg.addColorStop(1, chartColor('e2'));
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, CARD_SIZE, CARD_SIZE);
 
   // Subtle glow blob behind the P&L number
   const glow = ctx.createRadialGradient(CARD_SIZE / 2, 520, 50, CARD_SIZE / 2, 520, 420);
-  glow.addColorStop(0, win ? 'rgba(16,185,129,0.18)' : 'rgba(244,85,110,0.18)');
+  glow.addColorStop(0, withAlpha(win ? green : red, 0.18));
   glow.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, CARD_SIZE, CARD_SIZE);
@@ -52,10 +57,10 @@ async function drawCard(canvas: HTMLCanvasElement, data: ShareCardData) {
   } catch { /* logo missing — skip silently */ }
 
   ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = '#E8EDF5';
+  ctx.fillStyle = tx;
   ctx.font = '700 40px Arial';
   ctx.fillText('TRADEMINDS AI', 164, 100);
-  ctx.fillStyle = '#9AA6B8';
+  ctx.fillStyle = tx2;
   ctx.font = '400 22px Arial';
   ctx.fillText('AI Trading Intelligence', 164, 130);
 
@@ -65,9 +70,9 @@ async function drawCard(canvas: HTMLCanvasElement, data: ShareCardData) {
   const badgeW = ctx.measureText(badgeText).width + 56;
   const badgeX = CARD_SIZE - 64 - badgeW;
   roundRect(ctx, badgeX, 60, badgeW, 48, 24);
-  ctx.fillStyle = data.isClosed ? 'rgba(148,163,184,0.15)' : 'rgba(16,185,129,0.15)';
+  ctx.fillStyle = data.isClosed ? hl16 : withAlpha(green, 0.15);
   ctx.fill();
-  ctx.fillStyle = data.isClosed ? '#9AA6B8' : green;
+  ctx.fillStyle = data.isClosed ? tx2 : green;
   ctx.fillText(badgeText, badgeX + 28, 91);
   if (!data.isClosed) {
     ctx.beginPath();
@@ -77,17 +82,17 @@ async function drawCard(canvas: HTMLCanvasElement, data: ShareCardData) {
   }
 
   // Symbol + direction
-  ctx.fillStyle = '#E8EDF5';
+  ctx.fillStyle = tx;
   ctx.font = '800 76px Arial';
   ctx.fillText(data.symbol, 64, 260);
   ctx.font = '600 28px Arial';
-  ctx.fillStyle = '#9AA6B8';
+  ctx.fillStyle = tx2;
   ctx.fillText(data.assetName, 64, 300);
 
   ctx.font = '700 26px Arial';
   ctx.fillStyle = green;
   roundRect(ctx, 64, 320, 130, 46, 8);
-  ctx.fillStyle = 'rgba(16,185,129,0.15)';
+  ctx.fillStyle = withAlpha(green, 0.15);
   ctx.fill();
   ctx.fillStyle = green;
   ctx.fillText('LONG', 96, 352);
@@ -101,11 +106,11 @@ async function drawCard(canvas: HTMLCanvasElement, data: ShareCardData) {
   // PnL amount
   const amountText = `${win ? '+' : ''}${formatUsd(Math.abs(data.pnlAmount))}`;
   ctx.font = '600 44px Arial';
-  ctx.fillStyle = '#E8EDF5';
+  ctx.fillStyle = tx;
   ctx.fillText(amountText, 68, 680);
 
   // Divider
-  ctx.strokeStyle = 'rgba(148,163,184,0.15)';
+  ctx.strokeStyle = hl16;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(64, 740);
@@ -123,16 +128,16 @@ async function drawCard(canvas: HTMLCanvasElement, data: ShareCardData) {
   cols.forEach((c, i) => {
     const x = 64 + i * colWidth;
     ctx.font = '600 22px Arial';
-    ctx.fillStyle = '#5C6980';
+    ctx.fillStyle = tx3;
     ctx.fillText(c.label, x, statY);
     ctx.font = '700 36px Arial';
-    ctx.fillStyle = '#E8EDF5';
+    ctx.fillStyle = tx;
     ctx.fillText(c.value, x, statY + 46);
   });
 
   // Footer
   ctx.font = '500 22px Arial';
-  ctx.fillStyle = '#5C6980';
+  ctx.fillStyle = tx3;
   const footerText = data.isClosed && data.closedAt
     ? `Kapanış: ${formatDateTR(data.closedAt)}`
     : 'TradeMinds AI ile kendi pozisyonunu takip et';

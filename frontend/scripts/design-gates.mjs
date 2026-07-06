@@ -24,7 +24,7 @@ const SRC = join(ROOT, 'src');
 const ALLOW_FILES = [
   ['src', 'app', 'layout.tsx'].join(sep),
   ['components', 'charts', 'TradingViewChart.tsx'].join(sep),
-  ['components', 'ui', 'ShareCardModal.tsx'].join(sep),
+  // ShareCardModal P9.6'da chartColors'a göç etti → izin-listesinden ÇIKARILDI (ham hex=0).
   ['src', 'lib', 'chartColors.ts'].join(sep), // JS-bağlamı token-kaynağı (P9.5): runtime-resolve + owned fallback
 ];
 const HEX_RE = /#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b(?![0-9a-fA-F])/g;
