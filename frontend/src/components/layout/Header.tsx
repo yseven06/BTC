@@ -219,7 +219,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
                 showUserMenu && 'bg-white/[0.04]'
               )}
             >
-              <div className="w-7 h-7 rounded-full overflow-hidden bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center flex-shrink-0">
+              <div className="w-7 h-7 rounded-full overflow-hidden bg-gradient-to-br from-amber to-accent-primary flex items-center justify-center flex-shrink-0">
                 {user?.avatar_url ? (
                   <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (

@@ -210,7 +210,7 @@ export default function PerformancePage() {
                     <h3 className="text-3xl font-extrabold font-mono mt-1 text-text-primary">{stats.active_count}</h3>
                     <p className="text-[10px] text-text-muted mt-1">Piyasada takip edilen aktif işlem</p>
                   </div>
-                  <div className="w-10 h-10 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center text-accent-secondary">
+                  <div className="w-10 h-10 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center text-accent-ui">
                     <Briefcase className="w-5 h-5" />
                   </div>
                 </GlassCard>

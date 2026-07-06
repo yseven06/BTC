@@ -166,7 +166,7 @@ function OverviewTab() {
           <StatCard label="Toplam Gelir" value={`$${formatNumber(stats.total_revenue_usd, 0)}`} icon={DollarSign} accent="bg-bullish/15 text-bullish" />
           <StatCard label="Aktif Sinyaller" value={stats.active_signals.toString()} icon={Zap} accent="bg-amber/15 text-amber" />
           <StatCard label="Kazanma Oranı" value={formatPercentage(stats.win_rate, 0, false)} icon={TrendingUp} accent="bg-bullish/15 text-bullish" />
-          <StatCard label="Toplam Sinyal" value={stats.total_signals.toString()} icon={Database} accent="bg-accent-secondary/15 text-accent-secondary" />
+          <StatCard label="Toplam Sinyal" value={stats.total_signals.toString()} icon={Database} accent="bg-accent-ui/15 text-accent-ui" />
           <StatCard label="Aktif Kullanıcı" value={stats.active_users.toString()} icon={Users} accent="bg-bullish/15 text-bullish" />
           <StatCard label="Admin Sayısı" value={stats.admin_count.toString()} icon={Shield} accent="bg-bearish/15 text-bearish" />
         </div>

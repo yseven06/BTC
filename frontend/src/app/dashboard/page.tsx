@@ -214,7 +214,7 @@ export default function DashboardPage() {
     { label: 'Toplam Getiri', value: formatPercentage(totalReturnPct), color: totalReturnPct >= 0 ? 'text-bullish' : 'text-bearish' },
     { label: 'Kazanılan İşlemler', value: `${winCount}`, sub: `↗ ${formatPercentage(winRate, 0, false)}`, color: 'text-bullish' },
     { label: 'Kaybedilen İşlemler', value: `${lossCount}`, sub: `↘ ${formatPercentage(lossShare, 0, false)}`, color: 'text-bearish' },
-    { label: 'Ortalama Getiri', value: formatPercentage(avgReturn), color: 'text-accent-secondary' },
+    { label: 'Ortalama Getiri', value: formatPercentage(avgReturn), color: avgReturn >= 0 ? 'text-bullish' : 'text-bearish' },
   ];
 
   return (
@@ -363,13 +363,13 @@ export default function DashboardPage() {
         <GlassCard className="flex items-center justify-between p-4 group" glowEffect glowColor={avgReturn >= 0 ? 'bullish' : 'bearish'}>
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Ortalama Getiri</span>
-            <h3 className="text-3xl font-bold font-mono mt-1 text-accent-secondary">{formatPercentage(avgReturn)}</h3>
+            <h3 className={cn("text-3xl font-bold font-mono mt-1", avgReturn >= 0 ? "text-bullish" : "text-bearish")}>{formatPercentage(avgReturn)}</h3>
             <span className="text-[10px] text-text-muted font-semibold mt-1 block">
               tüm zamanlar · işlem başına
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-accent-secondary/10 border border-accent-secondary/20 flex items-center justify-center transition-shadow duration-300 group-hover:shadow-glow-md">
-            <ChartIcon className="w-5 h-5 text-accent-secondary" />
+          <div className="w-10 h-10 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center transition-shadow duration-300 group-hover:shadow-glow-md">
+            <ChartIcon className="w-5 h-5 text-accent-ui" />
           </div>
         </GlassCard>
 
