@@ -191,7 +191,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
         <button
           onClick={onToggle}
           className={cn(
-            'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-white/[0.03] transition-all duration-200',
+            'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-e-2 transition-all duration-200',
             collapsed && 'justify-center'
           )}
         >
@@ -206,7 +206,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
 
       {/* User Section */}
       <div className={cn('px-2 py-3 border-t border-border-subtle', collapsed ? 'flex justify-center' : '')}>
-        <div className={cn('flex items-center gap-2.5 rounded-xl p-2 hover:bg-white/[0.03] transition-all cursor-pointer', collapsed && 'justify-center')}>
+        <div className={cn('flex items-center gap-2.5 rounded-xl p-2 hover:bg-e-2 transition-all cursor-pointer', collapsed && 'justify-center')}>
           <div className="relative flex-shrink-0">
             <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-amber to-accent-primary flex items-center justify-center">
               {effectiveUser?.avatar_url ? (
@@ -226,7 +226,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
           {!collapsed && (
             <button
               onClick={(e) => { e.stopPropagation(); doLogout(); }}
-              className="p-1 rounded-lg hover:bg-white/[0.06] text-text-muted hover:text-bearish transition-colors"
+              className="p-1 rounded-lg hover:bg-e-2 text-text-muted hover:text-bearish transition-colors"
               title="Çıkış"
             >
               <LogOut className="w-3.5 h-3.5" />

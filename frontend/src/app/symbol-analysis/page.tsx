@@ -198,7 +198,7 @@ export default function SymbolAnalysisPage() {
             return (
               <div
                 key={sym.symbol}
-                className="grid grid-cols-[2fr_1fr_1.5fr_1.5fr_1.5fr_1.5fr] gap-4 items-center px-5 py-4 hover:bg-white/[0.02] transition-colors"
+                className="grid grid-cols-[2fr_1fr_1.5fr_1.5fr_1.5fr_1.5fr] gap-4 items-center px-5 py-4 hover:bg-e-2 transition-colors"
               >
                 {/* Symbol */}
                 <div className="flex items-center gap-3">

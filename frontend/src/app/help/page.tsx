@@ -116,7 +116,7 @@ function FaqRow({ item, open, onToggle }: { item: FaqItem; open: boolean; onTogg
     )}>
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-e-2 transition-colors"
       >
         <Icon className={cn('w-4 h-4 flex-shrink-0', open ? 'text-accent-primary' : 'text-text-muted')} />
         <span className="flex-1 text-sm font-semibold text-text-primary">{item.q}</span>

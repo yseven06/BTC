@@ -23,7 +23,7 @@ export default function LegalIndexPage() {
             <li key={d.slug}>
               <Link
                 href={`/yasal/${d.slug}`}
-                className="flex items-center justify-between px-5 py-4 transition-colors hover:bg-white/5"
+                className="flex items-center justify-between px-5 py-4 transition-colors hover:bg-e-2"
               >
                 <span className="font-medium">{d.title}</span>
                 <span className="shrink-0 pl-4 text-xs text-text-muted">Sürüm {d.version}</span>

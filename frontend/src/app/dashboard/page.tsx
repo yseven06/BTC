@@ -306,7 +306,7 @@ export default function DashboardPage() {
           <button
             onClick={() => load(true)}
             disabled={refreshing}
-            className="text-xs font-semibold text-text-primary bg-white/[0.06] hover:bg-white/[0.1] border border-border-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+            className="text-xs font-semibold text-text-primary bg-white/[0.06] hover:bg-e-2 border border-border-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
           >
             Tekrar dene
           </button>

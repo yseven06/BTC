@@ -133,7 +133,7 @@ export default function MacroPage() {
         ) : (
           <div className="glass-panel border border-border-subtle rounded-2xl divide-y divide-border-subtle overflow-hidden">
             {kap.map((d, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors">
+              <div key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-e-2 transition-colors">
                 <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center text-[10px] font-bold font-mono text-accent-primary">
                   {(d.company ?? '?').slice(0, 3)}
                 </div>

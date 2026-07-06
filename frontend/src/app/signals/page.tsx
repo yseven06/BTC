@@ -1187,7 +1187,7 @@ export default function SignalsPage() {
                 key={sig.id}
                 className={cn(
                   "grid grid-cols-[2fr_1fr_1.2fr_1.5fr_1.3fr_1.5fr_auto] gap-4 items-center px-5 py-3.5 transition-colors",
-                  invalid ? 'bg-bearish/[0.04] opacity-70' : 'hover:bg-white/[0.02]'
+                  invalid ? 'bg-bearish/[0.04] opacity-70' : 'hover:bg-e-2'
                 )}
               >
                 {/* Symbol + Timeframe */}

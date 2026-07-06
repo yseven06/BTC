@@ -239,7 +239,7 @@ function UsersTab({ isSuperAdmin, selfId }: { isSuperAdmin: boolean; selfId: str
         ) : (
           <div className="divide-y divide-border-subtle">
             {users.map((u) => (
-              <div key={u.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center px-5 py-3 hover:bg-white/[0.02] transition-colors">
+              <div key={u.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center px-5 py-3 hover:bg-e-2 transition-colors">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber to-accent-primary flex items-center justify-center font-bold text-xs text-white flex-shrink-0">
                     {(u.full_name ?? u.email)[0]?.toUpperCase()}
@@ -486,7 +486,7 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         ) : (
           <div className="divide-y divide-border-subtle max-h-[600px] overflow-y-auto">
             {signals.map((s) => (
-              <div key={s.id} className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1.3fr_auto] gap-4 items-center px-5 py-2.5 hover:bg-white/[0.02] transition-colors text-xs">
+              <div key={s.id} className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1.3fr_auto] gap-4 items-center px-5 py-2.5 hover:bg-e-2 transition-colors text-xs">
                 <span className="font-bold text-text-primary">{s.symbol}</span>
                 <span className="uppercase text-text-secondary">{s.signal_type.replace('_', ' ')}</span>
                 <span className="font-mono text-text-primary">{formatPercentage(s.confidence_score, 0, false)}</span>
@@ -607,7 +607,7 @@ function AssetsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         ) : (
           <div className="divide-y divide-border-subtle max-h-[600px] overflow-y-auto">
             {assets.map((a) => (
-              <div key={a.id} className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_auto] gap-4 items-center px-5 py-2.5 hover:bg-white/[0.02] transition-colors text-xs">
+              <div key={a.id} className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_auto] gap-4 items-center px-5 py-2.5 hover:bg-e-2 transition-colors text-xs">
                 <span className="font-bold text-text-primary">{a.symbol}</span>
                 <span className="text-text-secondary truncate">{a.name}</span>
                 <span className="uppercase text-text-muted">{a.asset_type}</span>

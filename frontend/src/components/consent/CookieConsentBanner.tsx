@@ -112,7 +112,7 @@ export function CookieConsentBanner() {
               </button>
               <button
                 onClick={onlyNecessary}
-                className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-text-secondary transition-colors hover:bg-white/5"
+                className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-text-secondary transition-colors hover:bg-e-2"
               >
                 Yalnızca Zorunlu Çerezler
               </button>
@@ -126,7 +126,7 @@ export function CookieConsentBanner() {
               ) : (
                 <button
                   onClick={() => setManage(true)}
-                  className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-text-secondary transition-colors hover:bg-white/5"
+                  className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-text-secondary transition-colors hover:bg-e-2"
                 >
                   Tercihleri Yönet
                 </button>

@@ -68,7 +68,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
         {/* Mobile menu (hamburger) — opens the sidebar drawer on < lg */}
         <button
           onClick={onMobileMenu}
-          className="lg:hidden p-2 -ml-1 mr-1 rounded-lg text-text-secondary hover:text-text-primary hover:bg-white/[0.04] flex-shrink-0"
+          className="lg:hidden p-2 -ml-1 mr-1 rounded-lg text-text-secondary hover:text-text-primary hover:bg-e-2 flex-shrink-0"
           aria-label="Menüyü aç"
         >
           <Menu className="w-5 h-5" />
@@ -106,7 +106,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
               {searchResults.map((asset) => (
                 <div
                   key={asset.id}
-                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.04] cursor-pointer border-b border-border-subtle last:border-none"
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-e-2 cursor-pointer border-b border-border-subtle last:border-none"
                 >
                   <div className="w-7 h-7 rounded-md bg-bg-tertiary border border-border-subtle flex items-center justify-center text-[10px] font-bold font-mono text-accent-primary overflow-hidden">
                     <CoinIcon symbol={asset.symbol} assetType={asset.asset_type} />
@@ -137,7 +137,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
               className={cn(
                 'relative p-2 rounded-lg',
                 'text-text-secondary hover:text-text-primary',
-                'hover:bg-white/[0.04] transition-all duration-200 focus-ring',
+                'hover:bg-e-2 transition-all duration-200 focus-ring',
                 showNotifications && 'bg-white/[0.04] text-text-primary'
               )}
               title={tr('tooltip.notifications')}
@@ -169,7 +169,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
                       <div
                         key={notif.id}
                         className={cn(
-                          'flex gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors cursor-pointer border-b border-border-subtle last:border-b-0',
+                          'flex gap-3 px-4 py-3 hover:bg-e-2 transition-colors cursor-pointer border-b border-border-subtle last:border-b-0',
                           !notif.triggered_at && 'bg-accent-primary/[0.03]'
                         )}
                       >
@@ -215,7 +215,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
               }}
               className={cn(
                 'flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl',
-                'hover:bg-white/[0.04] transition-all duration-200 focus-ring',
+                'hover:bg-e-2 transition-all duration-200 focus-ring',
                 showUserMenu && 'bg-white/[0.04]'
               )}
             >
@@ -245,7 +245,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
                   <Link
                     href="/profile"
                     onClick={() => setShowUserMenu(false)}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-white/[0.03] transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-e-2 transition-colors"
                   >
                     <User className="w-4 h-4" />
                     {tr('auth.profile')}
@@ -253,7 +253,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
                   <Link
                     href="/settings"
                     onClick={() => setShowUserMenu(false)}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-white/[0.03] transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-e-2 transition-colors"
                   >
                     <Settings className="w-4 h-4" />
                     {tr('nav.settings')}
@@ -264,7 +264,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
                       alert('Açık tema yakında. Şu an karanlık tema aktif.');
                       setShowUserMenu(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-white/[0.03] transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-e-2 transition-colors"
                   >
                     <Moon className="w-4 h-4" />
                     {tr('settings.theme')}
@@ -272,7 +272,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
                   <Link
                     href="/help"
                     onClick={() => setShowUserMenu(false)}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-white/[0.03] transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-e-2 transition-colors"
                   >
                     <HelpCircle className="w-4 h-4" />
                     Yardım

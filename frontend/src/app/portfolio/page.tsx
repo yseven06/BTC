@@ -332,7 +332,7 @@ export default function PortfolioPage() {
                       const pnlPct = cost > 0 ? ((value - cost) / cost) * 100 : 0;
                       const pnlAmount = value - cost;
                       return (
-                        <div key={h.id} className="grid grid-cols-[1.2fr_0.9fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center px-5 py-3 text-xs hover:bg-white/[0.02]">
+                        <div key={h.id} className="grid grid-cols-[1.2fr_0.9fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center px-5 py-3 text-xs hover:bg-e-2">
                           <span className="font-bold text-text-primary">{asset?.symbol ?? '—'}</span>
                           <span className="font-mono text-text-secondary">{h.quantity}</span>
                           <span className="font-mono text-text-secondary">${formatPrice(h.average_entry_price)}</span>
@@ -383,7 +383,7 @@ export default function PortfolioPage() {
                         const asset = h.asset_id ? assetCache[h.asset_id] : undefined;
                         const pnlPct = h.realized_pnl_pct ?? 0;
                         return (
-                          <div key={h.id} className="grid grid-cols-[1.2fr_0.9fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center px-5 py-3 text-xs hover:bg-white/[0.02] opacity-90">
+                          <div key={h.id} className="grid grid-cols-[1.2fr_0.9fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center px-5 py-3 text-xs hover:bg-e-2 opacity-90">
                             <span className="font-bold text-text-primary">{asset?.symbol ?? '—'}</span>
                             <span className="font-mono text-text-secondary">{h.quantity}</span>
                             <span className="font-mono text-text-secondary">${formatPrice(h.average_entry_price)}</span>
