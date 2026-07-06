@@ -333,23 +333,6 @@
     animation: shimmer 2s infinite;
   }
 
-  .hover-lift {
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .hover-lift:hover {
-    transform: translateY(-2px);
-  }
-
-  .hover-glow { /* kullanım=0; renk owned + α .2→.14 glow-bütçesi (COL-12); hover-glow-yalnız-CTA kararı P7 */
-    transition: box-shadow 0.3s ease;
-  }
-
-  .hover-glow:hover {
-    box-shadow: 0 0 20px color-mix(in oklab, var(--accent) 14%, transparent);
-  }
-
   .transition-default {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
