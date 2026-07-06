@@ -54,24 +54,28 @@ export async function solveChallenge(sitekey: string): Promise<string> {
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-label', 'Güvenlik doğrulaması');
+    // Renk migration (P9.6/D9-08): DOM inline-style → doğrudan CSS var()
+    // (canvas değil; runtime çözülür). rgba(2,6,23)/#0f172a 5.-yüzeyler,
+    // #e2e8f0/#94a3b8 metinler, #60a5fa 4.-mavi link EMEKLİ → owned token.
+    // z-index 9999 → z-tour+ (ad-hoc z temizliği D9-12/P2 kapsamı; renk-fazı dokunmaz).
     overlay.style.cssText =
-      'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.7)';
+      'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:color-mix(in oklab, var(--e0) 70%, transparent)';
 
     const box = document.createElement('div');
     box.style.cssText =
-      'background:#0f172a;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;max-width:340px;text-align:center';
+      'background:var(--e1);color:var(--tx);border:1px solid var(--hl10);border-radius:16px;padding:24px;max-width:340px;text-align:center';
     const title = document.createElement('p');
     title.textContent = 'Güvenlik doğrulaması';
     title.style.cssText = 'font-weight:700;margin:0 0 6px';
     const desc = document.createElement('p');
     desc.textContent = 'Bot olmadığınızı doğrulamak için kısa bir kontrol. Genellikle birkaç saniye sürer.';
-    desc.style.cssText = 'font-size:13px;color:#94a3b8;margin:0 0 14px';
+    desc.style.cssText = 'font-size:13px;color:var(--tx2);margin:0 0 14px';
     const widget = document.createElement('div');
     widget.style.cssText = 'display:flex;justify-content:center';
     const esc = document.createElement('a');
     esc.href = '/yasal';
     esc.textContent = 'Sorun mu yaşıyorsunuz? Destek / alternatif doğrulama';
-    esc.style.cssText = 'display:inline-block;margin-top:14px;font-size:12px;color:#60a5fa';
+    esc.style.cssText = 'display:inline-block;margin-top:14px;font-size:12px;color:var(--accent-ui)';
 
     box.append(title, desc, widget, esc);
     overlay.appendChild(box);

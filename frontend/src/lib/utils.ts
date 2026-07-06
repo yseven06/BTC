@@ -5,6 +5,7 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { SignalType, RiskLevel } from '@/types';
+import { chartColor } from '@/lib/chartColors';
 
 /**
  * Merge class names with clsx, then resolve Tailwind conflicts with
@@ -145,11 +146,14 @@ export function getSignalBgClass(signal: SignalType): string {
  * Get risk level color
  */
 export function getRiskColor(level: RiskLevel): string {
+  // Owned tek-kaynak (P9.6/D9-08): eski #34D399/#F59E0B/#EF4444 EMEKLİ.
+  // Kaynakta da medium=high aynıydı → ikisi amber (RiskGauge CP2 ile tutarlı).
+  // NOT: tüketici=0 (ölü util, deep-review N8) — silme/tek-kaynaklaştırma P9-FINAL.
   const colors: Record<RiskLevel, string> = {
-    low: '#34D399',
-    medium: '#F59E0B',
-    high: '#F59E0B',
-    very_high: '#EF4444',
+    low: chartColor('bull'),
+    medium: chartColor('amber'),
+    high: chartColor('amber'),
+    very_high: chartColor('bear'),
   };
   return colors[level];
 }
