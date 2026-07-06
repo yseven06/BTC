@@ -1,0 +1,29 @@
+#!/bin/sh
+# TradeMinds pre-commit — design-lint gate'leri (Bible v1.3 §08 K4 · P1-F/g)
+# Versiyonlu hook: repo kökü .githooks/ + `git config core.hooksPath .githooks`
+# (yeni klonda bir kez çalıştırılır; bkz. commit mesajı P1-F/g-2).
+#
+# WARN-mod: gate'ler warning üretir, commit ENGELLENMEZ (exit 0).
+# Bir gate .stylelintrc.cjs'te ERROR'a yükseltilirse stylelint exit!=0 döner
+# ve commit bilinçli olarak durur (yükseltme kapısı = component fazı DoD).
+
+# Yalnız frontend dosyaları stage'liyse koş (backend/doc commit'lerini yavaşlatma).
+if git diff --cached --name-only | grep -q '^frontend/'; then
+  if ! command -v npm >/dev/null 2>&1; then
+    # npm PATH'te değil (ör. GUI git istemcisi) — altyapı-eksikliği commit'i kilitlemez.
+    # NOT: repoda henüz CI yok; gate'ler yalnız bu hook + elle lint:design ile koşar.
+    echo "design-lint ATLANDI: npm PATH'te yok. Elle koşun: cd frontend && npm run lint:design"
+  elif [ ! -d frontend/node_modules ]; then
+    # Taze klon / kurulumsuz ortam — yanıltıcı 'gate ihlali' mesajıyla kilitleme.
+    echo "design-lint ATLANDI: frontend/node_modules yok. Kurulum: cd frontend && npm install"
+  else
+    echo "— design-lint (pre-commit, WARN-mod) —"
+    (cd frontend && npm run --silent lint:design) || {
+      echo ""
+      echo "design-lint ERROR (yükseltilmiş gate ihlali) — commit durduruldu."
+      echo "Bilinçli atlama (yalnız acil durum): git commit --no-verify"
+      exit 1
+    }
+  fi
+fi
+exit 0

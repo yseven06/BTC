@@ -2,11 +2,16 @@
   "name": "trademinds-frontend",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.11"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "lint:design": "stylelint \"src/**/*.css\" && node scripts/design-gates.mjs",
+    "lint:design:strict": "stylelint \"src/**/*.css\" && node scripts/design-gates.mjs --strict",
     "legal:gen": "node scripts/legal-gen.mjs",
     "prebuild": "node scripts/legal-gen.mjs"
   },
@@ -40,6 +45,7 @@
     "eslint-config-next": "^15.5.19",
     "postcss": "^8",
     "puppeteer": "^25.1.0",
+    "stylelint": "^17.14.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
