@@ -593,8 +593,10 @@
     outline: none;
   }
 
+  /* Bible §01 INT-12: 2px accent-ui outline (accent=dolgu; UI/focus=accent-ui) */
   .focus-ring:focus-visible {
-    box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--accent-primary);
+    outline: 2px solid var(--accent-ui);
+    outline-offset: 2px;
   }
 
   /* Dot indicator */
@@ -633,12 +635,13 @@
 /* ============================================
    Selection Colors
    ============================================ */
+/* Bible §01 micro-selection: owned accent %22 color-mix (tarayıcı-mavisi default değil) */
 ::selection {
-  background: rgba(59, 130, 246, 0.3);
-  color: #E8EDF5;
+  background: color-mix(in oklab, var(--accent) 22%, transparent);
+  color: var(--tx);
 }
 
 ::-moz-selection {
-  background: rgba(59, 130, 246, 0.3);
-  color: #E8EDF5;
+  background: color-mix(in oklab, var(--accent) 22%, transparent);
+  color: var(--tx);
 }
