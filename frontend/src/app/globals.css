@@ -285,7 +285,7 @@
 @layer components {
   .signal-strong-buy {
     color: var(--signal-strong-buy);
-    text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+    /* text-shadow glow kaldırıldı — Bible COL-12 semantik-glow yasak (glow=0) */
   }
 
   .signal-buy {
@@ -302,13 +302,13 @@
 
   .signal-strong-sell {
     color: var(--signal-strong-sell);
-    text-shadow: 0 0 10px rgba(226, 62, 88, 0.3);
+    /* text-shadow glow kaldırıldı — Bible COL-12 (glow=0) */
   }
 
   .signal-bg-strong-buy {
     background: rgba(16, 185, 129, 0.12);
     border-color: rgba(16, 185, 129, 0.3);
-    box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
+    /* box-shadow glow kaldırıldı — Bible COL-12 (glow=0); bg/border P1-F/e-3'te token'a */
   }
 
   .signal-bg-buy {
@@ -329,7 +329,7 @@
   .signal-bg-strong-sell {
     background: rgba(226, 62, 88, 0.12);
     border-color: rgba(226, 62, 88, 0.3);
-    box-shadow: 0 0 15px rgba(226, 62, 88, 0.1);
+    /* box-shadow glow kaldırıldı — Bible COL-12 (glow=0); bg/border P1-F/e-3'te token'a */
   }
 }
 
@@ -565,7 +565,7 @@
   .nav-item.active {
     color: var(--accent-primary);
     background: rgba(59, 130, 246, 0.1);
-    box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
+    /* box-shadow glow kaldırıldı — Bible INT-11 nav-glow yasak (sol-accent-çubuğu ::before zaten var); bg P9'da token'a */
   }
 
   .nav-item.active::before {
