@@ -305,31 +305,32 @@
     /* text-shadow glow kaldırıldı — Bible COL-12 (glow=0) */
   }
 
+  /* signal-bg-* rgba → owned token color-mix (P1-F/e-3) — tek-kaynak; P1-F/c
+     flatten ile tutarlı: strong-buy+buy→bull · hold→amber · sell+strong-sell→bear.
+     bg %12 / border %30 alfa color-mix ile (ham hex yok → lint gate-1 uyumlu). */
   .signal-bg-strong-buy {
-    background: rgba(16, 185, 129, 0.12);
-    border-color: rgba(16, 185, 129, 0.3);
-    /* box-shadow glow kaldırıldı — Bible COL-12 (glow=0); bg/border P1-F/e-3'te token'a */
+    background: color-mix(in oklab, var(--bull) 12%, transparent);
+    border-color: color-mix(in oklab, var(--bull) 30%, transparent);
   }
 
   .signal-bg-buy {
-    background: rgba(52, 211, 153, 0.12);
-    border-color: rgba(52, 211, 153, 0.3);
+    background: color-mix(in oklab, var(--bull) 12%, transparent);
+    border-color: color-mix(in oklab, var(--bull) 30%, transparent);
   }
 
   .signal-bg-hold {
-    background: rgba(251, 191, 36, 0.12);
-    border-color: rgba(251, 191, 36, 0.3);
+    background: color-mix(in oklab, var(--amber) 12%, transparent);
+    border-color: color-mix(in oklab, var(--amber) 30%, transparent);
   }
 
   .signal-bg-sell {
-    background: rgba(244, 85, 110, 0.12);
-    border-color: rgba(244, 85, 110, 0.3);
+    background: color-mix(in oklab, var(--bear) 12%, transparent);
+    border-color: color-mix(in oklab, var(--bear) 30%, transparent);
   }
 
   .signal-bg-strong-sell {
-    background: rgba(226, 62, 88, 0.12);
-    border-color: rgba(226, 62, 88, 0.3);
-    /* box-shadow glow kaldırıldı — Bible COL-12 (glow=0); bg/border P1-F/e-3'te token'a */
+    background: color-mix(in oklab, var(--bear) 12%, transparent);
+    border-color: color-mix(in oklab, var(--bear) 30%, transparent);
   }
 }
 
