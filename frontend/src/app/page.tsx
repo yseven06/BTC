@@ -126,7 +126,7 @@ export default function LandingPage() {
         )}
 
         <div className="flex items-center justify-center gap-3 mt-7">
-          <Link href="/register" className="flex items-center gap-2 text-sm font-bold bg-accent-primary hover:bg-accent-hover text-white px-6 py-3 rounded-xl shadow-glow-sm transition-colors">
+          <Link href="/register" className="flex items-center gap-2 text-sm font-bold bg-accent-primary hover:bg-accent-hover text-white px-6 py-3 rounded-xl transition-all hover:shadow-cta">
             Ücretsiz Başla <ArrowRight className="w-4 h-4" />
           </Link>
           <Link href="/pricing" className="text-sm font-bold text-text-secondary hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-6 py-3 rounded-xl transition-colors">
@@ -337,7 +337,7 @@ export default function LandingPage() {
             {plans.map((p) => {
               const monthly = p.pricing.find((pr) => pr.cycle === 'monthly');
               return (
-                <div key={p.tier} className={cn('glass-panel border rounded-2xl p-6', p.recommended ? 'border-accent-primary/40 shadow-glow-sm' : 'border-border-subtle')}>
+                <div key={p.tier} className={cn('glass-panel border rounded-2xl p-6', p.recommended ? 'border-accent-primary/40' : 'border-border-subtle')}>
                   <h3 className="text-base font-bold text-text-primary">{p.name}</h3>
                   <p className="text-xs text-text-secondary mt-1">{p.description}</p>
                   <div className="text-3xl font-extrabold font-mono text-text-primary mt-3">
@@ -366,7 +366,7 @@ export default function LandingPage() {
       <section className="max-w-4xl mx-auto px-6 py-20 text-center">
         <h2 className="text-2xl md:text-3xl font-extrabold text-text-primary">Trading Avantajını Bugün İnşa Et</h2>
         <p className="text-sm text-text-secondary mt-3">Kayıt sonrası dashboard'a anında erişim — kredi kartı gerekmez.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 text-sm font-bold bg-accent-primary hover:bg-accent-hover text-white px-7 py-3.5 rounded-xl shadow-glow-sm transition-colors mt-6">
+        <Link href="/register" className="inline-flex items-center gap-2 text-sm font-bold bg-accent-primary hover:bg-accent-hover text-white px-7 py-3.5 rounded-xl transition-all hover:shadow-cta mt-6">
           Ücretsiz Hesap Oluştur <ArrowRight className="w-4 h-4" />
         </Link>
       </section>

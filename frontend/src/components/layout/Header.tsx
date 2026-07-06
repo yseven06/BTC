@@ -80,7 +80,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
               'relative flex items-center gap-2 rounded-xl px-4 py-2',
               'bg-bg-primary/60 border transition-all duration-200',
               searchFocused
-                ? 'border-accent-primary/40 shadow-glow-sm'
+                ? 'border-accent-primary/40'
                 : 'border-border-subtle hover:border-border-medium'
             )}
           >

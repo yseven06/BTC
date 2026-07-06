@@ -75,7 +75,7 @@ export default function MarketsPage() {
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all',
                   category === c.id
-                    ? 'bg-accent-primary text-white shadow-glow-sm'
+                    ? 'bg-accent-primary text-white'
                     : 'text-text-muted hover:text-text-primary'
                 )}
               >

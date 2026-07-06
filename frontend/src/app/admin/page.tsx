@@ -101,7 +101,7 @@ export default function AdminPage() {
             onClick={() => setTab(t.id)}
             className={cn(
               'flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap',
-              tab === t.id ? 'bg-accent-primary text-white shadow-glow-sm' : 'text-text-muted hover:text-text-primary'
+              tab === t.id ? 'bg-accent-primary text-white' : 'text-text-muted hover:text-text-primary'
             )}
           >
             <t.icon className="w-3.5 h-3.5" /> {t.label}

@@ -131,7 +131,7 @@ export default function PerformancePage() {
           <button
             onClick={() => setActiveTab('analytics')}
             className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
-              activeTab === 'analytics' ? 'bg-bg-tertiary text-text-primary shadow-glow-sm' : 'text-text-secondary hover:text-text-primary'
+              activeTab === 'analytics' ? 'bg-bg-tertiary text-text-primary ' : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             <Activity className="w-3.5 h-3.5 inline mr-1.5" />
@@ -140,7 +140,7 @@ export default function PerformancePage() {
           <button
             onClick={() => setActiveTab('backtest')}
             className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
-              activeTab === 'backtest' ? 'bg-bg-tertiary text-text-primary shadow-glow-sm' : 'text-text-secondary hover:text-text-primary'
+              activeTab === 'backtest' ? 'bg-bg-tertiary text-text-primary ' : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             <Play className="w-3.5 h-3.5 inline mr-1.5" />
@@ -169,7 +169,7 @@ export default function PerformancePage() {
             <div className="space-y-6">
               {/* Analytics Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <GlassCard className="flex justify-between items-center" glowEffect glowColor="bullish">
+                <GlassCard className="flex justify-between items-center">
                   <div>
                     <span className="text-xs font-semibold text-text-secondary uppercase">Başarı Oranı (Win Rate)</span>
                     <h3 className="text-3xl font-extrabold font-mono mt-1 text-bullish">{formatPercentage(stats.win_rate, 0, false)}</h3>
@@ -182,7 +182,7 @@ export default function PerformancePage() {
                   </div>
                 </GlassCard>
 
-                <GlassCard className="flex justify-between items-center" glowEffect glowColor="primary">
+                <GlassCard className="flex justify-between items-center">
                   <div>
                     <span className="text-xs font-semibold text-text-secondary uppercase">Ort. Sinyal Getirisi</span>
                     <h3 className="text-3xl font-extrabold font-mono mt-1 text-accent-primary">{formatPercentage(stats.average_return ?? 0)}</h3>
@@ -193,7 +193,7 @@ export default function PerformancePage() {
                   </div>
                 </GlassCard>
 
-                <GlassCard className="flex justify-between items-center" glowEffect glowColor="bearish">
+                <GlassCard className="flex justify-between items-center">
                   <div>
                     <span className="text-xs font-semibold text-text-secondary uppercase">Maksimum Drawdown</span>
                     <h3 className="text-3xl font-extrabold font-mono mt-1 text-bearish">-{formatPercentage(stats.drawdown_analysis.max_drawdown, 2, false)}</h3>
@@ -204,7 +204,7 @@ export default function PerformancePage() {
                   </div>
                 </GlassCard>
 
-                <GlassCard className="flex justify-between items-center" glowEffect glowColor="primary">
+                <GlassCard className="flex justify-between items-center">
                   <div>
                     <span className="text-xs font-semibold text-text-secondary uppercase">Aktif Sinyaller</span>
                     <h3 className="text-3xl font-extrabold font-mono mt-1 text-text-primary">{stats.active_count}</h3>
@@ -412,7 +412,7 @@ export default function PerformancePage() {
               <Button
                 type="submit"
                 variant="primary"
-                className="w-full flex items-center justify-center space-x-2 py-2.5 font-bold shadow-glow-sm"
+                className="w-full flex items-center justify-center space-x-2 py-2.5 font-bold"
                 disabled={runningBacktest}
               >
                 {runningBacktest ? (

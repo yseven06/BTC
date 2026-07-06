@@ -223,7 +223,7 @@ export default function PricingPage() {
               onClick={() => setCycle(c)}
               className={cn(
                 'px-4 py-2 text-sm font-semibold rounded-lg transition-all',
-                cycle === c ? 'bg-accent-primary text-white shadow-glow-sm' : 'text-text-muted hover:text-text-primary'
+                cycle === c ? 'bg-accent-primary text-white' : 'text-text-muted hover:text-text-primary'
               )}
             >
               {CYCLE_LABEL[c]}
@@ -251,7 +251,7 @@ export default function PricingPage() {
                 key={plan.tier}
                 className={cn(
                   'flex flex-col relative',
-                  plan.recommended && 'border-accent-primary/40 shadow-glow-sm'
+                  plan.recommended && 'border-accent-primary/40'
                 )}
               >
                 {plan.recommended && (

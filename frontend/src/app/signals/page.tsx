@@ -1013,7 +1013,7 @@ export default function SignalsPage() {
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all',
                 marketFilter === m.id
-                  ? 'bg-accent-primary text-white shadow-glow-sm'
+                  ? 'bg-accent-primary text-white'
                   : 'text-text-muted hover:text-text-primary'
               )}
             >
@@ -1042,7 +1042,7 @@ export default function SignalsPage() {
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all',
                 tfFilter === tf
-                  ? 'bg-accent-primary text-white shadow-glow-sm'
+                  ? 'bg-accent-primary text-white'
                   : 'text-text-muted hover:text-text-primary'
               )}
             >
@@ -1072,7 +1072,7 @@ export default function SignalsPage() {
             <div className="relative flex bg-bg-secondary border border-border-subtle rounded-xl p-1 w-[300px]">
               {/* Sliding highlight — animates left/width on filter change instead of swapping a static class. */}
               <div
-                className={cn('absolute top-1 bottom-1 rounded-lg shadow-glow-sm transition-all duration-300 ease-out', DIR_OPTIONS[activeIndex]?.pill)}
+                className={cn('absolute top-1 bottom-1 rounded-lg transition-all duration-300 ease-out', DIR_OPTIONS[activeIndex]?.pill)}
                 style={{ width: 'calc(33.333% - 3px)', left: `calc(${activeIndex * 33.333}% + 2px)` }}
               />
               {DIR_OPTIONS.map((d) => {

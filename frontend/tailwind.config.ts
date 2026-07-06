@@ -92,12 +92,6 @@ const config: Config = {
         'cta': 'var(--glow-cta)',        // tek CTA glow, opaklık ≤.14
         'e3': 'var(--shadow-e3)',        // YALNIZ E3 overlay
         'cut-lip': 'var(--cut-lip)',     // üst-kenar highlight
-        // ── EMEKLİ alias'lar → tek --glow-cta (P9.3/D9-03); kullanım ~30× → P10 class-temizliğiyle sil ──
-        // glow-bullish/bearish KALDIRILDI (COL-12: bull/bear glow yasak; kullanan
-        // class'lar artık CSS üretmez → glow söner; class-temizliği P9.7/P9.4'te).
-        'glow-sm': 'var(--glow-cta)',
-        'glow-md': 'var(--glow-cta)',
-        'glow-lg': 'var(--glow-cta)',
       },
       // ── Design Standards v1.3 owned ölçek token'ları (Bible §01/§05/§06) ──
       borderRadius: {

@@ -89,7 +89,7 @@ export default function CoachmarkTour() {
 
       {/* Tooltip card */}
       <div
-        className="absolute w-[280px] max-w-[80vw] glass-panel border border-accent-primary/40 rounded-2xl p-4 shadow-glow-sm"
+        className="absolute w-[280px] max-w-[80vw] glass-panel border border-accent-primary/40 rounded-2xl p-4"
         style={{ top: tipTop, left: tipLeft }}
         role="dialog"
         aria-label="Tanıtım turu"

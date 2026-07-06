@@ -200,7 +200,7 @@ export default function PortfolioPage() {
                 className={cn(
                   'px-3.5 py-2 rounded-xl text-sm font-semibold transition-all border',
                   activeId === p.id
-                    ? 'bg-accent-primary text-white border-accent-primary shadow-glow-sm'
+                    ? 'bg-accent-primary text-white border-accent-primary'
                     : 'bg-bg-secondary text-text-secondary border-border-subtle hover:text-text-primary'
                 )}
               >

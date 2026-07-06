@@ -182,7 +182,7 @@ function EngineCard({ engine, onClick, compact }: { engine: EngineRow; onClick: 
       className={cn(
         'group relative bg-bg-secondary/40 rounded-2xl',
         'border transition-all duration-200',
-        'hover:bg-bg-secondary/60 hover:shadow-glow-sm hover:-translate-y-0.5',
+        'hover:bg-bg-secondary/60 hover:-translate-y-0.5',
         biasConfig.border,
         'text-left w-full',
         compact ? 'p-3' : 'p-4'
@@ -374,7 +374,7 @@ function PriceLadder({ signal }: { signal: ApiSignal }) {
                 <div className={cn(
                   'w-16 text-center text-[11px] font-extrabold py-1.5 rounded-lg border-2 flex items-center justify-center gap-1',
                   badgeColorClass,
-                  item.emphasize && 'shadow-glow-sm scale-110',
+                  item.emphasize && 'scale-110',
                   item.hit && 'tp-pulse-badge'
                 )}>
                   {item.hit && <Check className="w-3 h-3" />}

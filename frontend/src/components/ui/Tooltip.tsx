@@ -25,7 +25,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
           <TooltipPrimitive.Content
             sideOffset={4}
             className={clsx(
-              "z-50 overflow-hidden rounded-md border border-border-medium bg-bg-secondary px-3 py-1.5 text-xs text-text-primary shadow-glow-sm animate-scale-in",
+              "z-50 overflow-hidden rounded-md border border-border-medium bg-e-3 px-3 py-1.5 text-xs text-text-primary shadow-e3 animate-scale-in",
               className
             )}
           >

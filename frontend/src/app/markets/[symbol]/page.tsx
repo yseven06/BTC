@@ -402,7 +402,7 @@ export default function AssetDetailPage() {
               className={cn(
                 'px-3 py-1 text-xs font-semibold rounded-md transition-all',
                 chartMode === 'overlay'
-                  ? 'bg-accent-primary text-white shadow-glow-sm'
+                  ? 'bg-accent-primary text-white'
                   : 'text-text-muted hover:text-text-primary'
               )}
             >
@@ -413,7 +413,7 @@ export default function AssetDetailPage() {
               className={cn(
                 'px-3 py-1 text-xs font-semibold rounded-md transition-all',
                 chartMode === 'tradingview'
-                  ? 'bg-accent-primary text-white shadow-glow-sm'
+                  ? 'bg-accent-primary text-white'
                   : 'text-text-muted hover:text-text-primary'
               )}
             >
@@ -431,7 +431,7 @@ export default function AssetDetailPage() {
                   className={cn(
                     'px-2.5 py-1 text-[11px] font-bold uppercase rounded-md transition-all',
                     chartTimeframe === tf
-                      ? 'bg-accent-primary text-white shadow-glow-sm'
+                      ? 'bg-accent-primary text-white'
                       : 'text-text-muted hover:text-text-primary'
                   )}
                 >

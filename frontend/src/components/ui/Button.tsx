@@ -23,7 +23,7 @@ export const Button: React.FC<ButtonProps> = ({
     "inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-200 outline-none focus:ring-2 focus:ring-accent-ui/50 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]";
 
   const variants = {
-    primary: "bg-accent hover:bg-accent-hover text-white shadow-glow-sm hover:shadow-glow-md",
+    primary: "bg-accent hover:bg-accent-hover text-white hover:shadow-cta",
     secondary: "bg-bg-tertiary border border-border-medium hover:bg-e-2 text-text-primary",
     ghost: "bg-transparent hover:bg-bg-tertiary text-text-secondary hover:text-text-primary",
     danger: "bg-bear hover:bg-bear/90 text-white",
