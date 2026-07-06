@@ -72,7 +72,7 @@ const RECENT_OUTCOME_LABEL: Record<string, string> = {
 };
 const RECENT_OUTCOME_COLOR: Record<string, string> = {
   win: 'text-bullish', loss: 'text-bearish', breakeven: 'text-amber',
-  expired: 'text-text-muted', invalidated: 'text-purple-400',
+  expired: 'text-text-muted', invalidated: 'text-accent-ui' /* purple emekli (P9-FINAL; signal-history ile ayni eslesme) */,
 };
 
 export default function AssetDetailPage() {

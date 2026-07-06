@@ -41,11 +41,11 @@ function HtfSplit({ types }: { types: Record<string, number> }) {
     <div className="flex items-center gap-2">
       <div className="flex-1 h-2 bg-bg-tertiary rounded-full overflow-hidden flex">
         <div className="h-full bg-accent-primary/70 rounded-l-full" style={{ width: `${ob / total * 100}%` }} />
-        <div className="h-full bg-purple-400/70 rounded-r-full" style={{ width: `${fvg / total * 100}%` }} />
+        <div className="h-full bg-accent-ui/70 rounded-r-full" style={{ width: `${fvg / total * 100}%` }} />
       </div>
       <div className="flex gap-2 text-[10px] whitespace-nowrap">
         <span className="text-accent-primary font-bold">OB {ob}</span>
-        <span className="text-purple-400 font-bold">FVG {fvg}</span>
+        <span className="text-accent-ui font-bold">FVG {fvg}</span>
       </div>
     </div>
   );

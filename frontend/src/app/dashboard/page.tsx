@@ -354,7 +354,7 @@ export default function DashboardPage() {
               tüm zamanlar · {winCount}G / {lossCount}K / {breakevenCount}BE
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-bullish/10 border border-bullish/20 flex items-center justify-center transition-shadow duration-300 group-hover:shadow-glow-bullish">
+          <div className="w-10 h-10 rounded-xl bg-bullish/10 border border-bullish/20 flex items-center justify-center">
             <CheckCircle className="w-5 h-5 text-bullish" />
           </div>
         </GlassCard>
@@ -535,9 +535,9 @@ export default function DashboardPage() {
                   const isBullish = dir.includes('buy');
                   const isBearish = dir.includes('sell');
                   const hoverGlow = isBullish
-                    ? 'hover:shadow-glow-bullish hover:border-bullish/30'
+                    ? 'hover:border-bullish/30'
                     : isBearish
-                    ? 'hover:shadow-glow-bearish hover:border-bearish/30'
+                    ? 'hover:border-bearish/30'
                     : 'hover:shadow-glow-sm hover:border-border-medium';
                   return (
                   <div
