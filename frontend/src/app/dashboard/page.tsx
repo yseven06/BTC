@@ -31,12 +31,15 @@ import OnboardingChecklist from '@/components/dashboard/OnboardingChecklist';
 import CoachmarkTour from '@/components/dashboard/CoachmarkTour';
 import { Crown, Lock } from 'lucide-react';
 import TradingViewChart from '@/components/charts/TradingViewChart';
+import { chartColor } from '@/lib/chartColors';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-const PIE_COLORS = ['#22D3EE', '#3B82F6', '#06B6D4', '#64748b'];
+// Renk migration (P9.7/D9-09): pie DOLGU — cyan-yüzey yasak (COL-07/D9-11) →
+// cyan'sız owned dizi: accent-ailesi + nötr metin-tonları (kategorik ayrım).
+const PIE_COLORS = [chartColor('accent'), chartColor('accentUi'), chartColor('tx2'), chartColor('tx3')];
 
 function fngLabel(v: number): string {
   if (v >= 75) return 'AŞIRI AÇGÖZLÜLÜK';
@@ -46,12 +49,14 @@ function fngLabel(v: number): string {
   return 'AŞIRI KORKU';
 }
 
+// Owned semantik (P9.7): greed=bull · nötr/korku=amber · aşırı-korku=bear;
+// extreme/greed ayrımı label'da (tek owned-hex; #34D399/#F59E0B/#EF4444 emekli).
 function fngColor(v: number): string {
-  if (v >= 75) return '#10B981';
-  if (v >= 55) return '#34D399';
-  if (v >= 45) return '#F59E0B';
-  if (v >= 25) return '#F59E0B';
-  return '#EF4444';
+  if (v >= 75) return chartColor('bull');
+  if (v >= 55) return chartColor('bull');
+  if (v >= 45) return chartColor('amber');
+  if (v >= 25) return chartColor('amber');
+  return chartColor('bear');
 }
 
 function LiveClock() {
