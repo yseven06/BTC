@@ -30,12 +30,15 @@ export const SignalBadge: React.FC<SignalBadgeProps> = ({
     },
   };
 
+  // Renk migration (P9.4b/D9-05): owned bull/bear/amber; inline rgba-glow
+  // KALDIRILDI (COL-12 semantik-glow=0). strong/normal ayrımı renk-dışı
+  // kanallarla korunur: bg/border alfa (10/40 vs 5/20) + pulse (pulse→P6).
   const styleMap = {
-    strong_buy: "bg-bullish/10 text-bullish border-bullish/40 shadow-[0_0_12px_rgba(0,230,118,0.25)] animate-pulse-slow",
-    buy: "bg-bullish/5 text-bullish/90 border-bullish/20",
-    hold: "bg-signal-hold/10 text-signal-hold border-signal-hold/30",
-    sell: "bg-bearish/5 text-bearish/90 border-bearish/20",
-    strong_sell: "bg-bearish/10 text-bearish border-bearish/40 shadow-[0_0_12px_rgba(255,82,82,0.25)] animate-pulse-slow",
+    strong_buy: "bg-bull/10 text-bull border-bull/40 animate-pulse-slow",
+    buy: "bg-bull/5 text-bull/90 border-bull/20",
+    hold: "bg-amber/10 text-amber border-amber/30",
+    sell: "bg-bear/5 text-bear/90 border-bear/20",
+    strong_sell: "bg-bear/10 text-bear border-bear/40 animate-pulse-slow",
   };
 
   const currentLabel = labels[lang][type.toLowerCase() as keyof typeof labels["tr"]] || type;

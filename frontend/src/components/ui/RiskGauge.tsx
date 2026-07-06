@@ -35,11 +35,15 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
     very_high: 3,
   }[level.toLowerCase() as keyof typeof labels["tr"]] ?? 1;
 
+  // Renk migration (P9.4b/D9-05): owned bull/amber/bear; inline rgba-glow
+  // KALDIRILDI (COL-12). orange (palet-dışı) → amber: medium & high aynı
+  // owned-sarı ailede — ayrım çubuk-yüksekliği (h-3/h-4) + etiket metniyle
+  // korunur (renk-tek-kanal-değil, G-00-11); high, alfa ile koyulaştırıldı.
   const segmentColors = [
-    "bg-bullish shadow-[0_0_8px_rgba(0,230,118,0.3)]",
-    "bg-signal-hold shadow-[0_0_8px_rgba(255,193,7,0.3)]",
-    "bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.3)]",
-    "bg-bearish shadow-[0_0_8px_rgba(255,82,82,0.3)]",
+    "bg-bull",
+    "bg-amber",
+    "bg-amber/70",
+    "bg-bear",
   ];
 
   const currentLabel = labels[lang][level.toLowerCase() as keyof typeof labels["tr"]] || level;
@@ -67,10 +71,10 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
       <span
         className={clsx(
           "text-xs font-bold uppercase tracking-wider",
-          activeSegmentIdx === 0 && "text-bullish",
-          activeSegmentIdx === 1 && "text-signal-hold",
-          activeSegmentIdx === 2 && "text-orange-400",
-          activeSegmentIdx === 3 && "text-bearish"
+          activeSegmentIdx === 0 && "text-bull",
+          activeSegmentIdx === 1 && "text-amber",
+          activeSegmentIdx === 2 && "text-amber/80",
+          activeSegmentIdx === 3 && "text-bear"
         )}
       >
         {currentLabel}
