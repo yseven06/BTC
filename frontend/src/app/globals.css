@@ -338,46 +338,50 @@
    Gradient Utilities
    ============================================ */
 @layer components {
+  /* gradient-* renk migration (P9.3 / D9-03): ham hex → owned token.
+     gradient-text yalnız landing/marka-logosu istisnası (Bible §01 Typo);
+     bullish/bearish varyantlar kullanım=0 → owned tek-tona düzleştirildi,
+     FINAL adımda (grep-DoD=0) silinecek — EMEKLİ. */
   .gradient-text-brand {
-    background: linear-gradient(135deg, #3B82F6 0%, #22D3EE 100%);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--cyan) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
-  .gradient-text-bullish {
-    background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+  .gradient-text-bullish { /* EMEKLİ — kullanım=0; FINAL'de sil */
+    background: linear-gradient(135deg, var(--bull) 0%, var(--bull) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
-  .gradient-text-bearish {
-    background: linear-gradient(135deg, #F4556E 0%, #F87C8E 100%);
+  .gradient-text-bearish { /* EMEKLİ — kullanım=0; FINAL'de sil */
+    background: linear-gradient(135deg, var(--bear) 0%, var(--bear) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .gradient-bg-brand {
-    background: linear-gradient(135deg, #3B82F6 0%, #22D3EE 100%);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--cyan) 100%);
   }
 
-  .gradient-bg-brand-subtle {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(34, 211, 238, 0.1) 100%);
+  .gradient-bg-brand-subtle { /* EMEKLİ — kullanım=0; FINAL'de sil */
+    background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 10%, transparent) 0%, color-mix(in oklab, var(--cyan) 10%, transparent) 100%);
   }
 
   .gradient-border {
     position: relative;
   }
 
-  .gradient-border::before {
+  .gradient-border::before { /* kullanım=0 — 1px sınır: accent-ui (COL-04 iz-türevi); cyan çizgi-istisnası */
     content: '';
     position: absolute;
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(34, 211, 238, 0.2), transparent);
+    background: linear-gradient(135deg, color-mix(in oklab, var(--accent-ui) 40%, transparent), color-mix(in oklab, var(--cyan) 20%, transparent), transparent);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
@@ -385,11 +389,11 @@
     pointer-events: none;
   }
 
-  .gradient-mesh {
+  .gradient-mesh { /* kullanım=0 (G-00-15 tabu — P4'te silinir); cyan-YÜZEY ihlali kaldırıldı: tüm duraklar accent (dolgu izinli, COL-04) */
     background:
-      radial-gradient(at 20% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
-      radial-gradient(at 80% 80%, rgba(34, 211, 238, 0.06) 0%, transparent 50%),
-      radial-gradient(at 50% 50%, rgba(59, 130, 246, 0.03) 0%, transparent 70%);
+      radial-gradient(at 20% 20%, color-mix(in oklab, var(--accent) 8%, transparent) 0%, transparent 50%),
+      radial-gradient(at 80% 80%, color-mix(in oklab, var(--accent) 6%, transparent) 0%, transparent 50%),
+      radial-gradient(at 50% 50%, color-mix(in oklab, var(--accent) 3%, transparent) 0%, transparent 70%);
   }
 }
 
@@ -433,12 +437,12 @@
     transform: translateY(-2px);
   }
 
-  .hover-glow {
+  .hover-glow { /* kullanım=0; renk owned + α .2→.14 glow-bütçesi (COL-12); hover-glow-yalnız-CTA kararı P7 */
     transition: box-shadow 0.3s ease;
   }
 
   .hover-glow:hover {
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 20px color-mix(in oklab, var(--accent) 14%, transparent);
   }
 
   .transition-default {

@@ -71,9 +71,10 @@ const config: Config = {
         'shimmer': 'shimmer 2s infinite',
       },
       keyframes: {
+        // glow: kullanım=0; renk owned + α≤.14 (COL-12). Blur-animasyonu MO-ihlali → P6'da kaldırılır.
         glow: {
-          '0%': { boxShadow: '0 0 5px rgba(59, 130, 246, 0.2)' },
-          '100%': { boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)' },
+          '0%': { boxShadow: '0 0 5px color-mix(in oklab, var(--accent) 14%, transparent)' },
+          '100%': { boxShadow: '0 0 20px color-mix(in oklab, var(--accent) 14%, transparent)' },
         },
         slideUp: {
           '0%': { transform: 'translateY(10px)', opacity: '0' },
@@ -104,12 +105,12 @@ const config: Config = {
         'cta': 'var(--glow-cta)',        // tek CTA glow, opaklık ≤.14
         'e3': 'var(--shadow-e3)',        // YALNIZ E3 overlay
         'cut-lip': 'var(--cut-lip)',     // üst-kenar highlight
-        // ── EMEKLİ (glow-bütçe ihlali / kart-gölge yasağı) — P2 util-göç sonrası sil ──
-        'glow-sm': '0 0 10px rgba(59, 130, 246, 0.15)',
-        'glow-md': '0 0 20px rgba(59, 130, 246, 0.2)',
-        'glow-lg': '0 0 30px rgba(59, 130, 246, 0.3)',
-        'glow-bullish': '0 0 15px rgba(16, 185, 129, 0.2)',
-        'glow-bearish': '0 0 15px rgba(244, 85, 110, 0.2)',
+        // ── EMEKLİ alias'lar → tek --glow-cta (P9.3/D9-03); FINAL'de sil ──
+        // glow-bullish/bearish KALDIRILDI (COL-12: bull/bear glow yasak; kullanan
+        // class'lar artık CSS üretmez → glow söner; class-temizliği P9.7/P9.4'te).
+        'glow-sm': 'var(--glow-cta)',
+        'glow-md': 'var(--glow-cta)',
+        'glow-lg': 'var(--glow-cta)',
         'card': '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2)',
         'card-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3)',
       },
