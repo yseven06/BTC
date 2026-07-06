@@ -211,7 +211,7 @@
   .glass-card {
     background: var(--e1); /* cam sokuldu -> opak E1 (P10/D02) */
     border: 1px solid rgba(148, 163, 184, 0.1);
-    border-radius: 16px;
+    border-radius: var(--radius-card); /* kart 16->12 (P10/D04) */
     box-shadow: var(--cut-lip); /* golgesiz-luminans (P10/D01) */
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -224,14 +224,14 @@
   .glass-card-static {
     background: var(--e3); /* overlay-yuzeyi (Header dropdown x3) — E3; cam-recetesi D11/.glass-e3-overlay ile (P10/D02) */
     border: 1px solid rgba(148, 163, 184, 0.1);
-    border-radius: 16px;
+    border-radius: var(--radius-panel); /* overlay 16 (P10/D04) */
     box-shadow: var(--shadow-e3); /* golge YALNIZ E3 overlay - tek token (Bible §01) */
   }
 
   .glass-card-accent {
     background: var(--e1); /* cam sokuldu -> opak E1 (P10/D02) */
     border: 1px solid rgba(59, 130, 246, 0.2);
-    border-radius: 16px;
+    border-radius: var(--radius-card); /* kart 16->12 (P10/D04) */
     box-shadow: var(--cut-lip); /* golge+glow sokuldu (P10/D01; accent-glow D03 kapsami ayni property oldugundan burada) */
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }

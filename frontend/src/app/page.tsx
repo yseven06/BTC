@@ -159,7 +159,7 @@ export default function LandingPage() {
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
             {winSignals.map((s) => (
-              <div key={s.id} className="glass-panel border border-border-subtle rounded-2xl p-4">
+              <div key={s.id} className="glass-panel border border-border-subtle rounded-card p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-bold text-text-primary">{s.asset?.symbol}</span>
                   <span className="text-[10px] font-bold uppercase bg-bullish/15 text-bullish px-2 py-0.5 rounded">
@@ -187,7 +187,7 @@ export default function LandingPage() {
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-10">
           {ENGINES.map((e) => (
-            <div key={e.title} className="glass-panel border border-border-subtle rounded-2xl p-5">
+            <div key={e.title} className="glass-panel border border-border-subtle rounded-card p-5">
               <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3">
                 <e.icon className="w-5 h-5 text-accent-primary" />
               </div>
@@ -218,7 +218,7 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
           {STEPS.map((s) => (
             <div key={s.n} className="text-center">
-              <div className="w-12 h-12 rounded-2xl gradient-bg-brand flex items-center justify-center text-white font-extrabold text-lg mx-auto mb-3">
+              <div className="w-12 h-12 rounded-xl gradient-bg-brand flex items-center justify-center text-white font-extrabold text-lg mx-auto mb-3">
                 {s.n}
               </div>
               <h3 className="text-sm font-bold text-text-primary">{s.title}</h3>
@@ -237,7 +237,7 @@ export default function LandingPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-10">
           {/* How it works — honest mechanics */}
-          <div className="glass-panel border border-border-subtle rounded-2xl p-6">
+          <div className="glass-panel border border-border-subtle rounded-card p-6">
             <div className="flex items-center gap-2 mb-4">
               <Layers className="w-5 h-5 text-accent-primary" />
               <h3 className="text-sm font-bold text-text-primary">Nasıl çalışır</h3>
@@ -250,7 +250,7 @@ export default function LandingPage() {
           </div>
 
           {/* Honest limits — clear but not scary */}
-          <div className="glass-panel border border-border-subtle rounded-2xl p-6">
+          <div className="glass-panel border border-border-subtle rounded-card p-6">
             <div className="flex items-center gap-2 mb-4">
               <Eye className="w-5 h-5 text-text-secondary" />
               <h3 className="text-sm font-bold text-text-primary">Dürüst sınırlar</h3>
@@ -270,7 +270,7 @@ export default function LandingPage() {
             { icon: UserCheck, title: 'Nihai karar senindir', desc: 'Uygunluk analizi yapılmaz; kararı kendi bilgin ve risk profiline göre verirsin.' },
             { icon: Lock, title: 'Senin adına işlem yapmaz', desc: 'TradeMinds yalnızca analiz ve karar desteği sunar; hesabında emir göndermez.' },
           ].map((m) => (
-            <div key={m.title} className="rounded-2xl border border-border-subtle bg-bg-secondary/40 p-5">
+            <div key={m.title} className="rounded-card border border-border-subtle bg-bg-secondary/40 p-5">
               <div className="w-9 h-9 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3">
                 <m.icon className="w-5 h-5 text-accent-primary" />
               </div>
@@ -293,7 +293,7 @@ export default function LandingPage() {
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-10">
           {/* Data sources */}
-          <div className="glass-panel border border-border-subtle rounded-2xl p-6">
+          <div className="glass-panel border border-border-subtle rounded-card p-6">
             <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3"><Globe className="w-5 h-5 text-accent-primary" /></div>
             <h3 className="text-sm font-bold text-text-primary">Gerçek veri kaynakları</h3>
             <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">Fiyat ve piyasa verileri tanınmış sağlayıcılardan gelir:</p>
@@ -304,7 +304,7 @@ export default function LandingPage() {
             </ul>
           </div>
           {/* Security */}
-          <div className="glass-panel border border-border-subtle rounded-2xl p-6">
+          <div className="glass-panel border border-border-subtle rounded-card p-6">
             <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3"><Shield className="w-5 h-5 text-accent-primary" /></div>
             <h3 className="text-sm font-bold text-text-primary">Güvenlik yaklaşımı</h3>
             <ul className="mt-3 space-y-1.5 text-xs text-text-secondary">
@@ -315,7 +315,7 @@ export default function LandingPage() {
             </ul>
           </div>
           {/* Privacy / KVKK */}
-          <div className="glass-panel border border-border-subtle rounded-2xl p-6">
+          <div className="glass-panel border border-border-subtle rounded-card p-6">
             <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3"><Lock className="w-5 h-5 text-accent-primary" /></div>
             <h3 className="text-sm font-bold text-text-primary">Gizlilik &amp; KVKK</h3>
             <ul className="mt-3 space-y-1.5 text-xs text-text-secondary">
@@ -337,7 +337,7 @@ export default function LandingPage() {
             {plans.map((p) => {
               const monthly = p.pricing.find((pr) => pr.cycle === 'monthly');
               return (
-                <div key={p.tier} className={cn('glass-panel border rounded-2xl p-6', p.recommended ? 'border-accent-primary/40' : 'border-border-subtle')}>
+                <div key={p.tier} className={cn('glass-panel border rounded-card p-6', p.recommended ? 'border-accent-primary/40' : 'border-border-subtle')}>
                   <h3 className="text-base font-bold text-text-primary">{p.name}</h3>
                   <p className="text-xs text-text-secondary mt-1">{p.description}</p>
                   <div className="text-3xl font-extrabold font-mono text-text-primary mt-3">

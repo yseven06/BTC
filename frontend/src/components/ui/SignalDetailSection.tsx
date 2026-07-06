@@ -180,7 +180,7 @@ function EngineCard({ engine, onClick, compact }: { engine: EngineRow; onClick: 
       onClick={onClick}
       title={`${engine.label} — Detayları görmek için tıkla`}
       className={cn(
-        'group relative bg-bg-secondary/40 rounded-2xl',
+        'group relative bg-bg-secondary/40 rounded-card',
         'border transition-all duration-200',
         'hover:bg-bg-secondary/60 hover:-translate-y-0.5',
         biasConfig.border,
@@ -341,7 +341,7 @@ function PriceLadder({ signal }: { signal: ApiSignal }) {
       ];
 
   return (
-    <div className="bg-bg-secondary/30 border border-border-subtle rounded-2xl p-5">
+    <div className="bg-bg-secondary/30 border border-border-subtle rounded-card p-5">
       <div className="space-y-0">
         {items.map((item, idx) => {
           const colorClass = item.color === 'bullish' ? 'bg-bullish text-black border-bullish'
@@ -570,7 +570,7 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
           {/* Left: Symbol + Direction */}
           <div className={cn('flex items-center', compact ? 'gap-3' : 'gap-5')}>
             <div className={cn(
-              'rounded-2xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-accent-primary flex-shrink-0 overflow-hidden',
+              'rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-accent-primary flex-shrink-0 overflow-hidden',
               compact ? 'w-11 h-11 text-sm' : 'w-16 h-16 text-base'
             )}>
               {signal.asset?.symbol && <CoinIcon symbol={signal.asset.symbol} assetType={signal.asset.asset_type} />}

@@ -26,7 +26,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
       className={clsx(
         // Gölgesizleştirme (P10/D01, Bible §01 craft-card-shadowless-luminance):
         // drop-shadow YASAK — derinlik luminanstan; tek izinli inset = cut-lip.
-        "relative bg-e-1 border border-border-subtle rounded-xl p-5 shadow-cut-lip transition-all duration-300",
+        "relative bg-e-1 border border-border-subtle rounded-card p-5 shadow-cut-lip transition-all duration-300",
         // Even cards that aren't click targets (hoverEffect=false) get a
         // faint border/glow lift on hover so the surface doesn't read as
         // completely static — no translate/scale here, so it never implies

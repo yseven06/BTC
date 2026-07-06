@@ -121,7 +121,7 @@ export default function ProfilePage() {
       {/* Identity */}
       <GlassCard>
         <div className="flex items-center gap-4 mb-5">
-          <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-amber to-accent-primary flex items-center justify-center text-2xl font-bold text-white flex-shrink-0">
+          <div className="w-16 h-16 rounded-xl overflow-hidden bg-gradient-to-br from-amber to-accent-primary flex items-center justify-center text-2xl font-bold text-white flex-shrink-0">
             {user.avatar_url ? (
               <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
