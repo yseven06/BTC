@@ -748,7 +748,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
           </button>
           <Link
             href={`/markets/${encodeURIComponent(sig.asset?.symbol ?? '')}?tf=${encodeURIComponent(sig.timeframe ?? '')}`}
-            className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-primary hover:bg-accent-secondary text-white text-sm font-semibold transition-colors"
+            className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-primary hover:bg-accent-hover text-white text-sm font-semibold transition-colors"
           >
             <LineChart className="w-4 h-4" /> Grafiği Aç
           </Link>
@@ -945,7 +945,7 @@ export default function SignalsPage() {
             <button
               onClick={generateAll}
               disabled={generating || refreshing}
-              className="flex items-center gap-1.5 text-xs font-semibold text-accent-primary hover:text-accent-secondary border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs font-semibold text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
             >
               <Zap className={cn('w-3.5 h-3.5', generating && 'animate-pulse')} />
               {generating ? 'Üretiliyor...' : 'Sinyal Üret'}
@@ -1153,7 +1153,7 @@ export default function SignalsPage() {
               <div className="flex flex-wrap items-center justify-center gap-2">
                 <Link
                   href="/markets"
-                  className="focus-ring inline-flex items-center gap-1.5 text-xs font-bold bg-accent-primary hover:bg-accent-secondary text-white px-4 py-2 rounded-xl transition-colors"
+                  className="focus-ring inline-flex items-center gap-1.5 text-xs font-bold bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors"
                 >
                   Piyasaları keşfet <ArrowRight className="w-3.5 h-3.5" />
                 </Link>

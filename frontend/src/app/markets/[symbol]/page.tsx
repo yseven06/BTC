@@ -584,7 +584,7 @@ export default function AssetDetailPage() {
                 </div>
                 <button
                   onClick={() => router.push('/signal-history')}
-                  className="w-full mt-3 text-[11px] text-accent-primary hover:text-accent-secondary text-center"
+                  className="w-full mt-3 text-[11px] text-accent-primary hover:text-accent-ui text-center"
                 >
                   Sinyal Geçmişi'nde tümünü gör →
                 </button>

@@ -129,7 +129,7 @@ export default function AlertsPage() {
           <p className="text-sm text-text-secondary mt-1">Fiyat, sinyal ve özel koşul alarmları</p>
         </div>
         <button onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-1.5 text-xs font-semibold text-accent-primary hover:text-accent-secondary border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-2 rounded-lg transition-all">
+          className="flex items-center gap-1.5 text-xs font-semibold text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-2 rounded-lg transition-all">
           <Plus className="w-3.5 h-3.5" /> Yeni Alarm
         </button>
       </div>

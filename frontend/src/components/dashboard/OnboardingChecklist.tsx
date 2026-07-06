@@ -117,7 +117,7 @@ export default function OnboardingChecklist() {
           <p className="text-sm font-semibold text-bullish">Tüm adımları tamamladın — iyi işlemler! 🚀</p>
           <button
             onClick={dismiss}
-            className="focus-ring mt-3 inline-flex items-center text-xs font-bold bg-accent-primary hover:bg-accent-secondary text-white px-4 py-2 rounded-xl transition-colors"
+            className="focus-ring mt-3 inline-flex items-center text-xs font-bold bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors"
           >
             Kapat
           </button>

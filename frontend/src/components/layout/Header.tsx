@@ -157,7 +157,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
                   <h3 className="text-sm font-semibold text-text-primary">
                     {tr('notifications.title')}
                   </h3>
-                  <button className="text-xs text-accent-primary hover:text-accent-secondary transition-colors">
+                  <button className="text-xs text-accent-primary hover:text-accent-ui transition-colors">
                     {tr('notifications.mark_all_read')}
                   </button>
                 </div>
@@ -198,7 +198,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
                   )}
                 </div>
                 <div className="px-4 py-2.5 border-t border-border-subtle text-center">
-                  <button className="text-xs text-accent-primary hover:text-accent-secondary transition-colors font-medium">
+                  <button className="text-xs text-accent-primary hover:text-accent-ui transition-colors font-medium">
                     {tr('common.view_all')}
                   </button>
                 </div>

@@ -259,7 +259,7 @@ export default function ProfilePage() {
           <button
             onClick={saveProfile}
             disabled={savingProfile}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-semibold hover:bg-accent-secondary transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             <Save className="w-3.5 h-3.5" /> {savingProfile ? 'Kaydediliyor...' : 'Kaydet'}
           </button>
@@ -295,7 +295,7 @@ export default function ProfilePage() {
           <button
             onClick={submitPasswordChange}
             disabled={changingPw || !currentPw || !newPw}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-semibold hover:bg-accent-secondary transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             <Lock className="w-3.5 h-3.5" /> {changingPw ? 'Güncelleniyor...' : 'Şifreyi Güncelle'}
           </button>

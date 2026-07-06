@@ -114,7 +114,7 @@ export default function CoachmarkTour() {
           </button>
           <button
             onClick={() => (isLast ? finish() : setStep((s) => s + 1))}
-            className="focus-ring inline-flex items-center text-xs font-bold bg-accent-primary hover:bg-accent-secondary text-white px-4 py-1.5 rounded-xl transition-colors"
+            className="focus-ring inline-flex items-center text-xs font-bold bg-accent-primary hover:bg-accent-hover text-white px-4 py-1.5 rounded-xl transition-colors"
           >
             {isLast ? 'Bitir' : 'İleri'}
           </button>

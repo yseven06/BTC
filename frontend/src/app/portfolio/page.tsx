@@ -260,7 +260,7 @@ export default function PortfolioPage() {
                 <h2 className="text-base font-bold text-text-primary">Açık Pozisyonlar</h2>
                 <div className="flex items-center gap-3">
                   <button onClick={() => setShowAddForm(!showAddForm)}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-accent-primary hover:text-accent-secondary border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-all">
+                    className="flex items-center gap-1.5 text-xs font-semibold text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-all">
                     <Plus className="w-3.5 h-3.5" /> Pozisyon Ekle
                   </button>
                   <button onClick={() => removePortfolio(active.id, active.name)}

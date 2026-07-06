@@ -464,7 +464,7 @@ export default function DashboardPage() {
                 <ChartIcon className="w-4 h-4 text-accent-primary" />
                 Canlı Grafik — BTC/USDT
               </h2>
-              <Link href="/markets/BTCUSDT" className="text-xs text-accent-primary hover:text-accent-secondary flex items-center gap-1">
+              <Link href="/markets/BTCUSDT" className="text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
                 Detay <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
@@ -478,7 +478,7 @@ export default function DashboardPage() {
                 <Activity className="w-4 h-4 text-accent-primary" />
                 Performans Özeti
               </h2>
-              <Link href="/performance" className="text-xs text-accent-primary hover:text-accent-secondary flex items-center gap-1">
+              <Link href="/performance" className="text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
                 Tümünü Gör <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
@@ -503,7 +503,7 @@ export default function DashboardPage() {
                 <Zap className="w-4 h-4 text-accent-primary" />
                 Son Sinyaller
               </h2>
-              <Link href="/signals" className="text-xs text-accent-primary hover:text-accent-secondary flex items-center gap-1">
+              <Link href="/signals" className="text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
                 Tümünü Gör <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
@@ -520,7 +520,7 @@ export default function DashboardPage() {
                 action={
                   <Link
                     href="/signals"
-                    className="focus-ring inline-flex items-center gap-1.5 text-xs font-bold bg-accent-primary hover:bg-accent-secondary text-white px-4 py-2 rounded-xl transition-colors"
+                    className="focus-ring inline-flex items-center gap-1.5 text-xs font-bold bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors"
                   >
                     Sinyal Merkezi&apos;ne git <ArrowRight className="w-3.5 h-3.5" />
                   </Link>

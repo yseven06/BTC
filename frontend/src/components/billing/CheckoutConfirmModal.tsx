@@ -123,7 +123,7 @@ export function CheckoutConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={!canConfirm}
-            className="rounded-lg bg-accent-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-accent-secondary disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-accent-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {processing ? 'İşleniyor...' : 'Ödemeye Geç'}
           </button>

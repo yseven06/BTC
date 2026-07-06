@@ -180,7 +180,7 @@ export default function PricingPage() {
               <button
                 onClick={() => subscribe(sub.tier, sub.billing_cycle ?? undefined)}
                 disabled={processing !== null}
-                className="focus-ring inline-flex items-center text-sm font-bold bg-accent-primary hover:bg-accent-secondary text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+                className="focus-ring inline-flex items-center text-sm font-bold bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
               >
                 {processing === sub.tier ? 'İşleniyor...' : 'Aboneliği Devam Ettir'}
               </button>
@@ -312,7 +312,7 @@ export default function PricingPage() {
                       : plan.tier === 'free' || !PAYMENTS_ENABLED
                       ? 'bg-bg-tertiary text-text-muted'
                       : plan.recommended
-                      ? 'bg-accent-primary hover:bg-accent-secondary text-white'
+                      ? 'bg-accent-primary hover:bg-accent-hover text-white'
                       : 'bg-bg-tertiary border border-border-medium hover:border-accent-primary/40 text-text-primary'
                   )}
                 >

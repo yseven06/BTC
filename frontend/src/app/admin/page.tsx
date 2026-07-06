@@ -693,7 +693,7 @@ function SystemTab() {
               <span className="font-mono text-text-muted">{j.last_run_at ? formatAbsoluteTimeTR(j.last_run_at) : '—'}</span>
               <span className="text-bearish truncate" title={j.last_error ?? ''}>{j.last_error ?? '—'}</span>
               <button onClick={() => trigger(jobId)} disabled={triggering === jobId || j.running}
-                className="flex items-center gap-1 text-[11px] font-semibold text-accent-primary hover:text-accent-secondary border border-accent-primary/30 hover:border-accent-primary/60 px-2.5 py-1 rounded-lg transition-all disabled:opacity-50">
+                className="flex items-center gap-1 text-[11px] font-semibold text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-2.5 py-1 rounded-lg transition-all disabled:opacity-50">
                 <Play className="w-3 h-3" /> {triggering === jobId ? 'Tetiklendi' : 'Şimdi Çalıştır'}
               </button>
             </div>

@@ -224,7 +224,7 @@ export function ShareCardModal({ data, onClose }: { data: ShareCardData; onClose
           <button onClick={download} className="flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold bg-bg-tertiary text-text-primary px-4 py-2.5 rounded-xl hover:bg-bg-tertiary/70 transition-colors">
             <Download className="w-4 h-4" /> İndir
           </button>
-          <button onClick={share} className="flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold bg-accent-primary text-white px-4 py-2.5 rounded-xl hover:bg-accent-secondary transition-colors">
+          <button onClick={share} className="flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold bg-accent-primary text-white px-4 py-2.5 rounded-xl hover:bg-accent-hover transition-colors">
             <Share2 className="w-4 h-4" /> Paylaş
           </button>
         </div>
