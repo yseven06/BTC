@@ -16,15 +16,18 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
+  // Renk migration (P9.4a/D9-04): focus=accent-ui (COL-04 1px-UI) · primary
+  // dolgu=accent, hover=accent-hover (indigo-600 emekli) · danger/success ham
+  // red/green-600 hover + rgba-glow KALDIRILDI (COL-12 semantik-glow=0).
   const baseStyle =
-    "inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-200 outline-none focus:ring-2 focus:ring-accent-primary/50 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]";
+    "inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-200 outline-none focus:ring-2 focus:ring-accent-ui/50 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]";
 
   const variants = {
-    primary: "bg-accent-primary hover:bg-indigo-600 text-white shadow-glow-sm hover:shadow-glow-md",
+    primary: "bg-accent hover:bg-accent-hover text-white shadow-glow-sm hover:shadow-glow-md",
     secondary: "bg-bg-tertiary border border-border-medium hover:bg-bg-glass text-text-primary",
     ghost: "bg-transparent hover:bg-bg-tertiary text-text-secondary hover:text-text-primary",
-    danger: "bg-bearish hover:bg-red-600 text-white shadow-[0_0_10px_rgba(255,82,82,0.15)]",
-    success: "bg-bullish hover:bg-green-600 text-white shadow-[0_0_10px_rgba(0,230,118,0.15)]",
+    danger: "bg-bear hover:bg-bear/90 text-white",
+    success: "bg-bull hover:bg-bull/90 text-white",
   };
 
   const sizes = {
