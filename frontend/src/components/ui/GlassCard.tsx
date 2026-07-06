@@ -49,13 +49,15 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   return (
     <div
       className={clsx(
-        "relative backdrop-blur-md bg-bg-glass border border-border-subtle rounded-xl p-5 shadow-card transition-all duration-300",
+        // Gölgesizleştirme (P10/D01, Bible §01 craft-card-shadowless-luminance):
+        // drop-shadow YASAK — derinlik luminanstan; tek izinli inset = cut-lip.
+        "relative backdrop-blur-md bg-bg-glass border border-border-subtle rounded-xl p-5 shadow-cut-lip transition-all duration-300",
         // Even cards that aren't click targets (hoverEffect=false) get a
         // faint border/glow lift on hover so the surface doesn't read as
         // completely static — no translate/scale here, so it never implies
         // clickability, just a quiet "alive" feel on an otherwise dark panel.
         !hoverEffect && "hover:border-border-medium hover:shadow-glow-sm",
-        hoverEffect && "hover:-translate-y-1 hover:scale-[1.01] hover:shadow-card-hover hover:border-border-medium",
+        hoverEffect && "hover:-translate-y-1 hover:scale-[1.01] hover:border-border-medium",
         className
       )}
       style={glowEffect ? { ...glowStyles[glowColor], ...style } : style}

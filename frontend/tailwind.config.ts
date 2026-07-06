@@ -100,8 +100,6 @@ const config: Config = {
         'glow-sm': 'var(--glow-cta)',
         'glow-md': 'var(--glow-cta)',
         'glow-lg': 'var(--glow-cta)',
-        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2)',
-        'card-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3)',
       },
       // ── Design Standards v1.3 owned ölçek token'ları (Bible §01/§05/§06) ──
       borderRadius: {
