@@ -59,7 +59,7 @@ export async function solveChallenge(sitekey: string): Promise<string> {
     // #e2e8f0/#94a3b8 metinler, #60a5fa 4.-mavi link EMEKLİ → owned token.
     // z-index 9999 → z-tour+ (ad-hoc z temizliği D9-12/P2 kapsamı; renk-fazı dokunmaz).
     overlay.style.cssText =
-      'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:color-mix(in oklab, var(--e0) 70%, transparent)';
+      'position:fixed;inset:0;z-index:var(--z-tour);display:flex;align-items:center;justify-content:center;background:color-mix(in oklab, var(--e0) 70%, transparent)';
 
     const box = document.createElement('div');
     box.style.cssText =

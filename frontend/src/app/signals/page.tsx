@@ -509,7 +509,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4 bg-e-0/60 backdrop-blur-sm"
       onClick={onClose}
     >
       <div

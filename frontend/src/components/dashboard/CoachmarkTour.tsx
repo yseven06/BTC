@@ -81,7 +81,7 @@ export default function CoachmarkTour() {
             left: rect.left - pad,
             width: rect.width + pad * 2,
             height: rect.height + pad * 2,
-            boxShadow: '0 0 0 9999px rgba(2, 8, 23, 0.72)',
+            boxShadow: '0 0 0 9999px color-mix(in oklab, var(--e0) 72%, transparent)' /* #020817 emekli -> e0 (D9-12) */,
             border: '2px solid var(--accent-primary)',
           }}
         />

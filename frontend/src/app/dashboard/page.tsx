@@ -392,7 +392,8 @@ export default function DashboardPage() {
             onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
           >
             <svg viewBox="0 0 44 44" className="w-full h-full -rotate-90">
-              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" />
+              {/* white-alpha .05 → hl10 (D9-12); SVG attr var() çözmez → CSS stroke property */}
+              <circle cx="22" cy="22" r="18" fill="none" style={{ stroke: 'var(--hl10)' }} strokeWidth="4" />
               <circle
                 cx="22" cy="22" r="18" fill="none"
                 stroke={fngColor(fngValue)} strokeWidth="4"

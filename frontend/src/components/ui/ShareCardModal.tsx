@@ -206,7 +206,7 @@ export function ShareCardModal({ data, onClose }: { data: ShareCardData; onClose
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-e-0/70 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-bg-secondary border border-border-subtle rounded-2xl p-5 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-bold text-text-primary">Paylaşım Kartı</h3>

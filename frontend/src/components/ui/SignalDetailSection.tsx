@@ -237,7 +237,7 @@ function EngineDetailModal({ engine, symbol, timeframe, onClose }: {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-e-0/70 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
