@@ -9,7 +9,14 @@
 
 # Yalnız frontend dosyaları stage'liyse koş (backend/doc commit'lerini yavaşlatma).
 if git diff --cached --name-only | grep -q '^frontend/'; then
-  if command -v npm >/dev/null 2>&1; then
+  if ! command -v npm >/dev/null 2>&1; then
+    # npm PATH'te değil (ör. GUI git istemcisi) — altyapı-eksikliği commit'i kilitlemez.
+    # NOT: repoda henüz CI yok; gate'ler yalnız bu hook + elle lint:design ile koşar.
+    echo "design-lint ATLANDI: npm PATH'te yok. Elle koşun: cd frontend && npm run lint:design"
+  elif [ ! -d frontend/node_modules ]; then
+    # Taze klon / kurulumsuz ortam — yanıltıcı 'gate ihlali' mesajıyla kilitleme.
+    echo "design-lint ATLANDI: frontend/node_modules yok. Kurulum: cd frontend && npm install"
+  else
     echo "— design-lint (pre-commit, WARN-mod) —"
     (cd frontend && npm run --silent lint:design) || {
       echo ""
@@ -17,10 +24,6 @@ if git diff --cached --name-only | grep -q '^frontend/'; then
       echo "Bilinçli atlama (yalnız acil durum): git commit --no-verify"
       exit 1
     }
-  else
-    # npm PATH'te değil (ör. GUI git istemcisi) — hook altyapı-eksikliği commit'i
-    # kilitlemez; CI'daki lint:design aynı gate'leri zaten koşar (güvenli-varsayılan).
-    echo "design-lint atlandı: npm PATH'te yok (CI lint:design devrede)."
   fi
 fi
 exit 0
