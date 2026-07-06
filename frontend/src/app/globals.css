@@ -214,11 +214,23 @@
    ============================================ */
 @layer components {
 
-  .glass-card-static {
-    background: var(--e3); /* overlay-yuzeyi (Header dropdown x3) — E3; cam-recetesi D11/.glass-e3-overlay ile (P10/D02) */
-    border: 1px solid var(--hl22); /* E3-overlay border .22 (P10/D08 COL-10) */
-    border-radius: var(--radius-panel); /* overlay 16 (P10/D04) */
-    box-shadow: var(--shadow-e3); /* golge YALNIZ E3 overlay - tek token (Bible §01) */
+  /* E3-overlay yuzey recetesi (P10/D11+D12, Bible §01 craft-glass-single-exception-e3):
+     cam YALNIZ burada — E3 %92 + blur 10px (band 8-10); golge yalniz burada (--shadow-e3);
+     border hl22. reduced-transparency modunda opak E3 fallback. Radius kullanan belirler (panel=16). */
+  .glass-e3-overlay {
+    background: color-mix(in oklab, var(--e3) 92%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--hl22);
+    box-shadow: var(--shadow-e3);
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-e3-overlay {
+      background: var(--e3);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
   }
 
   .glass-panel {

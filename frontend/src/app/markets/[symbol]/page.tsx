@@ -489,7 +489,7 @@ export default function AssetDetailPage() {
                   <HelpCircle className="w-3.5 h-3.5" />
                 </button>
                 {showPineHint && (
-                  <div className="absolute right-0 top-full mt-2 w-64 glass-card-static rounded-xl border border-border-subtle shadow-2xl p-3 text-[11px] leading-relaxed text-text-secondary z-50">
+                  <div className="absolute right-0 top-full mt-2 w-64 glass-e3-overlay rounded-panel p-3 text-[11px] leading-relaxed text-text-secondary z-50">
                     <p className="font-semibold text-text-primary mb-1.5">Nasıl kullanılır?</p>
                     <ol className="list-decimal list-inside space-y-1">
                       <li>Pine Script Kopyala'ya bas</li>

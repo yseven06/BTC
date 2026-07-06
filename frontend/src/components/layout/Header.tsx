@@ -102,7 +102,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
 
           {/* Search results dropdown */}
           {searchFocused && searchResults.length > 0 && (
-            <div className="absolute top-full mt-1 left-0 right-0 glass-card-static rounded-xl border border-border-subtle shadow-2xl z-50 overflow-hidden">
+            <div className="absolute top-full mt-1 left-0 right-0 glass-e3-overlay rounded-panel z-50 overflow-hidden">
               {searchResults.map((asset) => (
                 <div
                   key={asset.id}
@@ -152,7 +152,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
 
             {/* Notifications Dropdown */}
             {showNotifications && (
-              <div className="absolute right-0 top-full mt-2 w-96 glass-card-static rounded-xl border border-border-subtle shadow-2xl animate-scale-in overflow-hidden">
+              <div className="absolute right-0 top-full mt-2 w-96 glass-e3-overlay rounded-panel animate-scale-in overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
                   <h3 className="text-sm font-semibold text-text-primary">
                     {tr('notifications.title')}
@@ -236,7 +236,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
 
             {/* User Dropdown */}
             {showUserMenu && (
-              <div className="absolute right-0 top-full mt-2 w-56 glass-card-static rounded-xl border border-border-subtle shadow-2xl animate-scale-in overflow-hidden">
+              <div className="absolute right-0 top-full mt-2 w-56 glass-e3-overlay rounded-panel animate-scale-in overflow-hidden">
                 <div className="px-4 py-3 border-b border-border-subtle">
                   <p className="text-sm font-semibold text-text-primary">{displayName}</p>
                   {displayEmail && <p className="text-xs text-text-muted">{displayEmail}</p>}
