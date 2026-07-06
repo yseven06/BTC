@@ -51,9 +51,17 @@ const report = [];
 for (const f of files) {
   const rel = relative(ROOT, f);
   const isAllowed = ALLOW_FILES.some((a) => rel.endsWith(a));
-  const lines = readFileSync(f, 'utf8').split('\n');
-  lines.forEach((line, i) => {
-    if (line.includes('data-instrument')) return; // K5 muafiyet-kancası
+  const lines = readFileSync(f, 'utf8').split(/\r?\n/) /* CRLF: satir-sonu \r yorum-stripping $ desenlerini bozuyordu (P9-FINAL) */;
+  lines.forEach((raw, i) => {
+    if (raw.includes('data-instrument')) return; // K5 muafiyet-kancası
+    // Yorum-stripping (P9-FINAL): dokümantasyon hex'leri (EMEKLİ/migration-notları)
+    // ihlal değildir — satır-içi //, /* */, JSDoc-devamı (* ile başlar) ve HTML
+    // entity (&#039;) taramadan SOYULUR; URL'deki :// korunur ([^:] guard).
+    const line = raw
+      .replace(/\/\*[\s\S]*?(\*\/|$)/g, '')
+      .replace(/^\s*\*.*/, '')
+      .replace(/(^|[^:])\/\/.*$/, '$1')
+      .replace(/&#x?[0-9a-fA-F]+;/g, '');
     const hexes = line.match(HEX_RE);
     if (hexes) {
       if (isAllowed) { allowedHex += hexes.length; return; }
