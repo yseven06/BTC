@@ -93,27 +93,33 @@
     --text-muted:     var(--tx3);  /* = #5C6980 */
     --border-subtle:  var(--hl10); /* = rgba(148,163,184,.10) */
 
-    /* ── EMEKLİ / migration-BEKLEYEN (değer v1.1'de; owned'a geçiş AYRI commit) ── */
+    /* ── SEMANTİK PALET-KİLİDİ (P1-F/c) — v1.1 adları owned'a ALIAS'landı →
+         GÖRSEL: mavi→owned-blue · cyan→electric-teal · yeşil→teal-emerald ·
+         kırmızı→warm-red · amber→owned-amber. dark/light + signal-* düzleştirildi
+         (Bible owned-tek-hex; dark/light tüketici=0 → no-op). Component hardcode
+         hex'leri HÂLÂ eski (P9 Color'da göç edilecek) — geçiş-dönemi tutarsızlık. */
+    --accent-primary:   var(--accent);   /* #3B82F6 → #3B57D4 */
+    --accent-secondary: var(--cyan);     /* #22D3EE → #25E0D4 */
+    --bullish:       var(--bull);        /* #10B981 → #2FBE9A */
+    --bullish-dark:  var(--bull);        /* #059669 → bull (düzleşti; tüketici=0) */
+    --bullish-light: var(--bull);        /* #34D399 → bull (tüketici=0) */
+    --bearish:       var(--bear);        /* #F4556E → #E14640 */
+    --bearish-dark:  var(--bear);        /* #E23E58 → bear (tüketici=0) */
+    --bearish-light: var(--bear);        /* #F87C8E → bear (tüketici=0) */
+    --warning:       var(--amber);       /* #FBBF24 → #F5A524 */
+    --signal-strong-buy:  var(--bull);   /* #10B981 → bull */
+    --signal-buy:         var(--bull);   /* #34D399 → bull (5→3 semantik) */
+    --signal-hold:        var(--amber);  /* #FBBF24 → amber */
+    --signal-sell:        var(--bear);   /* #F4556E → bear */
+    --signal-strong-sell: var(--bear);   /* #E23E58 → bear (5→3 semantik) */
+
+    /* ── EMEKLİ (owned'a AYRI commit'lerde göç) ── */
     --bg-glass:       rgba(12, 18, 32, 0.7);        /* EMEKLİ — glass=E3-only, P2 primitif göçü */
     --bg-glass-light: rgba(12, 18, 32, 0.4);        /* EMEKLİ — P2 */
-    --accent-primary:   #3B82F6;                    /* EMEKLİ → --accent #3B57D4 (P1-F/c, renk-shift) */
-    --accent-secondary: #22D3EE;                    /* EMEKLİ → --cyan #25E0D4 (P1-F/c) */
-    --accent-glow:        rgba(59, 130, 246, 0.3);  /* EMEKLİ — glow-bütçe ihlali, P2 util-göç */
-    --accent-glow-strong: rgba(59, 130, 246, 0.5);  /* EMEKLİ — P2 */
+    --accent-glow:        rgba(59, 130, 246, 0.3);  /* EMEKLİ — glow-bütçe ihlali, P1-F/e util-göç */
+    --accent-glow-strong: rgba(59, 130, 246, 0.5);  /* EMEKLİ — P1-F/e */
     --text-dark: #334155;                           /* EMEKLİ — COL-03 4. metin tonu yasak; kullanım=0 → P2 sil */
     --border-medium: rgba(148, 163, 184, 0.2);      /* EMEKLİ → --hl16 .16 (P1-F/d, mikro-shift) */
-    --bullish:       #10B981;                       /* EMEKLİ → --bull #2FBE9A (P1-F/c) */
-    --bullish-dark:  #059669;                       /* EMEKLİ — dark/light varyant yasak, P2 */
-    --bullish-light: #34D399;                       /* EMEKLİ — P2 */
-    --bearish:       #F4556E;                       /* EMEKLİ → --bear #E14640 (P1-F/c) */
-    --bearish-dark:  #E23E58;                       /* EMEKLİ — P2 */
-    --bearish-light: #F87C8E;                       /* EMEKLİ — P2 */
-    --warning:       #FBBF24;                       /* EMEKLİ → --amber #F5A524 (P1-F/c) */
-    --signal-strong-buy:  #10B981;                  /* EMEKLİ — signal-* ekseni, P2 component-göç */
-    --signal-buy:         #34D399;                  /* EMEKLİ — P2 */
-    --signal-hold:        #FBBF24;                  /* EMEKLİ — P2 */
-    --signal-sell:        #F4556E;                  /* EMEKLİ — P2 */
-    --signal-strong-sell: #E23E58;                  /* EMEKLİ — P2 */
   }
 
   * {
