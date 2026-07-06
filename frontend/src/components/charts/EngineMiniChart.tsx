@@ -6,6 +6,7 @@ import {
   type IChartApi, type ISeriesApi, type CandlestickData, type SeriesMarker, type Time,
 } from 'lightweight-charts';
 import { fetchOhlcv, type OhlcvCandle } from '@/lib/api';
+import { chartColor, withAlpha } from '@/lib/chartColors';
 
 interface PriceLevel {
   price: number;
@@ -46,27 +47,32 @@ function buildOverlay(engineName: string, sd: any): { levels: PriceLevel[]; mark
   const levels: PriceLevel[] = [];
   const markers: PatternMarker[] = [];
   if (!sd) return { levels, markers };
+  // Renk migration (P9.5/D9-07): owned tek-kaynak (chartColors runtime-resolve).
+  // FVG = cyan-sınır tek dil (COL-05/07: cyan yalnız çizgi-iz; pembe #f472b6
+  // EMEKLİ — 3.-renk salgını); yön bilgisi title + Dashed stille korunur.
+  const bull = chartColor('bull'), bear = chartColor('bear');
+  const tx2 = chartColor('tx2'), cyan = chartColor('cyan');
 
   if (engineName === 'market_structure') {
     for (const lv of (sd.horizontal_sr ?? []).slice(0, 4)) {
       const isSupport = lv.type === 'support';
       levels.push({
         price: lv.price,
-        color: isSupport ? '#10B981' : '#F4556E',
+        color: isSupport ? bull : bear,
         title: `${isSupport ? 'Destek' : 'Direnç'} (g:${Math.round(lv.strength)})`,
       });
     }
     for (const lv of (sd.fibonacci ?? []).slice(0, 4)) {
-      levels.push({ price: lv.price, color: '#94a3b8', title: lv.label, style: LineStyle.Dotted });
+      levels.push({ price: lv.price, color: tx2, title: lv.label, style: LineStyle.Dotted });
     }
   }
 
   if (engineName === 'smart_money_concepts') {
     const pd = sd.premium_discount;
     if (pd) {
-      if (pd.swing_high) levels.push({ price: pd.swing_high, color: '#F4556E', title: 'Prim üst', style: LineStyle.Dashed });
-      if (pd.equilibrium) levels.push({ price: pd.equilibrium, color: '#94a3b8', title: 'Denge', style: LineStyle.Dotted });
-      if (pd.swing_low) levels.push({ price: pd.swing_low, color: '#10B981', title: 'İskonto alt', style: LineStyle.Dashed });
+      if (pd.swing_high) levels.push({ price: pd.swing_high, color: bear, title: 'Prim üst', style: LineStyle.Dashed });
+      if (pd.equilibrium) levels.push({ price: pd.equilibrium, color: tx2, title: 'Denge', style: LineStyle.Dotted });
+      if (pd.swing_low) levels.push({ price: pd.swing_low, color: bull, title: 'İskonto alt', style: LineStyle.Dashed });
     }
     const zone = (arr: any[], color: string, label: string) => {
       for (const z of (arr ?? []).slice(0, 2)) {
@@ -74,16 +80,16 @@ function buildOverlay(engineName: string, sd: any): { levels: PriceLevel[]; mark
         levels.push({ price: z.low, color, title: `${label} alt`, style: LineStyle.Dashed });
       }
     };
-    zone(sd.unmitigated_bullish_ob, '#10B981', 'OB');
-    zone(sd.unmitigated_bearish_ob, '#F4556E', 'OB');
-    zone(sd.unfilled_bullish_fvg, '#22d3ee', 'FVG');
-    zone(sd.unfilled_bearish_fvg, '#f472b6', 'FVG');
+    zone(sd.unmitigated_bullish_ob, bull, 'OB');
+    zone(sd.unmitigated_bearish_ob, bear, 'OB');
+    zone(sd.unfilled_bullish_fvg, cyan, 'FVG');
+    zone(sd.unfilled_bearish_fvg, cyan, 'FVG');
   }
 
   if (engineName === 'candle_range_theory') {
     const rp = sd.range_position;
-    if (rp?.htf_high) levels.push({ price: rp.htf_high, color: '#F4556E', title: 'HTF Üst' });
-    if (rp?.htf_low) levels.push({ price: rp.htf_low, color: '#10B981', title: 'HTF Alt' });
+    if (rp?.htf_high) levels.push({ price: rp.htf_high, color: bear, title: 'HTF Üst' });
+    if (rp?.htf_low) levels.push({ price: rp.htf_low, color: bull, title: 'HTF Alt' });
   }
 
   if (engineName === 'technical_analysis') {
@@ -125,20 +131,27 @@ export function EngineMiniChart({ symbol, timeframe, engineName, supportingData 
   useEffect(() => {
     if (!priceRef.current || !candles || candles.length === 0) return;
 
+    // Owned chart-token'lar (P9.5): eksen tx2 (DoD ≥tx2), grid hl10, sınır hl16.
+    const C = {
+      tx2: chartColor('tx2'), hl10: chartColor('hl10'), hl16: chartColor('hl16'),
+      bull: chartColor('bull'), bear: chartColor('bear'),
+      accentUi: chartColor('accentUi'), amber: chartColor('amber'),
+    };
+
     const chart = createChart(priceRef.current, {
       width: priceRef.current.clientWidth,
       height: 460,
-      layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#5C6980', fontSize: 11 },
-      grid: { vertLines: { color: 'rgba(148,163,184,0.10)' }, horzLines: { color: 'rgba(148,163,184,0.10)' } },
+      layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: C.tx2, fontSize: 11 },
+      grid: { vertLines: { color: C.hl10 }, horzLines: { color: C.hl10 } },
       crosshair: { mode: CrosshairMode.Normal },
-      rightPriceScale: { borderColor: 'rgba(148,163,184,0.15)' },
-      timeScale: { borderColor: 'rgba(148,163,184,0.15)', timeVisible: true, secondsVisible: false },
+      rightPriceScale: { borderColor: C.hl16 },
+      timeScale: { borderColor: C.hl16, timeVisible: true, secondsVisible: false },
     });
 
     const candleSeries = chart.addCandlestickSeries({
-      upColor: '#10B981', downColor: '#F4556E',
-      borderUpColor: '#10B981', borderDownColor: '#F4556E',
-      wickUpColor: '#10B981', wickDownColor: '#F4556E',
+      upColor: C.bull, downColor: C.bear,
+      borderUpColor: C.bull, borderDownColor: C.bear,
+      wickUpColor: C.bull, wickDownColor: C.bear,
     });
 
     const data: CandlestickData[] = candles.map((c) => ({
@@ -159,7 +172,7 @@ export function EngineMiniChart({ symbol, timeframe, engineName, supportingData 
         .map((m) => ({
           time: candles[m.index].time as any,
           position: m.bias === 'bullish' ? 'belowBar' : 'aboveBar',
-          color: m.bias === 'bullish' ? '#10B981' : '#F4556E',
+          color: m.bias === 'bullish' ? C.bull : C.bear,
           shape: m.bias === 'bullish' ? 'arrowUp' : 'arrowDown',
           text: m.label,
         }));
@@ -173,19 +186,22 @@ export function EngineMiniChart({ symbol, timeframe, engineName, supportingData 
       macdChart = createChart(macdRef.current, {
         width: macdRef.current.clientWidth,
         height: 160,
-        layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#5C6980', fontSize: 11 },
-        grid: { vertLines: { color: 'rgba(148,163,184,0.10)' }, horzLines: { color: 'rgba(148,163,184,0.10)' } },
-        rightPriceScale: { borderColor: 'rgba(148,163,184,0.15)' },
-        timeScale: { borderColor: 'rgba(148,163,184,0.15)', timeVisible: true, secondsVisible: false },
+        layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: C.tx2, fontSize: 11 },
+        grid: { vertLines: { color: C.hl10 }, horzLines: { color: C.hl10 } },
+        rightPriceScale: { borderColor: C.hl16 },
+        timeScale: { borderColor: C.hl16, timeVisible: true, secondsVisible: false },
       });
       const { histogram, macdLine, signalLine } = macd(candles.map((c) => c.close));
       const histSeries = macdChart.addHistogramSeries({ priceFormat: { type: 'volume' } });
+      // Histogram bull/bear @.6 alfa (eski rgba(16,185,129)/(244,85,110) emekli).
+      const histUp = withAlpha(C.bull, 0.6), histDown = withAlpha(C.bear, 0.6);
       histSeries.setData(candles.map((c, i) => ({
-        time: c.time as any, value: histogram[i], color: histogram[i] >= 0 ? 'rgba(16,185,129,0.6)' : 'rgba(244,85,110,0.6)',
+        time: c.time as any, value: histogram[i], color: histogram[i] >= 0 ? histUp : histDown,
       })));
-      const macdSeries = macdChart.addLineSeries({ color: '#378ADD', lineWidth: 1 });
+      // MACD çizgisi accent-ui iz (#378ADD 4.-mavi emekli); sinyal çizgisi amber (#f59e0b orange emekli).
+      const macdSeries = macdChart.addLineSeries({ color: C.accentUi, lineWidth: 1 });
       macdSeries.setData(candles.map((c, i) => ({ time: c.time as any, value: macdLine[i] })));
-      const sigSeries = macdChart.addLineSeries({ color: '#f59e0b', lineWidth: 1 });
+      const sigSeries = macdChart.addLineSeries({ color: C.amber, lineWidth: 1 });
       sigSeries.setData(candles.map((c, i) => ({ time: c.time as any, value: signalLine[i] })));
       macdChart.timeScale().fitContent();
     }
