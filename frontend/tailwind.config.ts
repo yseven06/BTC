@@ -91,7 +91,8 @@ const config: Config = {
         // ── Design Standards v1.3 owned (Bible §01 craft) ──
         'cta': 'var(--glow-cta)',        // tek CTA glow, opaklık ≤.14
         'e3': 'var(--shadow-e3)',        // YALNIZ E3 overlay
-        'cut-lip': 'var(--cut-lip)',     // üst-kenar highlight
+        'cut-lip': 'var(--cut-lip)',
+        'cabin': 'var(--cabin-signature)', // kabin imzasi: cut-lip + dikey accent-ui-edge + alt .06 (P10/D05)     // üst-kenar highlight
       },
       // ── Design Standards v1.3 owned ölçek token'ları (Bible §01/§05/§06) ──
       borderRadius: {

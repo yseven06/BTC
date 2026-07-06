@@ -52,6 +52,11 @@
     --glow-cta:  0 8px 24px -12px var(--accent);        /* opaklık ≤.14, blur ASLA animasyonlanmaz */
     --shadow-e3: 0 16px 40px -20px rgba(0, 0, 0, 0.7);  /* YALNIZ E3 overlay */
     --cut-lip:   inset 0 1px 0 rgba(255, 255, 255, 0.07); /* üst-kenar highlight */
+    /* Kabin imzasi (P10/D05, Bible §01 craft-cabin-signature): dikey kenar NET
+       accent-ui-tint (~%8) + yatay .06 soluk + ust cut-lip; golge=0. */
+    --accent-ui-edge: color-mix(in oklab, var(--accent-ui) 8%, transparent);
+    --cabin-edge-h: rgba(148, 163, 184, 0.06); /* yatay kenar (hl-merdiveni disi imza-degeri) */
+    --cabin-signature: var(--cut-lip), inset 1px 0 0 var(--accent-ui-edge), inset -1px 0 0 var(--accent-ui-edge), inset 0 -1px 0 var(--cabin-edge-h);
 
     /* — Süre kilidi (Bible §06 MO-01) — tek-rejim ayrık token; ease-in-out YASAK */
     --dur-micro:   140ms;
@@ -208,42 +213,17 @@
    Glass Card Utilities
    ============================================ */
 @layer components {
-  .glass-card {
-    background: var(--e1); /* cam sokuldu -> opak E1 (P10/D02) */
-    border: 1px solid rgba(148, 163, 184, 0.1);
-    border-radius: var(--radius-card); /* kart 16->12 (P10/D04) */
-    box-shadow: var(--cut-lip); /* golgesiz-luminans (P10/D01) */
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .glass-card:hover {
-    border-color: rgba(148, 163, 184, 0.2);
-    transform: translateY(-1px);
-  }
 
   .glass-card-static {
     background: var(--e3); /* overlay-yuzeyi (Header dropdown x3) — E3; cam-recetesi D11/.glass-e3-overlay ile (P10/D02) */
-    border: 1px solid rgba(148, 163, 184, 0.1);
+    border: 1px solid var(--hl22); /* E3-overlay border .22 (P10/D08 COL-10) */
     border-radius: var(--radius-panel); /* overlay 16 (P10/D04) */
     box-shadow: var(--shadow-e3); /* golge YALNIZ E3 overlay - tek token (Bible §01) */
   }
 
-  .glass-card-accent {
-    background: var(--e1); /* cam sokuldu -> opak E1 (P10/D02) */
-    border: 1px solid rgba(59, 130, 246, 0.2);
-    border-radius: var(--radius-card); /* kart 16->12 (P10/D04) */
-    box-shadow: var(--cut-lip); /* golge+glow sokuldu (P10/D01; accent-glow D03 kapsami ayni property oldugundan burada) */
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .glass-card-accent:hover {
-    border-color: rgba(59, 130, 246, 0.35);
-    transform: translateY(-1px);
-  }
-
   .glass-panel {
     background: var(--e1); /* panel opak (P10/D02) */
-    border: 1px solid rgba(148, 163, 184, 0.08);
+    border: 1px solid var(--hl12); /* standart panel hairline (P10/D08) */
   }
 }
 
@@ -525,17 +505,6 @@
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
-}
-
-/* ============================================
-   Responsive Adjustments
-   ============================================ */
-@media (max-width: 768px) {
-  .glass-card,
-  .glass-card-static,
-  .glass-card-accent {
-    border-radius: 12px;
-  }
 }
 
 /* ============================================
