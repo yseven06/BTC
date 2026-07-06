@@ -43,6 +43,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  // = --e0 (globals.css :root tek-kaynak). JS bağlamı CSS var() okuyamaz →
+  // değer elle senkron tutulur. Aynı kural: public/manifest.webmanifest
+  // theme_color/background_color. Bible §01 COL-01; lint gate-1 izin-listesi (P1-F/g).
   themeColor: "#070B14",
   width: "device-width",
   initialScale: 1,
