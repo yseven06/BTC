@@ -1,0 +1,9 @@
+# Satır-sonu politikası (review-fix GR-3, P1 merge-öncesi)
+# Kapsamlı-dar: yalnız sh-yorumlanan dosyalar LF'e sabitlenir — taze klonda
+# core.autocrlf=true ile CRLF checkout edilirse `#!/bin/sh` hook'lar
+# "$'\r': command not found" ile sessizce bozulur.
+# BİLİNÇLİ SAPMA: `* text=auto` EKLENMEDİ — repo-genelinde renormalizasyon
+# (git add --renormalize) gürültüsü/diff-fırtınası tetikler; davranış-nötr değil.
+# İleride istenirse ayrı, tek-amaçlı bir commit'te değerlendirilir.
+.githooks/* text eol=lf
+*.sh text eol=lf
