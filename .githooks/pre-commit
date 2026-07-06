@@ -3,9 +3,11 @@
 # Versiyonlu hook: repo kökü .githooks/ + `git config core.hooksPath .githooks`
 # (yeni klonda bir kez çalıştırılır; bkz. commit mesajı P1-F/g-2).
 #
-# WARN-mod: gate'ler warning üretir, commit ENGELLENMEZ (exit 0).
-# Bir gate .stylelintrc.cjs'te ERROR'a yükseltilirse stylelint exit!=0 döner
-# ve commit bilinçli olarak durur (yükseltme kapısı = component fazı DoD).
+# KARMA-mod (P9 sonrası, kullanıcı onayıyla): design-gates --STRICT koşar —
+# TSX ham-hex (gate-1) ve kırpılmış-eksen (gate-4) ihlali commit'i DURDURUR
+# (Phase 9 DoD=0 sağlandı, 2026-07-07). stylelint WARN-modda kalır: kalan 27
+# uyarı sonraki fazların planlı işi (süre-token→P6 vb.); bir gate .stylelintrc.cjs'te
+# ERROR'a yükseltilirse o da durdurur (yükseltme kapısı = ilgili faz DoD).
 
 # Yalnız frontend dosyaları stage'liyse koş (backend/doc commit'lerini yavaşlatma).
 if git diff --cached --name-only | grep -q '^frontend/'; then
@@ -17,8 +19,8 @@ if git diff --cached --name-only | grep -q '^frontend/'; then
     # Taze klon / kurulumsuz ortam — yanıltıcı 'gate ihlali' mesajıyla kilitleme.
     echo "design-lint ATLANDI: frontend/node_modules yok. Kurulum: cd frontend && npm install"
   else
-    echo "— design-lint (pre-commit, WARN-mod) —"
-    (cd frontend && npm run --silent lint:design) || {
+    echo "— design-lint (pre-commit, STRICT: gate-1/4 blokler; stylelint WARN) —"
+    (cd frontend && npm run --silent lint:design:strict) || {
       echo ""
       echo "design-lint ERROR (yükseltilmiş gate ihlali) — commit durduruldu."
       echo "Bilinçli atlama (yalnız acil durum): git commit --no-verify"
