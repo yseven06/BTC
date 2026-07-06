@@ -289,7 +289,7 @@ export default function DashboardPage() {
       {loading ? (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <GlassCard key={i} className="p-4">
+            <GlassCard key={i} dense>
               <div className="h-2.5 w-24 rounded bg-white/[0.06] animate-pulse" />
               <div className="h-8 w-20 mt-2 rounded bg-white/[0.06] animate-pulse" />
               <div className="h-2 w-28 mt-2 rounded bg-white/[0.04] animate-pulse" />
@@ -314,7 +314,7 @@ export default function DashboardPage() {
       ) : (
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {/* Closed trades within selected period */}
-        <GlassCard className="flex items-center justify-between p-4 group">
+        <GlassCard dense className="flex items-center justify-between group">
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Bu Dönemde Kapanan İşlem</span>
             <h3 className="text-3xl font-bold font-mono mt-1 text-text-primary">{periodClosedCount}</h3>
@@ -328,7 +328,7 @@ export default function DashboardPage() {
         </GlassCard>
 
         {/* Active Signals */}
-        <GlassCard className="flex items-center justify-between p-4 group">
+        <GlassCard dense className="flex items-center justify-between group">
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Aktif Sinyaller</span>
             <h3 className="text-3xl font-bold font-mono mt-1 text-text-primary">{activeCount}</h3>
@@ -342,7 +342,7 @@ export default function DashboardPage() {
         </GlassCard>
 
         {/* Win Rate */}
-        <GlassCard className="flex items-center justify-between p-4 group">
+        <GlassCard dense className="flex items-center justify-between group">
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Başarı Oranı</span>
             <h3 className="text-3xl font-bold font-mono mt-1 text-bullish">{formatPercentage(winRate, 0, false)}</h3>
@@ -360,7 +360,7 @@ export default function DashboardPage() {
         </GlassCard>
 
         {/* Avg Return */}
-        <GlassCard className="flex items-center justify-between p-4 group">
+        <GlassCard dense className="flex items-center justify-between group">
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Ortalama Getiri</span>
             <h3 className={cn("text-3xl font-bold font-mono mt-1", avgReturn >= 0 ? "text-bullish" : "text-bearish")}>{formatPercentage(avgReturn)}</h3>
@@ -374,7 +374,7 @@ export default function DashboardPage() {
         </GlassCard>
 
         {/* Fear & Greed */}
-        <GlassCard className="flex items-center justify-between p-4 group">
+        <GlassCard dense className="flex items-center justify-between group">
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Piyasa Greed Index</span>
             <h3 className="text-3xl font-bold font-mono mt-1" style={{ color: fngColor(fngValue) }}>
@@ -410,7 +410,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Market Overview — left 2/3 */}
         <div className="lg:col-span-2 space-y-5">
-          <GlassCard className="p-5">
+          <GlassCard>
             {/* Card header */}
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
@@ -459,7 +459,7 @@ export default function DashboardPage() {
           </GlassCard>
 
           {/* Featured Live Chart */}
-          <GlassCard className="p-5">
+          <GlassCard>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
                 <ChartIcon className="w-4 h-4 text-accent-primary" />
@@ -473,7 +473,7 @@ export default function DashboardPage() {
           </GlassCard>
 
           {/* Performance Summary */}
-          <GlassCard className="p-5">
+          <GlassCard>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
                 <Activity className="w-4 h-4 text-accent-primary" />
@@ -498,7 +498,7 @@ export default function DashboardPage() {
         {/* Right column — Signals + extras */}
         <div className="space-y-5">
           {/* Recent Signals */}
-          <GlassCard className="p-5">
+          <GlassCard>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
                 <Zap className="w-4 h-4 text-accent-primary" />
@@ -592,7 +592,7 @@ export default function DashboardPage() {
           </GlassCard>
 
           {/* Asset Distribution Pie */}
-          <GlassCard className="p-5">
+          <GlassCard>
             <h2 className="text-base font-bold text-text-primary mb-4 flex items-center gap-2">
               <ChartIcon className="w-4 h-4 text-accent-primary" />
               Varlık Dağılımı
@@ -626,7 +626,7 @@ export default function DashboardPage() {
           </GlassCard>
 
           {/* Top Gainers */}
-          <GlassCard className="p-5">
+          <GlassCard>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-bullish" />

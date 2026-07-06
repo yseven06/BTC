@@ -9,6 +9,10 @@ interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
    * with overflow:auto/hidden (e.g. a scrolling sidebar). Opt in explicitly
    * on cards that really are a click target (e.g. a row wrapped in a Link). */
   hoverEffect?: boolean;
+  /** İki-ritim spacing (Bible §01 craft-spacing-two-rhythm, P10/D06):
+   * varsayılan chrome-cömert p-6 (24px nefes); dense=true veri-yoğun sıkı
+   * ritim p-4 (16px) — stat/veri kartları için. */
+  dense?: boolean;
 }
 
 // glowEffect/glowColor API'si SÖKÜLDÜ (P10/D03+D10, Bible §01 craft-glow-budget):
@@ -19,6 +23,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   className,
   style,
   hoverEffect = false,
+  dense = false,
   ...props
 }) => {
   return (
@@ -28,13 +33,15 @@ export const GlassCard: React.FC<GlassCardProps> = ({
         // drop-shadow YASAK — derinlik luminanstan (E1, hover E2). Kabin imzası
         // = kart kimliğinin logo-kapalı taşıyıcısı: üst cut-lip highlight +
         // dikey NET accent-ui-edge + yatay .06 soluk kenar (shadow-cabin bileşiği).
-        "relative bg-e-1 border border-[var(--cabin-edge-h)] rounded-card p-5 shadow-cabin transition-all duration-300",
+        // Hover = tek ısınma (P10/D07, INT-01): +1 luminans E1→E2, --dur-warm 140ms.
+        "relative bg-e-1 border border-[var(--cabin-edge-h)] rounded-card shadow-cabin transition-[transform,background-color,border-color] duration-warm ease-signal",
+        dense ? "p-4" : "p-6",
         // Even cards that aren't click targets (hoverEffect=false) get a
         // faint border/luminance lift on hover so the surface doesn't read as
         // completely static — no translate/scale here, so it never implies
         // clickability, just a quiet "alive" feel on an otherwise dark panel.
         !hoverEffect && "hover:border-[var(--hl16)] hover:bg-e-2",
-        hoverEffect && "hover:-translate-y-1 hover:scale-[1.01] hover:border-[var(--hl16)]",
+        hoverEffect && "motion-safe:hover:-translate-y-[2px] hover:bg-e-2 hover:border-[var(--hl16)]",
         className
       )}
       style={style}

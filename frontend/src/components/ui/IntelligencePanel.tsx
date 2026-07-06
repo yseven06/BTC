@@ -73,7 +73,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
 
   if (loading) {
     return (
-      <GlassCard className={compact ? 'p-4' : 'p-5'}>
+      <GlassCard dense={compact}>
         <div className="flex items-center gap-2 text-text-muted text-xs">
           <div className="w-4 h-4 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
           Akıllı durum yükleniyor…
@@ -87,7 +87,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
   // instead, so the panel is always present.
   if (failed || !data) {
     return (
-      <GlassCard className={compact ? 'p-4' : 'p-5'}>
+      <GlassCard dense={compact}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-text-muted text-xs">
             <Brain className="w-3.5 h-3.5 text-accent-primary" />
@@ -109,7 +109,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
   const coin = data.coin_memory;
 
   return (
-    <GlassCard className={compact ? 'p-4' : 'p-5'}>
+    <GlassCard dense={compact}>
       <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5 mb-3">
         <Brain className="w-3.5 h-3.5 text-accent-primary" /> Akıllı Durum
         <span className="ml-auto normal-case font-normal text-[10px] text-text-muted">

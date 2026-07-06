@@ -562,7 +562,7 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
   return (
     <div className={compact ? 'space-y-4' : 'space-y-6'}>
       {/* ─── 1. Hero — wide: side-by-side; compact: stacked for a narrow sidebar ─── */}
-      <GlassCard className={compact ? 'p-4' : 'p-6'}>
+      <GlassCard dense={compact}>
         <div className={cn(
           'flex justify-between gap-6',
           compact ? 'flex-col gap-4' : 'flex-col lg:flex-row lg:items-center'
