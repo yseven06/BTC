@@ -5,6 +5,7 @@ import {
   createChart, ColorType, CrosshairMode, LineStyle,
   type IChartApi, type ISeriesApi, type CandlestickData,
 } from 'lightweight-charts';
+import { chartColor } from '@/lib/chartColors';
 
 export interface ChartCandle {
   time:   number;   // unix seconds (UTC, from backend)
@@ -129,26 +130,37 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // Renk migration (P9.5/D9-07): tüm chart renkleri chartColors tek-kaynak
+    // köprüsünden (runtime :root çözümü). Eksen etiketi tx2 (DoD: ≥tx2, tx3
+    // yasak); grid hl10; crosshair tx3 (ham fiyat-crosshair — Karot AI-crosshair
+    // cyan, P3); ölçek sınırı hl16 (.15→.16 hairline merdiveni).
+    const C = {
+      tx2: chartColor('tx2'), tx3: chartColor('tx3'),
+      hl10: chartColor('hl10'), hl16: chartColor('hl16'),
+      bull: chartColor('bull'), bear: chartColor('bear'),
+      accentUi: chartColor('accentUi'), amber: chartColor('amber'),
+    };
+
     const chart = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
       height,
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor:  '#5C6980',
+        textColor:  C.tx2,
         fontFamily: 'system-ui, -apple-system, sans-serif',
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: 'rgba(148, 163, 184, 0.10)' },
-        horzLines: { color: 'rgba(148, 163, 184, 0.10)' },
+        vertLines: { color: C.hl10 },
+        horzLines: { color: C.hl10 },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: '#5C6980', width: 1, style: LineStyle.Dashed, labelBackgroundColor: '#5C6980' },
-        horzLine: { color: '#5C6980', width: 1, style: LineStyle.Dashed, labelBackgroundColor: '#5C6980' },
+        vertLine: { color: C.tx3, width: 1, style: LineStyle.Dashed, labelBackgroundColor: C.tx3 },
+        horzLine: { color: C.tx3, width: 1, style: LineStyle.Dashed, labelBackgroundColor: C.tx3 },
       },
       rightPriceScale: {
-        borderColor: 'rgba(148, 163, 184, 0.15)',
+        borderColor: C.hl16,
       },
       // Crosshair tooltip + bottom-edge time label: Türkiye saati (Europe/Istanbul)
       localization: {
@@ -159,7 +171,7 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
         },
       },
       timeScale: {
-        borderColor: 'rgba(148, 163, 184, 0.15)',
+        borderColor: C.hl16,
         timeVisible: true,
         secondsVisible: false,
         // X-axis tick labels: gün/saat formatları Türkiye saatine göre
@@ -176,12 +188,12 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
     });
 
     const candleSeries = chart.addCandlestickSeries({
-      upColor:        '#10B981',
-      downColor:      '#F4556E',
-      borderUpColor:  '#10B981',
-      borderDownColor: '#F4556E',
-      wickUpColor:    '#10B981',
-      wickDownColor:  '#F4556E',
+      upColor:        C.bull,
+      downColor:      C.bear,
+      borderUpColor:  C.bull,
+      borderDownColor: C.bear,
+      wickUpColor:    C.bull,
+      wickDownColor:  C.bear,
     });
 
     // A thin amber line series used to draw ONLY the signal-price segment
@@ -189,7 +201,7 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
     // sits on top. No price line / last-value label → it never crowds the
     // right-axis Giriş/SL/TP labels, even when the signal price hugs the entry.
     const signalLine = chart.addLineSeries({
-      color: '#fbbf24',
+      color: C.amber,
       lineWidth: 3,
       lineStyle: LineStyle.Solid,
       priceLineVisible: false,
@@ -313,12 +325,14 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
       created.push(line);
     };
 
-    addLine(signal.entryLow,  { color: '#3B82F6', title: 'Giriş ↓', lineStyle: LineStyle.Dotted });
-    addLine(signal.entryHigh, { color: '#3B82F6', title: 'Giriş ↑', lineStyle: LineStyle.Dotted });
-    addLine(signal.stopLoss,  { color: '#F4556E', title: 'SL' });
-    addLine(signal.tp1,       { color: '#10B981', title: 'TP1' });
-    addLine(signal.tp2,       { color: '#10B981', title: 'TP2' });
-    addLine(signal.tp3,       { color: '#10B981', title: 'TP3' });
+    // Owned seviye-renkleri (D9-07): Giriş çizgi-izi accent-ui (COL-04), SL bear, TP bull.
+    const giriş = chartColor('accentUi'), sl = chartColor('bear'), tp = chartColor('bull');
+    addLine(signal.entryLow,  { color: giriş, title: 'Giriş ↓', lineStyle: LineStyle.Dotted });
+    addLine(signal.entryHigh, { color: giriş, title: 'Giriş ↑', lineStyle: LineStyle.Dotted });
+    addLine(signal.stopLoss,  { color: sl, title: 'SL' });
+    addLine(signal.tp1,       { color: tp, title: 'TP1' });
+    addLine(signal.tp2,       { color: tp, title: 'TP2' });
+    addLine(signal.tp3,       { color: tp, title: 'TP3' });
 
     return () => {
       for (const line of created) series.removePriceLine(line);
@@ -398,7 +412,8 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
           bottom: '24px',
           left: 0,
           width: 0,
-          borderLeft: '1.5px dashed rgba(251, 191, 36, 0.55)',
+          /* DOM-overlay → CSS var() doğrudan çözülür (canvas değil); owned amber */
+          borderLeft: '1.5px dashed color-mix(in oklab, var(--amber) 55%, transparent)',
           transform: 'translateX(-0.75px)',
           pointerEvents: 'none',
           zIndex: 4,
@@ -415,8 +430,8 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
           left: 0,
           top: 0,
           transform: 'translate(calc(-100% - 10px), -50%)',
-          background: '#fbbf24',
-          color: '#1f2937',
+          background: 'var(--amber)',   /* owned; DOM-overlay var() çözer */
+          color: 'var(--e2)',           /* amber üstü koyu metin (5. yüzey #1f2937 emekli) */
           fontSize: '11px',
           fontWeight: 700,
           lineHeight: 1,
