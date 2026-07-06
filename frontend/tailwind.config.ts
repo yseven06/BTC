@@ -15,8 +15,6 @@ const config: Config = {
           primary: 'var(--bg-primary)',
           secondary: 'var(--bg-secondary)',
           tertiary: 'var(--bg-tertiary)',
-          glass: 'var(--bg-glass)',
-          'glass-light': 'var(--bg-glass-light)',
         },
         // ── Design Standards v1.3 owned yüzey merdiveni (Bible §01 COL-01/02) ──
         e: { 0: 'var(--e0)', 1: 'var(--e1)', 2: 'var(--e2)', 3: 'var(--e3)' },

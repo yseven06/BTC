@@ -104,8 +104,6 @@
     --warning:       var(--amber);       /* #FBBF24 → #F5A524 */
 
     /* ── EMEKLİ (owned'a AYRI commit'lerde göç) ── */
-    --bg-glass:       rgba(12, 18, 32, 0.7);        /* EMEKLİ — glass=E3-only, P2 primitif göçü */
-    --bg-glass-light: rgba(12, 18, 32, 0.4);        /* EMEKLİ — P2 */
     --border-medium: var(--hl16);                   /* .20 → .16 (P1-F/d) — Bible COL-10 hover/focus-within semantiği; component'ler P10'da border-hl16'ya göç */
   }
 
@@ -211,9 +209,7 @@
    ============================================ */
 @layer components {
   .glass-card {
-    background: rgba(12, 18, 32, 0.7);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: var(--e1); /* cam sokuldu -> opak E1 (P10/D02) */
     border: 1px solid rgba(148, 163, 184, 0.1);
     border-radius: 16px;
     box-shadow: var(--cut-lip); /* golgesiz-luminans (P10/D01) */
@@ -226,18 +222,14 @@
   }
 
   .glass-card-static {
-    background: rgba(12, 18, 32, 0.7);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: var(--e3); /* overlay-yuzeyi (Header dropdown x3) — E3; cam-recetesi D11/.glass-e3-overlay ile (P10/D02) */
     border: 1px solid rgba(148, 163, 184, 0.1);
     border-radius: 16px;
-    box-shadow: var(--cut-lip); /* golgesiz-luminans (P10/D01) */
+    box-shadow: var(--shadow-e3); /* golge YALNIZ E3 overlay - tek token (Bible §01) */
   }
 
   .glass-card-accent {
-    background: rgba(12, 18, 32, 0.7);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: var(--e1); /* cam sokuldu -> opak E1 (P10/D02) */
     border: 1px solid rgba(59, 130, 246, 0.2);
     border-radius: 16px;
     box-shadow: var(--cut-lip); /* golge+glow sokuldu (P10/D01; accent-glow D03 kapsami ayni property oldugundan burada) */
@@ -250,17 +242,8 @@
   }
 
   .glass-panel {
-    background: rgba(12, 18, 32, 0.5);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: var(--e1); /* panel opak (P10/D02) */
     border: 1px solid rgba(148, 163, 184, 0.08);
-  }
-
-  .glass-surface {
-    background: rgba(12, 18, 32, 0.35);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(148, 163, 184, 0.06);
   }
 }
 
