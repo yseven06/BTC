@@ -71,7 +71,7 @@ const RECENT_OUTCOME_LABEL: Record<string, string> = {
   expired: 'Süresi Doldu', invalidated: 'İptal Edildi',
 };
 const RECENT_OUTCOME_COLOR: Record<string, string> = {
-  win: 'text-bullish', loss: 'text-bearish', breakeven: 'text-yellow-400',
+  win: 'text-bullish', loss: 'text-bearish', breakeven: 'text-amber',
   expired: 'text-text-muted', invalidated: 'text-purple-400',
 };
 

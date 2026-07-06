@@ -24,14 +24,14 @@ import { cn, formatAbsoluteTimeTR, formatPercentage, formatNumber } from '@/lib/
 const TIER_COLOR: Record<string, string> = {
   free:    'bg-bg-tertiary text-text-muted',
   pro:     'bg-accent-primary/20 text-accent-primary',
-  premium: 'bg-yellow-500/20 text-yellow-400',
+  premium: 'bg-amber/20 text-amber',
 };
 
 const ROLE_LABEL: Record<UserRole, string> = { user: 'Üye', admin: 'Admin', super_admin: 'Kurucu' };
 const ROLE_COLOR: Record<UserRole, string> = {
   user: 'bg-bg-tertiary text-text-muted',
-  admin: 'bg-orange-500/15 text-orange-400',
-  super_admin: 'bg-yellow-500/20 text-yellow-400',
+  admin: 'bg-accent-ui/15 text-accent-ui',
+  super_admin: 'bg-amber/20 text-amber',
 };
 
 type Tab = 'overview' | 'users' | 'signals' | 'assets' | 'system' | 'audit';
@@ -82,7 +82,7 @@ export default function AdminPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-text-primary flex items-center gap-2">
-            <Shield className="w-6 h-6 text-orange-400" /> Yönetim Paneli
+            <Shield className="w-6 h-6 text-accent-ui" /> Yönetim Paneli
           </h1>
           <p className="text-sm text-text-secondary mt-1">
             Platform yönetimi · kullanıcılar · sinyaller · sistem sağlığı
@@ -162,9 +162,9 @@ function OverviewTab() {
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard label="Toplam Kullanıcı" value={stats.total_users.toString()} icon={Users} accent="bg-accent-primary/15 text-accent-primary" />
-          <StatCard label="Ödeyen Kullanıcı" value={stats.paying_users.toString()} icon={Crown} accent="bg-yellow-500/15 text-yellow-400" />
+          <StatCard label="Ödeyen Kullanıcı" value={stats.paying_users.toString()} icon={Crown} accent="bg-amber/15 text-amber" />
           <StatCard label="Toplam Gelir" value={`$${formatNumber(stats.total_revenue_usd, 0)}`} icon={DollarSign} accent="bg-bullish/15 text-bullish" />
-          <StatCard label="Aktif Sinyaller" value={stats.active_signals.toString()} icon={Zap} accent="bg-orange-500/15 text-orange-400" />
+          <StatCard label="Aktif Sinyaller" value={stats.active_signals.toString()} icon={Zap} accent="bg-amber/15 text-amber" />
           <StatCard label="Kazanma Oranı" value={formatPercentage(stats.win_rate, 0, false)} icon={TrendingUp} accent="bg-bullish/15 text-bullish" />
           <StatCard label="Toplam Sinyal" value={stats.total_signals.toString()} icon={Database} accent="bg-accent-secondary/15 text-accent-secondary" />
           <StatCard label="Aktif Kullanıcı" value={stats.active_users.toString()} icon={Users} accent="bg-bullish/15 text-bullish" />
@@ -241,7 +241,7 @@ function UsersTab({ isSuperAdmin, selfId }: { isSuperAdmin: boolean; selfId: str
             {users.map((u) => (
               <div key={u.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center px-5 py-3 hover:bg-white/[0.02] transition-colors">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-accent-primary flex items-center justify-center font-bold text-xs text-white flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber to-accent-primary flex items-center justify-center font-bold text-xs text-white flex-shrink-0">
                     {(u.full_name ?? u.email)[0]?.toUpperCase()}
                   </div>
                   <div className="min-w-0">

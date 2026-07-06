@@ -37,9 +37,9 @@ const OUTCOME_LABEL: Record<string, string> = {
 const OUTCOME_COLOR: Record<string, string> = {
   win: 'text-bullish bg-bullish/10 border-bullish/20',
   loss: 'text-bearish bg-bearish/10 border-bearish/20',
-  breakeven: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
+  breakeven: 'text-amber bg-amber/10 border-amber/20',
   expired: 'text-text-muted bg-bg-tertiary border-border-subtle',
-  invalidated: 'text-orange-400 bg-orange-400/10 border-orange-400/20',
+  invalidated: 'text-accent-ui bg-accent-ui/10 border-accent-ui/20',
   active: 'text-accent-primary bg-accent-primary/10 border-accent-primary/20',
 };
 

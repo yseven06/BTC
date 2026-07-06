@@ -30,14 +30,14 @@ function heatColor(winRate: number, total: number): string {
   if (total === 0) return 'bg-bg-tertiary/40';
   if (winRate >= 70) return 'bg-bullish/80';
   if (winRate >= 55) return 'bg-bullish/40';
-  if (winRate >= 45) return 'bg-yellow-500/40';
-  if (winRate >= 30) return 'bg-orange-500/40';
+  if (winRate >= 45) return 'bg-amber/50';
+  if (winRate >= 30) return 'bg-amber/30';
   return 'bg-bearish/40';
 }
 function heatText(winRate: number, total: number): string {
   if (total === 0) return 'text-text-muted';
   if (winRate >= 55) return 'text-bullish';
-  if (winRate >= 45) return 'text-yellow-400';
+  if (winRate >= 45) return 'text-amber';
   return 'text-bearish';
 }
 
@@ -82,7 +82,7 @@ function HourHeatmap({ data }: { data: HourData[] }) {
       {/* Legend */}
       <div className="flex items-center gap-3 text-[10px] text-text-muted">
         <span>Düşük</span>
-        {['bg-bearish/40','bg-orange-500/40','bg-yellow-500/40','bg-bullish/40','bg-bullish/80'].map((c, i) => (
+        {['bg-bearish/40','bg-amber/30','bg-amber/50','bg-bullish/40','bg-bullish/80'].map((c, i) => (
           <span key={i} className={cn('w-5 h-3 rounded', c)} />
         ))}
         <span>Yüksek kazanma oranı</span>
@@ -155,7 +155,7 @@ function DirectionBreakdown({ data }: { data: DirectionData[] }) {
 function RiskBreakdown({ data }: { data: RiskData[] }) {
   const order = ['low', 'medium', 'high', 'very_high'];
   const labels: Record<string, string> = { low: 'Düşük', medium: 'Orta', high: 'Yüksek', very_high: 'Çok Yüksek' };
-  const colors: Record<string, string> = { low: 'text-bullish', medium: 'text-yellow-400', high: 'text-orange-400', very_high: 'text-bearish' };
+  const colors: Record<string, string> = { low: 'text-bullish', medium: 'text-amber', high: 'text-amber/80', very_high: 'text-bearish' };
   const sorted = [...data].sort((a, b) => order.indexOf(a.risk_level) - order.indexOf(b.risk_level));
 
   return (

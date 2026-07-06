@@ -19,9 +19,9 @@ const OUTCOME_LABEL: Record<string, string> = {
 const OUTCOME_COLOR: Record<string, string> = {
   win: 'text-bullish',
   loss: 'text-bearish',
-  breakeven: 'text-yellow-400',
+  breakeven: 'text-amber',
   expired: 'text-text-muted',
-  invalidated: 'text-orange-400',
+  invalidated: 'text-accent-ui',
 };
 
 interface Props {

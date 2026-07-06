@@ -227,12 +227,12 @@ export default function DashboardPage() {
       {isFreeTier && PAYMENTS_ENABLED && (
         <Link
           href="/pricing"
-          className="block bg-gradient-to-r from-orange-500/15 via-accent-primary/15 to-orange-500/15 border border-orange-500/30 rounded-2xl p-4 hover:border-orange-500/50 transition-all"
+          className="block bg-gradient-to-r from-amber/15 via-accent-primary/15 to-amber/15 border border-amber/30 rounded-2xl p-4 hover:border-amber/50 transition-all"
         >
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center flex-shrink-0">
-                <Lock className="w-5 h-5 text-orange-400" />
+              <div className="w-10 h-10 rounded-xl bg-amber/20 flex items-center justify-center flex-shrink-0">
+                <Lock className="w-5 h-5 text-amber" />
               </div>
               <div>
                 <p className="text-sm font-bold text-text-primary">
@@ -243,7 +243,7 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-            <span className="flex items-center gap-1.5 text-xs font-bold text-orange-400 whitespace-nowrap bg-orange-500/10 border border-orange-500/30 px-3 py-1.5 rounded-xl">
+            <span className="flex items-center gap-1.5 text-xs font-bold text-amber whitespace-nowrap bg-amber/10 border border-amber/30 px-3 py-1.5 rounded-xl">
               <Crown className="w-3.5 h-3.5" /> Yükselt
             </span>
           </div>
@@ -322,8 +322,8 @@ export default function DashboardPage() {
               {timeRange === '24s' ? 'son 24 saat' : timeRange === '7g' ? 'son 7 gün' : 'son 30 gün'}
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center transition-shadow duration-300 group-hover:shadow-[0_0_14px_rgba(249,115,22,0.35)]">
-            <Activity className="w-5 h-5 text-orange-500" />
+          <div className="w-10 h-10 rounded-xl bg-amber/10 border border-amber/20 flex items-center justify-center">
+            <Activity className="w-5 h-5 text-amber" />
           </div>
         </GlassCard>
 
@@ -419,7 +419,7 @@ export default function DashboardPage() {
             </div>
 
             {globalError && (
-              <p className="text-[11px] text-orange-400 bg-orange-400/10 border border-orange-400/20 rounded-lg px-3 py-2 mb-3">
+              <p className="text-[11px] text-amber bg-amber/10 border border-amber/20 rounded-lg px-3 py-2 mb-3">
                 Piyasa verisi şu an alınamıyor (kaynak geçici olarak sınırlandırıyor — CoinGecko rate limit).
                 {global ? ' Aşağıda son bilinen değerler gösteriliyor.' : ' 30 saniye içinde otomatik tekrar denenecek.'}
               </p>

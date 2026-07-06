@@ -21,8 +21,8 @@ interface AnalysisData { symbols: SymbolData[]; total_symbols: number; }
 
 function QualityBar({ score }: { score: number }) {
   const safeScore = Number.isFinite(Number(score)) ? Number(score) : 0;
-  const color = safeScore >= 8 ? 'bg-bullish' : safeScore >= 6 ? 'bg-yellow-400' : safeScore >= 4 ? 'bg-orange-400' : 'bg-bearish';
-  const text  = safeScore >= 8 ? 'text-bullish' : safeScore >= 6 ? 'text-yellow-400' : safeScore >= 4 ? 'text-orange-400' : 'text-bearish';
+  const color = safeScore >= 8 ? 'bg-bullish' : safeScore >= 6 ? 'bg-amber' : safeScore >= 4 ? 'bg-amber/70' : 'bg-bearish';
+  const text  = safeScore >= 8 ? 'text-bullish' : safeScore >= 6 ? 'text-amber' : safeScore >= 4 ? 'text-amber/80' : 'text-bearish';
   return (
     <div className="flex items-center gap-2">
       <div className="w-16 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
@@ -193,7 +193,7 @@ export default function SymbolAnalysisPage() {
         <div className="divide-y divide-border-subtle">
           {filtered.map((sym) => {
             const resolved = sym.wins + sym.losses + sym.breakeven;
-            const wrColor  = sym.win_rate >= 60 ? 'text-bullish' : sym.win_rate >= 45 ? 'text-yellow-400' : 'text-bearish';
+            const wrColor  = sym.win_rate >= 60 ? 'text-bullish' : sym.win_rate >= 45 ? 'text-amber' : 'text-bearish';
 
             return (
               <div

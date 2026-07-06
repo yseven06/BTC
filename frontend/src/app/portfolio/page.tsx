@@ -348,7 +348,7 @@ export default function PortfolioPage() {
                               <Share2 className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => closePosition(h, currentPrice)} disabled={closingId === h.id} title="Pozisyonu Kapat"
-                              className="p-1.5 rounded-lg text-text-muted hover:text-yellow-400 hover:bg-yellow-400/10 transition-colors disabled:opacity-40">
+                              className="p-1.5 rounded-lg text-text-muted hover:text-amber hover:bg-amber/10 transition-colors disabled:opacity-40">
                               <LogOut className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => removeHolding(h.id)} title="Sil"

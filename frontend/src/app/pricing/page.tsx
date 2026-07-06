@@ -33,7 +33,7 @@ const TIER_ICON: Record<SubscriptionTier, React.ComponentType<{ className?: stri
 const TIER_COLOR: Record<SubscriptionTier, string> = {
   free:    'text-text-muted',
   pro:     'text-accent-primary',
-  premium: 'text-yellow-400',
+  premium: 'text-amber',
 };
 
 export default function PricingPage() {
@@ -145,7 +145,7 @@ export default function PricingPage() {
       )}
 
       {canceled && (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 text-center text-sm text-yellow-400">
+        <div className="bg-amber/10 border border-amber/30 rounded-xl p-3 text-center text-sm text-amber">
           Ödeme iptal edildi. Hazır olduğunda tekrar dene.
         </div>
       )}

@@ -400,7 +400,7 @@ function PriceLadder({ signal }: { signal: ApiSignal }) {
                       className={cn(
                         'text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border',
                         lowTp1
-                          ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30'
+                          ? 'text-amber bg-amber/10 border-amber/30'
                           : 'text-text-muted bg-bg-tertiary/60 border-border-subtle'
                       )}
                     >
@@ -440,8 +440,8 @@ function PriceLadder({ signal }: { signal: ApiSignal }) {
 function RiskBadge({ level }: { level: string | undefined }) {
   const config = {
     low:        { label: 'DÜŞÜK',       cls: 'bg-bullish/15 text-bullish border-bullish/40' },
-    medium:     { label: 'ORTA',        cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/40' },
-    high:       { label: 'YÜKSEK',      cls: 'bg-orange-500/15 text-orange-400 border-orange-500/40' },
+    medium:     { label: 'ORTA',        cls: 'bg-amber/15 text-amber border-amber/40' },
+    high:       { label: 'YÜKSEK',      cls: 'bg-amber/15 text-amber border-amber/40' },
     very_high:  { label: 'ÇOK YÜKSEK',  cls: 'bg-bearish/15 text-bearish border-bearish/40' },
   }[(level ?? 'medium').toLowerCase()] ?? { label: 'BİLİNMİYOR', cls: 'bg-bg-tertiary text-text-muted border-border-subtle' };
 
@@ -603,7 +603,7 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
                 <span className={cn(
                   'font-extrabold font-mono',
                   compact ? 'text-xl' : 'text-3xl',
-                  signal.confidence_score >= 80 ? 'text-bullish' : signal.confidence_score >= 65 ? 'text-yellow-400' : 'text-text-muted'
+                  signal.confidence_score >= 80 ? 'text-bullish' : signal.confidence_score >= 65 ? 'text-amber' : 'text-text-muted'
                 )}>
                   {Math.round(signal.confidence_score / 10)}<span className="text-text-muted text-sm">/10</span>
                 </span>

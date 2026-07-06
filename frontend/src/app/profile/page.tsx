@@ -121,7 +121,7 @@ export default function ProfilePage() {
       {/* Identity */}
       <GlassCard>
         <div className="flex items-center gap-4 mb-5">
-          <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-orange-500 to-accent-primary flex items-center justify-center text-2xl font-bold text-white shadow-glow-sm flex-shrink-0">
+          <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-amber to-accent-primary flex items-center justify-center text-2xl font-bold text-white shadow-glow-sm flex-shrink-0">
             {user.avatar_url ? (
               <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
@@ -135,7 +135,7 @@ export default function ProfilePage() {
             </p>
           </div>
           {user.is_admin && (
-            <span className="flex items-center gap-1 px-3 py-1 rounded-lg bg-orange-500/15 border border-orange-500/30 text-orange-400 text-xs font-bold">
+            <span className="flex items-center gap-1 px-3 py-1 rounded-lg bg-amber/15 border border-amber/30 text-amber text-xs font-bold">
               <Shield className="w-3.5 h-3.5" /> ADMIN
             </span>
           )}
