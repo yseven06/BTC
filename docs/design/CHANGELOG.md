@@ -5,6 +5,49 @@ Kural: **her revizyon = commit + sürüm artışı + bu dosyada bir satır.** St
 
 ---
 
+## v1.3 — KANONIK · 2026-07-06
+
+> Design Standards tek kanonik sürümü. v1.3 taslakları (Bible + Visual Language) ile onaylı v1.3.1 revizyon planı (19 uygulanan / 3 revize / 1 reddedilen) tek gövdeye **fold** edildi. Bu sürüm, kalite denetimi referansındaki kritik boşlukları (64/100) kapatır. Kanonik kaynak: `docs/design/*.md`; Artifact yalnızca görsel aynadır.
+
+### Eklenen standartlar
+
+- **Renk — WebAIM kontrast kilidi:** `accent-ui`, `accent-hover`, `accent-text` token'ları WebAIM AA eşiklerine kilitlendi; kontrast oranları normatif tabloya bağlandı, serbest türetme yasak.
+- **Hero — gerçek-olay havuzu:** Hero anlatısı sabit/uydurma senaryo yerine gerçek-olay havuzundan beslenir; önceki mantık-çelişkisi (statik iddia ↔ dinamik sinyal) giderildi.
+- **Lint katmanı:** 5 zorunlu gate + "Karot" whitelist ile tasarım-token uyumu CI'da denetlenir; kaçış yalnız whitelist üzerinden.
+- **Süre — tek rejim:** Tüm motion/geçiş süreleri tek normatif rejime bağlandı (çoklu/çelişen süre tanımları kaldırıldı).
+- **Kabin imzası:** Ürün yüzeyi için tanımlı "kabin imzası" görsel kimlik kuralı — logo kapalıyken bile tanınırlık.
+- **Bileşen matrisi + type-scale:** Component matrisi ve tipografi ölçeği normatif tabloya bağlandı; ad-hoc boyut/varyant üretimi yasak.
+- **Provenance — verbatim:** Kaynak/atıf gösterimi verbatim zorunluluğuna bağlandı (özetleme/yeniden ifade yok).
+- **Cyan bütçesi:** `cyan` vurgu kullanımına normatif bütçe/oran sınırı getirildi.
+- **Kozlaşma (outcome) kuralı:** Sonuç/karar-durumu gösteriminin outcome-temelli normatif tanımı eklendi.
+- **Reduced-transparency:** `prefers-reduced-transparency` için normatif fallback davranışı tanımlandı.
+- **Özgünlük ölçümü:** Görsel özgünlük için ölçülebilir kriter/metronorm eklendi.
+- **cmd+K spec:** Komut paleti (⌘K) için normatif etkileşim/erişilebilirlik spesifikasyonu eklendi.
+
+### Çözülen (fold edilen v1.3.1 — 19 uygulanan)
+
+- v1.3.1 revizyon planındaki 19 madde tek kanonik v1.3 gövdesine kaynaştırıldı; ayrı bir v1.3.1 sürümü **yayımlanmaz**.
+- Kapatılan kritik boşluklar: renk WebAIM-kilidi, Hero mantık-çelişkisi, lint-katmanı (5 gate + Karot whitelist), süre tek-rejim, kabin-imzası, component-matris + type-scale, provenance-verbatim, cyan-bütçe, kozlaşma-outcome, reduced-transparency, özgünlük-ölçüm, cmd+K spec.
+
+### Revize (3)
+
+- **O1 — ML-faithfulness:** Ölçüt frontend'den backend'e taşındı; faithfulness backend katmanında doğrulanır (tasarım standardı yalnız gösterim tarafını bağlar).
+- **O3 — Karot payload:** "Karot" whitelist payload tanımı netleştirildi (kapsam/format belirsizliği giderildi).
+- **D4 — radius alias:** Radius token'ları alias'a bağlandı (doğrudan değer yerine tek-kaynak alias).
+
+### Reddedilen (1)
+
+- **D5:** Uygulama idle-sessizlik davranışı korunur; önerilen değişiklik reddedildi (mevcut idle davranışı kanonik kalır).
+
+### Kararlar
+
+- Tek kanonik sürüm ilkesi: v1.3.1 ayrı sürüm olarak tutulmaz; tüm onaylı revizyonlar v1.3'e fold edilir.
+- Kalite hedefi: 64/100 referans denetimindeki kritik gap'ler bu sürümle kapatılır.
+- Kanonik kaynak `docs/design/*.md`; Artifact görsel ayna olarak kalır, standart üretmez.
+- Reddedilen ve revize edilen maddeler bu changelog'da izlenebilir tutulur (D5 reddi ve O1/O3/D4 revizyonları kalıcı kayıt).
+
+---
+
 ## v1.2 — Rev-2/K1 · 2026-07-04
 
 **Kapsam:** Design Standards Review'daki içerik-boşluğu High'larının K1 dilimi — P1.2 (Design system tek-kaynak) uygulamasının önkoşulu olan **eksik standartlar** tamamlandı. Yalnız Design Bible §01 + §08 değişti; **VL içeriği değişmedi** (sürüm senkron için v1.2). Kod/CSS/component'e dokunulmadı. Diğer Rev-2 Medium/Low (M8/M12/M13/M15/M16/M17…) hâlâ deferred.
