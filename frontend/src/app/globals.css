@@ -10,41 +10,110 @@
    ============================================ */
 @layer base {
   :root {
-    /* ── Single-source color tokens (P1.2/a) ──────────────────────────────
-       Bu blok paletin TEK kaynağıdır: hem ham CSS (var(--x)) hem Tailwind
-       utility'leri (tailwind.config renkleri var()'e bağlıdır) buradan okur.
-       Değerler (a)'da DEĞİŞMEDİ (görsel no-op). Bible §01 paletine geçiş
-       (P1.2/b) yalnız burada yapılacak — başka yerde hardcode renk kalmaz.
-       Bible §01 eşleme (hedef, henüz uygulanmadı): bg-primary→--bg ·
-       bg-tertiary→--surface · accent-secondary→--accent-2 · text-muted→--faint ·
-       bullish→--bull · bearish→--bear. */
-    --bg-primary: #070B14;
-    --bg-secondary: #0C1220;
-    --bg-tertiary: #111A2B;
-    --bg-glass: rgba(12, 18, 32, 0.7);
-    --bg-glass-light: rgba(12, 18, 32, 0.4);
-    --accent-primary: #3B82F6;
-    --accent-secondary: #22D3EE;
-    --accent-glow: rgba(59, 130, 246, 0.3);
-    --accent-glow-strong: rgba(59, 130, 246, 0.5);
-    --text-primary: #E8EDF5;
-    --text-secondary: #9AA6B8;
-    --text-muted: #5C6980;
-    --text-dark: #334155;
-    --border-subtle: rgba(148, 163, 184, 0.1);
-    --border-medium: rgba(148, 163, 184, 0.2);
-    --bullish: #10B981;
-    --bullish-dark: #059669;
-    --bullish-light: #34D399;
-    --bearish: #F4556E;
-    --bearish-dark: #E23E58;
-    --bearish-light: #F87C8E;
-    --warning: #FBBF24;
-    --signal-strong-buy: #10B981;
-    --signal-buy: #34D399;
-    --signal-hold: #FBBF24;
-    --signal-sell: #F4556E;
-    --signal-strong-sell: #E23E58;
+    /* ════════════════════════════════════════════════════════════════════
+       DESIGN STANDARDS v1.3 — OWNED TOKEN SINGLE-SOURCE  (Phase 1 · Foundation)
+       Paletin/ölçeklerin TEK kaynağı: hem ham CSS var(--x) hem Tailwind
+       utility'leri (tailwind.config var()'ten okur) buradan türer.
+       v1.1 adları owned token'lara ALIAS'lı → mevcut componentler kırılmaz.
+       Bu commit (P1-F/a): owned token TANIMI + AYNI-DEĞER alias → BYTE-IDENTICAL
+       (görsel no-op). Değer değiştiren migration (accent/bull/bear/amber tonu,
+       hairline .20→.16, numeral feature-set) AYRI commit'lerde (P1-F/c,d + typo).
+       ──────────────────────────────────────────────────────────────────── */
+
+    /* — Yüzey merdiveni (Bible §01 COL-01/02 · §05 Depth) — E0–E3 4 basamak */
+    --e0: #070B14;   /* zemin (Ground) */
+    --e1: #0C1220;   /* kart / panel */
+    --e2: #111A2B;   /* iç / hover-ısınma hedefi (+1 basamak) */
+    --e3: #17233A;   /* overlay / cam (blur+gölge YALNIZ burada) */
+
+    /* — Metin merdiveni (Bible §01 COL-03) — yalnız 3 ton */
+    --tx:  #E8EDF5;  /* ana metin */
+    --tx2: #9AA6B8;  /* ikincil metin */
+    --tx3: #5C6980;  /* KISIT: okunur metin DEĞİL (<4.5:1) — dekor/disabled/kararsız/közleşme, yalnız E0-E2 */
+
+    /* — Semantik + accent (Bible §01 COL-04..08 · KİLİTLİ owned hex'ler) —
+         henüz referanssız; v1.1 aliaslama P1-F/c'de (renk tonu kayar) */
+    --bull:         #2FBE9A;   /* teal-emerald (~6.2:1) */
+    --bear:         #E14640;   /* warm-red terminal (metin yalnız E0/E1) */
+    --accent:       #3B57D4;   /* owned-blue — YALNIZ dolgu (CTA bg) */
+    --accent-ui:    #4E6BE3;   /* a11y-türevi — 1px-UI/focus/border/nav (E0-E3 ≥3:1) */
+    --accent-hover: #3450C6;   /* YALNIZ CTA-dolgu hover */
+    --cyan:         #25E0D4;   /* AI izi — yalnız çizgi/nokta/iz */
+    --amber:        #F5A524;   /* olay-bağlı (kazanç) */
+    --ac-tx:        var(--tx); /* accent üzeri metin (5.10:1) */
+
+    /* — Hairline / border alfa (Bible §01 COL-10) — 4 semantik değer */
+    --hl10: rgba(148, 163, 184, 0.10);  /* dinlenme / grid */
+    --hl12: rgba(148, 163, 184, 0.12);  /* standart / varsayılan */
+    --hl16: rgba(148, 163, 184, 0.16);  /* hover / focus-within */
+    --hl22: rgba(148, 163, 184, 0.22);  /* kanıt / odak (input-focus · E3-border) */
+
+    /* — Glow / gölge (Bible §01 craft-glow-budget) — tek CTA glow, kart gölgesiz */
+    --glow-cta:  0 8px 24px -12px var(--accent);        /* opaklık ≤.14, blur ASLA animasyonlanmaz */
+    --shadow-e3: 0 16px 40px -20px rgba(0, 0, 0, 0.7);  /* YALNIZ E3 overlay */
+    --cut-lip:   inset 0 1px 0 rgba(255, 255, 255, 0.07); /* üst-kenar highlight */
+
+    /* — Süre kilidi (Bible §06 MO-01) — tek-rejim ayrık token; ease-in-out YASAK */
+    --dur-micro:   140ms;
+    --dur-state:   180ms;
+    --dur-photon:  150ms;
+    --dur-warm:    140ms;
+    --dur-settle:  520ms;
+    --dur-route:   180ms;
+    --dur-overlay: 360ms;
+    --stagger:     50ms;
+    --ease-signal: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+    /* — Radius (Bible §01 craft-radius-scale) */
+    --radius-control: 8px;
+    --radius-button:  10px;
+    --radius-input:   10px;   /* = button (bilinçli ortak-değer / alias) */
+    --radius-card:    12px;
+    --radius-panel:   16px;
+    --radius-pill:    999px;
+    --radius-karot:   0;      /* enstrüman radyussuz */
+
+    /* — z-index (Bible §05 z-scale) */
+    --z-sticky:   10;
+    --z-dropdown: 40;
+    --z-modal:    50;
+    --z-toast:    60;
+    --z-tour:     100;
+
+    /* — Atmosfer ışık (VL §02) — owned rgb; yaşayan-Hero altyapısı (henüz referanssız) */
+    --light-key:  radial-gradient(1200px 600px at 78% -10%, rgb(59 87 212 / 0.11), transparent 60%);
+    --light-fill: radial-gradient(800px 480px at -4% 30%, rgb(37 224 212 / 0.05), transparent 55%);
+
+    /* ── v1.1 ALIAS'LARI (aynı-değer → byte-identical; mevcut utility'ler kırılmaz) ── */
+    --bg-primary:     var(--e0);   /* = #070B14 */
+    --bg-secondary:   var(--e1);   /* = #0C1220 */
+    --bg-tertiary:    var(--e2);   /* = #111A2B */
+    --text-primary:   var(--tx);   /* = #E8EDF5 */
+    --text-secondary: var(--tx2);  /* = #9AA6B8 */
+    --text-muted:     var(--tx3);  /* = #5C6980 */
+    --border-subtle:  var(--hl10); /* = rgba(148,163,184,.10) */
+
+    /* ── EMEKLİ / migration-BEKLEYEN (değer v1.1'de; owned'a geçiş AYRI commit) ── */
+    --bg-glass:       rgba(12, 18, 32, 0.7);        /* EMEKLİ — glass=E3-only, P2 primitif göçü */
+    --bg-glass-light: rgba(12, 18, 32, 0.4);        /* EMEKLİ — P2 */
+    --accent-primary:   #3B82F6;                    /* EMEKLİ → --accent #3B57D4 (P1-F/c, renk-shift) */
+    --accent-secondary: #22D3EE;                    /* EMEKLİ → --cyan #25E0D4 (P1-F/c) */
+    --accent-glow:        rgba(59, 130, 246, 0.3);  /* EMEKLİ — glow-bütçe ihlali, P2 util-göç */
+    --accent-glow-strong: rgba(59, 130, 246, 0.5);  /* EMEKLİ — P2 */
+    --text-dark: #334155;                           /* EMEKLİ — COL-03 4. metin tonu yasak; kullanım=0 → P2 sil */
+    --border-medium: rgba(148, 163, 184, 0.2);      /* EMEKLİ → --hl16 .16 (P1-F/d, mikro-shift) */
+    --bullish:       #10B981;                       /* EMEKLİ → --bull #2FBE9A (P1-F/c) */
+    --bullish-dark:  #059669;                       /* EMEKLİ — dark/light varyant yasak, P2 */
+    --bullish-light: #34D399;                       /* EMEKLİ — P2 */
+    --bearish:       #F4556E;                       /* EMEKLİ → --bear #E14640 (P1-F/c) */
+    --bearish-dark:  #E23E58;                       /* EMEKLİ — P2 */
+    --bearish-light: #F87C8E;                       /* EMEKLİ — P2 */
+    --warning:       #FBBF24;                       /* EMEKLİ → --amber #F5A524 (P1-F/c) */
+    --signal-strong-buy:  #10B981;                  /* EMEKLİ — signal-* ekseni, P2 component-göç */
+    --signal-buy:         #34D399;                  /* EMEKLİ — P2 */
+    --signal-hold:        #FBBF24;                  /* EMEKLİ — P2 */
+    --signal-sell:        #F4556E;                  /* EMEKLİ — P2 */
+    --signal-strong-sell: #E23E58;                  /* EMEKLİ — P2 */
   }
 
   * {
