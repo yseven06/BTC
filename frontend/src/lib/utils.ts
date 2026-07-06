@@ -4,8 +4,6 @@
 
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { SignalType, RiskLevel } from '@/types';
-import { chartColor } from '@/lib/chartColors';
 
 /**
  * Merge class names with clsx, then resolve Tailwind conflicts with
@@ -112,72 +110,6 @@ export function formatDateTR(input: string | number | Date): string {
   const d = input instanceof Date ? input : new Date(input);
   if (Number.isNaN(d.getTime())) return '—';
   return new Intl.DateTimeFormat('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' }).format(d);
-}
-
-/**
- * Get signal color class
- */
-export function getSignalColor(signal: SignalType): string {
-  const colors: Record<SignalType, string> = {
-    strong_buy: 'text-signal-strong-buy',
-    buy: 'text-signal-buy',
-    hold: 'text-signal-hold',
-    sell: 'text-signal-sell',
-    strong_sell: 'text-signal-strong-sell',
-  };
-  return colors[signal];
-}
-
-/**
- * Get signal background class
- */
-export function getSignalBgClass(signal: SignalType): string {
-  const classes: Record<SignalType, string> = {
-    strong_buy: 'signal-bg-strong-buy',
-    buy: 'signal-bg-buy',
-    hold: 'signal-bg-hold',
-    sell: 'signal-bg-sell',
-    strong_sell: 'signal-bg-strong-sell',
-  };
-  return classes[signal];
-}
-
-/**
- * Get risk level color
- */
-export function getRiskColor(level: RiskLevel): string {
-  // Owned tek-kaynak (P9.6/D9-08): eski #34D399/#F59E0B/#EF4444 EMEKLİ.
-  // Kaynakta da medium=high aynıydı → ikisi amber (RiskGauge CP2 ile tutarlı).
-  // NOT: tüketici=0 (ölü util, deep-review N8) — silme/tek-kaynaklaştırma P9-FINAL.
-  const colors: Record<RiskLevel, string> = {
-    low: chartColor('bull'),
-    medium: chartColor('amber'),
-    high: chartColor('amber'),
-    very_high: chartColor('bear'),
-  };
-  return colors[level];
-}
-
-/**
- * Get risk level text class
- */
-export function getRiskTextClass(level: RiskLevel): string {
-  const classes: Record<RiskLevel, string> = {
-    low: 'text-signal-buy',
-    medium: 'text-signal-hold',
-    high: 'text-orange-500',
-    very_high: 'text-signal-sell',
-  };
-  return classes[level];
-}
-
-/**
- * Get price change color class
- */
-export function getPriceChangeClass(change: number): string {
-  if (change > 0) return 'price-up';
-  if (change < 0) return 'price-down';
-  return 'price-neutral';
 }
 
 /**

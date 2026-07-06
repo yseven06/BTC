@@ -95,30 +95,17 @@
 
     /* ── SEMANTİK PALET-KİLİDİ (P1-F/c) — v1.1 adları owned'a ALIAS'landı →
          GÖRSEL: mavi→owned-blue · cyan→electric-teal · yeşil→teal-emerald ·
-         kırmızı→warm-red · amber→owned-amber. dark/light + signal-* düzleştirildi
-         (Bible owned-tek-hex; dark/light tüketici=0 → no-op). Component hardcode
-         hex'leri HÂLÂ eski (P9 Color'da göç edilecek) — geçiş-dönemi tutarsızlık. */
+         kırmızı→warm-red · amber→owned-amber. dark/light + signal-* + glow + text-dark
+         SİLİNDİ (P9-FINAL: kullanım=0 grep-kanıtlı). Kalan alias'lar tüketiliyor;
+         class-rename (bullish→bull vb.) P10 kapsamı. */
     --accent-primary:   var(--accent);   /* #3B82F6 → #3B57D4 */
-    --accent-secondary: var(--cyan);     /* #22D3EE → #25E0D4 */
     --bullish:       var(--bull);        /* #10B981 → #2FBE9A */
-    --bullish-dark:  var(--bull);        /* #059669 → bull (düzleşti; tüketici=0) */
-    --bullish-light: var(--bull);        /* #34D399 → bull (tüketici=0) */
     --bearish:       var(--bear);        /* #F4556E → #E14640 */
-    --bearish-dark:  var(--bear);        /* #E23E58 → bear (tüketici=0) */
-    --bearish-light: var(--bear);        /* #F87C8E → bear (tüketici=0) */
     --warning:       var(--amber);       /* #FBBF24 → #F5A524 */
-    --signal-strong-buy:  var(--bull);   /* #10B981 → bull */
-    --signal-buy:         var(--bull);   /* #34D399 → bull (5→3 semantik) */
-    --signal-hold:        var(--amber);  /* #FBBF24 → amber */
-    --signal-sell:        var(--bear);   /* #F4556E → bear */
-    --signal-strong-sell: var(--bear);   /* #E23E58 → bear (5→3 semantik) */
 
     /* ── EMEKLİ (owned'a AYRI commit'lerde göç) ── */
     --bg-glass:       rgba(12, 18, 32, 0.7);        /* EMEKLİ — glass=E3-only, P2 primitif göçü */
     --bg-glass-light: rgba(12, 18, 32, 0.4);        /* EMEKLİ — P2 */
-    --accent-glow:        rgba(59, 130, 246, 0.3);  /* EMEKLİ — glow-bütçe ihlali, P1-F/e util-göç */
-    --accent-glow-strong: rgba(59, 130, 246, 0.5);  /* EMEKLİ — P1-F/e */
-    --text-dark: #334155;                           /* EMEKLİ — COL-03 4. metin tonu yasak; kullanım=0 → P2 sil */
     --border-medium: var(--hl16);                   /* .20 → .16 (P1-F/d) — Bible COL-10 hover/focus-within semantiği; component'ler P10'da border-hl16'ya göç */
   }
 
@@ -276,61 +263,6 @@
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border: 1px solid rgba(148, 163, 184, 0.06);
-  }
-}
-
-/* ============================================
-   Signal Color Utilities
-   ============================================ */
-@layer components {
-  .signal-strong-buy {
-    color: var(--signal-strong-buy);
-    /* text-shadow glow kaldırıldı — Bible COL-12 semantik-glow yasak (glow=0) */
-  }
-
-  .signal-buy {
-    color: var(--signal-buy);
-  }
-
-  .signal-hold {
-    color: var(--signal-hold);
-  }
-
-  .signal-sell {
-    color: var(--signal-sell);
-  }
-
-  .signal-strong-sell {
-    color: var(--signal-strong-sell);
-    /* text-shadow glow kaldırıldı — Bible COL-12 (glow=0) */
-  }
-
-  /* signal-bg-* rgba → owned token color-mix (P1-F/e-3) — tek-kaynak; P1-F/c
-     flatten ile tutarlı: strong-buy+buy→bull · hold→amber · sell+strong-sell→bear.
-     bg %12 / border %30 alfa color-mix ile (ham hex yok → lint gate-1 uyumlu). */
-  .signal-bg-strong-buy {
-    background: color-mix(in oklab, var(--bull) 12%, transparent);
-    border-color: color-mix(in oklab, var(--bull) 30%, transparent);
-  }
-
-  .signal-bg-buy {
-    background: color-mix(in oklab, var(--bull) 12%, transparent);
-    border-color: color-mix(in oklab, var(--bull) 30%, transparent);
-  }
-
-  .signal-bg-hold {
-    background: color-mix(in oklab, var(--amber) 12%, transparent);
-    border-color: color-mix(in oklab, var(--amber) 30%, transparent);
-  }
-
-  .signal-bg-sell {
-    background: color-mix(in oklab, var(--bear) 12%, transparent);
-    border-color: color-mix(in oklab, var(--bear) 30%, transparent);
-  }
-
-  .signal-bg-strong-sell {
-    background: color-mix(in oklab, var(--bear) 12%, transparent);
-    border-color: color-mix(in oklab, var(--bear) 30%, transparent);
   }
 }
 
@@ -612,18 +544,6 @@
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
-  /* Price change colors */
-  .price-up {
-    color: var(--bullish);
-  }
-
-  .price-down {
-    color: var(--bearish);
-  }
-
-  .price-neutral {
-    color: var(--text-secondary);
-  }
 }
 
 /* ============================================
