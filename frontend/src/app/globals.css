@@ -119,7 +119,7 @@
     --accent-glow:        rgba(59, 130, 246, 0.3);  /* EMEKLİ — glow-bütçe ihlali, P1-F/e util-göç */
     --accent-glow-strong: rgba(59, 130, 246, 0.5);  /* EMEKLİ — P1-F/e */
     --text-dark: #334155;                           /* EMEKLİ — COL-03 4. metin tonu yasak; kullanım=0 → P2 sil */
-    --border-medium: rgba(148, 163, 184, 0.2);      /* EMEKLİ → --hl16 .16 (P1-F/d, mikro-shift) */
+    --border-medium: var(--hl16);                   /* .20 → .16 (P1-F/d) — Bible COL-10 hover/focus-within semantiği; component'ler P10'da border-hl16'ya göç */
   }
 
   * {
