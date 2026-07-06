@@ -95,30 +95,17 @@
 
     /* ── SEMANTİK PALET-KİLİDİ (P1-F/c) — v1.1 adları owned'a ALIAS'landı →
          GÖRSEL: mavi→owned-blue · cyan→electric-teal · yeşil→teal-emerald ·
-         kırmızı→warm-red · amber→owned-amber. dark/light + signal-* düzleştirildi
-         (Bible owned-tek-hex; dark/light tüketici=0 → no-op). Component hardcode
-         hex'leri HÂLÂ eski (P9 Color'da göç edilecek) — geçiş-dönemi tutarsızlık. */
+         kırmızı→warm-red · amber→owned-amber. dark/light + signal-* + glow + text-dark
+         SİLİNDİ (P9-FINAL: kullanım=0 grep-kanıtlı). Kalan alias'lar tüketiliyor;
+         class-rename (bullish→bull vb.) P10 kapsamı. */
     --accent-primary:   var(--accent);   /* #3B82F6 → #3B57D4 */
-    --accent-secondary: var(--cyan);     /* #22D3EE → #25E0D4 */
     --bullish:       var(--bull);        /* #10B981 → #2FBE9A */
-    --bullish-dark:  var(--bull);        /* #059669 → bull (düzleşti; tüketici=0) */
-    --bullish-light: var(--bull);        /* #34D399 → bull (tüketici=0) */
     --bearish:       var(--bear);        /* #F4556E → #E14640 */
-    --bearish-dark:  var(--bear);        /* #E23E58 → bear (tüketici=0) */
-    --bearish-light: var(--bear);        /* #F87C8E → bear (tüketici=0) */
     --warning:       var(--amber);       /* #FBBF24 → #F5A524 */
-    --signal-strong-buy:  var(--bull);   /* #10B981 → bull */
-    --signal-buy:         var(--bull);   /* #34D399 → bull (5→3 semantik) */
-    --signal-hold:        var(--amber);  /* #FBBF24 → amber */
-    --signal-sell:        var(--bear);   /* #F4556E → bear */
-    --signal-strong-sell: var(--bear);   /* #E23E58 → bear (5→3 semantik) */
 
     /* ── EMEKLİ (owned'a AYRI commit'lerde göç) ── */
     --bg-glass:       rgba(12, 18, 32, 0.7);        /* EMEKLİ — glass=E3-only, P2 primitif göçü */
     --bg-glass-light: rgba(12, 18, 32, 0.4);        /* EMEKLİ — P2 */
-    --accent-glow:        rgba(59, 130, 246, 0.3);  /* EMEKLİ — glow-bütçe ihlali, P1-F/e util-göç */
-    --accent-glow-strong: rgba(59, 130, 246, 0.5);  /* EMEKLİ — P1-F/e */
-    --text-dark: #334155;                           /* EMEKLİ — COL-03 4. metin tonu yasak; kullanım=0 → P2 sil */
     --border-medium: var(--hl16);                   /* .20 → .16 (P1-F/d) — Bible COL-10 hover/focus-within semantiği; component'ler P10'da border-hl16'ya göç */
   }
 
@@ -280,104 +267,53 @@
 }
 
 /* ============================================
-   Signal Color Utilities
-   ============================================ */
-@layer components {
-  .signal-strong-buy {
-    color: var(--signal-strong-buy);
-    /* text-shadow glow kaldırıldı — Bible COL-12 semantik-glow yasak (glow=0) */
-  }
-
-  .signal-buy {
-    color: var(--signal-buy);
-  }
-
-  .signal-hold {
-    color: var(--signal-hold);
-  }
-
-  .signal-sell {
-    color: var(--signal-sell);
-  }
-
-  .signal-strong-sell {
-    color: var(--signal-strong-sell);
-    /* text-shadow glow kaldırıldı — Bible COL-12 (glow=0) */
-  }
-
-  /* signal-bg-* rgba → owned token color-mix (P1-F/e-3) — tek-kaynak; P1-F/c
-     flatten ile tutarlı: strong-buy+buy→bull · hold→amber · sell+strong-sell→bear.
-     bg %12 / border %30 alfa color-mix ile (ham hex yok → lint gate-1 uyumlu). */
-  .signal-bg-strong-buy {
-    background: color-mix(in oklab, var(--bull) 12%, transparent);
-    border-color: color-mix(in oklab, var(--bull) 30%, transparent);
-  }
-
-  .signal-bg-buy {
-    background: color-mix(in oklab, var(--bull) 12%, transparent);
-    border-color: color-mix(in oklab, var(--bull) 30%, transparent);
-  }
-
-  .signal-bg-hold {
-    background: color-mix(in oklab, var(--amber) 12%, transparent);
-    border-color: color-mix(in oklab, var(--amber) 30%, transparent);
-  }
-
-  .signal-bg-sell {
-    background: color-mix(in oklab, var(--bear) 12%, transparent);
-    border-color: color-mix(in oklab, var(--bear) 30%, transparent);
-  }
-
-  .signal-bg-strong-sell {
-    background: color-mix(in oklab, var(--bear) 12%, transparent);
-    border-color: color-mix(in oklab, var(--bear) 30%, transparent);
-  }
-}
-
-/* ============================================
    Gradient Utilities
    ============================================ */
 @layer components {
+  /* gradient-* renk migration (P9.3 / D9-03): ham hex → owned token.
+     gradient-text yalnız landing/marka-logosu istisnası (Bible §01 Typo);
+     bullish/bearish varyantlar kullanım=0 → owned tek-tona düzleştirildi,
+     FINAL adımda (grep-DoD=0) silinecek — EMEKLİ. */
   .gradient-text-brand {
-    background: linear-gradient(135deg, #3B82F6 0%, #22D3EE 100%);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--cyan) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
-  .gradient-text-bullish {
-    background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+  .gradient-text-bullish { /* EMEKLİ — kullanım=0; FINAL'de sil */
+    background: linear-gradient(135deg, var(--bull) 0%, var(--bull) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
-  .gradient-text-bearish {
-    background: linear-gradient(135deg, #F4556E 0%, #F87C8E 100%);
+  .gradient-text-bearish { /* EMEKLİ — kullanım=0; FINAL'de sil */
+    background: linear-gradient(135deg, var(--bear) 0%, var(--bear) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .gradient-bg-brand {
-    background: linear-gradient(135deg, #3B82F6 0%, #22D3EE 100%);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--cyan) 100%);
   }
 
-  .gradient-bg-brand-subtle {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(34, 211, 238, 0.1) 100%);
+  .gradient-bg-brand-subtle { /* EMEKLİ — kullanım=0; FINAL'de sil */
+    background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 10%, transparent) 0%, color-mix(in oklab, var(--cyan) 10%, transparent) 100%);
   }
 
   .gradient-border {
     position: relative;
   }
 
-  .gradient-border::before {
+  .gradient-border::before { /* kullanım=0 — 1px sınır: accent-ui (COL-04 iz-türevi); cyan çizgi-istisnası */
     content: '';
     position: absolute;
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(34, 211, 238, 0.2), transparent);
+    background: linear-gradient(135deg, color-mix(in oklab, var(--accent-ui) 40%, transparent), color-mix(in oklab, var(--cyan) 20%, transparent), transparent);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
@@ -385,11 +321,11 @@
     pointer-events: none;
   }
 
-  .gradient-mesh {
+  .gradient-mesh { /* kullanım=0 (G-00-15 tabu — P4'te silinir); cyan-YÜZEY ihlali kaldırıldı: tüm duraklar accent (dolgu izinli, COL-04) */
     background:
-      radial-gradient(at 20% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
-      radial-gradient(at 80% 80%, rgba(34, 211, 238, 0.06) 0%, transparent 50%),
-      radial-gradient(at 50% 50%, rgba(59, 130, 246, 0.03) 0%, transparent 70%);
+      radial-gradient(at 20% 20%, color-mix(in oklab, var(--accent) 8%, transparent) 0%, transparent 50%),
+      radial-gradient(at 80% 80%, color-mix(in oklab, var(--accent) 6%, transparent) 0%, transparent 50%),
+      radial-gradient(at 50% 50%, color-mix(in oklab, var(--accent) 3%, transparent) 0%, transparent 70%);
   }
 }
 
@@ -433,12 +369,12 @@
     transform: translateY(-2px);
   }
 
-  .hover-glow {
+  .hover-glow { /* kullanım=0; renk owned + α .2→.14 glow-bütçesi (COL-12); hover-glow-yalnız-CTA kararı P7 */
     transition: box-shadow 0.3s ease;
   }
 
   .hover-glow:hover {
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 20px color-mix(in oklab, var(--accent) 14%, transparent);
   }
 
   .transition-default {
@@ -608,18 +544,6 @@
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
-  /* Price change colors */
-  .price-up {
-    color: var(--bullish);
-  }
-
-  .price-down {
-    color: var(--bearish);
-  }
-
-  .price-neutral {
-    color: var(--text-secondary);
-  }
 }
 
 /* ============================================

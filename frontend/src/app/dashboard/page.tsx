@@ -31,12 +31,15 @@ import OnboardingChecklist from '@/components/dashboard/OnboardingChecklist';
 import CoachmarkTour from '@/components/dashboard/CoachmarkTour';
 import { Crown, Lock } from 'lucide-react';
 import TradingViewChart from '@/components/charts/TradingViewChart';
+import { chartColor } from '@/lib/chartColors';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-const PIE_COLORS = ['#22D3EE', '#3B82F6', '#06B6D4', '#64748b'];
+// Renk migration (P9.7/D9-09): pie DOLGU — cyan-yüzey yasak (COL-07/D9-11) →
+// cyan'sız owned dizi: accent-ailesi + nötr metin-tonları (kategorik ayrım).
+const PIE_COLORS = [chartColor('accent'), chartColor('accentUi'), chartColor('tx2'), chartColor('tx3')];
 
 function fngLabel(v: number): string {
   if (v >= 75) return 'AŞIRI AÇGÖZLÜLÜK';
@@ -46,12 +49,14 @@ function fngLabel(v: number): string {
   return 'AŞIRI KORKU';
 }
 
+// Owned semantik (P9.7): greed=bull · nötr/korku=amber · aşırı-korku=bear;
+// extreme/greed ayrımı label'da (tek owned-hex; #34D399/#F59E0B/#EF4444 emekli).
 function fngColor(v: number): string {
-  if (v >= 75) return '#10B981';
-  if (v >= 55) return '#34D399';
-  if (v >= 45) return '#F59E0B';
-  if (v >= 25) return '#F59E0B';
-  return '#EF4444';
+  if (v >= 75) return chartColor('bull');
+  if (v >= 55) return chartColor('bull');
+  if (v >= 45) return chartColor('amber');
+  if (v >= 25) return chartColor('amber');
+  return chartColor('bear');
 }
 
 function LiveClock() {
@@ -209,7 +214,7 @@ export default function DashboardPage() {
     { label: 'Toplam Getiri', value: formatPercentage(totalReturnPct), color: totalReturnPct >= 0 ? 'text-bullish' : 'text-bearish' },
     { label: 'Kazanılan İşlemler', value: `${winCount}`, sub: `↗ ${formatPercentage(winRate, 0, false)}`, color: 'text-bullish' },
     { label: 'Kaybedilen İşlemler', value: `${lossCount}`, sub: `↘ ${formatPercentage(lossShare, 0, false)}`, color: 'text-bearish' },
-    { label: 'Ortalama Getiri', value: formatPercentage(avgReturn), color: 'text-accent-secondary' },
+    { label: 'Ortalama Getiri', value: formatPercentage(avgReturn), color: avgReturn >= 0 ? 'text-bullish' : 'text-bearish' },
   ];
 
   return (
@@ -222,12 +227,12 @@ export default function DashboardPage() {
       {isFreeTier && PAYMENTS_ENABLED && (
         <Link
           href="/pricing"
-          className="block bg-gradient-to-r from-orange-500/15 via-accent-primary/15 to-orange-500/15 border border-orange-500/30 rounded-2xl p-4 hover:border-orange-500/50 transition-all"
+          className="block bg-gradient-to-r from-amber/15 via-accent-primary/15 to-amber/15 border border-amber/30 rounded-2xl p-4 hover:border-amber/50 transition-all"
         >
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center flex-shrink-0">
-                <Lock className="w-5 h-5 text-orange-400" />
+              <div className="w-10 h-10 rounded-xl bg-amber/20 flex items-center justify-center flex-shrink-0">
+                <Lock className="w-5 h-5 text-amber" />
               </div>
               <div>
                 <p className="text-sm font-bold text-text-primary">
@@ -238,7 +243,7 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-            <span className="flex items-center gap-1.5 text-xs font-bold text-orange-400 whitespace-nowrap bg-orange-500/10 border border-orange-500/30 px-3 py-1.5 rounded-xl">
+            <span className="flex items-center gap-1.5 text-xs font-bold text-amber whitespace-nowrap bg-amber/10 border border-amber/30 px-3 py-1.5 rounded-xl">
               <Crown className="w-3.5 h-3.5" /> Yükselt
             </span>
           </div>
@@ -317,8 +322,8 @@ export default function DashboardPage() {
               {timeRange === '24s' ? 'son 24 saat' : timeRange === '7g' ? 'son 7 gün' : 'son 30 gün'}
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center transition-shadow duration-300 group-hover:shadow-[0_0_14px_rgba(249,115,22,0.35)]">
-            <Activity className="w-5 h-5 text-orange-500" />
+          <div className="w-10 h-10 rounded-xl bg-amber/10 border border-amber/20 flex items-center justify-center">
+            <Activity className="w-5 h-5 text-amber" />
           </div>
         </GlassCard>
 
@@ -349,7 +354,7 @@ export default function DashboardPage() {
               tüm zamanlar · {winCount}G / {lossCount}K / {breakevenCount}BE
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-bullish/10 border border-bullish/20 flex items-center justify-center transition-shadow duration-300 group-hover:shadow-glow-bullish">
+          <div className="w-10 h-10 rounded-xl bg-bullish/10 border border-bullish/20 flex items-center justify-center">
             <CheckCircle className="w-5 h-5 text-bullish" />
           </div>
         </GlassCard>
@@ -358,13 +363,13 @@ export default function DashboardPage() {
         <GlassCard className="flex items-center justify-between p-4 group" glowEffect glowColor={avgReturn >= 0 ? 'bullish' : 'bearish'}>
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Ortalama Getiri</span>
-            <h3 className="text-3xl font-bold font-mono mt-1 text-accent-secondary">{formatPercentage(avgReturn)}</h3>
+            <h3 className={cn("text-3xl font-bold font-mono mt-1", avgReturn >= 0 ? "text-bullish" : "text-bearish")}>{formatPercentage(avgReturn)}</h3>
             <span className="text-[10px] text-text-muted font-semibold mt-1 block">
               tüm zamanlar · işlem başına
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-accent-secondary/10 border border-accent-secondary/20 flex items-center justify-center transition-shadow duration-300 group-hover:shadow-glow-md">
-            <ChartIcon className="w-5 h-5 text-accent-secondary" />
+          <div className="w-10 h-10 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center transition-shadow duration-300 group-hover:shadow-glow-md">
+            <ChartIcon className="w-5 h-5 text-accent-ui" />
           </div>
         </GlassCard>
 
@@ -387,7 +392,8 @@ export default function DashboardPage() {
             onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
           >
             <svg viewBox="0 0 44 44" className="w-full h-full -rotate-90">
-              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" />
+              {/* white-alpha .05 → hl10 (D9-12); SVG attr var() çözmez → CSS stroke property */}
+              <circle cx="22" cy="22" r="18" fill="none" style={{ stroke: 'var(--hl10)' }} strokeWidth="4" />
               <circle
                 cx="22" cy="22" r="18" fill="none"
                 stroke={fngColor(fngValue)} strokeWidth="4"
@@ -414,7 +420,7 @@ export default function DashboardPage() {
             </div>
 
             {globalError && (
-              <p className="text-[11px] text-orange-400 bg-orange-400/10 border border-orange-400/20 rounded-lg px-3 py-2 mb-3">
+              <p className="text-[11px] text-amber bg-amber/10 border border-amber/20 rounded-lg px-3 py-2 mb-3">
                 Piyasa verisi şu an alınamıyor (kaynak geçici olarak sınırlandırıyor — CoinGecko rate limit).
                 {global ? ' Aşağıda son bilinen değerler gösteriliyor.' : ' 30 saniye içinde otomatik tekrar denenecek.'}
               </p>
@@ -459,7 +465,7 @@ export default function DashboardPage() {
                 <ChartIcon className="w-4 h-4 text-accent-primary" />
                 Canlı Grafik — BTC/USDT
               </h2>
-              <Link href="/markets/BTCUSDT" className="text-xs text-accent-primary hover:text-accent-secondary flex items-center gap-1">
+              <Link href="/markets/BTCUSDT" className="text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
                 Detay <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
@@ -473,7 +479,7 @@ export default function DashboardPage() {
                 <Activity className="w-4 h-4 text-accent-primary" />
                 Performans Özeti
               </h2>
-              <Link href="/performance" className="text-xs text-accent-primary hover:text-accent-secondary flex items-center gap-1">
+              <Link href="/performance" className="text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
                 Tümünü Gör <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
@@ -498,7 +504,7 @@ export default function DashboardPage() {
                 <Zap className="w-4 h-4 text-accent-primary" />
                 Son Sinyaller
               </h2>
-              <Link href="/signals" className="text-xs text-accent-primary hover:text-accent-secondary flex items-center gap-1">
+              <Link href="/signals" className="text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
                 Tümünü Gör <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
@@ -515,7 +521,7 @@ export default function DashboardPage() {
                 action={
                   <Link
                     href="/signals"
-                    className="focus-ring inline-flex items-center gap-1.5 text-xs font-bold bg-accent-primary hover:bg-accent-secondary text-white px-4 py-2 rounded-xl transition-colors"
+                    className="focus-ring inline-flex items-center gap-1.5 text-xs font-bold bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors"
                   >
                     Sinyal Merkezi&apos;ne git <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
@@ -529,9 +535,9 @@ export default function DashboardPage() {
                   const isBullish = dir.includes('buy');
                   const isBearish = dir.includes('sell');
                   const hoverGlow = isBullish
-                    ? 'hover:shadow-glow-bullish hover:border-bullish/30'
+                    ? 'hover:border-bullish/30'
                     : isBearish
-                    ? 'hover:shadow-glow-bearish hover:border-bearish/30'
+                    ? 'hover:border-bearish/30'
                     : 'hover:shadow-glow-sm hover:border-border-medium';
                   return (
                   <div

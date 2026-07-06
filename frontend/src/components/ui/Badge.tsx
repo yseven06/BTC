@@ -17,7 +17,7 @@ export const Badge: React.FC<BadgeProps> = ({
     secondary: "bg-bg-tertiary text-text-secondary border-border-medium",
     success: "bg-bullish/10 text-bullish border-bullish/20",
     danger: "bg-bearish/10 text-bearish border-bearish/20",
-    warning: "bg-signal-hold/10 text-signal-hold border-signal-hold/20",
+    warning: "bg-amber/10 text-amber border-amber/20",
   };
 
   return (

@@ -1,5 +1,6 @@
 import React from "react";
 import { Line, LineChart, ResponsiveContainer } from "recharts";
+import { chartColor } from "@/lib/chartColors";
 
 interface SparklineChartProps {
   data: number[];
@@ -19,9 +20,10 @@ export const SparklineChart: React.FC<SparklineChartProps> = ({
   // Map data to Recharts format
   const chartData = data.map((value, index) => ({ id: index, value }));
 
-  // Fallback color logic
+  // Fallback rengi owned tek-kaynaktan (P9.6/D9-08): bull/bear; 3.-kırmızı
+  // #EF4444 EMEKLİ. SSR-fallback ≡ :root değeri → hydration-güvenli.
   const isUp = data.length > 1 ? data[data.length - 1] >= data[0] : true;
-  const strokeColor = color || (isUp ? "#10B981" : "#EF4444");
+  const strokeColor = color || (isUp ? chartColor("bull") : chartColor("bear"));
 
   return (
     <div style={{ width, height }}>

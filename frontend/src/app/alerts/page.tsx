@@ -129,7 +129,7 @@ export default function AlertsPage() {
           <p className="text-sm text-text-secondary mt-1">Fiyat, sinyal ve özel koşul alarmları</p>
         </div>
         <button onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-1.5 text-xs font-semibold text-accent-primary hover:text-accent-secondary border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-2 rounded-lg transition-all">
+          className="flex items-center gap-1.5 text-xs font-semibold text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-2 rounded-lg transition-all">
           <Plus className="w-3.5 h-3.5" /> Yeni Alarm
         </button>
       </div>
@@ -246,14 +246,14 @@ export default function AlertsPage() {
           const asset = assetCache[alert.asset_id];
           return (
             <GlassCard key={alert.id} className="flex items-center gap-4">
-              <div className={cn('w-2 h-2 rounded-full flex-shrink-0', !alert.is_active ? 'bg-text-muted' : alert.triggered_at ? 'bg-yellow-400' : 'bg-accent-primary animate-pulse')} />
+              <div className={cn('w-2 h-2 rounded-full flex-shrink-0', !alert.is_active ? 'bg-text-muted' : alert.triggered_at ? 'bg-amber' : 'bg-accent-primary animate-pulse')} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-text-primary">
                   {asset?.symbol ?? '—'} <span className="text-text-muted font-normal">· {describeConditions(alert)}</span>
                 </p>
                 <p className="text-xs text-text-muted">{formatRelativeTime(alert.created_at)}</p>
               </div>
-              <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded', alert.triggered_at ? 'bg-yellow-400/10 text-yellow-400' : alert.is_active ? 'bg-accent-primary/10 text-accent-primary' : 'bg-bg-tertiary text-text-muted')}>
+              <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded', alert.triggered_at ? 'bg-amber/10 text-amber' : alert.is_active ? 'bg-accent-primary/10 text-accent-primary' : 'bg-bg-tertiary text-text-muted')}>
                 {alert.triggered_at ? 'Tetiklendi' : alert.is_active ? 'Aktif' : 'Pasif'}
               </span>
               <button onClick={() => toggleActive(alert)} title={alert.is_active ? 'Devre dışı bırak' : 'Aktifleştir'}

@@ -41,7 +41,7 @@ export function CheckoutConfirmModal({
   );
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-e-0/60 p-4 backdrop-blur-sm">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-bg-secondary p-5 shadow-2xl">
         <h2 className="text-base font-bold text-text-primary">Aboneliği Onayla</h2>
         <p className="mt-1 text-xs text-text-muted">
@@ -123,7 +123,7 @@ export function CheckoutConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={!canConfirm}
-            className="rounded-lg bg-accent-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-accent-secondary disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-accent-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {processing ? 'İşleniyor...' : 'Ödemeye Geç'}
           </button>

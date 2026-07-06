@@ -183,7 +183,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading || !allRequiredAccepted}
-            className="focus-ring w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-primary hover:bg-accent-secondary text-white text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="focus-ring w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-primary hover:bg-accent-hover text-white text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Hesap oluşturuluyor...' : (<>Hesap Oluştur <ArrowRight className="w-4 h-4" /></>)}
           </button>

@@ -157,7 +157,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
                   <h3 className="text-sm font-semibold text-text-primary">
                     {tr('notifications.title')}
                   </h3>
-                  <button className="text-xs text-accent-primary hover:text-accent-secondary transition-colors">
+                  <button className="text-xs text-accent-primary hover:text-accent-ui transition-colors">
                     {tr('notifications.mark_all_read')}
                   </button>
                 </div>
@@ -198,7 +198,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
                   )}
                 </div>
                 <div className="px-4 py-2.5 border-t border-border-subtle text-center">
-                  <button className="text-xs text-accent-primary hover:text-accent-secondary transition-colors font-medium">
+                  <button className="text-xs text-accent-primary hover:text-accent-ui transition-colors font-medium">
                     {tr('common.view_all')}
                   </button>
                 </div>
@@ -219,7 +219,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
                 showUserMenu && 'bg-white/[0.04]'
               )}
             >
-              <div className="w-7 h-7 rounded-full overflow-hidden bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center flex-shrink-0">
+              <div className="w-7 h-7 rounded-full overflow-hidden bg-gradient-to-br from-amber to-accent-primary flex items-center justify-center flex-shrink-0">
                 {user?.avatar_url ? (
                   <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (

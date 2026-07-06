@@ -20,21 +20,11 @@ const config: Config = {
         },
         // ── Design Standards v1.3 owned yüzey merdiveni (Bible §01 COL-01/02) ──
         e: { 0: 'var(--e0)', 1: 'var(--e1)', 2: 'var(--e2)', 3: 'var(--e3)' },
-        signal: {
-          'strong-buy': 'var(--signal-strong-buy)',
-          buy: 'var(--signal-buy)',
-          hold: 'var(--signal-hold)',
-          sell: 'var(--signal-sell)',
-          'strong-sell': 'var(--signal-strong-sell)',
-        },
         accent: {
           DEFAULT: 'var(--accent)',      // owned-blue — YALNIZ dolgu
           ui: 'var(--accent-ui)',        // a11y-türevi — 1px-UI/focus/border/nav
           hover: 'var(--accent-hover)',  // YALNIZ CTA-dolgu hover
           primary: 'var(--accent-primary)',           // EMEKLİ → accent (P1-F/c)
-          secondary: 'var(--accent-secondary)',       // EMEKLİ → cyan
-          glow: 'var(--accent-glow)',                 // EMEKLİ — P2 util-göç
-          'glow-strong': 'var(--accent-glow-strong)', // EMEKLİ — P2
         },
         // ── owned semantik + AI-izi (Bible §01 COL-04..08) ──
         bull: 'var(--bull)',
@@ -46,15 +36,14 @@ const config: Config = {
           primary: 'var(--text-primary)',
           secondary: 'var(--text-secondary)',
           muted: 'var(--text-muted)',
-          dark: 'var(--text-dark)',   // EMEKLİ (COL-03 4. ton yasak) — P2
         },
         border: {
           subtle: 'var(--border-subtle)',
           medium: 'var(--border-medium)',  // EMEKLİ → hl16 (P1-F/d)
           hl10: 'var(--hl10)', hl12: 'var(--hl12)', hl16: 'var(--hl16)', hl22: 'var(--hl22)',
         },
-        bullish: { DEFAULT: 'var(--bullish)', dark: 'var(--bullish-dark)', light: 'var(--bullish-light)' }, // EMEKLİ → bull
-        bearish: { DEFAULT: 'var(--bearish)', dark: 'var(--bearish-dark)', light: 'var(--bearish-light)' }, // EMEKLİ → bear
+        bullish: 'var(--bullish)', // legacy alias → bull (dark/light SİLİNDİ P9-FINAL; class-rename P10)
+        bearish: 'var(--bearish)', // legacy alias → bear (dark/light SİLİNDİ P9-FINAL; class-rename P10)
         warning: { DEFAULT: 'var(--warning)' }, // EMEKLİ → amber
       },
       fontFamily: {
@@ -71,9 +60,10 @@ const config: Config = {
         'shimmer': 'shimmer 2s infinite',
       },
       keyframes: {
+        // glow: kullanım=0; renk owned + α≤.14 (COL-12). Blur-animasyonu MO-ihlali → P6'da kaldırılır.
         glow: {
-          '0%': { boxShadow: '0 0 5px rgba(59, 130, 246, 0.2)' },
-          '100%': { boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)' },
+          '0%': { boxShadow: '0 0 5px color-mix(in oklab, var(--accent) 14%, transparent)' },
+          '100%': { boxShadow: '0 0 20px color-mix(in oklab, var(--accent) 14%, transparent)' },
         },
         slideUp: {
           '0%': { transform: 'translateY(10px)', opacity: '0' },
@@ -104,12 +94,12 @@ const config: Config = {
         'cta': 'var(--glow-cta)',        // tek CTA glow, opaklık ≤.14
         'e3': 'var(--shadow-e3)',        // YALNIZ E3 overlay
         'cut-lip': 'var(--cut-lip)',     // üst-kenar highlight
-        // ── EMEKLİ (glow-bütçe ihlali / kart-gölge yasağı) — P2 util-göç sonrası sil ──
-        'glow-sm': '0 0 10px rgba(59, 130, 246, 0.15)',
-        'glow-md': '0 0 20px rgba(59, 130, 246, 0.2)',
-        'glow-lg': '0 0 30px rgba(59, 130, 246, 0.3)',
-        'glow-bullish': '0 0 15px rgba(16, 185, 129, 0.2)',
-        'glow-bearish': '0 0 15px rgba(244, 85, 110, 0.2)',
+        // ── EMEKLİ alias'lar → tek --glow-cta (P9.3/D9-03); kullanım ~30× → P10 class-temizliğiyle sil ──
+        // glow-bullish/bearish KALDIRILDI (COL-12: bull/bear glow yasak; kullanan
+        // class'lar artık CSS üretmez → glow söner; class-temizliği P9.7/P9.4'te).
+        'glow-sm': 'var(--glow-cta)',
+        'glow-md': 'var(--glow-cta)',
+        'glow-lg': 'var(--glow-cta)',
         'card': '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2)',
         'card-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3)',
       },

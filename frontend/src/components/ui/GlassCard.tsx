@@ -34,11 +34,16 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   // className string — so `border-border-subtle` (B-o-r-d-e-r-b...) was
   // silently winning over `border-accent-primary` (B-o-r-d-e-r-a...) every
   // time. Inline style has unconditional priority, so this can't happen.
+  // Renk migration (P9.4c/D9-06): ham rgba → owned token. primary çerçeve
+  // 1px-UI → --accent-ui (COL-04), halo tek --glow-cta. bullish/bearish:
+  // border-tint owned bull/bear KALIR (semantik sınır serbest) ama boxShadow
+  // KALDIRILDI (COL-12: bull/bear glow yasak — dashboard/performance'taki
+  // 6 stat-kartında renkli halo söner, çerçeve tint'i kalır).
   const glowStyles: Record<string, React.CSSProperties> = {
     none: {},
-    primary: { borderColor: "rgba(59, 130, 246, 0.4)", boxShadow: "0 0 16px rgba(59, 130, 246, 0.25)" },
-    bullish: { borderColor: "rgba(16, 185, 129, 0.4)", boxShadow: "0 0 16px rgba(16, 185, 129, 0.25)" },
-    bearish: { borderColor: "rgba(239, 68, 68, 0.4)", boxShadow: "0 0 16px rgba(239, 68, 68, 0.25)" },
+    primary: { borderColor: "color-mix(in oklab, var(--accent-ui) 40%, transparent)", boxShadow: "var(--glow-cta)" },
+    bullish: { borderColor: "color-mix(in oklab, var(--bull) 40%, transparent)" },
+    bearish: { borderColor: "color-mix(in oklab, var(--bear) 40%, transparent)" },
   };
 
   return (

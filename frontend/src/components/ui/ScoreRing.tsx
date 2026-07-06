@@ -34,7 +34,7 @@ export const ScoreRing: React.FC<ScoreRingProps> = ({
   const getStrokeColor = (val: number) => {
     if (val >= 75) return "stroke-bullish";
     if (val >= 50) return "stroke-accent-primary";
-    if (val >= 35) return "stroke-signal-hold";
+    if (val >= 35) return "stroke-amber";
     return "stroke-bearish";
   };
 

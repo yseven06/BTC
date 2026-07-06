@@ -13,7 +13,7 @@ import {
 const STATUS_META: Record<string, { label: string; cls: string; bg: string; Icon: React.ElementType }> = {
   active:         { label: 'Aktif',           cls: 'text-bullish',     bg: 'bg-bullish/10 border-bullish/30',     Icon: CheckCircle2 },
   approaching_tp: { label: "TP'ye Yaklaşıyor", cls: 'text-accent-primary', bg: 'bg-accent-primary/10 border-accent-primary/30', Icon: TrendingUp },
-  weakening:      { label: 'Zayıflıyor',      cls: 'text-yellow-400',  bg: 'bg-yellow-400/10 border-yellow-400/30', Icon: Activity },
+  weakening:      { label: 'Zayıflıyor',      cls: 'text-amber',  bg: 'bg-amber/10 border-amber/30', Icon: Activity },
   invalidating:  { label: 'Geçersizleşiyor', cls: 'text-bearish',     bg: 'bg-bearish/10 border-bearish/30',     Icon: AlertTriangle },
 };
 

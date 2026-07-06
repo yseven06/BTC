@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useId } from 'react';
+import { chartColor } from '@/lib/chartColors';
 import { toTradingViewSymbol, toTradingViewInterval } from '@/lib/tradingview';
 
 interface TradingViewChartProps {
@@ -84,7 +85,7 @@ export default function TradingViewChart({
           theme: 'dark',
           style: '1', // candlesticks
           locale: 'tr',
-          toolbar_bg: '#070B14',
+          toolbar_bg: chartColor('e0'),
           enable_publishing: false,
           allow_symbol_change: !compact,
           hide_side_toolbar: compact,
@@ -92,14 +93,14 @@ export default function TradingViewChart({
           withdateranges: !compact,
           studies: compact ? [] : studies,
           autosize: true,
-          backgroundColor: '#070B14',
-          gridColor: 'rgba(148, 163, 184, 0.06)',
+          backgroundColor: chartColor('e0'),
+          gridColor: chartColor('hl10') /* .06->.10 embed grid=hl10 (D9-13) */,
         });
       })
       .catch(() => {
         if (containerRef.current) {
           containerRef.current.innerHTML =
-            '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#5C6980;font-size:13px;">Grafik yüklenemedi</div>';
+            '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--tx2);font-size:13px;">Grafik yüklenemedi</div>';
         }
       });
 

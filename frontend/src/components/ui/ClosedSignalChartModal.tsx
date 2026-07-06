@@ -19,9 +19,9 @@ const OUTCOME_LABEL: Record<string, string> = {
 const OUTCOME_COLOR: Record<string, string> = {
   win: 'text-bullish',
   loss: 'text-bearish',
-  breakeven: 'text-yellow-400',
+  breakeven: 'text-amber',
   expired: 'text-text-muted',
-  invalidated: 'text-orange-400',
+  invalidated: 'text-accent-ui',
 };
 
 interface Props {
@@ -61,7 +61,7 @@ export function ClosedSignalChartModal({ signal, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-e-0/70 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div

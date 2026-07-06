@@ -184,7 +184,7 @@ export default function SettingsPage() {
             <button
               onClick={save}
               disabled={saving}
-              className="px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-semibold hover:bg-accent-secondary transition-colors disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
             >
               {saving ? 'Kaydediliyor...' : 'Kaydet'}
             </button>

@@ -82,9 +82,9 @@ export default function MacroPage() {
               <TrendingUp className="w-4 h-4 text-accent-primary" /> ABD Makro (FRED)
             </h2>
             {!snap.united_states.configured && (
-              <GlassCard className="flex items-center gap-3 mb-3 bg-yellow-500/5 border-yellow-500/30">
-                <AlertCircle className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-                <p className="text-xs text-yellow-300">
+              <GlassCard className="flex items-center gap-3 mb-3 bg-amber/5 border-amber/30">
+                <AlertCircle className="w-4 h-4 text-amber flex-shrink-0" />
+                <p className="text-xs text-tx">
                   ABD makro verileri şu an kullanılamıyor.
                 </p>
               </GlassCard>

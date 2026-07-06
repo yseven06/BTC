@@ -64,13 +64,13 @@ export function InvestmentDisclaimer({
       className={cn(
         'flex gap-2 rounded-lg border px-3 py-2 text-xs leading-relaxed',
         isWarning
-          ? 'border-yellow-500/40 bg-yellow-500/10 text-yellow-100'
+          ? 'border-amber/40 bg-amber/10 text-tx'
           : 'border-white/10 bg-bg-secondary/60 text-text-muted',
         className,
       )}
     >
       <Icon
-        className={cn('mt-0.5 h-3.5 w-3.5 shrink-0', isWarning ? 'text-yellow-400' : 'text-text-muted')}
+        className={cn('mt-0.5 h-3.5 w-3.5 shrink-0', isWarning ? 'text-amber' : 'text-text-muted')}
         aria-hidden
       />
       <span>

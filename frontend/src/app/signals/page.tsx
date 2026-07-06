@@ -23,15 +23,15 @@ function qualityScore(confidence: number): number {
 
 function qualityColor(score: number): string {
   if (score >= 8) return 'bg-bullish';
-  if (score >= 6) return 'bg-yellow-400';
-  if (score >= 4) return 'bg-orange-400';
+  if (score >= 6) return 'bg-amber';
+  if (score >= 4) return 'bg-amber/70';
   return 'bg-bearish';
 }
 
 function qualityTextColor(score: number): string {
   if (score >= 8) return 'text-bullish';
-  if (score >= 6) return 'text-yellow-400';
-  if (score >= 4) return 'text-orange-400';
+  if (score >= 6) return 'text-amber';
+  if (score >= 4) return 'text-amber/80';
   return 'text-bearish';
 }
 
@@ -169,9 +169,9 @@ function OutcomeBadge({ outcome }: { outcome: string }) {
     active:    { label: 'AKTİF',     cls: 'bg-accent-primary/15 text-accent-primary border-accent-primary/30' },
     win:       { label: 'KAZANDI ✓', cls: 'bg-bullish/15 text-bullish border-bullish/30' },
     loss:      { label: 'PATLADI ✗', cls: 'bg-bearish/15 text-bearish border-bearish/30' },
-    breakeven: { label: 'BERABERE',  cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
+    breakeven: { label: 'BERABERE',  cls: 'bg-amber/15 text-amber border-amber/30' },
     expired:   { label: 'GEÇERSİZ',  cls: 'bg-text-muted/15 text-text-muted border-text-muted/30' },
-    invalidated: { label: 'İPTAL EDİLDİ', cls: 'bg-orange-400/15 text-orange-400 border-orange-400/30' },
+    invalidated: { label: 'İPTAL EDİLDİ', cls: 'bg-accent-ui/15 text-accent-ui border-accent-ui/30' },
   };
   const c = config[outcome] ?? config.active;
   return (
@@ -250,7 +250,7 @@ function biasInfo(bias: string): { color: string; label: string; ring: string } 
 function scoreColor(score: number): string {
   if (score >= 70) return 'bg-bullish';
   if (score >= 55) return 'bg-bullish/60';
-  if (score >= 45) return 'bg-yellow-500/70';
+  if (score >= 45) return 'bg-amber/70';
   if (score >= 30) return 'bg-bearish/60';
   return 'bg-bearish';
 }
@@ -509,7 +509,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4 bg-e-0/60 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -554,8 +554,8 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
           </div>
 
           {dir.state === 'wait' && (
-            <div className="text-[11px] text-yellow-400/90 bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-3 py-2 flex items-start gap-2">
-              <span className="text-yellow-400">ⓘ</span>
+            <div className="text-[11px] text-amber/90 bg-amber/10 border border-amber/30 rounded-lg px-3 py-2 flex items-start gap-2">
+              <span className="text-amber">ⓘ</span>
               <span>
                 Bu sinyalde net AL/SAT konsensüsü yok (motorlar uzlaşmadı).
                 Yukarıdaki seviyeler <b>bilgi amaçlıdır</b> — pozisyon almadan önce daha güçlü onay bekleyin.
@@ -663,7 +663,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
                         <p className="text-[10px] text-text-muted">Fear &amp; Greed</p>
                         <p className={cn('font-bold font-mono',
                           onchain.fearGreed <= 25 ? 'text-bearish' :
-                          onchain.fearGreed >= 75 ? 'text-bullish' : 'text-yellow-400')}>
+                          onchain.fearGreed >= 75 ? 'text-bullish' : 'text-amber')}>
                           {onchain.fearGreed} <span className="text-[9px] text-text-muted font-normal">{onchain.fearGreedClass ?? ''}</span>
                         </p>
                       </div>
@@ -748,7 +748,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
           </button>
           <Link
             href={`/markets/${encodeURIComponent(sig.asset?.symbol ?? '')}?tf=${encodeURIComponent(sig.timeframe ?? '')}`}
-            className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-primary hover:bg-accent-secondary text-white text-sm font-semibold transition-colors"
+            className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-primary hover:bg-accent-hover text-white text-sm font-semibold transition-colors"
           >
             <LineChart className="w-4 h-4" /> Grafiği Aç
           </Link>
@@ -945,7 +945,7 @@ export default function SignalsPage() {
             <button
               onClick={generateAll}
               disabled={generating || refreshing}
-              className="flex items-center gap-1.5 text-xs font-semibold text-accent-primary hover:text-accent-secondary border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs font-semibold text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
             >
               <Zap className={cn('w-3.5 h-3.5', generating && 'animate-pulse')} />
               {generating ? 'Üretiliyor...' : 'Sinyal Üret'}
@@ -968,12 +968,12 @@ export default function SignalsPage() {
       {!limits.loading && limits.tier === 'free' && PAYMENTS_ENABLED && (
         <Link
           href="/pricing"
-          className="flex items-center justify-between gap-3 bg-gradient-to-r from-orange-500/12 via-accent-primary/10 to-orange-500/12 border border-orange-500/25 hover:border-orange-500/45 rounded-xl px-4 py-2.5 transition-colors"
+          className="flex items-center justify-between gap-3 bg-gradient-to-r from-amber/10 via-accent-primary/10 to-amber/10 border border-amber/25 hover:border-amber/45 rounded-xl px-4 py-2.5 transition-colors"
         >
           <span className="text-xs text-text-secondary">
             <span className="font-bold text-text-primary">Ücretsiz plan</span> · günde {limits.daily_signal_limit} sinyal görüntülüyorsun. Sınırsız erişim için yükselt.
           </span>
-          <span className="flex items-center gap-1.5 text-xs font-bold text-orange-400 whitespace-nowrap flex-shrink-0">
+          <span className="flex items-center gap-1.5 text-xs font-bold text-amber whitespace-nowrap flex-shrink-0">
             <Crown className="w-3.5 h-3.5" /> Yükselt
           </span>
         </Link>
@@ -1121,8 +1121,8 @@ export default function SignalsPage() {
         <span className={cn(
           'text-xs font-bold font-mono min-w-[40px] text-center',
           minQuality >= 7 ? 'text-bullish' :
-          minQuality >= 5 ? 'text-yellow-400' :
-          minQuality >= 3 ? 'text-orange-400' : 'text-text-muted'
+          minQuality >= 5 ? 'text-amber' :
+          minQuality >= 3 ? 'text-amber/80' : 'text-text-muted'
         )}>
           {minQuality}/10
         </span>
@@ -1153,7 +1153,7 @@ export default function SignalsPage() {
               <div className="flex flex-wrap items-center justify-center gap-2">
                 <Link
                   href="/markets"
-                  className="focus-ring inline-flex items-center gap-1.5 text-xs font-bold bg-accent-primary hover:bg-accent-secondary text-white px-4 py-2 rounded-xl transition-colors"
+                  className="focus-ring inline-flex items-center gap-1.5 text-xs font-bold bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors"
                 >
                   Piyasaları keşfet <ArrowRight className="w-3.5 h-3.5" />
                 </Link>

@@ -75,10 +75,10 @@ export function ReconsentGate() {
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-e-0/60 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-bg-secondary p-5 shadow-2xl">
         <div className="flex items-start gap-2">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-yellow-400" aria-hidden />
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber" aria-hidden />
           <div>
             <h2 className="text-base font-bold text-text-primary">Güncellenen Yasal Belgeler</h2>
             <p className="mt-1 text-xs leading-relaxed text-text-muted">

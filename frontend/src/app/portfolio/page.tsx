@@ -260,7 +260,7 @@ export default function PortfolioPage() {
                 <h2 className="text-base font-bold text-text-primary">Açık Pozisyonlar</h2>
                 <div className="flex items-center gap-3">
                   <button onClick={() => setShowAddForm(!showAddForm)}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-accent-primary hover:text-accent-secondary border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-all">
+                    className="flex items-center gap-1.5 text-xs font-semibold text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-all">
                     <Plus className="w-3.5 h-3.5" /> Pozisyon Ekle
                   </button>
                   <button onClick={() => removePortfolio(active.id, active.name)}
@@ -348,7 +348,7 @@ export default function PortfolioPage() {
                               <Share2 className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => closePosition(h, currentPrice)} disabled={closingId === h.id} title="Pozisyonu Kapat"
-                              className="p-1.5 rounded-lg text-text-muted hover:text-yellow-400 hover:bg-yellow-400/10 transition-colors disabled:opacity-40">
+                              className="p-1.5 rounded-lg text-text-muted hover:text-amber hover:bg-amber/10 transition-colors disabled:opacity-40">
                               <LogOut className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => removeHolding(h.id)} title="Sil"

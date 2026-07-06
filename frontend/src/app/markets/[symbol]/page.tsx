@@ -71,8 +71,8 @@ const RECENT_OUTCOME_LABEL: Record<string, string> = {
   expired: 'Süresi Doldu', invalidated: 'İptal Edildi',
 };
 const RECENT_OUTCOME_COLOR: Record<string, string> = {
-  win: 'text-bullish', loss: 'text-bearish', breakeven: 'text-yellow-400',
-  expired: 'text-text-muted', invalidated: 'text-purple-400',
+  win: 'text-bullish', loss: 'text-bearish', breakeven: 'text-amber',
+  expired: 'text-text-muted', invalidated: 'text-accent-ui' /* purple emekli (P9-FINAL; signal-history ile ayni eslesme) */,
 };
 
 export default function AssetDetailPage() {
@@ -584,7 +584,7 @@ export default function AssetDetailPage() {
                 </div>
                 <button
                   onClick={() => router.push('/signal-history')}
-                  className="w-full mt-3 text-[11px] text-accent-primary hover:text-accent-secondary text-center"
+                  className="w-full mt-3 text-[11px] text-accent-primary hover:text-accent-ui text-center"
                 >
                   Sinyal Geçmişi'nde tümünü gör →
                 </button>

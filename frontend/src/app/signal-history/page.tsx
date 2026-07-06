@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { chartColor } from '@/lib/chartColors';
 import {
   History, CheckCircle, XCircle, Trophy, TrendingDown, TrendingUp,
   Target, Percent, Filter, Inbox, LineChart,
@@ -36,9 +37,9 @@ const OUTCOME_LABEL: Record<string, string> = {
 const OUTCOME_COLOR: Record<string, string> = {
   win: 'text-bullish bg-bullish/10 border-bullish/20',
   loss: 'text-bearish bg-bearish/10 border-bearish/20',
-  breakeven: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
+  breakeven: 'text-amber bg-amber/10 border-amber/20',
   expired: 'text-text-muted bg-bg-tertiary border-border-subtle',
-  invalidated: 'text-orange-400 bg-orange-400/10 border-orange-400/20',
+  invalidated: 'text-accent-ui bg-accent-ui/10 border-accent-ui/20',
   active: 'text-accent-primary bg-accent-primary/10 border-accent-primary/20',
 };
 
@@ -100,7 +101,11 @@ const TIME_PERIODS = [
   { id: '90d', label: '90 Gün', days: 90 },
 ] as const;
 
-const PIE_COLORS = { win: '#10B981', loss: '#EF4444', breakeven: '#F59E0B', expired: '#64748b', invalidated: '#A78BFA' };
+// Renk migration (P9.7/D9-09): owned tek-kaynak. MOR #A78BFA + TURUNCU #FB923C
+// EMEKLI (ayni kategori kaynakta iki farkli renkti) -> IKISI DE accentUi (tutarlilik).
+const AXIS = chartColor('tx2');      // eksen etiketi >=tx2 (DoD)
+const EQUITY = chartColor('accentUi'); // equity cizgi-izi (COL-04)
+const PIE_COLORS = { win: chartColor('bull'), loss: chartColor('bear'), breakeven: chartColor('amber'), expired: chartColor('tx3'), invalidated: chartColor('accentUi') };
 
 export default function SignalHistoryPage() {
   const [loading, setLoading] = useState(true);
@@ -192,11 +197,11 @@ export default function SignalHistoryPage() {
 
   const tpVsSlData = stats
     ? [
-        { name: 'TP Vuran', value: stats.win_count, fill: '#10B981' },
-        { name: 'SL Olan', value: stats.loss_count, fill: '#EF4444' },
-        { name: 'Başabaş', value: stats.breakeven_count, fill: '#F59E0B' },
-        { name: 'Süresi Dolan', value: stats.expired_count, fill: '#64748b' },
-        { name: 'İptal Edilen', value: stats.invalidated_count, fill: '#FB923C' },
+        { name: 'TP Vuran', value: stats.win_count, fill: chartColor('bull') },
+        { name: 'SL Olan', value: stats.loss_count, fill: chartColor('bear') },
+        { name: 'Başabaş', value: stats.breakeven_count, fill: chartColor('amber') },
+        { name: 'Süresi Dolan', value: stats.expired_count, fill: chartColor('tx3') },
+        { name: 'İptal Edilen', value: stats.invalidated_count, fill: chartColor('accentUi') },
       ]
     : [];
 
@@ -364,7 +369,7 @@ export default function SignalHistoryPage() {
                         <Cell key={d.key} fill={(PIE_COLORS as any)[d.key]} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#071126', borderColor: 'rgba(148,163,184,0.1)', borderRadius: 8 }} />
+                    <Tooltip contentStyle={{ backgroundColor: 'var(--e3)', borderColor: 'var(--hl10)', borderRadius: 8 }} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -376,9 +381,9 @@ export default function SignalHistoryPage() {
               <div className="h-56 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={tpVsSlData}>
-                    <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} />
-                    <YAxis stroke="#64748b" fontSize={10} tickLine={false} allowDecimals={false} />
-                    <Tooltip contentStyle={{ backgroundColor: '#071126', borderColor: 'rgba(148,163,184,0.1)', borderRadius: 8 }} />
+                    <XAxis dataKey="name" stroke={AXIS} fontSize={10} tickLine={false} />
+                    <YAxis stroke={AXIS} fontSize={10} tickLine={false} allowDecimals={false} />
+                    <Tooltip contentStyle={{ backgroundColor: 'var(--e3)', borderColor: 'var(--hl10)', borderRadius: 8 }} />
                     <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                       {tpVsSlData.map((d, i) => <Cell key={i} fill={d.fill} />)}
                     </Bar>
@@ -394,14 +399,14 @@ export default function SignalHistoryPage() {
                   <AreaChart data={equityCurve} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorHistEquity" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                        <stop offset="5%" stopColor={EQUITY} stopOpacity={0.4} />
+                        <stop offset="95%" stopColor={EQUITY} stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <XAxis dataKey="time" stroke="#64748b" fontSize={9} tickLine={false} />
-                    <YAxis stroke="#64748b" fontSize={10} tickLine={false} domain={['dataMin - 200', 'dataMax + 200']} />
-                    <Tooltip contentStyle={{ backgroundColor: '#071126', borderColor: 'rgba(148,163,184,0.1)', borderRadius: 8 }} />
-                    <Area type="monotone" dataKey="capital" stroke="#3B82F6" strokeWidth={2} fillOpacity={1} fill="url(#colorHistEquity)" />
+                    <XAxis dataKey="time" stroke={AXIS} fontSize={9} tickLine={false} />
+                    <YAxis stroke={AXIS} fontSize={10} tickLine={false} domain={['dataMin - 200', 'dataMax + 200']} />
+                    <Tooltip contentStyle={{ backgroundColor: 'var(--e3)', borderColor: 'var(--hl10)', borderRadius: 8 }} />
+                    <Area type="monotone" dataKey="capital" stroke={EQUITY} strokeWidth={2} fillOpacity={1} fill="url(#colorHistEquity)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

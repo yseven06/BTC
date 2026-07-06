@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { chartColor } from '@/lib/chartColors';
 import { useLanguage } from '@/lib/language-context';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
@@ -95,11 +96,12 @@ export default function PerformancePage() {
   };
 
   const chartColors = {
-    bullish: '#10B981',
-    bearish: '#EF4444',
-    accent: '#3B82F6',
-    accentSecondary: '#06B6D4',
-    neutral: '#64748b'
+    bullish: chartColor('bull'),
+    bearish: chartColor('bear'),   // 3.-kirmizi emekli
+    accent: chartColor('accentUi'),   // equity CIZGI-iz (COL-04: accent yalniz dolgu)
+    accentSecondary: chartColor('cyan'),   // backtest cizgisi (2.-cyan emekli; cizgi izinli)
+    neutral: chartColor('tx3'),
+    axis: chartColor('tx2')   // eksen etiketi >=tx2 (DoD)
   };
 
   return (
@@ -208,7 +210,7 @@ export default function PerformancePage() {
                     <h3 className="text-3xl font-extrabold font-mono mt-1 text-text-primary">{stats.active_count}</h3>
                     <p className="text-[10px] text-text-muted mt-1">Piyasada takip edilen aktif işlem</p>
                   </div>
-                  <div className="w-10 h-10 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center text-accent-secondary">
+                  <div className="w-10 h-10 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center text-accent-ui">
                     <Briefcase className="w-5 h-5" />
                   </div>
                 </GlassCard>
@@ -229,12 +231,12 @@ export default function PerformancePage() {
                           <stop offset="95%" stopColor={chartColors.accent} stopOpacity={0.0} />
                         </linearGradient>
                       </defs>
-                      <XAxis dataKey="time" stroke="#64748b" fontSize={10} tickLine={false} />
-                      <YAxis stroke="#64748b" fontSize={10} domain={['dataMin - 500', 'dataMax + 500']} tickLine={false} />
+                      <XAxis dataKey="time" stroke={chartColors.axis} fontSize={10} tickLine={false} />
+                      <YAxis stroke={chartColors.axis} fontSize={10} domain={['dataMin - 500', 'dataMax + 500']} tickLine={false} />
                       <Tooltip
-                        contentStyle={{ backgroundColor: '#071126', borderColor: 'rgba(148, 163, 184, 0.1)', borderRadius: '8px' }}
-                        labelStyle={{ color: '#94a3b8' }}
-                        itemStyle={{ color: '#F8FAFC', fontWeight: 'bold' }}
+                        contentStyle={{ backgroundColor: 'var(--e3)', borderColor: 'var(--hl10)', borderRadius: '8px' }}
+                        labelStyle={{ color: 'var(--tx2)' }}
+                        itemStyle={{ color: 'var(--tx)', fontWeight: 'bold' }}
                       />
                       <Area type="monotone" dataKey="capital" stroke={chartColors.accent} strokeWidth={2} fillOpacity={1} fill="url(#colorCapital)" />
                     </AreaChart>
@@ -501,12 +503,12 @@ export default function PerformancePage() {
                             <stop offset="95%" stopColor={chartColors.accentSecondary} stopOpacity={0.0} />
                           </linearGradient>
                         </defs>
-                        <XAxis dataKey="time" stroke="#64748b" fontSize={10} tickLine={false} />
-                        <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
+                        <XAxis dataKey="time" stroke={chartColors.axis} fontSize={10} tickLine={false} />
+                        <YAxis stroke={chartColors.axis} fontSize={10} tickLine={false} />
                         <Tooltip
-                          contentStyle={{ backgroundColor: '#071126', borderColor: 'rgba(148, 163, 184, 0.1)', borderRadius: '8px' }}
-                          labelStyle={{ color: '#94a3b8' }}
-                          itemStyle={{ color: '#F8FAFC', fontWeight: 'bold' }}
+                          contentStyle={{ backgroundColor: 'var(--e3)', borderColor: 'var(--hl10)', borderRadius: '8px' }}
+                          labelStyle={{ color: 'var(--tx2)' }}
+                          itemStyle={{ color: 'var(--tx)', fontWeight: 'bold' }}
                         />
                         <Area type="monotone" dataKey="capital" stroke={chartColors.accentSecondary} strokeWidth={2} fillOpacity={1} fill="url(#colorBacktest)" />
                       </AreaChart>

@@ -80,8 +80,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
                   : tier === 'premium' ? 'Premium'
                   : tier === 'pro' ? 'Pro Plan'
                   : 'Ücretsiz Plan';
-  const planColor = isAdmin ? 'text-orange-400'
-                  : tier === 'premium' ? 'text-yellow-400'
+  const planColor = isAdmin ? 'text-accent-ui'
+                  : tier === 'premium' ? 'text-amber'
                   : tier === 'pro' ? 'text-accent-primary'
                   : 'text-text-muted';
   const expiry = sub?.current_period_end
@@ -156,13 +156,13 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
 
       {/* Plan Section */}
       {!collapsed && (
-        <div className="mx-2 mb-2 p-3 rounded-xl bg-gradient-to-br from-orange-500/10 to-accent-primary/10 border border-orange-500/20">
+        <div className="mx-2 mb-2 p-3 rounded-xl bg-gradient-to-br from-amber/10 to-accent-primary/10 border border-amber/20">
           <div className="flex items-center gap-2 mb-2">
-            <Crown className={cn('w-4 h-4', tier === 'premium' ? 'text-yellow-400' : 'text-orange-500')} />
+            <Crown className={cn('w-4 h-4', tier === 'premium' ? 'text-amber' : 'text-amber')} />
             <span className={cn('text-xs font-bold', planColor)}>{planName}</span>
             <span className={cn(
               'ml-auto text-[9px] px-1.5 py-0.5 rounded font-bold',
-              isFree ? 'bg-text-muted/30 text-text-muted' : 'bg-orange-500 text-white'
+              isFree ? 'bg-text-muted/30 text-text-muted' : 'bg-amber text-e-0'
             )}>
               {isFree ? 'Pasif' : 'Aktif'}
             </span>
@@ -178,7 +178,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
           {(isAdmin || !isFree || PAYMENTS_ENABLED) && (
             <Link
               href={isAdmin ? '/admin' : '/pricing'}
-              className="mt-2 block w-full text-[10px] font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-lg py-1.5 transition-colors text-center"
+              className="mt-2 block w-full text-[10px] font-bold text-e-0 bg-amber hover:bg-amber/90 rounded-lg py-1.5 transition-colors text-center"
             >
               {isAdmin ? 'Yönetim Paneli' : isFree ? 'Yükselt' : 'Planı Yönet'}
             </Link>
@@ -208,7 +208,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
       <div className={cn('px-2 py-3 border-t border-border-subtle', collapsed ? 'flex justify-center' : '')}>
         <div className={cn('flex items-center gap-2.5 rounded-xl p-2 hover:bg-white/[0.03] transition-all cursor-pointer', collapsed && 'justify-center')}>
           <div className="relative flex-shrink-0">
-            <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-orange-500 to-accent-primary flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-amber to-accent-primary flex items-center justify-center">
               {effectiveUser?.avatar_url ? (
                 <img src={effectiveUser.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
               ) : (

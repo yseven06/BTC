@@ -79,7 +79,7 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-sm font-semibold text-text-secondary hover:text-text-primary transition-colors">Giriş Yap</Link>
-            <Link href="/register" className="text-sm font-bold bg-accent-primary hover:bg-accent-secondary text-white px-4 py-2 rounded-xl transition-colors">
+            <Link href="/register" className="text-sm font-bold bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors">
               Ücretsiz Başla
             </Link>
           </div>
@@ -126,7 +126,7 @@ export default function LandingPage() {
         )}
 
         <div className="flex items-center justify-center gap-3 mt-7">
-          <Link href="/register" className="flex items-center gap-2 text-sm font-bold bg-accent-primary hover:bg-accent-secondary text-white px-6 py-3 rounded-xl shadow-glow-sm transition-colors">
+          <Link href="/register" className="flex items-center gap-2 text-sm font-bold bg-accent-primary hover:bg-accent-hover text-white px-6 py-3 rounded-xl shadow-glow-sm transition-colors">
             Ücretsiz Başla <ArrowRight className="w-4 h-4" />
           </Link>
           <Link href="/pricing" className="text-sm font-bold text-text-secondary hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-6 py-3 rounded-xl transition-colors">
@@ -355,7 +355,7 @@ export default function LandingPage() {
             })}
           </div>
           <div className="text-center mt-8">
-            <Link href="/pricing" className="text-sm font-bold text-accent-primary hover:text-accent-secondary">
+            <Link href="/pricing" className="text-sm font-bold text-accent-primary hover:text-accent-ui">
               Tüm planları ve süre seçeneklerini gör →
             </Link>
           </div>
@@ -366,7 +366,7 @@ export default function LandingPage() {
       <section className="max-w-4xl mx-auto px-6 py-20 text-center">
         <h2 className="text-2xl md:text-3xl font-extrabold text-text-primary">Trading Avantajını Bugün İnşa Et</h2>
         <p className="text-sm text-text-secondary mt-3">Kayıt sonrası dashboard'a anında erişim — kredi kartı gerekmez.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 text-sm font-bold bg-accent-primary hover:bg-accent-secondary text-white px-7 py-3.5 rounded-xl shadow-glow-sm transition-colors mt-6">
+        <Link href="/register" className="inline-flex items-center gap-2 text-sm font-bold bg-accent-primary hover:bg-accent-hover text-white px-7 py-3.5 rounded-xl shadow-glow-sm transition-colors mt-6">
           Ücretsiz Hesap Oluştur <ArrowRight className="w-4 h-4" />
         </Link>
       </section>
