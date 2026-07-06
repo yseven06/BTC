@@ -25,6 +25,7 @@ const ALLOW_FILES = [
   ['src', 'app', 'layout.tsx'].join(sep),
   ['components', 'charts', 'TradingViewChart.tsx'].join(sep),
   ['components', 'ui', 'ShareCardModal.tsx'].join(sep),
+  ['src', 'lib', 'chartColors.ts'].join(sep), // JS-bağlamı token-kaynağı (P9.5): runtime-resolve + owned fallback
 ];
 const HEX_RE = /#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b(?![0-9a-fA-F])/g;
 // gate-4 kırpılmış-eksen desenleri (Lie Factor=1: baseline 0/dataMin'den kırpılamaz):
