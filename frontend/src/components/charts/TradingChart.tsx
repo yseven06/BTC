@@ -240,17 +240,61 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep the signal price chip pinned to its point every frame. lightweight-
-  // charts has no "viewport changed" event that covers wheel-zoom, axis-drag
-  // zoom AND price-scale rescale together, and it animates the view over several
-  // frames — so a per-frame reposition is the only thing that never drifts. The
-  // body early-returns cheaply when nothing moved, so idle frames are ~free.
+  // Keep the signal price chip pinned to its point DURING interaction, without a
+  // forever-running rAF (Bible §06 MO-12: idle'da 0 hareket). lightweight-charts
+  // has no single "viewport changed" event covering wheel-zoom + axis-drag +
+  // price-scale rescale, and it animates over several frames — so we still
+  // per-frame reposition, but ONLY while there is recent activity, then stop. Any
+  // input (wheel / drag / kinetic visible-range change) re-arms the loop; after
+  // IDLE_MS of stillness it halts (0 rAF at idle). Interaction behaviour is
+  // identical to the old per-frame loop — only the idle tail is removed. Every
+  // real viewport change is either an input here or fires visible-range-change,
+  // so the chip can't silently drift; the next input also re-pins it.
   useEffect(() => {
-    let rafId = requestAnimationFrame(function tick() {
+    const el = containerRef.current;
+    const chart = chartRef.current;
+    if (!el || !chart) return;
+
+    const IDLE_MS = 400; // track the kinetic tail after the last input, then stop
+    let rafId = 0;
+    let running = false;
+    let lastActivity = 0;
+    let pointerDown = false;
+
+    const loop = () => {
       updateSignalLabel();
-      rafId = requestAnimationFrame(tick);
-    });
-    return () => cancelAnimationFrame(rafId);
+      if (performance.now() - lastActivity > IDLE_MS) { running = false; return; }
+      rafId = requestAnimationFrame(loop);
+    };
+    const ping = () => {
+      lastActivity = performance.now();
+      if (!running) { running = true; rafId = requestAnimationFrame(loop); }
+    };
+    const onDown = () => { pointerDown = true; ping(); };
+    const onUp = () => { pointerDown = false; ping(); };
+    const onMove = () => { if (pointerDown) ping(); };
+
+    el.addEventListener('wheel', ping, { passive: true });
+    el.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp); // iptal edilen pointer pointerDown'u sıkışık bırakmasın
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('touchmove', ping, { passive: true });
+    const timeScale = chart.timeScale();
+    timeScale.subscribeVisibleLogicalRangeChange(ping);
+
+    ping(); // initial burst pins the chip on mount
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      el.removeEventListener('wheel', ping);
+      el.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('touchmove', ping);
+      timeScale.unsubscribeVisibleLogicalRangeChange(ping);
+    };
   }, [updateSignalLabel]);
 
   // Resize an already-mounted chart when the parent changes `height`
