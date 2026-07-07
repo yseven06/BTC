@@ -379,6 +379,28 @@
     animation: scaleIn var(--dur-state) ease-out forwards;
   }
 
+  /* Route ışık-devri (P6/M12, Bible §06 MO-08): navigasyonda gelen app-route
+     içeriği kısa +lightness ile oturur (opacity 0.92→1, --dur-route, ease-signal).
+     YALNIZ opacity → CLS=0 ve fixed-descendant containing-block YOK (filter
+     containing-block yaratır; opacity yaratmaz — ampirik doğrulandı). Giden −%8
+     yarısı view-transition gerektirir (Bible: yasak) → uygulanmaz. reduced-motion:
+     global guard (aşağıda) zaten nötrler; açık guard da eklendi. Remount YOK
+     (MainLayout key kullanmaz) → children state korunur; animasyon reflow-replay ile. */
+  .route-cycle {
+    animation: route-cycle-in var(--dur-route) var(--ease-signal);
+  }
+
+}
+
+@keyframes route-cycle-in {
+  from { opacity: 0.92; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-cycle {
+    animation: none;
+  }
 }
 
 /* ============================================

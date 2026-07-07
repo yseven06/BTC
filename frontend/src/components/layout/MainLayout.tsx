@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { Footer } from "./Footer";
@@ -19,6 +20,20 @@ export default function MainLayout({ children, fullWidth = false }: MainLayoutPr
   // Mobile (< lg) the sidebar is an off-canvas drawer toggled by the header
   // hamburger; on desktop it stays as the fixed, collapsible rail.
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Route ışık-devri (P6/M12, Bible §06 MO-08): navigasyonda gelen içerik kısa
+  // +lightness ile oturur (.route-cycle, opacity 0.92→1, --dur-route). REMOUNT YOK
+  // (key kullanılmaz) → children state korunur; animasyonu class remove→reflow→add
+  // ile yeniden oynatırız. Tüm DOM erişimi useEffect içinde → SSR-güvenli.
+  const pathname = usePathname();
+  const contentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    el.classList.remove("route-cycle");
+    void el.offsetWidth; // reflow → animasyonu baştan tetikle
+    el.classList.add("route-cycle");
+  }, [pathname]);
 
   return (
     <div className="flex min-h-screen bg-bg-primary text-text-primary overflow-hidden">
@@ -50,7 +65,7 @@ export default function MainLayout({ children, fullWidth = false }: MainLayoutPr
 
         {/* Scrollable Content Container */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
-          <div className={fullWidth ? 'w-full' : 'max-w-7xl mx-auto w-full'}>
+          <div ref={contentRef} className={fullWidth ? 'w-full' : 'max-w-7xl mx-auto w-full'}>
             {children}
           </div>
           <Footer />
