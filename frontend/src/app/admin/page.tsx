@@ -11,6 +11,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useToast } from '@/components/ui/Toast';
+import { Dropdown } from '@/components/ui/Dropdown';
 import { useAuth } from '@/lib/auth-context';
 import {
   fetchAdminStats, fetchAdminUsers, updateAdminUser, deleteAdminUser,
@@ -445,23 +446,33 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               Geçmişe düşmüş, gereksiz birikmiş sinyalleri (örn. binlerce HOLD kaydı) kalıcı olarak siler. Aktif sinyallere dokunmaz, geri alınamaz.
             </p>
             <div className="flex items-center gap-2 flex-wrap">
-              <select value={delSignalType} onChange={(e) => setDelSignalType(e.target.value)}
-                className="bg-bg-secondary border border-border-subtle rounded-lg px-2 py-1.5 text-xs text-text-primary">
-                <option value="">Tüm Tipler</option>
-                <option value="hold">Sadece HOLD</option>
-                <option value="buy">Sadece BUY</option>
-                <option value="sell">Sadece SELL</option>
-                <option value="strong_buy">Sadece STRONG BUY</option>
-                <option value="strong_sell">Sadece STRONG SELL</option>
-              </select>
-              <select value={delOutcome} onChange={(e) => setDelOutcome(e.target.value)}
-                className="bg-bg-secondary border border-border-subtle rounded-lg px-2 py-1.5 text-xs text-text-primary">
-                <option value="">Tüm Sonuçlar</option>
-                <option value="win">TP — Kazandı</option>
-                <option value="loss">Stop Oldu</option>
-                <option value="breakeven">Başabaş</option>
-                <option value="expired">Süresi Doldu</option>
-              </select>
+              <Dropdown
+                value={delSignalType}
+                onValueChange={setDelSignalType}
+                ariaLabel="Sinyal tipi filtresi"
+                className="text-xs px-2 py-1.5"
+                options={[
+                  { value: '', label: 'Tüm Tipler' },
+                  { value: 'hold', label: 'Sadece HOLD' },
+                  { value: 'buy', label: 'Sadece BUY' },
+                  { value: 'sell', label: 'Sadece SELL' },
+                  { value: 'strong_buy', label: 'Sadece STRONG BUY' },
+                  { value: 'strong_sell', label: 'Sadece STRONG SELL' },
+                ]}
+              />
+              <Dropdown
+                value={delOutcome}
+                onValueChange={setDelOutcome}
+                ariaLabel="Sonuç filtresi"
+                className="text-xs px-2 py-1.5"
+                options={[
+                  { value: '', label: 'Tüm Sonuçlar' },
+                  { value: 'win', label: 'TP — Kazandı' },
+                  { value: 'loss', label: 'Stop Oldu' },
+                  { value: 'breakeven', label: 'Başabaş' },
+                  { value: 'expired', label: 'Süresi Doldu' },
+                ]}
+              />
               <input value={delOlderDays} onChange={(e) => setDelOlderDays(e.target.value)} placeholder="X günden eski (ops.)" type="number" min={0}
                 className="bg-bg-secondary border border-border-subtle rounded-lg px-3 py-1.5 text-xs text-text-primary outline-none w-44" />
               <button onClick={runBulkDeleteClosed} disabled={deletingBulk}
@@ -493,10 +504,18 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           <div className="flex items-center gap-2">
             <input value={genSymbol} onChange={(e) => setGenSymbol(e.target.value)} placeholder="BTCUSDT"
               className="flex-1 bg-bg-secondary border border-border-subtle rounded-lg px-3 py-1.5 text-xs text-text-primary outline-none focus:border-accent-primary/40" />
-            <select value={genTf} onChange={(e) => setGenTf(e.target.value)}
-              className="bg-bg-secondary border border-border-subtle rounded-lg px-2 py-1.5 text-xs text-text-primary">
-              <option value="15m">15m</option><option value="1h">1h</option><option value="4h">4h</option><option value="1d">1d</option>
-            </select>
+            <Dropdown
+              value={genTf}
+              onValueChange={setGenTf}
+              ariaLabel="Zaman dilimi"
+              className="text-xs px-2 py-1.5"
+              options={[
+                { value: '15m', label: '15m' },
+                { value: '1h', label: '1h' },
+                { value: '4h', label: '4h' },
+                { value: '1d', label: '1d' },
+              ]}
+            />
             <button onClick={runGenerate} disabled={generating}
               className="text-xs font-display bg-accent-primary/15 text-accent-primary px-3 py-1.5 rounded-lg hover:bg-accent-primary/25 transition-colors disabled:opacity-50 whitespace-nowrap">
               {generating ? 'Üretiliyor...' : 'Üret'}
@@ -645,10 +664,17 @@ function AssetsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             className="bg-bg-secondary border border-border-subtle rounded-lg px-3 py-1.5 text-xs text-text-primary outline-none w-36" />
           <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ad (Bitcoin)"
             className="bg-bg-secondary border border-border-subtle rounded-lg px-3 py-1.5 text-xs text-text-primary outline-none w-40" />
-          <select value={newType} onChange={(e) => setNewType(e.target.value)}
-            className="bg-bg-secondary border border-border-subtle rounded-lg px-2 py-1.5 text-xs text-text-primary">
-            <option value="crypto">Kripto</option><option value="stock">BIST</option><option value="forex">Forex</option>
-          </select>
+          <Dropdown
+            value={newType}
+            onValueChange={setNewType}
+            ariaLabel="Varlık tipi"
+            className="text-xs px-2 py-1.5"
+            options={[
+              { value: 'crypto', label: 'Kripto' },
+              { value: 'stock', label: 'BIST' },
+              { value: 'forex', label: 'Forex' },
+            ]}
+          />
           <input value={newMarket} onChange={(e) => setNewMarket(e.target.value)} placeholder="Market (binance)"
             className="bg-bg-secondary border border-border-subtle rounded-lg px-3 py-1.5 text-xs text-text-primary outline-none w-32" />
           <button onClick={createAsset} disabled={creating}
