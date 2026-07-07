@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, Plus, Trash2, Search, X, Power } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import {
   fetchAlerts, createAlert, updateAlert, deleteAlert, searchAssets, fetchAssets,
@@ -30,6 +31,9 @@ export default function AlertsPage() {
   const [customCondition, setCustomCondition] = useState<'above' | 'below'>('below');
   const [customValue, setCustomValue] = useState('30');
   const [creating, setCreating] = useState(false);
+
+  // Onay diyaloğu durumu — native confirm() yerine ui/ConfirmModal (P7-D14).
+  const [confirmState, setConfirmState] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -96,14 +100,18 @@ export default function AlertsPage() {
     }
   };
 
-  const removeAlert = async (a: ApiAlert) => {
-    if (!confirm('Bu alarm silinecek. Emin misin?')) return;
-    try {
-      await deleteAlert(a.id);
-      setAlerts((prev) => prev.filter((x) => x.id !== a.id));
-    } catch (e: any) {
-      alert(e?.message ?? 'Silinemedi.');
-    }
+  const removeAlert = (a: ApiAlert) => {
+    setConfirmState({
+      message: 'Bu alarm silinecek. Emin misin?',
+      onConfirm: async () => {
+        try {
+          await deleteAlert(a.id);
+          setAlerts((prev) => prev.filter((x) => x.id !== a.id));
+        } catch (e: any) {
+          alert(e?.message ?? 'Silinemedi.');
+        }
+      },
+    });
   };
 
   const describeConditions = (a: ApiAlert): string => {
@@ -275,6 +283,17 @@ export default function AlertsPage() {
           </GlassCard>
         )}
       </div>
+
+      <ConfirmModal
+        open={!!confirmState}
+        message={confirmState?.message}
+        variant="danger"
+        onConfirm={() => {
+          confirmState?.onConfirm();
+          setConfirmState(null);
+        }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 }

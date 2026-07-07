@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Star, Plus, Trash2, Search, X, TrendingUp, TrendingDown } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { cn, formatPrice, formatPercentage } from '@/lib/utils';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import {
@@ -23,6 +24,9 @@ export default function WatchlistPage() {
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<ApiAsset[]>([]);
   const [searching, setSearching] = useState(false);
+
+  // Onay diyaloğu durumu — native confirm() yerine ui/ConfirmModal (P7-D14).
+  const [confirmState, setConfirmState] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,15 +82,19 @@ export default function WatchlistPage() {
     } finally { setCreating(false); }
   };
 
-  const removeList = async (l: ApiWatchlist) => {
-    if (!confirm(`"${l.name}" listesi silinecek. Emin misin?`)) return;
-    try {
-      await deleteWatchlist(l.id);
-      setLists((prev) => prev.filter((x) => x.id !== l.id));
-      if (activeId === l.id) setActiveId(null);
-    } catch (e: any) {
-      alert(e?.message ?? 'Silinemedi.');
-    }
+  const removeList = (l: ApiWatchlist) => {
+    setConfirmState({
+      message: `"${l.name}" listesi silinecek. Emin misin?`,
+      onConfirm: async () => {
+        try {
+          await deleteWatchlist(l.id);
+          setLists((prev) => prev.filter((x) => x.id !== l.id));
+          if (activeId === l.id) setActiveId(null);
+        } catch (e: any) {
+          alert(e?.message ?? 'Silinemedi.');
+        }
+      },
+    });
   };
 
   const addAsset = async (asset: ApiAsset) => {
@@ -260,6 +268,17 @@ export default function WatchlistPage() {
           ) : null}
         </>
       )}
+
+      <ConfirmModal
+        open={!!confirmState}
+        message={confirmState?.message}
+        variant="danger"
+        onConfirm={() => {
+          confirmState?.onConfirm();
+          setConfirmState(null);
+        }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 }

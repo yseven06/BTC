@@ -8,6 +8,7 @@ import {
   Plus, Play, AlertTriangle, CheckCircle, XCircle, Ban,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useAuth } from '@/lib/auth-context';
 import {
   fetchAdminStats, fetchAdminUsers, updateAdminUser, deleteAdminUser,
@@ -184,6 +185,9 @@ function UsersTab({ isSuperAdmin, selfId }: { isSuperAdmin: boolean; selfId: str
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
+  // Onay diyaloğu — native confirm() yerine ui/ConfirmModal (P7-D14). variant taşır
+  // (rol değişimi=primary, silme=danger karışık).
+  const [confirmState, setConfirmState] = useState<{ message: string; variant: 'danger' | 'primary'; onConfirm: () => void } | null>(null);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -195,16 +199,26 @@ function UsersTab({ isSuperAdmin, selfId }: { isSuperAdmin: boolean; selfId: str
 
   useEffect(() => { load(); }, [load]);
 
-  const setRole = async (u: AdminUserRow, role: UserRole) => {
+  const setRole = (u: AdminUserRow, role: UserRole) => {
     if (!isSuperAdmin) return;
-    if (!confirm(`${u.email} kullanıcısının rolü "${ROLE_LABEL[role]}" olarak değiştirilecek. Onaylıyor musun?`)) return;
-    try { await updateAdminUser(u.id, { role }); load(); } catch (e: any) { alert(e?.message ?? 'İşlem başarısız.'); }
+    setConfirmState({
+      message: `${u.email} kullanıcısının rolü "${ROLE_LABEL[role]}" olarak değiştirilecek. Onaylıyor musun?`,
+      variant: 'primary',
+      onConfirm: async () => {
+        try { await updateAdminUser(u.id, { role }); load(); } catch (e: any) { alert(e?.message ?? 'İşlem başarısız.'); }
+      },
+    });
   };
   const toggleActive = async (u: AdminUserRow) => { await updateAdminUser(u.id, { is_active: !u.is_active }); load(); };
   const setTier = async (u: AdminUserRow, tier: SubscriptionTier) => { await updateAdminUser(u.id, { tier }); load(); };
-  const removeUser = async (u: AdminUserRow) => {
-    if (!confirm(`${u.email} kalıcı olarak silinecek. Emin misin?`)) return;
-    try { await deleteAdminUser(u.id); load(); } catch (e: any) { alert(e?.message ?? 'Silinemedi.'); }
+  const removeUser = (u: AdminUserRow) => {
+    setConfirmState({
+      message: `${u.email} kalıcı olarak silinecek. Emin misin?`,
+      variant: 'danger',
+      onConfirm: async () => {
+        try { await deleteAdminUser(u.id); load(); } catch (e: any) { alert(e?.message ?? 'Silinemedi.'); }
+      },
+    });
   };
 
   return (
@@ -281,6 +295,17 @@ function UsersTab({ isSuperAdmin, selfId }: { isSuperAdmin: boolean; selfId: str
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        open={!!confirmState}
+        message={confirmState?.message}
+        variant={confirmState?.variant}
+        onConfirm={() => {
+          confirmState?.onConfirm();
+          setConfirmState(null);
+        }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 }
@@ -311,6 +336,10 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const [deletingBulk, setDeletingBulk] = useState(false);
   const [delMsg, setDelMsg] = useState<string | null>(null);
 
+  // Onay diyaloğu — native confirm() yerine ui/ConfirmModal (P7-D14). variant taşır
+  // (gizleme=primary, silme=danger karışık).
+  const [confirmState, setConfirmState] = useState<{ message: string; variant: 'danger' | 'primary'; onConfirm: () => void } | null>(null);
+
   const load = useCallback(async () => {
     setBusy(true);
     try {
@@ -321,40 +350,55 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const invalidate = async (s: AdminSignalRow) => {
-    if (!confirm(`${s.symbol} (${s.timeframe}) sinyali kullanıcılardan gizlenecek. Onaylıyor musun?`)) return;
-    await invalidateAdminSignal(s.id);
-    load();
+  const invalidate = (s: AdminSignalRow) => {
+    setConfirmState({
+      message: `${s.symbol} (${s.timeframe}) sinyali kullanıcılardan gizlenecek. Onaylıyor musun?`,
+      variant: 'primary',
+      onConfirm: async () => {
+        await invalidateAdminSignal(s.id);
+        load();
+      },
+    });
   };
 
-  const deleteOne = async (s: AdminSignalRow) => {
-    if (!confirm(`${s.symbol} (${s.timeframe}) sinyali kalıcı olarak silinecek. Bu işlem geri alınamaz. Emin misin?`)) return;
-    try { await deleteAdminSignal(s.id); load(); } catch (e: any) { alert(e?.message ?? 'Silinemedi.'); }
+  const deleteOne = (s: AdminSignalRow) => {
+    setConfirmState({
+      message: `${s.symbol} (${s.timeframe}) sinyali kalıcı olarak silinecek. Bu işlem geri alınamaz. Emin misin?`,
+      variant: 'danger',
+      onConfirm: async () => {
+        try { await deleteAdminSignal(s.id); load(); } catch (e: any) { alert(e?.message ?? 'Silinemedi.'); }
+      },
+    });
   };
 
-  const runBulkDeleteClosed = async () => {
+  const runBulkDeleteClosed = () => {
     const olderDays = delOlderDays.trim() ? Number(delOlderDays) : undefined;
     const parts = [
       delSignalType && `tip=${delSignalType.toUpperCase()}`,
       delOutcome && `sonuç=${delOutcome}`,
       olderDays && `${olderDays} günden eski`,
     ].filter(Boolean).join(', ');
-    if (!confirm(`Eşleşen TÜM kapanan sinyaller kalıcı olarak silinecek (${parts || 'filtre yok — tüm kapananlar'}). Bu işlem geri alınamaz. Emin misin?`)) return;
-    setDeletingBulk(true); setDelMsg(null);
-    try {
-      const res = await bulkDeleteClosedSignals({
-        outcome: delOutcome || undefined,
-        signal_type: delSignalType || undefined,
-        older_than_days: olderDays,
-      });
-      setDelMsg(`${res.deleted_count} sinyal kalıcı olarak silindi.`);
-      load();
-    } catch (e: any) {
-      setDelMsg(e?.message ?? 'Silme başarısız.');
-    } finally {
-      setDeletingBulk(false);
-      setTimeout(() => setDelMsg(null), 6000);
-    }
+    setConfirmState({
+      message: `Eşleşen TÜM kapanan sinyaller kalıcı olarak silinecek (${parts || 'filtre yok — tüm kapananlar'}). Bu işlem geri alınamaz. Emin misin?`,
+      variant: 'danger',
+      onConfirm: async () => {
+        setDeletingBulk(true); setDelMsg(null);
+        try {
+          const res = await bulkDeleteClosedSignals({
+            outcome: delOutcome || undefined,
+            signal_type: delSignalType || undefined,
+            older_than_days: olderDays,
+          });
+          setDelMsg(`${res.deleted_count} sinyal kalıcı olarak silindi.`);
+          load();
+        } catch (e: any) {
+          setDelMsg(e?.message ?? 'Silme başarısız.');
+        } finally {
+          setDeletingBulk(false);
+          setTimeout(() => setDelMsg(null), 6000);
+        }
+      },
+    });
   };
 
   const runBulkClean = async () => {
@@ -514,6 +558,17 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         )}
       </div>
       <p className="text-micro text-text-muted">{total} sinyal listeleniyor.</p>
+
+      <ConfirmModal
+        open={!!confirmState}
+        message={confirmState?.message}
+        variant={confirmState?.variant}
+        onConfirm={() => {
+          confirmState?.onConfirm();
+          setConfirmState(null);
+        }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 }
@@ -534,6 +589,9 @@ function AssetsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const [newMarket, setNewMarket] = useState('');
   const [creating, setCreating] = useState(false);
   const [createMsg, setCreateMsg] = useState<string | null>(null);
+  // Onay diyaloğu — native confirm() yerine ui/ConfirmModal (P7-D14). variant taşır
+  // (SignalsTab/UsersTab ile aynı biçim; burada yalnız danger).
+  const [confirmState, setConfirmState] = useState<{ message: string; variant: 'danger' | 'primary'; onConfirm: () => void } | null>(null);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -546,9 +604,14 @@ function AssetsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   useEffect(() => { load(); }, [load]);
 
   const toggleActive = async (a: AdminAssetRow) => { await updateAdminAsset(a.id, { is_active: !a.is_active }); load(); };
-  const removeAsset = async (a: AdminAssetRow) => {
-    if (!confirm(`${a.symbol} ve ona bağlı tüm sinyaller silinecek. Emin misin?`)) return;
-    try { await deleteAdminAsset(a.id); load(); } catch (e: any) { alert(e?.message ?? 'Silinemedi.'); }
+  const removeAsset = (a: AdminAssetRow) => {
+    setConfirmState({
+      message: `${a.symbol} ve ona bağlı tüm sinyaller silinecek. Emin misin?`,
+      variant: 'danger',
+      onConfirm: async () => {
+        try { await deleteAdminAsset(a.id); load(); } catch (e: any) { alert(e?.message ?? 'Silinemedi.'); }
+      },
+    });
   };
 
   const createAsset = async () => {
@@ -626,6 +689,17 @@ function AssetsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         )}
       </div>
       <p className="text-micro text-text-muted">{total} varlık listeleniyor.</p>
+
+      <ConfirmModal
+        open={!!confirmState}
+        message={confirmState?.message}
+        variant={confirmState?.variant}
+        onConfirm={() => {
+          confirmState?.onConfirm();
+          setConfirmState(null);
+        }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 }
