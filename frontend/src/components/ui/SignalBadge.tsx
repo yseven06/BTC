@@ -47,7 +47,7 @@ export const SignalBadge: React.FC<SignalBadgeProps> = ({
   return (
     <span
       className={clsx(
-        "inline-flex items-center justify-center px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full border",
+        "inline-flex items-center justify-center px-3 py-1 label-micro rounded-full border", // mikro-etiket tek-dil (P8/D8); sinyal rengi text-* ile ezer
         currentStyle,
         className
       )}

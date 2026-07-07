@@ -23,7 +23,7 @@ export const Badge: React.FC<BadgeProps> = ({
   return (
     <span
       className={clsx(
-        "inline-flex items-center px-2 py-0.5 text-[10px] font-bold rounded-md border tracking-wide uppercase",
+        "inline-flex items-center px-2 py-0.5 label-micro rounded-md border", // 11px/+0.08em/500 (P8/D8); varyant text-* rengi receteyi ezer
         styles[variant],
         className
       )}

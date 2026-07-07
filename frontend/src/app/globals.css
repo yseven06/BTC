@@ -166,6 +166,16 @@
     width: 1ch; /* sabit isaret-slotu: +/-/bos ayni genislik */
     text-align: center;
   }
+
+  /* Mikro-etiket recetesi (P8/D8, Bible typo-weight-tracking): uppercase etiketler
+     TEK dil: 11px / +0.08em / 500 / --tx2. Bold/10px dagilimi EMEKLI. */
+  .label-micro {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--tx2);
+  }
 }
 
 /* ============================================
