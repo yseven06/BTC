@@ -389,26 +389,6 @@
 }
 
 /* ============================================
-   Ticker Animation
-   ============================================ */
-@keyframes ticker-scroll {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-.ticker-animate {
-  animation: ticker-scroll 40s linear infinite;
-}
-
-.ticker-animate:hover {
-  animation-play-state: paused;
-}
-
-/* ============================================
    TP Ladder "Reached" Pulse — only on TP levels
    that have actually been hit (hit_tpN = true).
    An unreached target gets no motion at all now —

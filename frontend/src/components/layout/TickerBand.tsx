@@ -106,16 +106,17 @@ export default function TickerBand() {
     };
   }, []);
 
-  const items = [...tickerData, ...tickerData];
+  // Marquee kaldirildi (P6/M08, Bible §06 marquee YASAK): tek set, statik kaydirilabilir serit.
+  const items = tickerData;
 
   return (
-    <div className="w-full overflow-hidden bg-bg-secondary/50 border-b border-border-subtle relative">
+    <div className="w-full overflow-x-auto bg-bg-secondary/50 border-b border-border-subtle relative">
       {/* Left fade gradient */}
       <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-bg-secondary/80 to-transparent z-10 pointer-events-none" />
       {/* Right fade gradient */}
       <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-bg-secondary/80 to-transparent z-10 pointer-events-none" />
 
-      <div className="ticker-animate flex items-center h-8">
+      <div className="flex items-center h-8">
         {items.map((item, index) => (
           <TickerItemDisplay key={`${item.symbol}-${index}`} item={item} />
         ))}
