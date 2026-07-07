@@ -61,7 +61,7 @@ function TickerItemDisplay({ item }: { item: TickerItem }) {
       <span className="text-xs font-semibold text-text-primary group-hover:text-accent-primary transition-colors whitespace-nowrap">
         {item.symbol}
       </span>
-      <span className="text-xs font-mono text-text-secondary whitespace-nowrap">
+      <span className="text-xs num font-num-480 text-text-secondary whitespace-nowrap">
         {item.price === 0
           ? '—'
           : item.symbol.includes('/')
@@ -71,7 +71,7 @@ function TickerItemDisplay({ item }: { item: TickerItem }) {
       {item.price !== 0 && (
         <span
           className={cn(
-            'text-[11px] font-mono font-medium whitespace-nowrap',
+            'text-[11px] num font-num-520 whitespace-nowrap',
             isPositive ? 'text-bullish' : 'text-bearish'
           )}
         >

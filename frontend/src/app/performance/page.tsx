@@ -542,7 +542,7 @@ export default function PerformancePage() {
                             </td>
                             <td className="py-2.5 font-mono">{formatPrice(trade.entry_price)}</td>
                             <td className="py-2.5 font-mono">{formatPrice(trade.exit_price)}</td>
-                            <td className={`py-2.5 text-right font-bold font-mono ${trade.return_pct > 0 ? 'text-bullish' : 'text-bearish'}`}>
+                            <td className={`py-2.5 num-cell font-num-560 ${trade.return_pct > 0 ? 'text-bullish' : 'text-bearish'}`}>
                               {formatPercentage(trade.return_pct)}
                             </td>
                             <td className="py-2.5 text-right">

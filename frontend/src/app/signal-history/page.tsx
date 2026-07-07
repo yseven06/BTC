@@ -450,9 +450,9 @@ export default function SignalHistoryPage() {
                       </td>
                       <td className="py-2.5 px-3 font-mono text-text-muted">{formatAbsoluteTimeTR(s.generated_at)}</td>
                       <td className="py-2.5 px-3 font-mono text-text-muted">{s.closed_at ? formatAbsoluteTimeTR(s.closed_at) : '-'}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-text-primary">{s.entry_zone_low?.toFixed?.(4) ?? s.entry_zone_low}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-bearish">{s.stop_loss}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-text-muted">
+                      <td className="py-2.5 px-3 num-cell font-num-480 text-text-primary">{s.entry_zone_low?.toFixed?.(4) ?? s.entry_zone_low}</td>
+                      <td className="py-2.5 px-3 num-cell font-num-480 text-bearish">{s.stop_loss}</td>
+                      <td className="py-2.5 px-3 num-cell font-num-480 text-text-muted">
                         {s.tp1} / {s.tp2} / {s.tp3}
                       </td>
                       <td className="py-2.5 px-3">
@@ -467,13 +467,13 @@ export default function SignalHistoryPage() {
                           </span>
                         </div>
                       </td>
-                      <td className={cn('py-2.5 px-3 text-right font-bold font-mono',
+                      <td className={cn('py-2.5 px-3 num-cell font-num-560',
                         (s.actual_return ?? 0) > 0 ? 'text-bullish' : (s.actual_return ?? 0) < 0 ? 'text-bearish' : 'text-text-muted')}>
                         {s.actual_return != null ? formatPercentage(s.actual_return) : '-'}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono text-text-primary">{qualityScore(s.confidence_score)}/10</td>
+                      <td className="py-2.5 px-3 num-cell font-num-480 text-text-primary">{qualityScore(s.confidence_score)}/10</td>
                       <td className="py-2.5 px-3 text-right uppercase text-text-muted">{s.risk_level}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-text-muted min-w-[110px]">
+                      <td className="py-2.5 px-3 num-cell font-num-480 text-text-muted min-w-[110px]">
                         <div>{timeToOutcome(s)}</div>
                         {tpTimings(s).length > 0 && (
                           <div className="flex flex-col items-end text-[10px] text-bullish/80 normal-case font-sans leading-tight mt-0.5">

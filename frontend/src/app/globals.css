@@ -147,6 +147,25 @@
     font-feature-settings: 'tnum' 1, 'zero' 1, 'ss01' 1, 'cv05' 1;
     font-variant-numeric: tabular-nums slashed-zero;
   }
+
+  /* Sayisal HUCRE recetesi (P8/D5, Bible typo-num-cell): sag-hiza + tabular slot;
+     negatif isaret ayri sabit slotta (isaretli kolonlarda hiza kaymaz);
+     tasma text-overflow + title (Tooltip primitifi INT fazinda). Hassasiyet lib/utils formatter. */
+  .num-cell {
+    font-family: var(--font-sans), system-ui, sans-serif;
+    font-feature-settings: 'tnum' 1, 'zero' 1, 'ss01' 1, 'cv05' 1;
+    font-variant-numeric: tabular-nums slashed-zero;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .num-cell > .num-sign {
+    display: inline-block;
+    width: 1ch; /* sabit isaret-slotu: +/-/bos ayni genislik */
+    text-align: center;
+  }
 }
 
 /* ============================================
