@@ -474,9 +474,10 @@
   }
 
   .nav-item.active {
-    color: var(--accent-primary);
-    background: rgba(59, 130, 246, 0.1);
-    /* box-shadow glow kaldırıldı — Bible INT-11 nav-glow yasak (sol-accent-çubuğu ::before zaten var); bg P9'da token'a */
+    color: var(--accent-ui);
+    background: var(--e2);
+    /* Bible INT-11: aktif = sol accent-ui çubuğu + +1 luminans (E1→E2), glow yasak;
+       mavi-tint (rgba 59,130,246) → nötr E2 basamağı; renk accent-primary → accent-ui (a11y) */
   }
 
   .nav-item.active::before {
@@ -487,7 +488,7 @@
     transform: translateY(-50%);
     width: 3px;
     height: 60%;
-    background: var(--accent-primary);
+    background: var(--accent-ui);
     border-radius: 0 4px 4px 0;
   }
 

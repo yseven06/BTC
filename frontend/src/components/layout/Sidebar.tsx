@@ -138,7 +138,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
               )}
               title={collapsed ? item.label : undefined}
             >
-              <Icon className={cn('w-4 h-4 flex-shrink-0 transition-colors', isActive ? 'text-accent-primary' : 'text-text-muted group-hover:text-text-primary')} />
+              <Icon className={cn('w-4 h-4 flex-shrink-0 transition-colors', isActive ? 'text-accent-ui' : 'text-text-muted group-hover:text-text-primary')} />
               {!collapsed && (
                 <span className="text-sm animate-fade-in whitespace-nowrap flex-1">{item.label}</span>
               )}
