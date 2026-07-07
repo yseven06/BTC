@@ -45,8 +45,25 @@ const config: Config = {
         warning: { DEFAULT: 'var(--warning)' }, // EMEKLİ → amber
       },
       fontFamily: {
-        sans: ['var(--font-sans)', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['var(--font-mono)', 'JetBrains Mono', 'monospace'],
+        sans: ['system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'], // govde (P8/D1)
+        numeral: ['var(--font-sans)', 'system-ui', 'sans-serif'], // Inter yalniz numeral/display koprusu (P8/D3)
+        mono: ['ui-monospace', '"Cascadia Mono"', 'Consolas', 'monospace'], // OS-native (P8/D2)
+      },
+      // Role-bagli type-scale (Bible §01 Typography, P8/D7) — kademeli cevrim hedefi;
+      // default Tailwind olcegi SILINMEDI (mevcut kullanim kirilmasin), cevrim sayfa-bazli.
+      fontSize: {
+        micro: ['11px', { letterSpacing: '0.08em', lineHeight: '1.2' }],
+        data:  ['13px', { lineHeight: '1.4' }],
+        body:  ['15px', { lineHeight: '1.6' }],
+        h4:    ['15px', { lineHeight: '1.4' }],
+        h3:    ['18px', { letterSpacing: '-0.015em', lineHeight: '1.35' }],
+        h2:    ['24px', { letterSpacing: '-0.02em', lineHeight: '1.3' }],
+        h1:    ['32px', { letterSpacing: '-0.025em', lineHeight: '1.25' }],
+      },
+      // Weight disiplini (P8/D6): metin 400/500/650; numeral koprusu 480/520/560 (P8/D3).
+      fontWeight: {
+        display: '650',
+        'num-480': '480', 'num-520': '520', 'num-560': '560',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

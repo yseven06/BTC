@@ -7,12 +7,12 @@ import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
 import { ReconsentGate } from "@/components/consent/ReconsentGate";
 import LayoutShell from "@/components/layout/LayoutShell";
 import { PWARegister } from "@/components/PWARegister";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 
-// Self-hosted via next/font (no Google @import) — variable fonts, size-adjusted
+// Self-hosted via next/font — Inter YALNIZ numeral/display rolu (Bible typo-font-family, P8/D1);
 // fallback (CLS=0), latin-ext subset for full Turkish glyph coverage (şğıİÇÖÜ).
+// govde system-ui, mono ui-monospace OS-native (webfont mono kaldirildi, P8/D2).
 const inter = Inter({ subsets: ["latin", "latin-ext"], variable: "--font-sans", display: "swap" });
-const jetbrainsMono = JetBrains_Mono({ subsets: ["latin", "latin-ext"], variable: "--font-mono", display: "swap" });
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 const SITE_TITLE = "TradeMinds AI - Advanced Trading Intelligence Platform";
@@ -58,7 +58,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="tr" className={inter.variable}>
       <body className="antialiased">
         <LanguageProvider>
           <AuthProvider>

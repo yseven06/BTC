@@ -125,7 +125,7 @@
   }
 
   body {
-    font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; /* govde=system-ui; Inter yalniz numeral/display (P8/D1) */
     background-color: var(--bg-primary);
     color: var(--text-primary);
     min-height: 100vh;
@@ -135,7 +135,7 @@
   /* Number / Data font */
   .font-mono,
   [data-mono] {
-    font-family: var(--font-mono), 'JetBrains Mono', 'Fira Code', monospace;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; /* OS-native mono (P8/D2) */
   }
 }
 
