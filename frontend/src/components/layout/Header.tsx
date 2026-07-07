@@ -18,6 +18,7 @@ import { useLanguage } from '@/lib/language-context';
 import { cn } from '@/lib/utils';
 import TickerBand from './TickerBand';
 import { CoinIcon } from '@/components/ui/CoinIcon';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { searchAssets, type ApiAsset } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useAlerts } from '@/hooks/useAlerts';
@@ -129,26 +130,27 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
 
           {/* Notifications */}
           <div className="relative">
-            <button
-              onClick={() => {
-                setShowNotifications(!showNotifications);
-                setShowUserMenu(false);
-              }}
-              className={cn(
-                'relative p-2 rounded-lg',
-                'text-text-secondary hover:text-text-primary',
-                'hover:bg-e-2 transition-all duration-[var(--dur-state)] focus-ring',
-                showNotifications && 'bg-white/[0.04] text-text-primary'
-              )}
-              title={tr('tooltip.notifications')}
-            >
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4.5 h-4.5 min-w-[18px] text-micro font-medium font-mono text-white bg-bearish rounded-full shadow-lg">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
+            <Tooltip content={tr('tooltip.notifications')}>
+              <button
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  setShowUserMenu(false);
+                }}
+                className={cn(
+                  'relative p-2 rounded-lg',
+                  'text-text-secondary hover:text-text-primary',
+                  'hover:bg-e-2 transition-all duration-[var(--dur-state)] focus-ring',
+                  showNotifications && 'bg-white/[0.04] text-text-primary'
+                )}
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4.5 h-4.5 min-w-[18px] text-micro font-medium font-mono text-white bg-bearish rounded-full shadow-lg">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+            </Tooltip>
 
             {/* Notifications Dropdown */}
             {showNotifications && (

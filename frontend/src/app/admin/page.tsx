@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { useAuth } from '@/lib/auth-context';
 import {
   fetchAdminStats, fetchAdminUsers, updateAdminUser, deleteAdminUser,
@@ -540,11 +541,12 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 </span>
                 <span className="font-mono text-text-muted">{formatAbsoluteTimeTR(s.generated_at)}</span>
                 {s.is_active ? (
-                  <button onClick={() => invalidate(s)}
-                    className="p-1.5 rounded-lg text-text-muted hover:text-bearish hover:bg-bearish/10 transition-colors"
-                    title="Geçersiz kıl (kullanıcılardan gizle)">
-                    <Ban className="w-3.5 h-3.5" />
-                  </button>
+                  <Tooltip content="Geçersiz kıl (kullanıcılardan gizle)">
+                    <button onClick={() => invalidate(s)}
+                      className="p-1.5 rounded-lg text-text-muted hover:text-bearish hover:bg-bearish/10 transition-colors">
+                      <Ban className="w-3.5 h-3.5" />
+                    </button>
+                  </Tooltip>
                 ) : (
                   <button onClick={() => deleteOne(s)} disabled={!isSuperAdmin}
                     className="p-1.5 rounded-lg text-text-muted hover:text-bearish hover:bg-bearish/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"

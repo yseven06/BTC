@@ -10,6 +10,7 @@ import {
   Globe, Shield, History,
 } from 'lucide-react';
 import { cn, formatDateTR } from '@/lib/utils';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { PAYMENTS_ENABLED } from '@/lib/config';
 import {
   fetchMySubscription, fetchActiveSignals,
@@ -224,13 +225,14 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
             </div>
           )}
           {!collapsed && (
-            <button
-              onClick={(e) => { e.stopPropagation(); doLogout(); }}
-              className="p-1 rounded-lg hover:bg-e-2 text-text-muted hover:text-bearish transition-colors"
-              title="Çıkış"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
+            <Tooltip content="Çıkış">
+              <button
+                onClick={(e) => { e.stopPropagation(); doLogout(); }}
+                className="p-1 rounded-lg hover:bg-e-2 text-text-muted hover:text-bearish transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </Tooltip>
           )}
         </div>
       </div>
