@@ -28,6 +28,9 @@ interface DropdownProps {
   disabled?: boolean;
   /** Tetikleyici için erişilebilir isim (görünür etiket yoksa). */
   ariaLabel?: string;
+  /** Tetikleyicide chevron göster (varsayılan true). Kompakt badge-select'lerde
+   *  (ör. tier/role renkli-pill) false verilir; mevcut tüketiciler etkilenmez. */
+  showChevron?: boolean;
   /** Tetikleyici className — göç sitesindeki select sınıflarıyla hizalamak için. */
   className?: string;
   /** İçerik (panel) className override. */
@@ -42,6 +45,7 @@ export function Dropdown({
   placeholder = "Seç…",
   disabled,
   ariaLabel,
+  showChevron = true,
   className,
   contentClassName,
   align = "start",
@@ -61,7 +65,7 @@ export function Dropdown({
         <span className={cn("truncate", !selected && "text-text-muted")}>
           {selected ? selected.label : placeholder}
         </span>
-        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-text-muted" aria-hidden />
+        {showChevron && <ChevronDown className="h-3.5 w-3.5 shrink-0 text-text-muted" aria-hidden />}
       </DropdownMenu.Trigger>
 
       <DropdownMenu.Portal>
