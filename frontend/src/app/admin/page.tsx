@@ -268,27 +268,39 @@ function UsersTab({ isSuperAdmin, selfId }: { isSuperAdmin: boolean; selfId: str
                   </div>
                 </div>
                 <span className="text-xs text-text-secondary capitalize">{u.provider}</span>
-                <select value={u.tier} onChange={(e) => setTier(u, e.target.value as SubscriptionTier)}
-                  className={cn('text-micro font-medium uppercase px-2 py-1 rounded cursor-pointer border-0 outline-none', TIER_COLOR[u.tier] ?? TIER_COLOR.free)}>
-                  <option value="free">Free</option>
-                  <option value="pro">Pro</option>
-                  <option value="premium">Premium</option>
-                </select>
+                <Dropdown
+                  value={u.tier}
+                  onValueChange={(v) => setTier(u, v as SubscriptionTier)}
+                  ariaLabel="Kullanıcı tier"
+                  showChevron={false}
+                  contentClassName="uppercase"
+                  className={cn('text-base h-[31px] rounded! font-medium uppercase px-2 py-1 border-0 cursor-pointer', TIER_COLOR[u.tier] ?? TIER_COLOR.free)}
+                  options={[
+                    { value: 'free', label: 'Free' },
+                    { value: 'pro', label: 'Pro' },
+                    { value: 'premium', label: 'Premium' },
+                  ]}
+                />
                 <button onClick={() => toggleActive(u)}
                   className={cn('text-micro font-medium uppercase px-2 py-1 rounded', u.is_active ? 'bg-bullish/15 text-bullish' : 'bg-bearish/15 text-bearish')}>
                   {u.is_active ? 'Aktif' : 'Pasif'}
                 </button>
-                <select
-                  value={u.role}
-                  disabled={!isSuperAdmin || u.id === selfId}
-                  onChange={(e) => setRole(u, e.target.value as UserRole)}
-                  title={u.id === selfId ? 'Kendi rolünü değiştiremezsin' : undefined}
-                  className={cn('text-micro font-medium uppercase px-2 py-1 rounded cursor-pointer border-0 outline-none disabled:cursor-not-allowed disabled:opacity-60', ROLE_COLOR[u.role])}
-                >
-                  <option value="user">Üye</option>
-                  <option value="admin">Admin</option>
-                  <option value="super_admin">Kurucu</option>
-                </select>
+                <span title={u.id === selfId ? 'Kendi rolünü değiştiremezsin' : undefined}>
+                  <Dropdown
+                    value={u.role}
+                    onValueChange={(v) => setRole(u, v as UserRole)}
+                    disabled={!isSuperAdmin || u.id === selfId}
+                    ariaLabel="Kullanıcı rolü"
+                    showChevron={false}
+                    contentClassName="uppercase"
+                    className={cn('text-base h-[31px] rounded! font-medium uppercase px-2 py-1 border-0 cursor-pointer disabled:opacity-60', ROLE_COLOR[u.role])}
+                    options={[
+                      { value: 'user', label: 'Üye' },
+                      { value: 'admin', label: 'Admin' },
+                      { value: 'super_admin', label: 'Kurucu' },
+                    ]}
+                  />
+                </span>
                 <button onClick={() => removeUser(u)} disabled={!isSuperAdmin || u.id === selfId}
                   className="p-1.5 rounded-lg text-text-muted hover:text-bearish hover:bg-bearish/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   title="Kullanıcıyı sil">
