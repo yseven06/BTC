@@ -7,6 +7,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { ScoreRing } from '@/components/ui/ScoreRing';
 import { useToast } from '@/components/ui/Toast';
+import { Dropdown } from '@/components/ui/Dropdown';
 import {
   TrendingUp, Play, Activity, CheckCircle,
   TrendingDown, PieChart as ChartIcon, Briefcase, FileDown, AlertTriangle,
@@ -348,16 +349,18 @@ export default function PerformancePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-display text-text-secondary uppercase">Zaman Dilimi</label>
-                  <select
+                  <Dropdown
                     value={timeframe}
-                    onChange={(e) => setTimeframe(e.target.value)}
-                    className="w-full bg-bg-secondary border border-border-medium rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-primary"
-                  >
-                    <option value="15m">15m</option>
-                    <option value="1h">1h</option>
-                    <option value="4h">4h</option>
-                    <option value="1d">1d</option>
-                  </select>
+                    onValueChange={setTimeframe}
+                    ariaLabel="Zaman Dilimi"
+                    className="w-full"
+                    options={[
+                      { value: '15m', label: '15m' },
+                      { value: '1h', label: '1h' },
+                      { value: '4h', label: '4h' },
+                      { value: '1d', label: '1d' },
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -400,15 +403,17 @@ export default function PerformancePage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-display text-text-secondary uppercase">Emir Eşleşme Modeli</label>
-                <select
+                <Dropdown
                   value={executionModel}
-                  onChange={(e) => setExecutionModel(e.target.value)}
-                  className="w-full bg-bg-secondary border border-border-medium rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-primary"
-                >
-                  <option value="conservative">Conservative (SL öncelikli)</option>
-                  <option value="neutral">Neutral (Dengeli)</option>
-                  <option value="optimistic">Optimistic (TP öncelikli)</option>
-                </select>
+                  onValueChange={setExecutionModel}
+                  ariaLabel="Emir Eşleşme Modeli"
+                  className="w-full"
+                  options={[
+                    { value: 'conservative', label: 'Conservative (SL öncelikli)' },
+                    { value: 'neutral', label: 'Neutral (Dengeli)' },
+                    { value: 'optimistic', label: 'Optimistic (TP öncelikli)' },
+                  ]}
+                />
               </div>
 
               <Button
