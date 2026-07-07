@@ -19,8 +19,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         <input
           type={type}
           className={clsx(
-            "w-full px-3.5 py-2.5 rounded-lg text-sm bg-bg-secondary border border-border-medium text-text-primary placeholder:text-text-muted focus:border-accent-primary/80 focus:ring-1 focus:ring-accent-primary/50 outline-none transition-all duration-150",
-            error && "border-bearish focus:border-bearish focus:ring-bearish/30",
+            "w-full px-3.5 py-2.5 rounded-lg text-sm bg-bg-secondary border border-border-medium text-text-primary placeholder:text-text-muted focus:border-accent-primary/80 focus-ring transition-all duration-150",
+            error && "border-bearish focus:border-bearish",
             className
           )}
           ref={ref}
