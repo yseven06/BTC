@@ -126,6 +126,7 @@
 
   body {
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif; /* govde=system-ui; Inter yalniz numeral/display (P8/D1) */
+    font-variant-numeric: tabular-nums; /* tum sayilar sabit-genislik, tartisilmaz (P8/D4 typo-tabular) */
     background-color: var(--bg-primary);
     color: var(--text-primary);
     min-height: 100vh;
@@ -136,6 +137,15 @@
   .font-mono,
   [data-mono] {
     font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; /* OS-native mono (P8/D2) */
+  }
+
+  /* Sahipli-numeral KOPRUSU (P8/D3, Bible typo-owned-numeral 'kopru-aktif'):
+     Inter yalniz burada (numeral/display); tnum+zero+ss01+cv05 feature-set.
+     Agirlik kademeleri font-num-480/520/560 (tailwind fontWeight). Glyph-uretimi OI-1 owned-bekliyor. */
+  .num {
+    font-family: var(--font-sans), system-ui, sans-serif;
+    font-feature-settings: 'tnum' 1, 'zero' 1, 'ss01' 1, 'cv05' 1;
+    font-variant-numeric: tabular-nums slashed-zero;
   }
 }
 

@@ -30,7 +30,7 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({
     <div className={clsx("flex flex-col", className)}>
       <span
         className={clsx(
-          "font-bold font-mono tracking-tight text-text-primary",
+          "num font-num-560 text-text-primary" /* sahipli-numeral: Inter+tnum, agirlik 560; tracking govde-0 (P8/D3+D4) */,
           size === "sm" && "text-sm",
           size === "md" && "text-lg",
           size === "lg" && "text-2xl md:text-3xl"
@@ -41,7 +41,7 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({
       {changePct24h !== 0 && (
         <div
           className={clsx(
-            "flex items-center space-x-1 mt-0.5 text-xs font-semibold",
+            "flex items-center space-x-1 mt-0.5 text-xs num font-num-520",
             isPositive ? "text-bullish" : "text-bearish"
           )}
         >

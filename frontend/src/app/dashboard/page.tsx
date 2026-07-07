@@ -317,7 +317,7 @@ export default function DashboardPage() {
         <GlassCard dense className="flex items-center justify-between group">
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Bu Dönemde Kapanan İşlem</span>
-            <h3 className="text-3xl font-bold font-mono mt-1 text-text-primary">{periodClosedCount}</h3>
+            <h3 className="text-3xl num font-num-560 mt-1 text-text-primary">{periodClosedCount}</h3>
             <span className="text-[10px] text-text-muted font-semibold mt-1 block">
               {timeRange === '24s' ? 'son 24 saat' : timeRange === '7g' ? 'son 7 gün' : 'son 30 gün'}
             </span>
@@ -331,7 +331,7 @@ export default function DashboardPage() {
         <GlassCard dense className="flex items-center justify-between group">
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Aktif Sinyaller</span>
-            <h3 className="text-3xl font-bold font-mono mt-1 text-text-primary">{activeCount}</h3>
+            <h3 className="text-3xl num font-num-560 mt-1 text-text-primary">{activeCount}</h3>
             <span className="text-[10px] text-text-muted font-semibold mt-1 block">
               şu an işlem fırsatı (LONG/SHORT)
             </span>
@@ -345,7 +345,7 @@ export default function DashboardPage() {
         <GlassCard dense className="flex items-center justify-between group">
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Başarı Oranı</span>
-            <h3 className="text-3xl font-bold font-mono mt-1 text-bullish">{formatPercentage(winRate, 0, false)}</h3>
+            <h3 className="text-3xl num font-num-560 mt-1 text-bullish">{formatPercentage(winRate, 0, false)}</h3>
             <span className="text-[10px] text-text-muted font-semibold mt-1 block">
               {/* Win rate = win / (win + loss + breakeven) — the canonical
                   platform definition (breakeven dilutes it, which is why this
@@ -363,7 +363,7 @@ export default function DashboardPage() {
         <GlassCard dense className="flex items-center justify-between group">
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Ortalama Getiri</span>
-            <h3 className={cn("text-3xl font-bold font-mono mt-1", avgReturn >= 0 ? "text-bullish" : "text-bearish")}>{formatPercentage(avgReturn)}</h3>
+            <h3 className={cn("text-3xl num font-num-560 mt-1", avgReturn >= 0 ? "text-bullish" : "text-bearish")}>{formatPercentage(avgReturn)}</h3>
             <span className="text-[10px] text-text-muted font-semibold mt-1 block">
               tüm zamanlar · işlem başına
             </span>
@@ -377,7 +377,7 @@ export default function DashboardPage() {
         <GlassCard dense className="flex items-center justify-between group">
           <div>
             <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Piyasa Greed Index</span>
-            <h3 className="text-3xl font-bold font-mono mt-1" style={{ color: fngColor(fngValue) }}>
+            <h3 className="text-3xl num font-num-560 mt-1" style={{ color: fngColor(fngValue) }}>
               {fngValue}
             </h3>
             <span className="text-[10px] font-semibold mt-1 block" style={{ color: fngColor(fngValue) }}>
@@ -429,7 +429,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
               <div>
                 <p className="text-[10px] text-text-muted uppercase font-semibold">Toplam Piyasa Değeri</p>
-                <p className="text-base font-bold font-mono text-text-primary mt-0.5">
+                <p className="text-base num font-num-560 text-text-primary mt-0.5">
                   {global ? formatLargeNumber(global.total_market_cap_usd) : '—'}
                 </p>
                 <p className={`text-[11px] font-semibold ${(global?.market_cap_change_24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish'}`}>
@@ -438,19 +438,19 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-[10px] text-text-muted uppercase font-semibold">24s Hacim</p>
-                <p className="text-base font-bold font-mono text-text-primary mt-0.5">
+                <p className="text-base num font-num-560 text-text-primary mt-0.5">
                   {global ? formatLargeNumber(global.total_volume_usd) : '—'}
                 </p>
               </div>
               <div>
                 <p className="text-[10px] text-text-muted uppercase font-semibold">BTC Dominance</p>
-                <p className="text-base font-bold font-mono text-text-primary mt-0.5">
+                <p className="text-base num font-num-560 text-text-primary mt-0.5">
                   {global ? formatPercentage(global.btc_dominance, 2, false) : '—'}
                 </p>
               </div>
               <div>
                 <p className="text-[10px] text-text-muted uppercase font-semibold">ETH Dominance</p>
-                <p className="text-base font-bold font-mono text-text-primary mt-0.5">
+                <p className="text-base num font-num-560 text-text-primary mt-0.5">
                   {global ? formatPercentage(global.eth_dominance, 2, false) : '—'}
                 </p>
               </div>
@@ -487,7 +487,7 @@ export default function DashboardPage() {
               {perfCards.map((c, i) => (
                 <div key={i} className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
                   <p className="text-[10px] text-text-muted uppercase font-semibold">{c.label}</p>
-                  <p className={`text-xl font-bold font-mono mt-1 ${c.color}`}>{c.value}</p>
+                  <p className={`text-xl num font-num-560 mt-1 ${c.color}`}>{c.value}</p>
                   {c.sub && <p className="text-[10px] text-text-muted mt-0.5">{c.sub}</p>}
                 </div>
               ))}
@@ -548,7 +548,7 @@ export default function DashboardPage() {
                     )}
                   >
                     {/* Icon */}
-                    <div className="w-8 h-8 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-xs text-accent-primary flex-shrink-0 overflow-hidden">
+                    <div className="w-8 h-8 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center num font-num-520 text-xs text-accent-primary flex-shrink-0 overflow-hidden">
                       {sig.asset?.symbol ? <CoinIcon symbol={sig.asset.symbol} assetType={sig.asset.asset_type} /> : '??'}
                     </div>
 
@@ -651,7 +651,7 @@ export default function DashboardPage() {
                       )}
                       <span className="text-xs font-bold text-text-primary uppercase">{coin.symbol}/USDT</span>
                     </div>
-                    <span className={`text-xs font-bold font-mono ${(coin.price_change_percentage_24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish'}`}>
+                    <span className={`text-xs num font-num-520 ${(coin.price_change_percentage_24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish'}`}>
                       {formatPercentage(coin.price_change_percentage_24h ?? 0)}
                     </span>
                   </div>

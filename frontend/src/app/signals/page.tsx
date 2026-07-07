@@ -128,7 +128,7 @@ function QualityBar({ score }: { score: number }) {
           style={{ width: `${score * 10}%` }}
         />
       </div>
-      <span className={cn('text-xs font-bold font-mono', qualityTextColor(score))}>
+      <span className={cn('text-xs num font-num-520', qualityTextColor(score))}>
         {score}/10
       </span>
     </div>
@@ -519,7 +519,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
         {/* ── Sticky Header ── */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-sm text-accent-primary flex-shrink-0 overflow-hidden">
+            <div className="w-10 h-10 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center num font-num-520 text-sm text-accent-primary flex-shrink-0 overflow-hidden">
               {sig.asset?.symbol && <CoinIcon symbol={sig.asset.symbol} assetType={sig.asset.asset_type} />}
             </div>
             <div className="min-w-0">
@@ -571,11 +571,11 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
             </div>
             <div className="text-center">
               <p className="text-[10px] text-text-muted uppercase font-semibold">Olasılık</p>
-              <p className="text-sm font-bold font-mono text-accent-primary">{formatPercentage(Number(sig.probability_score ?? 0), 0, false)}</p>
+              <p className="text-sm num font-num-520 text-accent-primary">{formatPercentage(Number(sig.probability_score ?? 0), 0, false)}</p>
             </div>
             <div className="text-center">
               <p className="text-[10px] text-text-muted uppercase font-semibold">Risk</p>
-              <p className="text-sm font-bold font-mono text-text-primary uppercase">{sig.risk_level}</p>
+              <p className="text-sm num font-num-520 text-text-primary uppercase">{sig.risk_level}</p>
             </div>
           </div>
         </div>
@@ -625,7 +625,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
                         {longestBullish.map((e) => (
                           <li key={e.name} className="text-[11px] text-text-primary flex justify-between gap-2">
                             <span className="truncate">{e.label}</span>
-                            <span className="font-mono font-bold text-bullish flex-shrink-0">{e.score.toFixed(0)}</span>
+                            <span className="num font-num-560 text-bullish flex-shrink-0">{e.score.toFixed(0)}</span>
                           </li>
                         ))}
                       </ul>
@@ -642,7 +642,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
                         {longestBearish.map((e) => (
                           <li key={e.name} className="text-[11px] text-text-primary flex justify-between gap-2">
                             <span className="truncate">{e.label}</span>
-                            <span className="font-mono font-bold text-bearish flex-shrink-0">{e.score.toFixed(0)}</span>
+                            <span className="num font-num-560 text-bearish flex-shrink-0">{e.score.toFixed(0)}</span>
                           </li>
                         ))}
                       </ul>
@@ -661,7 +661,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
                     {onchain.fearGreed != null && (
                       <div className="bg-bg-tertiary/60 rounded-lg p-2">
                         <p className="text-[10px] text-text-muted">Fear &amp; Greed</p>
-                        <p className={cn('font-bold font-mono',
+                        <p className={cn('num font-num-560',
                           onchain.fearGreed <= 25 ? 'text-bearish' :
                           onchain.fearGreed >= 75 ? 'text-bullish' : 'text-amber')}>
                           {onchain.fearGreed} <span className="text-[9px] text-text-muted font-normal">{onchain.fearGreedClass ?? ''}</span>
@@ -671,7 +671,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
                     {onchain.athDistance != null && (
                       <div className="bg-bg-tertiary/60 rounded-lg p-2">
                         <p className="text-[10px] text-text-muted">ATH Mesafesi</p>
-                        <p className={cn('font-bold font-mono', onchain.athDistance < -30 ? 'text-bullish' : onchain.athDistance > -10 ? 'text-bearish' : 'text-text-primary')}>
+                        <p className={cn('num font-num-560', onchain.athDistance < -30 ? 'text-bullish' : onchain.athDistance > -10 ? 'text-bearish' : 'text-text-primary')}>
                           {formatPercentage(onchain.athDistance, 1, false)}
                         </p>
                       </div>
@@ -679,13 +679,13 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
                     {onchain.rank != null && (
                       <div className="bg-bg-tertiary/60 rounded-lg p-2">
                         <p className="text-[10px] text-text-muted">Piyasa Sırası</p>
-                        <p className="font-bold font-mono text-text-primary">#{onchain.rank}</p>
+                        <p className="num font-num-560 text-text-primary">#{onchain.rank}</p>
                       </div>
                     )}
                     {onchain.fastFee != null && (
                       <div className="bg-bg-tertiary/60 rounded-lg p-2">
                         <p className="text-[10px] text-text-muted">BTC Ücret</p>
-                        <p className="font-bold font-mono text-text-primary">{onchain.fastFee} sat/vB</p>
+                        <p className="num font-num-560 text-text-primary">{onchain.fastFee} sat/vB</p>
                       </div>
                     )}
                   </div>
@@ -708,7 +708,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className={cn('text-[10px] font-bold uppercase', bi.color)}>{bi.label}</span>
-                        <span className="text-sm font-bold font-mono text-text-primary tabular-nums">
+                        <span className="text-sm num font-num-520 text-text-primary tabular-nums">
                           {e.score.toFixed(0)}<span className="text-[10px] text-text-muted">/100</span>
                         </span>
                       </div>
@@ -790,7 +790,7 @@ function LevelCard({ label, value, color }: { label: string; value: number | nul
   return (
     <div className="bg-bg-secondary/60 rounded-lg p-2 border border-border-subtle">
       <p className="text-[9px] text-text-muted uppercase font-semibold mb-0.5">{label}</p>
-      <p className={cn('text-xs font-bold font-mono truncate', color)}>
+      <p className={cn('text-xs num font-num-520 truncate', color)}>
         {formatPrice(value)}
       </p>
     </div>
@@ -1096,7 +1096,7 @@ export default function SignalsPage() {
                   >
                     {d.label}
                     <span className={cn(
-                      'text-xs font-bold font-mono px-1.5 py-0.5 rounded',
+                      'text-xs num font-num-520 px-1.5 py-0.5 rounded',
                       dirFilter === d.id ? 'bg-white/20' : 'bg-bg-tertiary/60'
                     )}>
                       {cnt}
@@ -1119,7 +1119,7 @@ export default function SignalsPage() {
           className="w-24 accent-accent-primary cursor-pointer"
         />
         <span className={cn(
-          'text-xs font-bold font-mono min-w-[40px] text-center',
+          'text-xs num font-num-520 min-w-[40px] text-center',
           minQuality >= 7 ? 'text-bullish' :
           minQuality >= 5 ? 'text-amber' :
           minQuality >= 3 ? 'text-amber/80' : 'text-text-muted'
@@ -1192,7 +1192,7 @@ export default function SignalsPage() {
               >
                 {/* Symbol + Timeframe */}
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-xs text-accent-primary flex-shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center num font-num-520 text-xs text-accent-primary flex-shrink-0">
                     {sym.slice(0, 2)}
                   </div>
                   <div className="min-w-0">
@@ -1215,7 +1215,7 @@ export default function SignalsPage() {
                 <div>
                   {live ? (
                     <div>
-                      <p className={cn('text-sm font-bold font-mono', invalid ? 'text-text-muted line-through' : 'text-text-primary')}>
+                      <p className={cn('text-sm num font-num-520', invalid ? 'text-text-muted line-through' : 'text-text-primary')}>
                         {formatPrice(live.price)}
                       </p>
                       <p className={cn('text-[10px] font-mono font-semibold', up ? 'text-bullish' : 'text-bearish')}>

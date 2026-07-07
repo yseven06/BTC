@@ -37,7 +37,7 @@ const STEPS = [
 function StatBlock({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="text-center">
-      <div className={cn('text-3xl md:text-4xl font-extrabold font-mono', accent ? 'text-bullish' : 'text-text-primary')}>{value}</div>
+      <div className={cn('text-3xl md:text-4xl num font-num-560', accent ? 'text-bullish' : 'text-text-primary')}>{value}</div>
       <div className="text-xs text-text-muted uppercase font-semibold tracking-wide mt-1">{label}</div>
     </div>
   );
@@ -102,16 +102,16 @@ export default function LandingPage() {
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-6 text-sm">
             <span className="inline-flex items-center gap-1.5 font-semibold text-text-secondary">
               <CheckCircle className="w-4 h-4 text-bullish" />
-              <span className="font-mono font-bold text-bullish">{formatPercentage(stats.win_rate, 0, false)}</span> başarı oranı
+              <span className="num font-num-560 text-bullish">{formatPercentage(stats.win_rate, 0, false)}</span> başarı oranı
             </span>
             <span className="inline-flex items-center gap-1.5 font-semibold text-text-secondary">
               <Activity className="w-4 h-4 text-accent-primary" />
-              <span className="font-mono font-bold text-text-primary">{resolved.toLocaleString('tr-TR')}</span> kapanan sinyal
+              <span className="num font-num-560 text-text-primary">{resolved.toLocaleString('tr-TR')}</span> kapanan sinyal
             </span>
             {stats.average_return != null && (
               <span className="inline-flex items-center gap-1.5 font-semibold text-text-secondary">
                 <TrendingUp className={cn('w-4 h-4', stats.average_return >= 0 ? 'text-bullish' : 'text-bearish')} />
-                <span className={cn('font-mono font-bold', stats.average_return >= 0 ? 'text-bullish' : 'text-bearish')}>
+                <span className={cn('num font-num-560', stats.average_return >= 0 ? 'text-bullish' : 'text-bearish')}>
                   {formatPercentage(stats.average_return)}
                 </span> ort. getiri
               </span>
@@ -166,7 +166,7 @@ export default function LandingPage() {
                     {s.direction === 'bullish' ? 'LONG' : 'SHORT'}
                   </span>
                 </div>
-                <div className="text-2xl font-extrabold font-mono text-bullish">
+                <div className="text-2xl num font-num-560 text-bullish">
                   {formatPercentage(s.actual_return ?? 0)}
                 </div>
                 <div className="text-[11px] text-text-muted mt-1.5 font-mono">
@@ -340,7 +340,7 @@ export default function LandingPage() {
                 <div key={p.tier} className={cn('glass-panel border rounded-card p-6', p.recommended ? 'border-accent-primary/40' : 'border-border-subtle')}>
                   <h3 className="text-base font-bold text-text-primary">{p.name}</h3>
                   <p className="text-xs text-text-secondary mt-1">{p.description}</p>
-                  <div className="text-3xl font-extrabold font-mono text-text-primary mt-3">
+                  <div className="text-3xl num font-num-560 text-text-primary mt-3">
                     ${monthly?.amount_usd ?? 0}<span className="text-sm text-text-muted font-normal">/ay</span>
                   </div>
                   <ul className="space-y-1.5 mt-4">
