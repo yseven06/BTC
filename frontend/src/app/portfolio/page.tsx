@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCardModal';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { cn, formatPrice, formatUsd, formatPercentage } from '@/lib/utils';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import {
@@ -81,15 +82,22 @@ export default function PortfolioPage() {
     } finally { setCreating(false); }
   };
 
-  const removePortfolio = async (id: string, name: string) => {
-    if (!confirm(`"${name}" portföyü silinecek. Emin misin?`)) return;
-    try {
-      await deletePortfolio(id);
-      setPortfolios((prev) => prev.filter((p) => p.id !== id));
-      if (activeId === id) { setActiveId(null); setActive(null); }
-    } catch (e: any) {
-      alert(e?.message ?? 'Silinemedi.');
-    }
+  // Onay diyaloğu durumu — native confirm() yerine ui/ConfirmModal (P7-D14).
+  const [confirmState, setConfirmState] = useState<{ message: string; onConfirm: () => void } | null>(null);
+
+  const removePortfolio = (id: string, name: string) => {
+    setConfirmState({
+      message: `"${name}" portföyü silinecek. Emin misin?`,
+      onConfirm: async () => {
+        try {
+          await deletePortfolio(id);
+          setPortfolios((prev) => prev.filter((p) => p.id !== id));
+          if (activeId === id) { setActiveId(null); setActive(null); }
+        } catch (e: any) {
+          alert(e?.message ?? 'Silinemedi.');
+        }
+      },
+    });
   };
 
   const runSearch = async (q: string) => {
@@ -115,15 +123,20 @@ export default function PortfolioPage() {
     } finally { setAdding(false); }
   };
 
-  const removeHolding = async (holdingId: string) => {
+  const removeHolding = (holdingId: string) => {
     if (!active) return;
-    if (!confirm('Bu pozisyon kaldırılacak. Emin misin?')) return;
-    try {
-      await deleteHolding(active.id, holdingId);
-      await loadActive(active.id);
-    } catch (e: any) {
-      alert(e?.message ?? 'Kaldırılamadı.');
-    }
+    const pf = active;
+    setConfirmState({
+      message: 'Bu pozisyon kaldırılacak. Emin misin?',
+      onConfirm: async () => {
+        try {
+          await deleteHolding(pf.id, holdingId);
+          await loadActive(pf.id);
+        } catch (e: any) {
+          alert(e?.message ?? 'Kaldırılamadı.');
+        }
+      },
+    });
   };
 
   const closePosition = async (h: ApiHolding, suggestedExit: number) => {
@@ -418,6 +431,17 @@ export default function PortfolioPage() {
       )}
 
       {shareData && <ShareCardModal data={shareData} onClose={() => setShareData(null)} />}
+
+      <ConfirmModal
+        open={!!confirmState}
+        message={confirmState?.message}
+        variant="danger"
+        onConfirm={() => {
+          confirmState?.onConfirm();
+          setConfirmState(null);
+        }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 }
