@@ -110,7 +110,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
         {!collapsed && (
           <div className="animate-fade-in overflow-hidden">
             <div className="flex items-center gap-1.5">
-              <h1 className="text-base font-bold gradient-text-brand whitespace-nowrap">TradeMinds</h1>
+              <h1 className="text-base font-display text-text-primary whitespace-nowrap">TradeMinds</h1>
               <span className="text-[9px] font-bold uppercase tracking-wider text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
             </div>
             <p className="text-[9px] text-text-muted font-medium tracking-wider uppercase">AI Trading</p>

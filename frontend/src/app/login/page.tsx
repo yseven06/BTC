@@ -57,7 +57,7 @@ function LoginForm() {
           <div className="inline-flex items-center justify-center w-16 h-16 mb-3">
             <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-full h-full object-contain" />
           </div>
-          <div className="text-2xl font-extrabold gradient-text-brand">TradeMinds</div>
+          <div className="text-h2 font-display text-text-primary">TradeMinds</div>
           <p className="text-sm text-text-secondary mt-1">AI Trading Intelligence</p>
         </div>
 

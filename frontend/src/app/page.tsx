@@ -88,9 +88,9 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 pt-16 pb-12 text-center">
-        <h1 className="text-3xl md:text-5xl font-extrabold text-text-primary leading-tight max-w-3xl mx-auto">
+        <h1 className="text-h1 font-display text-text-primary max-w-3xl mx-auto">{/* H1 32/-0.025/650 tek-deger (P8/D9+D6+D7); hero mekanigi Phase 4 - dokunulmadi */}
           9 AI motoru kripto ve BIST'i 7/24 tarar,{' '}
-          <span className="gradient-text-brand">doğrulanabilir sinyaller</span> üretir
+          <span>doğrulanabilir sinyaller</span> üretir
         </h1>
         <p className="text-base md:text-lg text-text-secondary mt-5 max-w-2xl mx-auto">
           Akıllı Para (SMC), otomatik risk skorlaması ve gerçek zamanlı performans takibiyle

@@ -83,7 +83,7 @@ export default function RegisterPage() {
             <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-full h-full object-contain" />
           </div>
           <div className="flex items-center justify-center gap-2">
-            <div className="text-2xl font-extrabold gradient-text-brand">TradeMinds</div>
+            <div className="text-h2 font-display text-text-primary">TradeMinds</div>
             <span className="text-[9px] font-bold uppercase tracking-wider text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
           </div>
           <p className="text-sm text-text-secondary mt-1">Yeni Hesap Oluştur</p>
