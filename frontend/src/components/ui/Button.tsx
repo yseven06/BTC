@@ -19,8 +19,12 @@ export const Button: React.FC<ButtonProps> = ({
   // Renk migration (P9.4a/D9-04): focus=accent-ui (COL-04 1px-UI) · primary
   // dolgu=accent, hover=accent-hover (indigo-600 emekli) · danger/success ham
   // red/green-600 hover + rgba-glow KALDIRILDI (COL-12 semantik-glow=0).
+  // Interaction (P7-D04/D05, INT-03): radius-button 10 · transition whitelist'i
+  // (transform/bg/shadow) + --dur-micro · press-scale boyut-bağlı ve motion-safe
+  // (reduced-motion'da scale hiç üretilmez, sizes map'inde). font-display (650,
+  // Phase8) KORUNUR — D07 (weight 500) typography olduğundan uygulanmaz.
   const baseStyle =
-    "inline-flex items-center justify-center font-display rounded-lg transition-all duration-200 focus-ring disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]";
+    "inline-flex items-center justify-center font-display rounded-button transition-[transform,background-color,box-shadow] duration-micro focus-ring disabled:opacity-50 disabled:cursor-not-allowed";
 
   const variants = {
     primary: "bg-accent hover:bg-accent-hover text-white hover:shadow-cta",
@@ -30,29 +34,26 @@ export const Button: React.FC<ButtonProps> = ({
     success: "bg-bull hover:bg-bull/90 text-white",
   };
 
+  // Press-scale boyuta bağlı (INT-03): küçük buton daha derin (.96), md/lg daha ince
+  // (.985). motion-safe: → reduced-motion'da hiç üretilmez (scale iptal).
   const sizes = {
-    sm: "px-3 py-1.5 text-xs",
-    md: "px-4 py-2 text-sm",
-    lg: "px-6 py-3 text-base",
+    sm: "px-3 py-1.5 text-xs motion-safe:active:scale-[0.96]",
+    md: "px-4 py-2 text-sm motion-safe:active:scale-[0.985]",
+    lg: "px-6 py-3 text-base motion-safe:active:scale-[0.985]",
   };
 
   return (
     <button
+      // Loading (P7-D06, INT-03/MO-06): sürekli-dönen spinner KALDIRILDI. Genişlik
+      // sabit kalsın diye children her zaman render edilir; yükleme durumu
+      // disabled (opacity-50 sönük) + aria-busy ile taşınır. Karot mikro-skeleton
+      // Phase 3'te; bu ara-çözüm spinner-siz genişlik-kilitli disabled durumdur.
       className={clsx(baseStyle, variants[variant], sizes[size], className)}
       disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
       {...props}
     >
-      {isLoading ? (
-        <span className="flex items-center space-x-2">
-          <svg className="animate-spin h-4 w-4 text-current" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          <span>{children}</span>
-        </span>
-      ) : (
-        children
-      )}
+      {children}
     </button>
   );
 };
