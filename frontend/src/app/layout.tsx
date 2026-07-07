@@ -6,6 +6,7 @@ import { AnalyticsProvider } from "@/components/AnalyticsProvider";
 import { CookieConsentBanner } from "@/components/consent/CookieConsentBanner";
 import { ReconsentGate } from "@/components/consent/ReconsentGate";
 import LayoutShell from "@/components/layout/LayoutShell";
+import { ToastProvider } from "@/components/ui/Toast";
 import { PWARegister } from "@/components/PWARegister";
 import { Inter } from "next/font/google";
 
@@ -62,11 +63,13 @@ export default function RootLayout({
       <body className="antialiased">
         <LanguageProvider>
           <AuthProvider>
-            <AnalyticsProvider />
-            <PWARegister />
-            <LayoutShell>{children}</LayoutShell>
-            <CookieConsentBanner />
-            <ReconsentGate />
+            <ToastProvider>
+              <AnalyticsProvider />
+              <PWARegister />
+              <LayoutShell>{children}</LayoutShell>
+              <CookieConsentBanner />
+              <ReconsentGate />
+            </ToastProvider>
           </AuthProvider>
         </LanguageProvider>
       </body>
