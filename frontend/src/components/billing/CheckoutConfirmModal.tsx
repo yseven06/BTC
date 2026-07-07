@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Modal } from '@/components/ui/Modal';
 
 /**
  * Pre-payment confirmation. Shows ALL critical subscription info clearly and
@@ -40,9 +41,22 @@ export function CheckoutConfirmModal({
     </div>
   );
 
+  // Kanonik <Modal> kabuğu (P7-D15 göçü): portal + focus-trap + scroll-lock.
+  // Kritik ödeme onayı → dismissible=false (backdrop/ESC kapatmaz; yalnız Vazgeç).
+  // z-[110] blocking-katman KORUNUR (nested/blocking z-token'ı henüz yok — CP3 notu).
+  // padded=false: iç içerik BİREBİR korunur (başlık text-base, tüm sınıflar) →
+  // Typography/Color/Craft'a dokunulmaz; yalnız kabuk değişir.
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-e-0/60 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-panel glass-e3-overlay p-5">
+    <Modal
+      open
+      onClose={onClose}
+      dismissible={false}
+      zIndexClassName="z-[110]"
+      size="max-w-lg"
+      padded={false}
+      ariaLabel="Aboneliği Onayla"
+    >
+      <div className="overflow-y-auto p-5 grow min-h-0">
         <h2 className="text-base font-display text-text-primary">Aboneliği Onayla</h2>
         <p className="mt-1 text-xs text-text-muted">
           Satın almadan önce lütfen aşağıdaki bilgileri inceleyin.
@@ -129,6 +143,6 @@ export function CheckoutConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
