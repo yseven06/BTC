@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import TickerBand from './TickerBand';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { useToast } from '@/components/ui/Toast';
 import { searchAssets, type ApiAsset } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { useAlerts } from '@/hooks/useAlerts';
@@ -26,6 +27,7 @@ import { formatRelativeTime } from '@/lib/utils';
 
 export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) {
   const { tr } = useLanguage();
+  const toast = useToast();
   // AuthContext is the single source of truth for the user; alerts come from
   // the shared useAlerts hook (fetched once app-wide) — no duplicate requests.
   const { user, logout: doLogout } = useAuth();
@@ -263,7 +265,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
                   <button
                     onClick={() => {
                       // Tema toggle — şu an sadece dark var, light yakında.
-                      alert('Açık tema yakında. Şu an karanlık tema aktif.');
+                      toast.info('Açık tema yakında. Şu an karanlık tema aktif.');
                       setShowUserMenu(false);
                     }}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-e-2 transition-colors"

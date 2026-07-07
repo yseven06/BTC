@@ -8,6 +8,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCardModal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { useToast } from '@/components/ui/Toast';
 import { cn, formatPrice, formatUsd, formatPercentage } from '@/lib/utils';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import {
@@ -17,6 +18,7 @@ import {
 } from '@/lib/api';
 
 export default function PortfolioPage() {
+  const toast = useToast();
   const [portfolios, setPortfolios] = useState<ApiPortfolioListItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [active, setActive] = useState<ApiPortfolio | null>(null);
@@ -79,7 +81,7 @@ export default function PortfolioPage() {
       await loadList();
       setActiveId(pf.id);
     } catch (e: any) {
-      alert(e?.message ?? 'Portföy oluşturulamadı.');
+      toast.error(e?.message ?? 'Portföy oluşturulamadı.');
     } finally { setCreating(false); }
   };
 
@@ -95,7 +97,7 @@ export default function PortfolioPage() {
           setPortfolios((prev) => prev.filter((p) => p.id !== id));
           if (activeId === id) { setActiveId(null); setActive(null); }
         } catch (e: any) {
-          alert(e?.message ?? 'Silinemedi.');
+          toast.error(e?.message ?? 'Silinemedi.');
         }
       },
     });
@@ -120,7 +122,7 @@ export default function PortfolioPage() {
       setShowAddForm(false); setPickedAsset(null); setQty(''); setEntryPrice(''); setSearch(''); setSearchResults([]);
       await loadActive(active.id);
     } catch (e: any) {
-      alert(e?.message ?? 'Eklenemedi.');
+      toast.error(e?.message ?? 'Eklenemedi.');
     } finally { setAdding(false); }
   };
 
@@ -134,7 +136,7 @@ export default function PortfolioPage() {
           await deleteHolding(pf.id, holdingId);
           await loadActive(pf.id);
         } catch (e: any) {
-          alert(e?.message ?? 'Kaldırılamadı.');
+          toast.error(e?.message ?? 'Kaldırılamadı.');
         }
       },
     });
@@ -145,13 +147,13 @@ export default function PortfolioPage() {
     const input = prompt('Çıkış fiyatını gir:', suggestedExit ? String(suggestedExit) : '');
     if (input === null) return;
     const exitPrice = parseFloat(input);
-    if (!exitPrice || exitPrice <= 0) { alert('Geçerli bir fiyat gir.'); return; }
+    if (!exitPrice || exitPrice <= 0) { toast.error('Geçerli bir fiyat gir.'); return; }
     setClosingId(h.id);
     try {
       await closeHolding(active.id, h.id, exitPrice);
       await loadActive(active.id);
     } catch (e: any) {
-      alert(e?.message ?? 'Pozisyon kapatılamadı.');
+      toast.error(e?.message ?? 'Pozisyon kapatılamadı.');
     } finally {
       setClosingId(null);
     }

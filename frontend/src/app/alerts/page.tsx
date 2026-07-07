@@ -5,6 +5,7 @@ import { Bell, Plus, Trash2, Search, X, Power } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { useToast } from '@/components/ui/Toast';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import {
   fetchAlerts, createAlert, updateAlert, deleteAlert, searchAssets, fetchAssets,
@@ -14,6 +15,7 @@ import {
 type AlertType = 'price' | 'signal' | 'custom';
 
 export default function AlertsPage() {
+  const toast = useToast();
   const [alerts, setAlerts] = useState<ApiAlert[]>([]);
   const [assetCache, setAssetCache] = useState<Record<string, ApiAsset>>({});
   const [loading, setLoading] = useState(true);
@@ -88,7 +90,7 @@ export default function AlertsPage() {
       setShowForm(false);
       await load();
     } catch (e: any) {
-      alert(e?.message ?? 'Alarm oluşturulamadı.');
+      toast.error(e?.message ?? 'Alarm oluşturulamadı.');
     } finally { setCreating(false); }
   };
 
@@ -97,7 +99,7 @@ export default function AlertsPage() {
       await updateAlert(a.id, { is_active: !a.is_active });
       await load();
     } catch (e: any) {
-      alert(e?.message ?? 'Güncellenemedi.');
+      toast.error(e?.message ?? 'Güncellenemedi.');
     }
   };
 
@@ -109,7 +111,7 @@ export default function AlertsPage() {
           await deleteAlert(a.id);
           setAlerts((prev) => prev.filter((x) => x.id !== a.id));
         } catch (e: any) {
-          alert(e?.message ?? 'Silinemedi.');
+          toast.error(e?.message ?? 'Silinemedi.');
         }
       },
     });

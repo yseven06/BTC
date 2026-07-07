@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Star, Plus, Trash2, Search, X, TrendingUp, TrendingDown } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { useToast } from '@/components/ui/Toast';
 import { cn, formatPrice, formatPercentage } from '@/lib/utils';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import {
@@ -13,6 +14,7 @@ import {
 } from '@/lib/api';
 
 export default function WatchlistPage() {
+  const toast = useToast();
   const [lists, setLists] = useState<ApiWatchlist[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,7 +80,7 @@ export default function WatchlistPage() {
       setLists((prev) => [wl, ...prev]);
       setActiveId(wl.id);
     } catch (e: any) {
-      alert(e?.message ?? 'Liste oluşturulamadı.');
+      toast.error(e?.message ?? 'Liste oluşturulamadı.');
     } finally { setCreating(false); }
   };
 
@@ -91,7 +93,7 @@ export default function WatchlistPage() {
           setLists((prev) => prev.filter((x) => x.id !== l.id));
           if (activeId === l.id) setActiveId(null);
         } catch (e: any) {
-          alert(e?.message ?? 'Silinemedi.');
+          toast.error(e?.message ?? 'Silinemedi.');
         }
       },
     });
@@ -107,7 +109,7 @@ export default function WatchlistPage() {
       setLists((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
       setSearch(''); setSearchResults([]);
     } catch (e: any) {
-      alert(e?.message ?? 'Eklenemedi.');
+      toast.error(e?.message ?? 'Eklenemedi.');
     }
   };
 
@@ -118,7 +120,7 @@ export default function WatchlistPage() {
       const updated = await updateWatchlist(active.id, { asset_ids: updatedIds });
       setLists((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
     } catch (e: any) {
-      alert(e?.message ?? 'Kaldırılamadı.');
+      toast.error(e?.message ?? 'Kaldırılamadı.');
     }
   };
 
