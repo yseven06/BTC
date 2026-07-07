@@ -6,6 +6,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useToast } from '@/components/ui/Toast';
+import { Dropdown } from '@/components/ui/Dropdown';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import {
   fetchAlerts, createAlert, updateAlert, deleteAlert, searchAssets, fetchAssets,
@@ -188,11 +189,16 @@ export default function AlertsPage() {
 
               {alertType === 'price' && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <select value={direction} onChange={(e) => setDirection(e.target.value as any)}
-                    className="bg-bg-secondary border border-border-subtle rounded-lg px-3 py-2 text-xs text-text-primary">
-                    <option value="above">Fiyat üzerine çıkarsa</option>
-                    <option value="below">Fiyat altına düşerse</option>
-                  </select>
+                  <Dropdown
+                    value={direction}
+                    onValueChange={(v) => setDirection(v as any)}
+                    ariaLabel="Fiyat yönü"
+                    className="text-xs"
+                    options={[
+                      { value: 'above', label: 'Fiyat üzerine çıkarsa' },
+                      { value: 'below', label: 'Fiyat altına düşerse' },
+                    ]}
+                  />
                   <input value={targetPrice} onChange={(e) => setTargetPrice(e.target.value)} type="number" step="any" placeholder="Hedef Fiyat"
                     className="bg-bg-secondary border border-border-subtle rounded-lg px-3 py-2 text-xs text-text-primary outline-none w-36" />
                 </div>
@@ -220,17 +226,27 @@ export default function AlertsPage() {
 
               {alertType === 'custom' && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <select value={indicator} onChange={(e) => setIndicator(e.target.value)}
-                    className="bg-bg-secondary border border-border-subtle rounded-lg px-3 py-2 text-xs text-text-primary">
-                    <option value="RSI">RSI</option>
-                    <option value="MACD">MACD</option>
-                    <option value="Volume">Hacim</option>
-                  </select>
-                  <select value={customCondition} onChange={(e) => setCustomCondition(e.target.value as any)}
-                    className="bg-bg-secondary border border-border-subtle rounded-lg px-3 py-2 text-xs text-text-primary">
-                    <option value="above">Üzerine çıkarsa</option>
-                    <option value="below">Altına düşerse</option>
-                  </select>
+                  <Dropdown
+                    value={indicator}
+                    onValueChange={setIndicator}
+                    ariaLabel="İndikatör"
+                    className="text-xs"
+                    options={[
+                      { value: 'RSI', label: 'RSI' },
+                      { value: 'MACD', label: 'MACD' },
+                      { value: 'Volume', label: 'Hacim' },
+                    ]}
+                  />
+                  <Dropdown
+                    value={customCondition}
+                    onValueChange={(v) => setCustomCondition(v as any)}
+                    ariaLabel="Koşul"
+                    className="text-xs"
+                    options={[
+                      { value: 'above', label: 'Üzerine çıkarsa' },
+                      { value: 'below', label: 'Altına düşerse' },
+                    ]}
+                  />
                   <input value={customValue} onChange={(e) => setCustomValue(e.target.value)} type="number" step="any" placeholder="Değer"
                     className="bg-bg-secondary border border-border-subtle rounded-lg px-3 py-2 text-xs text-text-primary outline-none w-24" />
                 </div>
