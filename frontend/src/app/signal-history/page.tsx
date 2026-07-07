@@ -227,7 +227,7 @@ export default function SignalHistoryPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-text-primary flex items-center gap-2">
+        <h1 className="text-2xl font-display tracking-tight text-text-primary flex items-center gap-2">
           <History className="w-6 h-6 text-accent-primary" /> Sinyal Geçmişi
         </h1>
         <p className="text-sm text-text-secondary">
@@ -246,11 +246,11 @@ export default function SignalHistoryPage() {
       ) : loadError ? (
         <GlassCard className="flex flex-col items-center justify-center p-20 text-center">
           <XCircle className="w-14 h-14 text-bearish mb-4" />
-          <h3 className="text-base font-bold text-text-secondary mb-1">Sinyal geçmişi yüklenemedi</h3>
+          <h3 className="text-base font-display text-text-secondary mb-1">Sinyal geçmişi yüklenemedi</h3>
           <p className="text-sm text-text-muted max-w-md mb-4">{loadError}</p>
           <button
             onClick={() => setReloadKey((k) => k + 1)}
-            className="px-4 py-2 text-xs font-bold rounded-lg bg-accent-primary/15 text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/25"
+            className="px-4 py-2 text-xs font-display rounded-lg bg-accent-primary/15 text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/25"
           >
             Tekrar Dene
           </button>
@@ -258,7 +258,7 @@ export default function SignalHistoryPage() {
       ) : !hasAnyHistory ? (
         <GlassCard className="flex flex-col items-center justify-center p-20 text-center">
           <Inbox className="w-14 h-14 text-border-medium mb-4" />
-          <h3 className="text-base font-bold text-text-secondary mb-1">Henüz tamamlanmış sinyal yok</h3>
+          <h3 className="text-base font-display text-text-secondary mb-1">Henüz tamamlanmış sinyal yok</h3>
           <p className="text-sm text-text-muted max-w-md">
             Sinyaller TP, SL, başabaş veya süre dolumuyla kapandığında burada görünecek.
           </p>
@@ -268,38 +268,38 @@ export default function SignalHistoryPage() {
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
             <GlassCard className="p-4">
-              <span className="text-[10px] font-bold text-text-muted uppercase">Toplam Kapanan Sinyal</span>
-              <div className="text-2xl font-extrabold font-mono mt-1 text-text-primary">{stats?.closed_count ?? 0}</div>
+              <span className="text-[10px] font-display text-text-muted uppercase">Toplam Kapanan Sinyal</span>
+              <div className="text-2xl font-display font-mono mt-1 text-text-primary">{stats?.closed_count ?? 0}</div>
             </GlassCard>
             <GlassCard className="p-4">
-              <span className="text-[10px] font-bold text-text-muted uppercase">Başarı Oranı</span>
-              <div className="text-2xl font-extrabold font-mono mt-1 text-bullish">{formatPercentage(stats?.win_rate ?? 0, 0, false)}</div>
+              <span className="text-[10px] font-display text-text-muted uppercase">Başarı Oranı</span>
+              <div className="text-2xl font-display font-mono mt-1 text-bullish">{formatPercentage(stats?.win_rate ?? 0, 0, false)}</div>
             </GlassCard>
             <GlassCard className="p-4">
-              <span className="text-[10px] font-bold text-text-muted uppercase">TP Vuruş Oranı</span>
-              <div className="text-2xl font-extrabold font-mono mt-1 text-bullish">{formatPercentage(stats?.tp_hit_rate ?? 0, 0, false)}</div>
+              <span className="text-[10px] font-display text-text-muted uppercase">TP Vuruş Oranı</span>
+              <div className="text-2xl font-display font-mono mt-1 text-bullish">{formatPercentage(stats?.tp_hit_rate ?? 0, 0, false)}</div>
             </GlassCard>
             <GlassCard className="p-4">
-              <span className="text-[10px] font-bold text-text-muted uppercase">Stop Oranı</span>
-              <div className="text-2xl font-extrabold font-mono mt-1 text-bearish">{formatPercentage(stats?.sl_rate ?? 0, 0, false)}</div>
+              <span className="text-[10px] font-display text-text-muted uppercase">Stop Oranı</span>
+              <div className="text-2xl font-display font-mono mt-1 text-bearish">{formatPercentage(stats?.sl_rate ?? 0, 0, false)}</div>
             </GlassCard>
             <GlassCard className="p-4">
-              <span className="text-[10px] font-bold text-text-muted uppercase">Ort. Getiri</span>
-              <div className={cn('text-2xl font-extrabold font-mono mt-1', (stats?.average_return ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
+              <span className="text-[10px] font-display text-text-muted uppercase">Ort. Getiri</span>
+              <div className={cn('text-2xl font-display font-mono mt-1', (stats?.average_return ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
                 {stats?.average_return != null ? formatPercentage(stats.average_return) : '-'}
               </div>
             </GlassCard>
             <GlassCard className="p-4">
-              <span className="text-[10px] font-bold text-text-muted uppercase">Kâr Faktörü</span>
-              <div className="text-2xl font-extrabold font-mono mt-1 text-accent-primary">{stats?.profit_factor != null ? formatNumber(stats.profit_factor) : '-'}</div>
+              <span className="text-[10px] font-display text-text-muted uppercase">Kâr Faktörü</span>
+              <div className="text-2xl font-display font-mono mt-1 text-accent-primary">{stats?.profit_factor != null ? formatNumber(stats.profit_factor) : '-'}</div>
             </GlassCard>
             <GlassCard className="p-4">
-              <span className="text-[10px] font-bold text-text-muted uppercase">En İyi / En Kötü</span>
+              <span className="text-[10px] font-display text-text-muted uppercase">En İyi / En Kötü</span>
               <div className="mt-1 space-y-0.5">
-                <div className="text-xs font-bold text-bullish font-mono">
+                <div className="text-xs font-display text-bullish font-mono">
                   {stats?.best_signal ? `${stats.best_signal.symbol} ${formatPercentage(stats.best_signal.return)}` : '-'}
                 </div>
-                <div className="text-xs font-bold text-bearish font-mono">
+                <div className="text-xs font-display text-bearish font-mono">
                   {stats?.worst_signal ? `${stats.worst_signal.symbol} ${formatPercentage(stats.worst_signal.return)}` : '-'}
                 </div>
               </div>
@@ -308,7 +308,7 @@ export default function SignalHistoryPage() {
 
           {/* Filters */}
           <GlassCard className="p-4 flex flex-wrap items-center gap-3">
-            <span className="flex items-center gap-1.5 text-xs font-bold text-text-muted uppercase">
+            <span className="flex items-center gap-1.5 text-xs font-display text-text-muted uppercase">
               <Filter className="w-3.5 h-3.5" /> Filtreler
             </span>
 
@@ -341,7 +341,7 @@ export default function SignalHistoryPage() {
             <div className="flex bg-bg-secondary border border-border-subtle rounded-lg p-0.5">
               {TIME_PERIODS.map((p) => (
                 <button key={p.id} onClick={() => { setPeriod(p.id); setPage(1); }}
-                  className={cn('px-3 py-1 text-xs font-semibold rounded-md transition-all',
+                  className={cn('px-3 py-1 text-xs font-display rounded-md transition-all',
                     period === p.id ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary')}>
                   {p.label}
                 </button>
@@ -349,18 +349,18 @@ export default function SignalHistoryPage() {
             </div>
 
             <div className="flex items-center gap-2 ml-auto">
-              <span className="text-[10px] text-text-muted font-bold uppercase">Min. Güven</span>
+              <span className="text-[10px] text-text-muted font-display uppercase">Min. Güven</span>
               <input type="range" min={0} max={100} step={5} value={minConfidence}
                 onChange={(e) => { setMinConfidence(Number(e.target.value)); setPage(1); }}
                 className="w-24 accent-accent-primary cursor-pointer" />
-              <span className="text-xs font-bold font-mono min-w-[36px] text-center text-text-primary">{minConfidence}%</span>
+              <span className="text-xs font-display font-mono min-w-[36px] text-center text-text-primary">{minConfidence}%</span>
             </div>
           </GlassCard>
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <GlassCard className="p-5">
-              <h3 className="text-sm font-bold text-text-primary mb-3">Kazanç / Kayıp Dağılımı</h3>
+              <h3 className="text-sm font-display text-text-primary mb-3">Kazanç / Kayıp Dağılımı</h3>
               <div className="h-56 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -377,7 +377,7 @@ export default function SignalHistoryPage() {
             </GlassCard>
 
             <GlassCard className="p-5">
-              <h3 className="text-sm font-bold text-text-primary mb-3">TP vs SL Dağılımı</h3>
+              <h3 className="text-sm font-display text-text-primary mb-3">TP vs SL Dağılımı</h3>
               <div className="h-56 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={tpVsSlData}>
@@ -393,7 +393,7 @@ export default function SignalHistoryPage() {
             </GlassCard>
 
             <GlassCard className="p-5">
-              <h3 className="text-sm font-bold text-text-primary mb-3">Sermaye Eğrisi (Bu Görünüm)</h3>
+              <h3 className="text-sm font-display text-text-primary mb-3">Sermaye Eğrisi (Bu Görünüm)</h3>
               <div className="h-56 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={equityCurve} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -416,7 +416,7 @@ export default function SignalHistoryPage() {
           {/* Closed signals table */}
           <GlassCard className="p-0 overflow-hidden">
             <div className="px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
-              <h3 className="text-sm font-bold text-text-primary">Kapanan Sinyaller ({total})</h3>
+              <h3 className="text-sm font-display text-text-primary">Kapanan Sinyaller ({total})</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
@@ -441,10 +441,10 @@ export default function SignalHistoryPage() {
                 <tbody>
                   {signals.map((s) => (
                     <tr key={s.id} className="border-b border-border-subtle/60 last:border-none hover:bg-bg-secondary/30 transition-colors">
-                      <td className="py-2.5 px-4 font-bold text-text-primary">{s.asset?.symbol}</td>
-                      <td className="py-2.5 px-3 font-semibold uppercase text-text-secondary">{s.signal_type.replace('_', ' ')}</td>
+                      <td className="py-2.5 px-4 font-display text-text-primary">{s.asset?.symbol}</td>
+                      <td className="py-2.5 px-3 font-display uppercase text-text-secondary">{s.signal_type.replace('_', ' ')}</td>
                       <td className="py-2.5 px-3">
-                        <span className={cn('font-semibold', s.direction === 'bullish' ? 'text-bullish' : 'text-bearish')}>
+                        <span className={cn('font-display', s.direction === 'bullish' ? 'text-bullish' : 'text-bearish')}>
                           {s.direction === 'bullish' ? 'LONG' : s.direction === 'bearish' ? 'SHORT' : 'NEUTRAL'}
                         </span>
                       </td>
@@ -458,11 +458,11 @@ export default function SignalHistoryPage() {
                       <td className="py-2.5 px-3">
                         <div className="flex flex-col gap-1 items-start">
                           {partialFillDetail(s) && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold border text-bullish bg-bullish/10 border-bullish/20">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-display border text-bullish bg-bullish/10 border-bullish/20">
                               {partialFillDetail(s)}
                             </span>
                           )}
-                          <span className={cn('px-2 py-0.5 rounded text-[10px] font-bold border', OUTCOME_COLOR[s.outcome ?? 'active'])}>
+                          <span className={cn('px-2 py-0.5 rounded text-[10px] font-display border', OUTCOME_COLOR[s.outcome ?? 'active'])}>
                             {partialFillDetail(s) ? `Kalan: ${outcomeDetail(s)}` : outcomeDetail(s)}
                           </span>
                         </div>

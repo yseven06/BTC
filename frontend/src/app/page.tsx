@@ -38,7 +38,7 @@ function StatBlock({ label, value, accent }: { label: string; value: string; acc
   return (
     <div className="text-center">
       <div className={cn('text-3xl md:text-4xl num font-num-560', accent ? 'text-bullish' : 'text-text-primary')}>{value}</div>
-      <div className="text-xs text-text-muted uppercase font-semibold tracking-wide mt-1">{label}</div>
+      <div className="text-xs text-text-muted uppercase font-display tracking-wide mt-1">{label}</div>
     </div>
   );
 }
@@ -74,12 +74,12 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-8 h-8" />
-            <span className="text-base font-bold gradient-text-brand">TradeMinds AI</span>
-            <span className="text-[9px] font-bold uppercase tracking-wider text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
+            <span className="text-base font-display gradient-text-brand">TradeMinds AI</span>
+            <span className="text-[9px] font-display uppercase tracking-wider text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm font-semibold text-text-secondary hover:text-text-primary transition-colors">Giriş Yap</Link>
-            <Link href="/register" className="text-sm font-bold bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors">
+            <Link href="/login" className="text-sm font-display text-text-secondary hover:text-text-primary transition-colors">Giriş Yap</Link>
+            <Link href="/register" className="text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors">
               Ücretsiz Başla
             </Link>
           </div>
@@ -100,16 +100,16 @@ export default function LandingPage() {
         {/* Canlı kanıt (fold üstü) — gerçek veriden beslenir; veri yoksa statik güven rozetleri */}
         {stats && resolved > 0 ? (
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-6 text-sm">
-            <span className="inline-flex items-center gap-1.5 font-semibold text-text-secondary">
+            <span className="inline-flex items-center gap-1.5 font-display text-text-secondary">
               <CheckCircle className="w-4 h-4 text-bullish" />
               <span className="num font-num-560 text-bullish">{formatPercentage(stats.win_rate, 0, false)}</span> başarı oranı
             </span>
-            <span className="inline-flex items-center gap-1.5 font-semibold text-text-secondary">
+            <span className="inline-flex items-center gap-1.5 font-display text-text-secondary">
               <Activity className="w-4 h-4 text-accent-primary" />
               <span className="num font-num-560 text-text-primary">{resolved.toLocaleString('tr-TR')}</span> kapanan sinyal
             </span>
             {stats.average_return != null && (
-              <span className="inline-flex items-center gap-1.5 font-semibold text-text-secondary">
+              <span className="inline-flex items-center gap-1.5 font-display text-text-secondary">
                 <TrendingUp className={cn('w-4 h-4', stats.average_return >= 0 ? 'text-bullish' : 'text-bearish')} />
                 <span className={cn('num font-num-560', stats.average_return >= 0 ? 'text-bullish' : 'text-bearish')}>
                   {formatPercentage(stats.average_return)}
@@ -119,17 +119,17 @@ export default function LandingPage() {
           </div>
         ) : (
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-6 text-sm text-text-secondary">
-            <span className="inline-flex items-center gap-1.5 font-semibold"><Brain className="w-4 h-4 text-accent-primary" /> 9 AI motoru</span>
-            <span className="inline-flex items-center gap-1.5 font-semibold"><Activity className="w-4 h-4 text-accent-primary" /> 7/24 tarama</span>
-            <span className="inline-flex items-center gap-1.5 font-semibold"><Shield className="w-4 h-4 text-accent-primary" /> Otomatik risk yönetimi</span>
+            <span className="inline-flex items-center gap-1.5 font-display"><Brain className="w-4 h-4 text-accent-primary" /> 9 AI motoru</span>
+            <span className="inline-flex items-center gap-1.5 font-display"><Activity className="w-4 h-4 text-accent-primary" /> 7/24 tarama</span>
+            <span className="inline-flex items-center gap-1.5 font-display"><Shield className="w-4 h-4 text-accent-primary" /> Otomatik risk yönetimi</span>
           </div>
         )}
 
         <div className="flex items-center justify-center gap-3 mt-7">
-          <Link href="/register" className="flex items-center gap-2 text-sm font-bold bg-accent-primary hover:bg-accent-hover text-white px-6 py-3 rounded-xl transition-all hover:shadow-cta">
+          <Link href="/register" className="flex items-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-6 py-3 rounded-xl transition-all hover:shadow-cta">
             Ücretsiz Başla <ArrowRight className="w-4 h-4" />
           </Link>
-          <Link href="/pricing" className="text-sm font-bold text-text-secondary hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-6 py-3 rounded-xl transition-colors">
+          <Link href="/pricing" className="text-sm font-display text-text-secondary hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-6 py-3 rounded-xl transition-colors">
             Fiyatlandırmayı Gör
           </Link>
         </div>
@@ -153,7 +153,7 @@ export default function LandingPage() {
       {/* Latest winning signals — only real, resolved WIN signals */}
       {winSignals.length > 0 && (
         <section className="max-w-6xl mx-auto px-6 py-12">
-          <h2 className="text-2xl font-extrabold text-text-primary text-center">Son Kazanan Sinyaller</h2>
+          <h2 className="text-2xl font-display text-text-primary text-center">Son Kazanan Sinyaller</h2>
           <p className="text-sm text-text-secondary text-center mt-2 max-w-xl mx-auto">
             Sistemin gerçek zamanlı ürettiği ve TP'ye ulaşmış kapanmış sinyallerden bir kesit.
           </p>
@@ -161,8 +161,8 @@ export default function LandingPage() {
             {winSignals.map((s) => (
               <div key={s.id} className="glass-panel border border-border-subtle rounded-card p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-bold text-text-primary">{s.asset?.symbol}</span>
-                  <span className="text-[10px] font-bold uppercase bg-bullish/15 text-bullish px-2 py-0.5 rounded">
+                  <span className="text-sm font-display text-text-primary">{s.asset?.symbol}</span>
+                  <span className="text-[10px] font-display uppercase bg-bullish/15 text-bullish px-2 py-0.5 rounded">
                     {s.direction === 'bullish' ? 'LONG' : 'SHORT'}
                   </span>
                 </div>
@@ -181,7 +181,7 @@ export default function LandingPage() {
 
       {/* Engines */}
       <section className="max-w-6xl mx-auto px-6 py-16">
-        <h2 className="text-2xl font-extrabold text-text-primary text-center">İhtiyacın Olan Her Şey, Tek Platformda</h2>
+        <h2 className="text-2xl font-display text-text-primary text-center">İhtiyacın Olan Her Şey, Tek Platformda</h2>
         <p className="text-sm text-text-secondary text-center mt-2 max-w-xl mx-auto">
           9 bağımsız AI motoru birlikte çalışıp profesyonel düzeyde bir trading kokpiti sunar.
         </p>
@@ -191,7 +191,7 @@ export default function LandingPage() {
               <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3">
                 <e.icon className="w-5 h-5 text-accent-primary" />
               </div>
-              <h3 className="text-sm font-bold text-text-primary">{e.title}</h3>
+              <h3 className="text-sm font-display text-text-primary">{e.title}</h3>
               <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">{e.desc}</p>
             </div>
           ))}
@@ -205,7 +205,7 @@ export default function LandingPage() {
             { icon: BarChart3, label: 'Sembol Analizi' },
             { icon: Wallet, label: 'Portföy Takibi' },
           ].map((f) => (
-            <div key={f.label} className="flex items-center gap-2 text-sm font-semibold text-text-secondary">
+            <div key={f.label} className="flex items-center gap-2 text-sm font-display text-text-secondary">
               <CheckCircle className="w-4 h-4 text-bullish flex-shrink-0" /> {f.label}
             </div>
           ))}
@@ -214,14 +214,14 @@ export default function LandingPage() {
 
       {/* How it works */}
       <section className="max-w-4xl mx-auto px-6 py-16">
-        <h2 className="text-2xl font-extrabold text-text-primary text-center">Dakikalar İçinde Başla</h2>
+        <h2 className="text-2xl font-display text-text-primary text-center">Dakikalar İçinde Başla</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
           {STEPS.map((s) => (
             <div key={s.n} className="text-center">
-              <div className="w-12 h-12 rounded-xl gradient-bg-brand flex items-center justify-center text-white font-extrabold text-lg mx-auto mb-3">
+              <div className="w-12 h-12 rounded-xl gradient-bg-brand flex items-center justify-center text-white font-display text-lg mx-auto mb-3">
                 {s.n}
               </div>
-              <h3 className="text-sm font-bold text-text-primary">{s.title}</h3>
+              <h3 className="text-sm font-display text-text-primary">{s.title}</h3>
               <p className="text-xs text-text-secondary mt-1.5">{s.desc}</p>
             </div>
           ))}
@@ -230,7 +230,7 @@ export default function LandingPage() {
 
       {/* Transparency: how it works + honest limits + key messages (all verifiable) */}
       <section className="max-w-6xl mx-auto px-6 py-16 border-t border-border-subtle">
-        <h2 className="text-2xl font-extrabold text-text-primary text-center">Şeffaflık: Nasıl Çalışır, Neyi Vaat Etmez</h2>
+        <h2 className="text-2xl font-display text-text-primary text-center">Şeffaflık: Nasıl Çalışır, Neyi Vaat Etmez</h2>
         <p className="text-sm text-text-secondary text-center mt-2 max-w-2xl mx-auto">
           Güçlü bir karar destek aracı sunuyoruz — sihirli bir kutu değil. Sistemin nasıl çalıştığını da, sınırlarını da açıkça paylaşıyoruz.
         </p>
@@ -240,7 +240,7 @@ export default function LandingPage() {
           <div className="glass-panel border border-border-subtle rounded-card p-6">
             <div className="flex items-center gap-2 mb-4">
               <Layers className="w-5 h-5 text-accent-primary" />
-              <h3 className="text-sm font-bold text-text-primary">Nasıl çalışır</h3>
+              <h3 className="text-sm font-display text-text-primary">Nasıl çalışır</h3>
             </div>
             <ul className="space-y-3 text-xs text-text-secondary leading-relaxed">
               <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-accent-primary flex-shrink-0 mt-0.5" /> 9 bağımsız AI motoru her sinyali ayrı puanlar; sonuçlar birleşik bir güven skorunda toplanır.</li>
@@ -253,7 +253,7 @@ export default function LandingPage() {
           <div className="glass-panel border border-border-subtle rounded-card p-6">
             <div className="flex items-center gap-2 mb-4">
               <Eye className="w-5 h-5 text-text-secondary" />
-              <h3 className="text-sm font-bold text-text-primary">Dürüst sınırlar</h3>
+              <h3 className="text-sm font-display text-text-primary">Dürüst sınırlar</h3>
             </div>
             <ul className="space-y-3 text-xs text-text-secondary leading-relaxed">
               <li className="flex gap-2"><Info className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" /> AI çıktıları yanlış veya eksik olabilir; tek başına değil, kendi araştırmanla birlikte değerlendirilmelidir.</li>
@@ -274,7 +274,7 @@ export default function LandingPage() {
               <div className="w-9 h-9 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3">
                 <m.icon className="w-5 h-5 text-accent-primary" />
               </div>
-              <h3 className="text-sm font-bold text-text-primary">{m.title}</h3>
+              <h3 className="text-sm font-display text-text-primary">{m.title}</h3>
               <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">{m.desc}</p>
             </div>
           ))}
@@ -287,7 +287,7 @@ export default function LandingPage() {
 
       {/* Security & data transparency — every claim is verifiable / implemented */}
       <section className="max-w-6xl mx-auto px-6 py-16 border-t border-border-subtle">
-        <h2 className="text-2xl font-extrabold text-text-primary text-center">Güvenlik ve Veri Şeffaflığı</h2>
+        <h2 className="text-2xl font-display text-text-primary text-center">Güvenlik ve Veri Şeffaflığı</h2>
         <p className="text-sm text-text-secondary text-center mt-2 max-w-2xl mx-auto">
           Verinin nereden geldiğini, nasıl korunduğunu ve gizliliği nasıl ele aldığımızı açıkça paylaşıyoruz.
         </p>
@@ -295,7 +295,7 @@ export default function LandingPage() {
           {/* Data sources */}
           <div className="glass-panel border border-border-subtle rounded-card p-6">
             <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3"><Globe className="w-5 h-5 text-accent-primary" /></div>
-            <h3 className="text-sm font-bold text-text-primary">Gerçek veri kaynakları</h3>
+            <h3 className="text-sm font-display text-text-primary">Gerçek veri kaynakları</h3>
             <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">Fiyat ve piyasa verileri tanınmış sağlayıcılardan gelir:</p>
             <ul className="mt-3 space-y-1.5 text-xs text-text-secondary">
               <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Binance — kripto fiyat/mum verisi</li>
@@ -306,7 +306,7 @@ export default function LandingPage() {
           {/* Security */}
           <div className="glass-panel border border-border-subtle rounded-card p-6">
             <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3"><Shield className="w-5 h-5 text-accent-primary" /></div>
-            <h3 className="text-sm font-bold text-text-primary">Güvenlik yaklaşımı</h3>
+            <h3 className="text-sm font-display text-text-primary">Güvenlik yaklaşımı</h3>
             <ul className="mt-3 space-y-1.5 text-xs text-text-secondary">
               <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Tüm trafik HTTPS/TLS ile şifrelenir</li>
               <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Modern güvenlik başlıkları (CSP, HSTS) etkin</li>
@@ -317,13 +317,13 @@ export default function LandingPage() {
           {/* Privacy / KVKK */}
           <div className="glass-panel border border-border-subtle rounded-card p-6">
             <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3"><Lock className="w-5 h-5 text-accent-primary" /></div>
-            <h3 className="text-sm font-bold text-text-primary">Gizlilik &amp; KVKK</h3>
+            <h3 className="text-sm font-display text-text-primary">Gizlilik &amp; KVKK</h3>
             <ul className="mt-3 space-y-1.5 text-xs text-text-secondary">
               <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> KVKK uyumlu çerez yönetimi; analitik çerezler varsayılan kapalı</li>
               <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Onaylar kayıt altına alınır; tercihini istediğin an değiştirebilirsin</li>
               <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Verilerin yalnızca hizmeti sunmak için işlenir</li>
             </ul>
-            <Link href="/yasal" className="inline-block mt-3 text-xs font-semibold text-accent-primary hover:underline">Yasal belgeleri incele →</Link>
+            <Link href="/yasal" className="inline-block mt-3 text-xs font-display text-accent-primary hover:underline">Yasal belgeleri incele →</Link>
           </div>
         </div>
       </section>
@@ -331,14 +331,14 @@ export default function LandingPage() {
       {/* Pricing teaser */}
       {plans.length > 0 && (
         <section className="max-w-6xl mx-auto px-6 py-16">
-          <h2 className="text-2xl font-extrabold text-text-primary text-center">Basit, Şeffaf Fiyatlandırma</h2>
+          <h2 className="text-2xl font-display text-text-primary text-center">Basit, Şeffaf Fiyatlandırma</h2>
           <p className="text-sm text-text-secondary text-center mt-2">Şeffaf fiyatlandırma, gizli ücret yok — dilediğin an yükselt veya iptal et.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-10 max-w-3xl mx-auto">
             {plans.map((p) => {
               const monthly = p.pricing.find((pr) => pr.cycle === 'monthly');
               return (
                 <div key={p.tier} className={cn('glass-panel border rounded-card p-6', p.recommended ? 'border-accent-primary/40' : 'border-border-subtle')}>
-                  <h3 className="text-base font-bold text-text-primary">{p.name}</h3>
+                  <h3 className="text-base font-display text-text-primary">{p.name}</h3>
                   <p className="text-xs text-text-secondary mt-1">{p.description}</p>
                   <div className="text-3xl num font-num-560 text-text-primary mt-3">
                     ${monthly?.amount_usd ?? 0}<span className="text-sm text-text-muted font-normal">/ay</span>
@@ -355,7 +355,7 @@ export default function LandingPage() {
             })}
           </div>
           <div className="text-center mt-8">
-            <Link href="/pricing" className="text-sm font-bold text-accent-primary hover:text-accent-ui">
+            <Link href="/pricing" className="text-sm font-display text-accent-primary hover:text-accent-ui">
               Tüm planları ve süre seçeneklerini gör →
             </Link>
           </div>
@@ -364,9 +364,9 @@ export default function LandingPage() {
 
       {/* Final CTA */}
       <section className="max-w-4xl mx-auto px-6 py-20 text-center">
-        <h2 className="text-2xl md:text-3xl font-extrabold text-text-primary">Trading Avantajını Bugün İnşa Et</h2>
+        <h2 className="text-2xl md:text-3xl font-display text-text-primary">Trading Avantajını Bugün İnşa Et</h2>
         <p className="text-sm text-text-secondary mt-3">Kayıt sonrası dashboard'a anında erişim — kredi kartı gerekmez.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 text-sm font-bold bg-accent-primary hover:bg-accent-hover text-white px-7 py-3.5 rounded-xl transition-all hover:shadow-cta mt-6">
+        <Link href="/register" className="inline-flex items-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-7 py-3.5 rounded-xl transition-all hover:shadow-cta mt-6">
           Ücretsiz Hesap Oluştur <ArrowRight className="w-4 h-4" />
         </Link>
       </section>

@@ -235,7 +235,7 @@ export default function DashboardPage() {
                 <Lock className="w-5 h-5 text-amber" />
               </div>
               <div>
-                <p className="text-sm font-bold text-text-primary">
+                <p className="text-sm font-display text-text-primary">
                   Ücretsiz plandasın — günde {limits.daily_signal_limit} sinyal görüntülüyorsun.
                 </p>
                 <p className="text-[11px] text-text-secondary mt-0.5">
@@ -243,7 +243,7 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-            <span className="flex items-center gap-1.5 text-xs font-bold text-amber whitespace-nowrap bg-amber/10 border border-amber/30 px-3 py-1.5 rounded-xl">
+            <span className="flex items-center gap-1.5 text-xs font-display text-amber whitespace-nowrap bg-amber/10 border border-amber/30 px-3 py-1.5 rounded-xl">
               <Crown className="w-3.5 h-3.5" /> Yükselt
             </span>
           </div>
@@ -253,7 +253,7 @@ export default function DashboardPage() {
       {/* ── Title Row ── */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-text-primary">
+          <h1 className="text-2xl font-display tracking-tight text-text-primary">
             {firstName ? `Hoş geldin, ${firstName}` : 'Gösterge Paneli'}
           </h1>
           <p className="text-sm text-text-secondary mt-0.5">Piyasaları yapay zekâ ile analiz edin, avantaj yakalayın.</p>
@@ -265,7 +265,7 @@ export default function DashboardPage() {
               <button
                 key={r}
                 onClick={() => setTimeRange(r)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                className={`px-3 py-1 text-xs font-display rounded-md transition-all ${
                   timeRange === r ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary'
                 }`}
               >
@@ -300,13 +300,13 @@ export default function DashboardPage() {
         <GlassCard className="flex flex-col items-center justify-center text-center gap-3 py-8">
           <AlertTriangle className="w-6 h-6 text-bearish" />
           <div>
-            <p className="text-sm font-semibold text-text-primary">Veriler şu an yüklenemiyor</p>
+            <p className="text-sm font-display text-text-primary">Veriler şu an yüklenemiyor</p>
             <p className="text-xs text-text-muted mt-0.5">Sunucuya ulaşılamıyor olabilir. Lütfen tekrar deneyin.</p>
           </div>
           <button
             onClick={() => load(true)}
             disabled={refreshing}
-            className="text-xs font-semibold text-text-primary bg-white/[0.06] hover:bg-e-2 border border-border-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+            className="text-xs font-display text-text-primary bg-white/[0.06] hover:bg-e-2 border border-border-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
           >
             Tekrar dene
           </button>
@@ -316,9 +316,9 @@ export default function DashboardPage() {
         {/* Closed trades within selected period */}
         <GlassCard dense className="flex items-center justify-between group">
           <div>
-            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Bu Dönemde Kapanan İşlem</span>
+            <span className="text-[10px] font-display text-text-muted uppercase tracking-wide">Bu Dönemde Kapanan İşlem</span>
             <h3 className="text-3xl num font-num-560 mt-1 text-text-primary">{periodClosedCount}</h3>
-            <span className="text-[10px] text-text-muted font-semibold mt-1 block">
+            <span className="text-[10px] text-text-muted font-display mt-1 block">
               {timeRange === '24s' ? 'son 24 saat' : timeRange === '7g' ? 'son 7 gün' : 'son 30 gün'}
             </span>
           </div>
@@ -330,9 +330,9 @@ export default function DashboardPage() {
         {/* Active Signals */}
         <GlassCard dense className="flex items-center justify-between group">
           <div>
-            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Aktif Sinyaller</span>
+            <span className="text-[10px] font-display text-text-muted uppercase tracking-wide">Aktif Sinyaller</span>
             <h3 className="text-3xl num font-num-560 mt-1 text-text-primary">{activeCount}</h3>
-            <span className="text-[10px] text-text-muted font-semibold mt-1 block">
+            <span className="text-[10px] text-text-muted font-display mt-1 block">
               şu an işlem fırsatı (LONG/SHORT)
             </span>
           </div>
@@ -344,9 +344,9 @@ export default function DashboardPage() {
         {/* Win Rate */}
         <GlassCard dense className="flex items-center justify-between group">
           <div>
-            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Başarı Oranı</span>
+            <span className="text-[10px] font-display text-text-muted uppercase tracking-wide">Başarı Oranı</span>
             <h3 className="text-3xl num font-num-560 mt-1 text-bullish">{formatPercentage(winRate, 0, false)}</h3>
-            <span className="text-[10px] text-text-muted font-semibold mt-1 block">
+            <span className="text-[10px] text-text-muted font-display mt-1 block">
               {/* Win rate = win / (win + loss + breakeven) — the canonical
                   platform definition (breakeven dilutes it, which is why this
                   is below 50% even though wins outnumber losses). Show the full
@@ -362,9 +362,9 @@ export default function DashboardPage() {
         {/* Avg Return */}
         <GlassCard dense className="flex items-center justify-between group">
           <div>
-            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Ortalama Getiri</span>
+            <span className="text-[10px] font-display text-text-muted uppercase tracking-wide">Ortalama Getiri</span>
             <h3 className={cn("text-3xl num font-num-560 mt-1", avgReturn >= 0 ? "text-bullish" : "text-bearish")}>{formatPercentage(avgReturn)}</h3>
-            <span className="text-[10px] text-text-muted font-semibold mt-1 block">
+            <span className="text-[10px] text-text-muted font-display mt-1 block">
               tüm zamanlar · işlem başına
             </span>
           </div>
@@ -376,11 +376,11 @@ export default function DashboardPage() {
         {/* Fear & Greed */}
         <GlassCard dense className="flex items-center justify-between group">
           <div>
-            <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Piyasa Greed Index</span>
+            <span className="text-[10px] font-display text-text-muted uppercase tracking-wide">Piyasa Greed Index</span>
             <h3 className="text-3xl num font-num-560 mt-1" style={{ color: fngColor(fngValue) }}>
               {fngValue}
             </h3>
-            <span className="text-[10px] font-semibold mt-1 block" style={{ color: fngColor(fngValue) }}>
+            <span className="text-[10px] font-display mt-1 block" style={{ color: fngColor(fngValue) }}>
               {fngLabel(fngValue)}
             </span>
           </div>
@@ -413,7 +413,7 @@ export default function DashboardPage() {
           <GlassCard>
             {/* Card header */}
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
+              <h2 className="text-base font-display text-text-primary flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-accent-primary" />
                 Piyasa Genel Bakış
               </h2>
@@ -428,28 +428,28 @@ export default function DashboardPage() {
             {/* Market stats row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
               <div>
-                <p className="text-[10px] text-text-muted uppercase font-semibold">Toplam Piyasa Değeri</p>
+                <p className="text-[10px] text-text-muted uppercase font-display">Toplam Piyasa Değeri</p>
                 <p className="text-base num font-num-560 text-text-primary mt-0.5">
                   {global ? formatLargeNumber(global.total_market_cap_usd) : '—'}
                 </p>
-                <p className={`text-[11px] font-semibold ${(global?.market_cap_change_24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish'}`}>
+                <p className={`text-[11px] font-display ${(global?.market_cap_change_24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish'}`}>
                   {global ? formatPercentage(global.market_cap_change_24h) : '—'}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-text-muted uppercase font-semibold">24s Hacim</p>
+                <p className="text-[10px] text-text-muted uppercase font-display">24s Hacim</p>
                 <p className="text-base num font-num-560 text-text-primary mt-0.5">
                   {global ? formatLargeNumber(global.total_volume_usd) : '—'}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-text-muted uppercase font-semibold">BTC Dominance</p>
+                <p className="text-[10px] text-text-muted uppercase font-display">BTC Dominance</p>
                 <p className="text-base num font-num-560 text-text-primary mt-0.5">
                   {global ? formatPercentage(global.btc_dominance, 2, false) : '—'}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-text-muted uppercase font-semibold">ETH Dominance</p>
+                <p className="text-[10px] text-text-muted uppercase font-display">ETH Dominance</p>
                 <p className="text-base num font-num-560 text-text-primary mt-0.5">
                   {global ? formatPercentage(global.eth_dominance, 2, false) : '—'}
                 </p>
@@ -461,7 +461,7 @@ export default function DashboardPage() {
           {/* Featured Live Chart */}
           <GlassCard>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
+              <h2 className="text-base font-display text-text-primary flex items-center gap-2">
                 <ChartIcon className="w-4 h-4 text-accent-primary" />
                 Canlı Grafik — BTC/USDT
               </h2>
@@ -475,7 +475,7 @@ export default function DashboardPage() {
           {/* Performance Summary */}
           <GlassCard>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
+              <h2 className="text-base font-display text-text-primary flex items-center gap-2">
                 <Activity className="w-4 h-4 text-accent-primary" />
                 Performans Özeti
               </h2>
@@ -486,7 +486,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {perfCards.map((c, i) => (
                 <div key={i} className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
-                  <p className="text-[10px] text-text-muted uppercase font-semibold">{c.label}</p>
+                  <p className="text-[10px] text-text-muted uppercase font-display">{c.label}</p>
                   <p className={`text-xl num font-num-560 mt-1 ${c.color}`}>{c.value}</p>
                   {c.sub && <p className="text-[10px] text-text-muted mt-0.5">{c.sub}</p>}
                 </div>
@@ -500,7 +500,7 @@ export default function DashboardPage() {
           {/* Recent Signals */}
           <GlassCard>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
+              <h2 className="text-base font-display text-text-primary flex items-center gap-2">
                 <Zap className="w-4 h-4 text-accent-primary" />
                 Son Sinyaller
               </h2>
@@ -521,7 +521,7 @@ export default function DashboardPage() {
                 action={
                   <Link
                     href="/signals"
-                    className="focus-ring inline-flex items-center gap-1.5 text-xs font-bold bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors"
+                    className="focus-ring inline-flex items-center gap-1.5 text-xs font-display bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors"
                   >
                     Sinyal Merkezi&apos;ne git <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
@@ -555,16 +555,16 @@ export default function DashboardPage() {
                     {/* Symbol + badge */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-text-primary">{sig.asset?.symbol}</span>
+                        <span className="text-xs font-display text-text-primary">{sig.asset?.symbol}</span>
                         <SignalBadge type={sig.signal_type as SignalType} />
                       </div>
                       <div className="flex gap-3 mt-0.5">
                         {livePrices[sig.asset?.symbol ?? ''] ? (
                           <>
-                            <span className="text-[10px] font-mono text-text-primary font-bold">
+                            <span className="text-[10px] font-mono text-text-primary font-display">
                               {formatPrice(livePrices[sig.asset?.symbol ?? ''].price)}
                             </span>
-                            <span className={cn('text-[10px] font-mono font-semibold',
+                            <span className={cn('text-[10px] font-mono font-display',
                               (livePrices[sig.asset?.symbol ?? ''].changePct24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
                               {formatPercentage(livePrices[sig.asset?.symbol ?? ''].changePct24h ?? 0)}
                             </span>
@@ -593,7 +593,7 @@ export default function DashboardPage() {
 
           {/* Asset Distribution Pie */}
           <GlassCard>
-            <h2 className="text-base font-bold text-text-primary mb-4 flex items-center gap-2">
+            <h2 className="text-base font-display text-text-primary mb-4 flex items-center gap-2">
               <ChartIcon className="w-4 h-4 text-accent-primary" />
               Varlık Dağılımı
             </h2>
@@ -616,7 +616,7 @@ export default function DashboardPage() {
                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
                       <span className="text-xs text-text-secondary">{entry.name}</span>
                     </div>
-                    <span className="text-xs font-semibold text-text-primary">
+                    <span className="text-xs font-display text-text-primary">
                       {formatPercentage((entry.value / pieData.reduce((a, b) => a + b.value, 0)) * 100, 0, false)}
                     </span>
                   </div>
@@ -628,7 +628,7 @@ export default function DashboardPage() {
           {/* Top Gainers */}
           <GlassCard>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
+              <h2 className="text-base font-display text-text-primary flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-bullish" />
                 En Çok Kazananlar
               </h2>
@@ -649,7 +649,7 @@ export default function DashboardPage() {
                       ) : (
                         <div className="w-5 h-5 rounded-full bg-bg-tertiary border border-border-subtle" />
                       )}
-                      <span className="text-xs font-bold text-text-primary uppercase">{coin.symbol}/USDT</span>
+                      <span className="text-xs font-display text-text-primary uppercase">{coin.symbol}/USDT</span>
                     </div>
                     <span className={`text-xs num font-num-520 ${(coin.price_change_percentage_24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish'}`}>
                       {formatPercentage(coin.price_change_percentage_24h ?? 0)}

@@ -96,7 +96,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-text-primary flex items-center gap-2">
+        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
           <Settings className="w-6 h-6 text-accent-primary" /> Ayarlar
         </h1>
         <p className="text-sm text-text-secondary mt-1">Uygulama tercihleri ve bildirimler</p>
@@ -111,7 +111,7 @@ export default function SettingsPage() {
           />
         )}
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-text-primary flex items-center gap-2">
+          <h3 className="text-sm font-display text-text-primary flex items-center gap-2">
             <Send className="w-4 h-4 text-accent-primary" /> Telegram Bildirimleri
           </h3>
           <div className="flex items-center gap-2">
@@ -122,7 +122,7 @@ export default function SettingsPage() {
 
         {/* Setup help */}
         <div className="bg-bg-secondary/50 border border-border-subtle rounded-xl p-3 mb-4 text-xs text-text-secondary space-y-1">
-          <p className="flex items-center gap-1.5 font-semibold text-text-primary">
+          <p className="flex items-center gap-1.5 font-display text-text-primary">
             <HelpCircle className="w-3.5 h-3.5 text-accent-primary" /> Nasıl kurulur?
           </p>
           <p>1. Telegram'da <code className="text-accent-primary">@BotFather</code>'a yazıp <code className="text-accent-primary">/newbot</code> ile bot oluştur, <b>token</b>'ı al.</p>
@@ -133,7 +133,7 @@ export default function SettingsPage() {
         <div className="space-y-4">
           {/* Bot Token */}
           <div>
-            <label className="text-xs font-semibold text-text-muted uppercase">Bot Token</label>
+            <label className="text-xs font-display text-text-muted uppercase">Bot Token</label>
             <input
               type="password"
               value={botToken}
@@ -145,7 +145,7 @@ export default function SettingsPage() {
 
           {/* Chat ID */}
           <div>
-            <label className="text-xs font-semibold text-text-muted uppercase">Chat ID</label>
+            <label className="text-xs font-display text-text-muted uppercase">Chat ID</label>
             <input
               type="text"
               value={chatId}
@@ -158,8 +158,8 @@ export default function SettingsPage() {
           {/* Min confidence */}
           <div>
             <div className="flex justify-between items-center">
-              <label className="text-xs font-semibold text-text-muted uppercase">Minimum Güven</label>
-              <span className="text-sm font-bold font-mono text-accent-primary">{formatPercentage(minConf, 0, false)}</span>
+              <label className="text-xs font-display text-text-muted uppercase">Minimum Güven</label>
+              <span className="text-sm font-display font-mono text-accent-primary">{formatPercentage(minConf, 0, false)}</span>
             </div>
             <input
               type="range" min={0} max={100} step={5}
@@ -173,7 +173,7 @@ export default function SettingsPage() {
           {/* Notify HOLD */}
           <div className="flex items-center justify-between">
             <div>
-              <label className="text-xs font-semibold text-text-primary">BEKLE sinyallerini de gönder</label>
+              <label className="text-xs font-display text-text-primary">BEKLE sinyallerini de gönder</label>
               <p className="text-[10px] text-text-muted">Kapalıyken sadece AL/SAT sinyalleri bildirilir.</p>
             </div>
             <Toggle checked={notifyHold} onChange={setNotifyHold} />
@@ -184,14 +184,14 @@ export default function SettingsPage() {
             <button
               onClick={save}
               disabled={saving}
-              className="px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-display hover:bg-accent-hover transition-colors disabled:opacity-50"
             >
               {saving ? 'Kaydediliyor...' : 'Kaydet'}
             </button>
             <button
               onClick={test}
               disabled={testing}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-bg-tertiary border border-border-subtle text-text-primary text-sm font-semibold hover:border-accent-primary/40 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-bg-tertiary border border-border-subtle text-text-primary text-sm font-display hover:border-accent-primary/40 transition-colors disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5" /> {testing ? 'Gönderiliyor...' : 'Test Gönder'}
             </button>

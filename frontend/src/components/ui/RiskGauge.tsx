@@ -70,7 +70,7 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
       </div>
       <span
         className={clsx(
-          "text-xs font-bold uppercase tracking-wider",
+          "text-xs font-display uppercase tracking-wider",
           activeSegmentIdx === 0 && "text-bull",
           activeSegmentIdx === 1 && "text-amber",
           activeSegmentIdx === 2 && "text-amber/80",

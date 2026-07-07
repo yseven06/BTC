@@ -74,10 +74,10 @@ export function ClosedSignalChartModal({ signal, onClose }: Props) {
               <CoinIcon symbol={signal.asset?.symbol ?? ''} assetType={signal.asset?.asset_type} />
             </div>
             <div>
-              <p className="text-sm font-bold text-text-primary">
+              <p className="text-sm font-display text-text-primary">
                 {signal.asset?.symbol} · {signal.timeframe.toUpperCase()}
               </p>
-              <p className={cn('text-xs font-semibold', OUTCOME_COLOR[signal.outcome ?? ''] ?? 'text-text-muted')}>
+              <p className={cn('text-xs font-display', OUTCOME_COLOR[signal.outcome ?? ''] ?? 'text-text-muted')}>
                 {OUTCOME_LABEL[signal.outcome ?? ''] ?? signal.outcome}
                 {signal.actual_return != null && ` · ${formatPercentage(signal.actual_return)}`}
                 {signal.closed_at && ` · ${formatAbsoluteTimeTR(signal.closed_at)}`}

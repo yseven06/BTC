@@ -80,7 +80,7 @@ export function ReconsentGate() {
         <div className="flex items-start gap-2">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber" aria-hidden />
           <div>
-            <h2 className="text-base font-bold text-text-primary">Güncellenen Yasal Belgeler</h2>
+            <h2 className="text-base font-display text-text-primary">Güncellenen Yasal Belgeler</h2>
             <p className="mt-1 text-xs leading-relaxed text-text-muted">
               Aşağıdaki belge(ler) güncellendi. Hizmeti kullanmaya devam etmek için lütfen
               gözden geçirip onaylayın.
@@ -125,7 +125,7 @@ export function ReconsentGate() {
             type="button"
             onClick={submit}
             disabled={!allChecked || submitting}
-            className="rounded-lg bg-accent-primary px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-accent-primary px-4 py-2 text-xs font-display text-white transition-colors hover:bg-accent-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? 'Kaydediliyor...' : 'Onayla ve Devam Et'}
           </button>

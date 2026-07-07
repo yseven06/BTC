@@ -132,7 +132,7 @@ export default function PricingPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center max-w-2xl mx-auto">
-        <h1 className="text-3xl font-extrabold text-text-primary">Planlar & Fiyatlandırma</h1>
+        <h1 className="text-3xl font-display text-text-primary">Planlar & Fiyatlandırma</h1>
         <p className="text-sm text-text-secondary mt-2">
           AI motorlarına tam erişim ve sınırsız sinyal için yükselt.
         </p>
@@ -154,15 +154,15 @@ export default function PricingPage() {
       {sub && sub.tier !== 'free' && (
         <GlassCard className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs text-text-muted uppercase font-semibold">Mevcut Aboneliğin</p>
-            <p className="text-lg font-bold text-text-primary capitalize mt-1">
+            <p className="text-xs text-text-muted uppercase font-display">Mevcut Aboneliğin</p>
+            <p className="text-lg font-display text-text-primary capitalize mt-1">
               {sub.tier} – {sub.status}
               {sub.billing_cycle && <span className="text-text-muted font-medium"> · {CYCLE_LABEL[sub.billing_cycle]}</span>}
             </p>
             {sub.current_period_end && (
               <p className="text-xs text-text-secondary mt-0.5">
                 {sub.cancel_at_period_end ? (
-                  <>Aboneliğin <span className="text-bearish font-semibold">{formatDateTR(sub.current_period_end)}</span> tarihinde sona erecek.</>
+                  <>Aboneliğin <span className="text-bearish font-display">{formatDateTR(sub.current_period_end)}</span> tarihinde sona erecek.</>
                 ) : (
                   <>Sonraki yenileme: {formatDateTR(sub.current_period_end)}</>
                 )}
@@ -180,7 +180,7 @@ export default function PricingPage() {
               <button
                 onClick={() => subscribe(sub.tier, sub.billing_cycle ?? undefined)}
                 disabled={processing !== null}
-                className="focus-ring inline-flex items-center text-sm font-bold bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+                className="focus-ring inline-flex items-center text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
               >
                 {processing === sub.tier ? 'İşleniyor...' : 'Aboneliği Devam Ettir'}
               </button>
@@ -190,14 +190,14 @@ export default function PricingPage() {
                 <button
                   onClick={doCancel}
                   disabled={canceling}
-                  className="focus-ring inline-flex items-center text-xs font-bold bg-bearish/15 border border-bearish/40 text-bearish hover:bg-bearish/25 px-3 py-1.5 rounded-xl transition-colors disabled:opacity-50"
+                  className="focus-ring inline-flex items-center text-xs font-display bg-bearish/15 border border-bearish/40 text-bearish hover:bg-bearish/25 px-3 py-1.5 rounded-xl transition-colors disabled:opacity-50"
                 >
                   {canceling ? 'Durduruluyor...' : 'Evet, durdur'}
                 </button>
                 <button
                   onClick={() => setConfirmCancel(false)}
                   disabled={canceling}
-                  className="focus-ring text-xs font-semibold text-text-secondary hover:text-text-primary px-2 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                  className="focus-ring text-xs font-display text-text-secondary hover:text-text-primary px-2 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                 >
                   Vazgeç
                 </button>
@@ -205,7 +205,7 @@ export default function PricingPage() {
             ) : (
               <button
                 onClick={() => setConfirmCancel(true)}
-                className="focus-ring inline-flex items-center text-sm font-semibold text-text-secondary hover:text-text-primary border border-border-medium hover:border-bearish/40 px-4 py-2 rounded-xl transition-colors"
+                className="focus-ring inline-flex items-center text-sm font-display text-text-secondary hover:text-text-primary border border-border-medium hover:border-bearish/40 px-4 py-2 rounded-xl transition-colors"
               >
                 Yenilemeyi Durdur
               </button>
@@ -222,7 +222,7 @@ export default function PricingPage() {
               key={c}
               onClick={() => setCycle(c)}
               className={cn(
-                'px-4 py-2 text-sm font-semibold rounded-lg transition-all',
+                'px-4 py-2 text-sm font-display rounded-lg transition-all',
                 cycle === c ? 'bg-accent-primary text-white' : 'text-text-muted hover:text-text-primary'
               )}
             >
@@ -255,23 +255,23 @@ export default function PricingPage() {
                 )}
               >
                 {plan.recommended && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase bg-accent-primary text-white px-3 py-1 rounded-full">
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-display uppercase bg-accent-primary text-white px-3 py-1 rounded-full">
                     Önerilen
                   </span>
                 )}
 
                 <div className="flex items-center gap-2 mb-1">
                   <Icon className={cn('w-5 h-5', TIER_COLOR[plan.tier])} />
-                  <h3 className="text-lg font-bold text-text-primary">{plan.name}</h3>
+                  <h3 className="text-lg font-display text-text-primary">{plan.name}</h3>
                 </div>
                 <p className="text-xs text-text-secondary mb-4">{plan.description}</p>
 
                 <div className="mb-5">
                   {pricing.amount_usd === 0 ? (
-                    <p className="text-3xl font-extrabold text-text-primary">Ücretsiz</p>
+                    <p className="text-3xl font-display text-text-primary">Ücretsiz</p>
                   ) : (
                     <>
-                      <p className="text-3xl font-extrabold text-text-primary">
+                      <p className="text-3xl font-display text-text-primary">
                         ${pricing.amount_usd}
                         <span className="text-xs font-medium text-text-muted ml-1">/{CYCLE_LABEL[pricing.cycle]}</span>
                       </p>
@@ -281,7 +281,7 @@ export default function PricingPage() {
                         </p>
                       )}
                       {pricing.savings_pct > 0 && (
-                        <p className="text-[11px] text-bullish font-bold mt-0.5">{formatPercentage(pricing.savings_pct, 0, false)} tasarruf</p>
+                        <p className="text-[11px] text-bullish font-display mt-0.5">{formatPercentage(pricing.savings_pct, 0, false)} tasarruf</p>
                       )}
                     </>
                   )}
@@ -306,7 +306,7 @@ export default function PricingPage() {
                   onClick={() => subscribe(plan.tier)}
                   disabled={isCurrent || plan.tier === 'free' || processing !== null || !PAYMENTS_ENABLED}
                   className={cn(
-                    'w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50',
+                    'w-full py-2.5 rounded-xl text-sm font-display transition-all disabled:opacity-50',
                     isCurrent
                       ? 'bg-bg-tertiary text-text-muted cursor-default'
                       : plan.tier === 'free' || !PAYMENTS_ENABLED

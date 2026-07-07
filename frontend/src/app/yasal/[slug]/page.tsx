@@ -34,7 +34,7 @@ export default async function LegalDocPage(
         </Link>
 
         <header className="mt-4 mb-8 border-b border-white/10 pb-4">
-          <h1 className="text-3xl font-bold">{meta.title}</h1>
+          <h1 className="text-3xl font-display">{meta.title}</h1>
           <p className="mt-2 text-xs text-text-muted">
             Sürüm {meta.version}
             {meta.effectiveDate ? ` · Yürürlük tarihi: ${meta.effectiveDate}` : ''}
@@ -46,8 +46,8 @@ export default async function LegalDocPage(
         <article
           className="
             [&_h1]:hidden
-            [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-text-primary
-            [&_h3]:mt-6 [&_h3]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-text-primary
+            [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:text-xl [&_h2]:font-display [&_h2]:text-text-primary
+            [&_h3]:mt-6 [&_h3]:mb-2 [&_h3]:text-lg [&_h3]:font-display [&_h3]:text-text-primary
             [&_p]:mb-4 [&_p]:leading-relaxed [&_p]:text-text-secondary
             [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:text-text-secondary
             [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:text-text-secondary

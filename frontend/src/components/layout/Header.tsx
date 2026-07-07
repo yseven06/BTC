@@ -108,11 +108,11 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
                   key={asset.id}
                   className="flex items-center gap-3 px-4 py-2.5 hover:bg-e-2 cursor-pointer border-b border-border-subtle last:border-none"
                 >
-                  <div className="w-7 h-7 rounded-md bg-bg-tertiary border border-border-subtle flex items-center justify-center text-[10px] font-bold font-mono text-accent-primary overflow-hidden">
+                  <div className="w-7 h-7 rounded-md bg-bg-tertiary border border-border-subtle flex items-center justify-center text-[10px] font-display font-mono text-accent-primary overflow-hidden">
                     <CoinIcon symbol={asset.symbol} assetType={asset.asset_type} />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-text-primary">{asset.symbol}</p>
+                    <p className="text-sm font-display text-text-primary">{asset.symbol}</p>
                     <p className="text-xs text-text-muted">{asset.name} · {asset.market}</p>
                   </div>
                   <span className="ml-auto text-[10px] font-medium text-text-muted bg-bg-tertiary px-2 py-0.5 rounded">
@@ -144,7 +144,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4.5 h-4.5 min-w-[18px] text-[10px] font-bold font-mono text-white bg-bearish rounded-full shadow-lg">
+                <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4.5 h-4.5 min-w-[18px] text-[10px] font-display font-mono text-white bg-bearish rounded-full shadow-lg">
                   {unreadCount}
                 </span>
               )}
@@ -154,7 +154,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
             {showNotifications && (
               <div className="absolute right-0 top-full mt-2 w-96 glass-e3-overlay rounded-panel animate-scale-in overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
-                  <h3 className="text-sm font-semibold text-text-primary">
+                  <h3 className="text-sm font-display text-text-primary">
                     {tr('notifications.title')}
                   </h3>
                   <button className="text-xs text-accent-primary hover:text-accent-ui transition-colors">
@@ -238,7 +238,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
             {showUserMenu && (
               <div className="absolute right-0 top-full mt-2 w-56 glass-e3-overlay rounded-panel animate-scale-in overflow-hidden">
                 <div className="px-4 py-3 border-b border-border-subtle">
-                  <p className="text-sm font-semibold text-text-primary">{displayName}</p>
+                  <p className="text-sm font-display text-text-primary">{displayName}</p>
                   {displayEmail && <p className="text-xs text-text-muted">{displayEmail}</p>}
                 </div>
                 <div className="py-1">

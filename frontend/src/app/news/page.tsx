@@ -44,7 +44,7 @@ function NewsList({ items, loading }: { items: NewsItem[]; loading: boolean }) {
       {items.map((item) => (
         <GlassCard key={item.id} className="flex flex-col gap-3">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="text-sm font-semibold text-text-primary leading-snug line-clamp-2">
+            <h3 className="text-sm font-display text-text-primary leading-snug line-clamp-2">
               {item.title}
             </h3>
             <a
@@ -60,7 +60,7 @@ function NewsList({ items, loading }: { items: NewsItem[]; loading: boolean }) {
             <p className="text-[11px] text-text-secondary line-clamp-2">{item.summary}</p>
           )}
           <div className="flex items-center gap-2 mt-auto">
-            <span className="text-[10px] font-semibold text-accent-primary">{item.source}</span>
+            <span className="text-[10px] font-display text-accent-primary">{item.source}</span>
             <span className="text-[10px] text-text-muted">·</span>
             <span className="text-[10px] text-text-muted">{formatRelativeTime(item.published_at)}</span>
           </div>
@@ -115,7 +115,7 @@ export default function NewsPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold text-text-primary flex items-center gap-2">
+          <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
             <Newspaper className="w-6 h-6 text-accent-primary" /> Kripto Haberler
           </h1>
           <p className="text-sm text-text-secondary mt-1">
@@ -138,7 +138,7 @@ export default function NewsPage() {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-display transition-all duration-200 ${
               tab === t.id
                 ? 'bg-accent-primary text-white'
                 : 'text-text-muted hover:text-text-primary'

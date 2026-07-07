@@ -95,26 +95,26 @@ export default function CoachmarkTour() {
         aria-label="Tanıtım turu"
       >
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-wide text-accent-primary">
+          <span className="text-[10px] font-display uppercase tracking-wide text-accent-primary">
             Tanıtım · {step + 1}/{STEPS.length}
           </span>
-          <button onClick={finish} className="focus-ring rounded text-xs font-semibold text-text-muted hover:text-text-primary transition-colors">
+          <button onClick={finish} className="focus-ring rounded text-xs font-display text-text-muted hover:text-text-primary transition-colors">
             Turu atla
           </button>
         </div>
-        <h3 className="text-sm font-bold text-text-primary mt-2">{cur.title}</h3>
+        <h3 className="text-sm font-display text-text-primary mt-2">{cur.title}</h3>
         <p className="text-xs text-text-secondary mt-1 leading-relaxed">{cur.desc}</p>
         <div className="flex items-center justify-between mt-3">
           <button
             onClick={() => setStep((s) => Math.max(0, s - 1))}
             disabled={step === 0}
-            className="focus-ring rounded text-xs font-semibold text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-default transition-colors"
+            className="focus-ring rounded text-xs font-display text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-default transition-colors"
           >
             Geri
           </button>
           <button
             onClick={() => (isLast ? finish() : setStep((s) => s + 1))}
-            className="focus-ring inline-flex items-center text-xs font-bold bg-accent-primary hover:bg-accent-hover text-white px-4 py-1.5 rounded-xl transition-colors"
+            className="focus-ring inline-flex items-center text-xs font-display bg-accent-primary hover:bg-accent-hover text-white px-4 py-1.5 rounded-xl transition-colors"
           >
             {isLast ? 'Bitir' : 'İleri'}
           </button>

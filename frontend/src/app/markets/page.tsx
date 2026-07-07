@@ -50,7 +50,7 @@ export default function MarketsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-text-primary flex items-center gap-2">
+        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
           <TrendingUp className="w-6 h-6 text-accent-primary" /> Piyasalar
         </h1>
         <p className="text-sm text-text-secondary mt-1">
@@ -73,7 +73,7 @@ export default function MarketsPage() {
                 key={c.id}
                 onClick={() => setCategory(c.id)}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all',
+                  'flex items-center gap-1.5 px-3 py-1.5 text-xs font-display rounded-lg transition-all',
                   category === c.id
                     ? 'bg-accent-primary text-white'
                     : 'text-text-muted hover:text-text-primary'
@@ -121,7 +121,7 @@ export default function MarketsPage() {
             <Link key={asset.id} href={`/markets/${encodeURIComponent(asset.symbol)}`}>
               <GlassCard hoverEffect className="flex items-center gap-4 cursor-pointer group">
                 <div className={cn(
-                  'w-10 h-10 rounded-lg border flex items-center justify-center font-bold font-mono text-sm flex-shrink-0 overflow-hidden group-hover:border-accent-primary/40 transition-colors',
+                  'w-10 h-10 rounded-lg border flex items-center justify-center font-display font-mono text-sm flex-shrink-0 overflow-hidden group-hover:border-accent-primary/40 transition-colors',
                   isStock
                     ? 'bg-accent-ui/10 border-accent-ui/30 text-accent-ui' /* BIST kimligi: purple emekli -> accent-ui (P9-FINAL; CRYPTO=accent-primary + metin etiketi ayrimi) */
                     : 'bg-bg-tertiary border-border-subtle text-accent-primary'
@@ -129,10 +129,10 @@ export default function MarketsPage() {
                   <CoinIcon symbol={asset.symbol} assetType={asset.asset_type} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-text-primary text-sm flex items-center gap-1.5">
+                  <h4 className="font-display text-text-primary text-sm flex items-center gap-1.5">
                     {asset.symbol}
                     <span className={cn(
-                      'text-[9px] font-bold uppercase px-1.5 py-0.5 rounded',
+                      'text-[9px] font-display uppercase px-1.5 py-0.5 rounded',
                       isStock
                         ? 'bg-accent-ui/15 text-accent-ui'
                         : 'bg-accent-primary/15 text-accent-primary'
@@ -145,7 +145,7 @@ export default function MarketsPage() {
                 <div className="text-right">
                   {live ? (
                     <>
-                      <p className="text-sm font-bold font-mono text-text-primary">
+                      <p className="text-sm font-display font-mono text-text-primary">
                         {formatPrice(live.price)}
                       </p>
                       {isStock && bistOpen === false ? (
@@ -153,7 +153,7 @@ export default function MarketsPage() {
                           Piyasa kapalı · Son kapanış
                         </p>
                       ) : (
-                        <p className={cn('text-[11px] font-mono font-semibold flex items-center justify-end gap-0.5', up ? 'text-bullish' : 'text-bearish')}>
+                        <p className={cn('text-[11px] font-mono font-display flex items-center justify-end gap-0.5', up ? 'text-bullish' : 'text-bearish')}>
                           {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                           {formatPercentage(live.changePct24h ?? 0)}
                         </p>

@@ -67,7 +67,7 @@ export const ScoreRing: React.FC<ScoreRingProps> = ({
         {/* Central percentage text */}
         <div className="absolute inset-0 flex items-center justify-center">
           <span
-            className="font-bold text-text-primary font-mono leading-none"
+            className="font-display text-text-primary font-mono leading-none"
             style={{ fontSize: Math.max(8, size * 0.21) }}
           >
             {formatPercentage(score, 0, false)}

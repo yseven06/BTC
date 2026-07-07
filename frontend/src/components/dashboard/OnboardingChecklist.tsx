@@ -91,7 +91,7 @@ export default function OnboardingChecklist() {
       {/* Header + progress count + dismiss */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-sm font-bold text-text-primary flex items-center gap-2">
+          <h2 className="text-sm font-display text-text-primary flex items-center gap-2">
             <PartyPopper className="w-4 h-4 text-accent-primary flex-shrink-0" />
             {allDone ? 'Harika! Kuruluma hazırsın' : "TradeMinds'e hoş geldin — başlamak için 4 adım"}
           </h2>
@@ -100,7 +100,7 @@ export default function OnboardingChecklist() {
           )}
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          <span className="text-xs font-mono font-bold text-accent-primary whitespace-nowrap">{done}/{total}</span>
+          <span className="text-xs font-mono font-display text-accent-primary whitespace-nowrap">{done}/{total}</span>
           <button onClick={dismiss} aria-label="Onboarding'i kapat" className="focus-ring rounded-md text-text-muted hover:text-text-primary transition-colors">
             <X className="w-4 h-4" />
           </button>
@@ -114,10 +114,10 @@ export default function OnboardingChecklist() {
 
       {allDone ? (
         <div className="mt-4 text-center">
-          <p className="text-sm font-semibold text-bullish">Tüm adımları tamamladın — iyi işlemler! 🚀</p>
+          <p className="text-sm font-display text-bullish">Tüm adımları tamamladın — iyi işlemler! 🚀</p>
           <button
             onClick={dismiss}
-            className="focus-ring mt-3 inline-flex items-center text-xs font-bold bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors"
+            className="focus-ring mt-3 inline-flex items-center text-xs font-display bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors"
           >
             Kapat
           </button>
@@ -138,7 +138,7 @@ export default function OnboardingChecklist() {
                     {isDone ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                   </span>
                   <span className="flex-1 min-w-0">
-                    <span className={cn('block text-sm font-semibold', isDone ? 'text-text-muted line-through' : 'text-text-primary')}>{s.label}</span>
+                    <span className={cn('block text-sm font-display', isDone ? 'text-text-muted line-through' : 'text-text-primary')}>{s.label}</span>
                     <span className="block text-[11px] text-text-secondary truncate">{s.desc}</span>
                   </span>
                   {!isDone && <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-accent-primary flex-shrink-0" />}

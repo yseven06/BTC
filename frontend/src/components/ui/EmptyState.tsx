@@ -27,7 +27,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       <div className="flex items-center justify-center w-12 h-12 rounded-full bg-bg-tertiary border border-border-subtle text-text-muted mb-4">
         {icon || <FolderOpen className="w-6 h-6 text-accent-primary" />}
       </div>
-      <h3 className="text-base font-bold text-text-primary mb-1">{title}</h3>
+      <h3 className="text-base font-display text-text-primary mb-1">{title}</h3>
       <p className="text-xs text-text-secondary max-w-[280px] mb-4">{description}</p>
       {action && <div className="flex justify-center">{action}</div>}
     </div>

@@ -43,7 +43,7 @@ export function CheckoutConfirmModal({
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-e-0/60 p-4 backdrop-blur-sm">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-panel glass-e3-overlay p-5">
-        <h2 className="text-base font-bold text-text-primary">Aboneliği Onayla</h2>
+        <h2 className="text-base font-display text-text-primary">Aboneliği Onayla</h2>
         <p className="mt-1 text-xs text-text-muted">
           Satın almadan önce lütfen aşağıdaki bilgileri inceleyin.
         </p>
@@ -115,7 +115,7 @@ export function CheckoutConfirmModal({
             type="button"
             onClick={onClose}
             disabled={processing}
-            className="text-xs font-semibold text-text-muted transition-colors hover:text-text-primary disabled:opacity-50"
+            className="text-xs font-display text-text-muted transition-colors hover:text-text-primary disabled:opacity-50"
           >
             Vazgeç
           </button>
@@ -123,7 +123,7 @@ export function CheckoutConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={!canConfirm}
-            className="rounded-lg bg-accent-primary px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-accent-primary px-4 py-2 text-sm font-display text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {processing ? 'İşleniyor...' : 'Ödemeye Geç'}
           </button>

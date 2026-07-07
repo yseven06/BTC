@@ -65,7 +65,7 @@ export function CookieConsentBanner() {
         <div className="flex items-start gap-3">
           <Cookie className="mt-0.5 h-5 w-5 shrink-0 text-accent-primary" aria-hidden />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-text-primary">Çerez Tercihleri</p>
+            <p className="text-sm font-display text-text-primary">Çerez Tercihleri</p>
             <p className="mt-1 text-xs leading-relaxed text-text-muted">
               Zorunlu çerezler hizmetin çalışması için gereklidir. Analitik çerezler
               yalnızca onayınızla çalışır. Ayrıntılar için{' '}
@@ -106,27 +106,27 @@ export function CookieConsentBanner() {
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <button
                 onClick={acceptAll}
-                className="rounded-lg bg-accent-primary px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-accent-primary/90"
+                className="rounded-lg bg-accent-primary px-3 py-2 text-xs font-display text-white transition-colors hover:bg-accent-primary/90"
               >
                 Tümünü Kabul Et
               </button>
               <button
                 onClick={onlyNecessary}
-                className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-text-secondary transition-colors hover:bg-e-2"
+                className="rounded-lg border border-white/15 px-3 py-2 text-xs font-display text-text-secondary transition-colors hover:bg-e-2"
               >
                 Yalnızca Zorunlu Çerezler
               </button>
               {manage ? (
                 <button
                   onClick={savePrefs}
-                  className="rounded-lg border border-accent-primary/40 px-3 py-2 text-xs font-semibold text-accent-primary transition-colors hover:bg-accent-primary/10"
+                  className="rounded-lg border border-accent-primary/40 px-3 py-2 text-xs font-display text-accent-primary transition-colors hover:bg-accent-primary/10"
                 >
                   Tercihleri Kaydet
                 </button>
               ) : (
                 <button
                   onClick={() => setManage(true)}
-                  className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-text-secondary transition-colors hover:bg-e-2"
+                  className="rounded-lg border border-white/15 px-3 py-2 text-xs font-display text-text-secondary transition-colors hover:bg-e-2"
                 >
                   Tercihleri Yönet
                 </button>

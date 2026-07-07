@@ -12,7 +12,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={clsx("flex flex-col space-y-1.5 w-full", wrapperClassName)}>
         {label && (
-          <label className="text-xs font-semibold text-text-secondary select-none">
+          <label className="text-xs font-display text-text-secondary select-none">
             {label}
           </label>
         )}

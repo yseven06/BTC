@@ -338,21 +338,21 @@ export default function AssetDetailPage() {
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <div className="w-11 h-11 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-base text-accent-primary overflow-hidden">
+        <div className="w-11 h-11 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-display font-mono text-base text-accent-primary overflow-hidden">
           <CoinIcon symbol={symbol} assetType={assetType} />
         </div>
         <div>
-          <h1 className="text-xl font-extrabold text-text-primary">{symbol}</h1>
+          <h1 className="text-xl font-display text-text-primary">{symbol}</h1>
           <p className="text-xs text-text-secondary">{assetName}</p>
         </div>
 
         {/* Live price */}
         {live && (
           <div className="flex items-baseline gap-2.5 ml-1 pl-4 border-l border-border-subtle">
-            <p className="text-2xl font-bold font-mono text-text-primary">
+            <p className="text-2xl font-display font-mono text-text-primary">
               {formatPrice(live.price)}
             </p>
-            <p className={cn('text-sm font-mono font-semibold flex items-center gap-1', up ? 'text-bullish' : 'text-bearish')}>
+            <p className={cn('text-sm font-mono font-display flex items-center gap-1', up ? 'text-bullish' : 'text-bearish')}>
               {up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
               {formatPercentage(live.changePct24h ?? 0)} (24s)
             </p>
@@ -400,7 +400,7 @@ export default function AssetDetailPage() {
             <button
               onClick={() => setChartMode('overlay')}
               className={cn(
-                'px-3 py-1 text-xs font-semibold rounded-md transition-all',
+                'px-3 py-1 text-xs font-display rounded-md transition-all',
                 chartMode === 'overlay'
                   ? 'bg-accent-primary text-white'
                   : 'text-text-muted hover:text-text-primary'
@@ -411,7 +411,7 @@ export default function AssetDetailPage() {
             <button
               onClick={() => setChartMode('tradingview')}
               className={cn(
-                'px-3 py-1 text-xs font-semibold rounded-md transition-all',
+                'px-3 py-1 text-xs font-display rounded-md transition-all',
                 chartMode === 'tradingview'
                   ? 'bg-accent-primary text-white'
                   : 'text-text-muted hover:text-text-primary'
@@ -429,7 +429,7 @@ export default function AssetDetailPage() {
                   key={tf}
                   onClick={() => setManualTf(tf)}
                   className={cn(
-                    'px-2.5 py-1 text-[11px] font-bold uppercase rounded-md transition-all',
+                    'px-2.5 py-1 text-[11px] font-display uppercase rounded-md transition-all',
                     chartTimeframe === tf
                       ? 'bg-accent-primary text-white'
                       : 'text-text-muted hover:text-text-primary'
@@ -446,7 +446,7 @@ export default function AssetDetailPage() {
             {priceStatus && (
               <div className="flex items-center gap-2 text-xs">
                 <span className="text-text-muted">Anlık:</span>
-                <span className={cn('font-bold uppercase tracking-wider', priceStatus.color)}>{priceStatus.label}</span>
+                <span className={cn('font-display uppercase tracking-wider', priceStatus.color)}>{priceStatus.label}</span>
               </div>
             )}
             {signal && chartMode === 'overlay' && (
@@ -457,14 +457,14 @@ export default function AssetDetailPage() {
             <button
               onClick={toggleFullscreen}
               title={manualFullscreen ? 'Tam ekrandan çık (Esc)' : 'Grafiği tam ekran göster'}
-              className="flex items-center gap-1.5 text-[11px] font-semibold text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-all"
+              className="flex items-center gap-1.5 text-[11px] font-display text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-all"
             >
               {manualFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
             </button>
             <button
               onClick={openInTradingView}
               title="Gerçek TradingView'da bu sembolü aç"
-              className="flex items-center gap-1.5 text-[11px] font-semibold text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-all"
+              className="flex items-center gap-1.5 text-[11px] font-display text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-all"
             >
               <ExternalLink className="w-3.5 h-3.5" /> TradingView'da Aç
             </button>
@@ -472,7 +472,7 @@ export default function AssetDetailPage() {
               <button
                 onClick={copyPineScript}
                 title="Giriş/SL/TP seviyelerini TradingView'a yapıştırmak için Pine Script kopyala"
-                className="flex items-center gap-1.5 text-[11px] font-semibold text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-all"
+                className="flex items-center gap-1.5 text-[11px] font-display text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-all"
               >
                 {pineCopied ? <Check className="w-3.5 h-3.5 text-bullish" /> : <Code2 className="w-3.5 h-3.5" />}
                 {pineCopied ? 'Kopyalandı!' : 'Pine Script Kopyala'}
@@ -490,7 +490,7 @@ export default function AssetDetailPage() {
                 </button>
                 {showPineHint && (
                   <div className="absolute right-0 top-full mt-2 w-64 glass-e3-overlay rounded-panel p-3 text-[11px] leading-relaxed text-text-secondary z-50">
-                    <p className="font-semibold text-text-primary mb-1.5">Nasıl kullanılır?</p>
+                    <p className="font-display text-text-primary mb-1.5">Nasıl kullanılır?</p>
                     <ol className="list-decimal list-inside space-y-1">
                       <li>Pine Script Kopyala'ya bas</li>
                       <li>TradingView'da Aç ile gerçek TradingView'ı aç</li>
@@ -559,21 +559,21 @@ export default function AssetDetailPage() {
             </GlassCard>
             {recentClosed.length > 0 && (
               <GlassCard className="p-4">
-                <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">
+                <p className="text-xs font-display text-text-muted uppercase tracking-wider mb-3">
                   Son Kapanan Sinyaller
                 </p>
                 <div className="space-y-2">
                   {recentClosed.map((s) => (
                     <div key={s.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-bg-secondary/50 border border-border-subtle text-xs">
                       <div className="min-w-0">
-                        <span className={cn('font-semibold', RECENT_OUTCOME_COLOR[s.outcome ?? ''] ?? 'text-text-muted')}>
+                        <span className={cn('font-display', RECENT_OUTCOME_COLOR[s.outcome ?? ''] ?? 'text-text-muted')}>
                           {RECENT_OUTCOME_LABEL[s.outcome ?? ''] ?? s.outcome}
                         </span>
                         <span className="text-text-muted ml-2">{s.timeframe.toUpperCase()}</span>
                       </div>
                       <div className="text-right flex-shrink-0">
                         {s.actual_return != null && (
-                          <span className={cn('font-mono font-bold mr-2', s.actual_return > 0 ? 'text-bullish' : s.actual_return < 0 ? 'text-bearish' : 'text-text-muted')}>
+                          <span className={cn('font-mono font-display mr-2', s.actual_return > 0 ? 'text-bullish' : s.actual_return < 0 ? 'text-bearish' : 'text-text-muted')}>
                             {formatPercentage(s.actual_return)}
                           </span>
                         )}
@@ -602,7 +602,7 @@ function LevelRow({ label, value, color }: { label: string; value: string; color
   return (
     <div className="flex items-center justify-between">
       <span className="text-xs text-text-muted">{label}</span>
-      <span className={cn('text-sm font-bold font-mono', color)}>{value}</span>
+      <span className={cn('text-sm font-display font-mono', color)}>{value}</span>
     </div>
   );
 }

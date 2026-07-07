@@ -209,7 +209,7 @@ export function ShareCardModal({ data, onClose }: { data: ShareCardData; onClose
     <div className="fixed inset-0 z-50 bg-e-0/70 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-bg-secondary border border-border-subtle rounded-2xl p-5 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-text-primary">Paylaşım Kartı</h3>
+          <h3 className="text-sm font-display text-text-primary">Paylaşım Kartı</h3>
           <button onClick={onClose} className="p-1 text-text-muted hover:text-bearish"><X className="w-4 h-4" /></button>
         </div>
         <div className="rounded-xl overflow-hidden border border-border-subtle bg-bg-primary">
@@ -221,10 +221,10 @@ export function ShareCardModal({ data, onClose }: { data: ShareCardData; onClose
           )}
         </div>
         <div className="flex items-center gap-2 mt-4">
-          <button onClick={download} className="flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold bg-bg-tertiary text-text-primary px-4 py-2.5 rounded-xl hover:bg-bg-tertiary/70 transition-colors">
+          <button onClick={download} className="flex-1 flex items-center justify-center gap-1.5 text-sm font-display bg-bg-tertiary text-text-primary px-4 py-2.5 rounded-xl hover:bg-bg-tertiary/70 transition-colors">
             <Download className="w-4 h-4" /> İndir
           </button>
-          <button onClick={share} className="flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold bg-accent-primary text-white px-4 py-2.5 rounded-xl hover:bg-accent-hover transition-colors">
+          <button onClick={share} className="flex-1 flex items-center justify-center gap-1.5 text-sm font-display bg-accent-primary text-white px-4 py-2.5 rounded-xl hover:bg-accent-hover transition-colors">
             <Share2 className="w-4 h-4" /> Paylaş
           </button>
         </div>

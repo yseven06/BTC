@@ -117,7 +117,7 @@ export default function WatchlistPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-text-primary flex items-center gap-2">
+        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
           <Star className="w-6 h-6 text-accent-primary" /> İzleme Listesi
         </h1>
         <p className="text-sm text-text-secondary mt-1">Kaydettiğin varlıkları tek yerden takip et</p>
@@ -134,7 +134,7 @@ export default function WatchlistPage() {
                 key={l.id}
                 onClick={() => setActiveId(l.id)}
                 className={cn(
-                  'flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all border',
+                  'flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-display transition-all border',
                   activeId === l.id
                     ? 'bg-accent-primary text-white border-accent-primary'
                     : 'bg-bg-secondary text-text-secondary border-border-subtle hover:text-text-primary'
@@ -164,16 +164,16 @@ export default function WatchlistPage() {
           {lists.length === 0 ? (
             <GlassCard className="flex flex-col items-center justify-center p-16 text-center">
               <Star className="w-12 h-12 text-border-medium mb-3" />
-              <h3 className="text-sm font-bold text-text-secondary mb-1">Henüz izleme listen yok</h3>
+              <h3 className="text-sm font-display text-text-secondary mb-1">Henüz izleme listen yok</h3>
               <p className="text-xs text-text-muted max-w-sm">Yukarıdan bir isim yazıp "+" ile ilk listeni oluştur, ardından varlık aramasıyla içine sembol ekle.</p>
             </GlassCard>
           ) : active ? (
             <>
               {/* Header row: list name + delete */}
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-bold text-text-primary">{active.name}</h2>
+                <h2 className="text-base font-display text-text-primary">{active.name}</h2>
                 <button onClick={() => removeList(active)}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-bearish hover:text-bearish/80 transition-colors">
+                  className="flex items-center gap-1.5 text-xs font-display text-bearish hover:text-bearish/80 transition-colors">
                   <Trash2 className="w-3.5 h-3.5" /> Listeyi Sil
                 </button>
               </div>
@@ -203,7 +203,7 @@ export default function WatchlistPage() {
                           disabled={active.asset_ids.includes(a.id)}
                           className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-bg-secondary text-left transition-colors disabled:opacity-40"
                         >
-                          <span className="text-sm font-semibold text-text-primary">{a.symbol} <span className="text-text-muted font-normal">· {a.name}</span></span>
+                          <span className="text-sm font-display text-text-primary">{a.symbol} <span className="text-text-muted font-normal">· {a.name}</span></span>
                           {active.asset_ids.includes(a.id) ? (
                             <span className="text-[10px] text-text-muted">Listede</span>
                           ) : (
@@ -231,14 +231,14 @@ export default function WatchlistPage() {
                     return (
                       <GlassCard key={id} className="p-4 flex items-center justify-between gap-3">
                         <Link href={`/markets/${asset.symbol}`} className="flex-1 min-w-0 group">
-                          <p className="text-sm font-bold text-text-primary group-hover:text-accent-primary transition-colors truncate">{asset.symbol}</p>
+                          <p className="text-sm font-display text-text-primary group-hover:text-accent-primary transition-colors truncate">{asset.symbol}</p>
                           <p className="text-[11px] text-text-muted truncate">{asset.name}</p>
                           {live ? (
                             <div className="flex items-center gap-2 mt-1.5">
-                              <span className="text-sm font-mono font-bold text-text-primary">
+                              <span className="text-sm font-mono font-display text-text-primary">
                                 {formatPrice(live.price)}
                               </span>
-                              <span className={cn('flex items-center gap-0.5 text-[11px] font-mono font-semibold', up ? 'text-bullish' : 'text-bearish')}>
+                              <span className={cn('flex items-center gap-0.5 text-[11px] font-mono font-display', up ? 'text-bullish' : 'text-bearish')}>
                                 {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                 {formatPercentage(live.changePct24h ?? 0)}
                               </span>

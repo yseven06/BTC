@@ -123,13 +123,13 @@ export default function AlertsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold text-text-primary flex items-center gap-2">
+          <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
             <Bell className="w-6 h-6 text-accent-primary" /> Alarmlar
           </h1>
           <p className="text-sm text-text-secondary mt-1">Fiyat, sinyal ve özel koşul alarmları</p>
         </div>
         <button onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-1.5 text-xs font-semibold text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-2 rounded-lg transition-all">
+          className="flex items-center gap-1.5 text-xs font-display text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-2 rounded-lg transition-all">
           <Plus className="w-3.5 h-3.5" /> Yeni Alarm
         </button>
       </div>
@@ -151,7 +151,7 @@ export default function AlertsPage() {
               {searchResults.map((a) => (
                 <button key={a.id} onClick={() => { setPickedAsset(a); setSearch(`${a.symbol} · ${a.name}`); setSearchResults([]); }}
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-bg-secondary text-left transition-colors">
-                  <span className="text-sm font-semibold text-text-primary">{a.symbol} <span className="text-text-muted font-normal">· {a.name}</span></span>
+                  <span className="text-sm font-display text-text-primary">{a.symbol} <span className="text-text-muted font-normal">· {a.name}</span></span>
                 </button>
               ))}
               {searchResults.length === 0 && <p className="text-xs text-text-muted text-center py-2">Sonuç yok.</p>}
@@ -168,7 +168,7 @@ export default function AlertsPage() {
                   { id: 'custom', label: 'Özel (İndikatör)' },
                 ] as { id: AlertType; label: string }[]).map((t) => (
                   <button key={t.id} onClick={() => setAlertType(t.id)}
-                    className={cn('px-3 py-1.5 text-xs font-bold rounded-lg transition-all',
+                    className={cn('px-3 py-1.5 text-xs font-display rounded-lg transition-all',
                       alertType === t.id ? 'bg-accent-primary text-white' : 'text-text-muted hover:text-text-primary')}>
                     {t.label}
                   </button>
@@ -193,7 +193,7 @@ export default function AlertsPage() {
                     {SIGNAL_TYPE_OPTIONS.map((st) => (
                       <button key={st}
                         onClick={() => setSignalTypes((prev) => prev.includes(st) ? prev.filter((x) => x !== st) : [...prev, st])}
-                        className={cn('px-2.5 py-1.5 text-[11px] font-bold uppercase rounded-lg border transition-all',
+                        className={cn('px-2.5 py-1.5 text-[11px] font-display uppercase rounded-lg border transition-all',
                           signalTypes.includes(st) ? 'bg-accent-primary/15 text-accent-primary border-accent-primary/40' : 'bg-bg-secondary text-text-muted border-border-subtle')}>
                         {st.replace('_', ' ')}
                       </button>
@@ -227,7 +227,7 @@ export default function AlertsPage() {
 
               <div className="flex items-center gap-2 pt-1">
                 <button onClick={submitCreate} disabled={creating}
-                  className="text-xs font-semibold bg-accent-primary/15 text-accent-primary px-4 py-2 rounded-lg hover:bg-accent-primary/25 transition-colors disabled:opacity-50">
+                  className="text-xs font-display bg-accent-primary/15 text-accent-primary px-4 py-2 rounded-lg hover:bg-accent-primary/25 transition-colors disabled:opacity-50">
                   {creating ? 'Oluşturuluyor...' : 'Alarmı Oluştur'}
                 </button>
                 <button onClick={() => { resetForm(); setShowForm(false); }} className="p-2 text-text-muted hover:text-bearish">
@@ -248,12 +248,12 @@ export default function AlertsPage() {
             <GlassCard key={alert.id} className="flex items-center gap-4">
               <div className={cn('w-2 h-2 rounded-full flex-shrink-0', !alert.is_active ? 'bg-text-muted' : alert.triggered_at ? 'bg-amber' : 'bg-accent-primary animate-pulse')} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-text-primary">
+                <p className="text-sm font-display text-text-primary">
                   {asset?.symbol ?? '—'} <span className="text-text-muted font-normal">· {describeConditions(alert)}</span>
                 </p>
                 <p className="text-xs text-text-muted">{formatRelativeTime(alert.created_at)}</p>
               </div>
-              <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded', alert.triggered_at ? 'bg-amber/10 text-amber' : alert.is_active ? 'bg-accent-primary/10 text-accent-primary' : 'bg-bg-tertiary text-text-muted')}>
+              <span className={cn('text-[10px] font-display px-2 py-0.5 rounded', alert.triggered_at ? 'bg-amber/10 text-amber' : alert.is_active ? 'bg-accent-primary/10 text-accent-primary' : 'bg-bg-tertiary text-text-muted')}>
                 {alert.triggered_at ? 'Tetiklendi' : alert.is_active ? 'Aktif' : 'Pasif'}
               </span>
               <button onClick={() => toggleActive(alert)} title={alert.is_active ? 'Devre dışı bırak' : 'Aktifleştir'}

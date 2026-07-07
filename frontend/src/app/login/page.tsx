@@ -63,7 +63,7 @@ function LoginForm() {
 
         {/* Form */}
         <form onSubmit={submit} className="glass-panel border border-border-subtle rounded-2xl p-6 space-y-4">
-          <h1 className="text-lg font-bold text-text-primary">Hoş Geldin</h1>
+          <h1 className="text-lg font-display text-text-primary">Hoş Geldin</h1>
 
           {expiredNotice && !error && (
             <div role="status" aria-live="polite" className="bg-accent-primary/10 border border-accent-primary/30 rounded-xl px-3 py-2 text-xs text-accent-primary">
@@ -78,7 +78,7 @@ function LoginForm() {
           )}
 
           <div>
-            <label htmlFor="login-email" className="text-xs font-semibold text-text-muted uppercase">E-posta</label>
+            <label htmlFor="login-email" className="text-xs font-display text-text-muted uppercase">E-posta</label>
             <div className="relative mt-1">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
               <input
@@ -97,7 +97,7 @@ function LoginForm() {
           </div>
 
           <div>
-            <label htmlFor="login-password" className="text-xs font-semibold text-text-muted uppercase">Şifre</label>
+            <label htmlFor="login-password" className="text-xs font-display text-text-muted uppercase">Şifre</label>
             <div className="relative mt-1">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
               <input
@@ -128,14 +128,14 @@ function LoginForm() {
           <button
             type="submit"
             disabled={loading}
-            className="focus-ring w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-primary hover:bg-accent-hover text-white text-sm font-bold transition-colors disabled:opacity-50"
+            className="focus-ring w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-primary hover:bg-accent-hover text-white text-sm font-display transition-colors disabled:opacity-50"
           >
             {loading ? 'Giriş yapılıyor...' : (<>Giriş Yap <ArrowRight className="w-4 h-4" /></>)}
           </button>
 
           <div className="text-center text-xs text-text-secondary pt-2 border-t border-border-subtle">
             Hesabın yok mu?{' '}
-            <Link href="/register" className="text-accent-primary hover:underline font-semibold">
+            <Link href="/register" className="text-accent-primary hover:underline font-display">
               Kayıt ol
             </Link>
           </div>

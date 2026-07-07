@@ -84,7 +84,7 @@ export default function RegisterPage() {
           </div>
           <div className="flex items-center justify-center gap-2">
             <div className="text-h2 font-display text-text-primary">TradeMinds</div>
-            <span className="text-[9px] font-bold uppercase tracking-wider text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
+            <span className="text-[9px] font-display uppercase tracking-wider text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
           </div>
           <p className="text-sm text-text-secondary mt-1">Yeni Hesap Oluştur</p>
           <p className="text-xs text-text-muted mt-2">
@@ -93,7 +93,7 @@ export default function RegisterPage() {
         </div>
 
         <form onSubmit={submit} className="glass-panel border border-border-subtle rounded-2xl p-6 space-y-4">
-          <h1 className="text-lg font-bold text-text-primary">Kayıt Ol</h1>
+          <h1 className="text-lg font-display text-text-primary">Kayıt Ol</h1>
 
           {error && (
             <div id="register-error" role="alert" aria-live="assertive" className="bg-bearish/10 border border-bearish/30 rounded-xl px-3 py-2 text-xs text-bearish">
@@ -102,7 +102,7 @@ export default function RegisterPage() {
           )}
 
           <div>
-            <label htmlFor="register-name" className="text-xs font-semibold text-text-muted uppercase">Ad Soyad</label>
+            <label htmlFor="register-name" className="text-xs font-display text-text-muted uppercase">Ad Soyad</label>
             <div className="relative mt-1">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
               <input
@@ -118,7 +118,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label htmlFor="register-email" className="text-xs font-semibold text-text-muted uppercase">E-posta</label>
+            <label htmlFor="register-email" className="text-xs font-display text-text-muted uppercase">E-posta</label>
             <div className="relative mt-1">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
               <input
@@ -137,7 +137,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label htmlFor="register-password" className="text-xs font-semibold text-text-muted uppercase">Şifre</label>
+            <label htmlFor="register-password" className="text-xs font-display text-text-muted uppercase">Şifre</label>
             <div className="relative mt-1">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
               <input
@@ -183,14 +183,14 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading || !allRequiredAccepted}
-            className="focus-ring w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-primary hover:bg-accent-hover text-white text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="focus-ring w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-primary hover:bg-accent-hover text-white text-sm font-display transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Hesap oluşturuluyor...' : (<>Hesap Oluştur <ArrowRight className="w-4 h-4" /></>)}
           </button>
 
           <div className="text-center text-xs text-text-secondary pt-2 border-t border-border-subtle">
             Zaten hesabın var mı?{' '}
-            <Link href="/login" className="text-accent-primary hover:underline font-semibold">
+            <Link href="/login" className="text-accent-primary hover:underline font-display">
               Giriş yap
             </Link>
           </div>

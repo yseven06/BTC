@@ -60,9 +60,9 @@ function HourHeatmap({ data }: { data: HourData[] }) {
             onMouseEnter={() => setHovered(h)}
             onMouseLeave={() => setHovered(null)}
           >
-            <span className="text-[9px] font-bold text-text-muted">{h.hour.toString().padStart(2, '0')}</span>
+            <span className="text-[9px] font-display text-text-muted">{h.hour.toString().padStart(2, '0')}</span>
             {h.total > 0 && (
-              <span className={cn('text-[8px] font-mono font-bold', heatText(h.win_rate, h.total))}>
+              <span className={cn('text-[8px] font-mono font-display', heatText(h.win_rate, h.total))}>
                 {h.win_rate > 0 ? formatPercentage(h.win_rate, 0, false) : '—'}
               </span>
             )}
@@ -71,7 +71,7 @@ function HourHeatmap({ data }: { data: HourData[] }) {
       </div>
       {hovered && (
         <div className="text-xs text-text-secondary bg-bg-secondary/80 border border-border-subtle rounded-xl px-4 py-2 inline-flex gap-4">
-          <span className="font-bold text-text-primary">{hovered.label}</span>
+          <span className="font-display text-text-primary">{hovered.label}</span>
           <span>Toplam: <b className="text-text-primary">{hovered.total}</b></span>
           <span>Kazanılan: <b className="text-bullish">{hovered.wins}</b></span>
           <span>Kazanma: <b className={heatText(hovered.win_rate, hovered.total)}>{formatPercentage(hovered.win_rate, 0, false)}</b></span>
@@ -109,8 +109,8 @@ function DayHeatmap({ data }: { data: DayData[] }) {
           'flex flex-col items-center gap-1 p-3 rounded-xl border border-border-subtle transition-all hover:scale-105',
           heatColor(d.win_rate, d.total)
         )}>
-          <span className="text-[10px] font-bold text-text-muted">{dayAbbr(d.label)}</span>
-          <span className={cn('text-lg font-extrabold font-mono', heatText(d.win_rate, d.total))}>
+          <span className="text-[10px] font-display text-text-muted">{dayAbbr(d.label)}</span>
+          <span className={cn('text-lg font-display font-mono', heatText(d.win_rate, d.total))}>
             {d.total > 0 ? formatPercentage(d.win_rate, 0, false) : '—'}
           </span>
           <span className="text-[9px] text-text-muted">{d.total} sinyal</span>
@@ -132,10 +132,10 @@ function DirectionBreakdown({ data }: { data: DirectionData[] }) {
       {data.map((d) => (
         <div key={d.direction} className="space-y-1">
           <div className="flex justify-between text-xs">
-            <span className={cn('font-bold', textColors[d.direction])}>{labels[d.direction] ?? d.direction}</span>
+            <span className={cn('font-display', textColors[d.direction])}>{labels[d.direction] ?? d.direction}</span>
             <div className="flex gap-3 text-text-muted">
               <span>{d.total} sinyal</span>
-              <span className={cn('font-bold', heatText(d.win_rate, d.total))}>{formatPercentage(d.win_rate, 0, false)} kazanma</span>
+              <span className={cn('font-display', heatText(d.win_rate, d.total))}>{formatPercentage(d.win_rate, 0, false)} kazanma</span>
               <span className="text-accent-primary">{formatPercentage(d.avg_confidence, 0, false)} güven</span>
             </div>
           </div>
@@ -162,8 +162,8 @@ function RiskBreakdown({ data }: { data: RiskData[] }) {
     <div className="grid grid-cols-2 gap-3">
       {sorted.map((r) => (
         <div key={r.risk_level} className="bg-bg-secondary/50 rounded-xl p-3 border border-border-subtle">
-          <p className={cn('text-xs font-bold mb-1', colors[r.risk_level])}>{labels[r.risk_level] ?? r.risk_level}</p>
-          <p className="text-2xl font-extrabold font-mono text-text-primary">{r.total}</p>
+          <p className={cn('text-xs font-display mb-1', colors[r.risk_level])}>{labels[r.risk_level] ?? r.risk_level}</p>
+          <p className="text-2xl font-display font-mono text-text-primary">{r.total}</p>
           <p className="text-[10px] text-text-muted mt-1">sinyal · {formatPercentage(r.win_rate, 0, false)} kazanma</p>
         </div>
       ))}
@@ -189,7 +189,7 @@ export default function StrategyLabPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold text-text-primary flex items-center gap-2">
+        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
           <FlaskConical className="w-6 h-6 text-accent-primary" /> Strategy Lab
         </h1>
         <p className="text-sm text-text-secondary mt-1">
@@ -216,17 +216,17 @@ export default function StrategyLabPage() {
           {/* Summary stat */}
           <div className="flex gap-3">
             <GlassCard className="flex-1 text-center py-4">
-              <p className="text-3xl font-extrabold font-mono text-text-primary">{data.total_signals}</p>
+              <p className="text-3xl font-display font-mono text-text-primary">{data.total_signals}</p>
               <p className="text-xs text-text-muted mt-1">Toplam Sinyal</p>
             </GlassCard>
             <GlassCard className="flex-1 text-center py-4">
-              <p className="text-3xl font-extrabold font-mono text-bullish">
+              <p className="text-3xl font-display font-mono text-bullish">
                 {formatPercentage(data.by_direction.find(d => d.direction === 'bullish')?.win_rate ?? 0, 0, false)}
               </p>
               <p className="text-xs text-text-muted mt-1">LONG Kazanma</p>
             </GlassCard>
             <GlassCard className="flex-1 text-center py-4">
-              <p className="text-3xl font-extrabold font-mono text-bearish">
+              <p className="text-3xl font-display font-mono text-bearish">
                 {formatPercentage(data.by_direction.find(d => d.direction === 'bearish')?.win_rate ?? 0, 0, false)}
               </p>
               <p className="text-xs text-text-muted mt-1">SHORT Kazanma</p>
@@ -235,7 +235,7 @@ export default function StrategyLabPage() {
 
           {/* Hour heatmap */}
           <GlassCard>
-            <h2 className="text-base font-bold text-text-primary flex items-center gap-2 mb-4">
+            <h2 className="text-base font-display text-text-primary flex items-center gap-2 mb-4">
               <Clock className="w-4 h-4 text-accent-primary" /> Saate Göre Performans
             </h2>
             <HourHeatmap data={data.by_hour} />
@@ -243,7 +243,7 @@ export default function StrategyLabPage() {
 
           {/* Day heatmap */}
           <GlassCard>
-            <h2 className="text-base font-bold text-text-primary flex items-center gap-2 mb-4">
+            <h2 className="text-base font-display text-text-primary flex items-center gap-2 mb-4">
               <Calendar className="w-4 h-4 text-accent-primary" /> Güne Göre Performans
             </h2>
             <DayHeatmap data={data.by_day} />
@@ -252,7 +252,7 @@ export default function StrategyLabPage() {
           {/* Bottom 2-col */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <GlassCard>
-              <h2 className="text-base font-bold text-text-primary flex items-center gap-2 mb-4">
+              <h2 className="text-base font-display text-text-primary flex items-center gap-2 mb-4">
                 <TrendingUp className="w-4 h-4 text-accent-primary" /> Yön Analizi
               </h2>
               {data.by_direction.length > 0
@@ -262,7 +262,7 @@ export default function StrategyLabPage() {
             </GlassCard>
 
             <GlassCard>
-              <h2 className="text-base font-bold text-text-primary flex items-center gap-2 mb-4">
+              <h2 className="text-base font-display text-text-primary flex items-center gap-2 mb-4">
                 <Shield className="w-4 h-4 text-accent-primary" /> Risk Seviyesi
               </h2>
               {data.by_risk.length > 0

@@ -38,8 +38,8 @@ function humanizeDuration(seconds: number): string {
 function Stat({ label, value, sub, valueCls }: { label: string; value: React.ReactNode; sub?: string; valueCls?: string }) {
   return (
     <div className="flex flex-col">
-      <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider">{label}</span>
-      <span className={cn('font-bold text-sm', valueCls ?? 'text-text-primary')}>{value}</span>
+      <span className="text-[9px] text-text-muted font-display uppercase tracking-wider">{label}</span>
+      <span className={cn('font-display text-sm', valueCls ?? 'text-text-primary')}>{value}</span>
       {sub && <span className="text-[10px] text-text-muted">{sub}</span>}
     </div>
   );
@@ -95,7 +95,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
           </div>
           <button
             onClick={() => setReloadKey((k) => k + 1)}
-            className="text-[11px] font-bold text-accent-primary hover:underline"
+            className="text-[11px] font-display text-accent-primary hover:underline"
           >
             Tekrar dene
           </button>
@@ -110,7 +110,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
 
   return (
     <GlassCard dense={compact}>
-      <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5 mb-3">
+      <h3 className="text-xs font-display text-text-muted uppercase tracking-wider flex items-center gap-1.5 mb-3">
         <Brain className="w-3.5 h-3.5 text-accent-primary" /> Akıllı Durum
         <span className="ml-auto normal-case font-normal text-[10px] text-text-muted">
           {data.status_updated_at ? `Güncellendi ${formatRelativeTime(data.status_updated_at)}` : ''}
@@ -122,7 +122,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
         <div className={cn('flex items-start gap-2.5 rounded-xl border px-3 py-2.5 mb-4', status.bg)}>
           <StatusIcon className={cn('w-5 h-5 flex-shrink-0 mt-0.5', status.cls)} />
           <div>
-            <div className={cn('font-bold text-sm flex items-center gap-2', status.cls)}>
+            <div className={cn('font-display text-sm flex items-center gap-2', status.cls)}>
               {status.label}
               {data.seconds_in_state != null && data.seconds_in_state >= 60 && (
                 <span className="text-[10px] font-normal text-text-muted">
@@ -139,7 +139,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
       {!data.is_active && data.detail_label_tr && (
         <div className="flex items-center gap-2 rounded-xl border border-border-subtle bg-bg-tertiary/40 px-3 py-2.5 mb-4">
           <History className="w-4 h-4 text-text-muted flex-shrink-0" />
-          <span className="text-sm font-bold text-text-primary">{data.detail_label_tr}</span>
+          <span className="text-sm font-display text-text-primary">{data.detail_label_tr}</span>
         </div>
       )}
 

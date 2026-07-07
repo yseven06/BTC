@@ -16,8 +16,8 @@ function MetricCard({
 }: { label: string; value: string; sub?: string; accent?: string }) {
   return (
     <GlassCard className="text-center py-4">
-      <p className="text-[10px] text-text-muted uppercase font-semibold">{label}</p>
-      <p className={`text-2xl font-extrabold font-mono mt-1 ${accent ?? 'text-text-primary'}`}>{value}</p>
+      <p className="text-[10px] text-text-muted uppercase font-display">{label}</p>
+      <p className={`text-2xl font-display font-mono mt-1 ${accent ?? 'text-text-primary'}`}>{value}</p>
       {sub && <p className="text-[11px] text-text-secondary mt-1">{sub}</p>}
     </GlassCard>
   );
@@ -49,7 +49,7 @@ export default function MacroPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-text-primary flex items-center gap-2">
+        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
           <Globe className="w-6 h-6 text-accent-primary" /> Makro Görünüm
         </h1>
         <p className="text-sm text-text-secondary mt-1">
@@ -67,7 +67,7 @@ export default function MacroPage() {
         <>
           {/* Turkey */}
           <div>
-            <h2 className="text-sm font-bold text-text-primary mb-3 flex items-center gap-2">
+            <h2 className="text-sm font-display text-text-primary mb-3 flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-accent-primary" /> Türkiye (TCMB)
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -78,7 +78,7 @@ export default function MacroPage() {
 
           {/* USA */}
           <div>
-            <h2 className="text-sm font-bold text-text-primary mb-3 flex items-center gap-2">
+            <h2 className="text-sm font-display text-text-primary mb-3 flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-accent-primary" /> ABD Makro (FRED)
             </h2>
             {!snap.united_states.configured && (
@@ -101,7 +101,7 @@ export default function MacroPage() {
 
       {/* Funding rates */}
       <div>
-        <h2 className="text-sm font-bold text-text-primary mb-3 flex items-center gap-2">
+        <h2 className="text-sm font-display text-text-primary mb-3 flex items-center gap-2">
           <Activity className="w-4 h-4 text-accent-primary" /> Vadeli İşlem Funding Oranı (Bybit)
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -123,7 +123,7 @@ export default function MacroPage() {
 
       {/* KAP disclosures */}
       <div>
-        <h2 className="text-sm font-bold text-text-primary mb-3 flex items-center gap-2">
+        <h2 className="text-sm font-display text-text-primary mb-3 flex items-center gap-2">
           <Building2 className="w-4 h-4 text-accent-primary" /> KAP Açıklamaları (BIST)
         </h2>
         {kap.length === 0 ? (
@@ -134,11 +134,11 @@ export default function MacroPage() {
           <div className="glass-panel border border-border-subtle rounded-2xl divide-y divide-border-subtle overflow-hidden">
             {kap.map((d, i) => (
               <div key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-e-2 transition-colors">
-                <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center text-[10px] font-bold font-mono text-accent-primary">
+                <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center text-[10px] font-display font-mono text-accent-primary">
                   {(d.company ?? '?').slice(0, 3)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-text-primary truncate">{d.title}</p>
+                  <p className="text-sm font-display text-text-primary truncate">{d.title}</p>
                   <p className="text-[11px] text-text-muted">
                     {d.company} · {d.category}
                     {d.published && ` · ${formatRelativeTime(d.published)}`}

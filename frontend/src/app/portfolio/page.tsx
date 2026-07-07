@@ -181,7 +181,7 @@ export default function PortfolioPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-text-primary flex items-center gap-2">
+        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
           <PieChart className="w-6 h-6 text-accent-primary" /> Portföy
         </h1>
         <p className="text-sm text-text-secondary mt-1">Pozisyonlarını takip et, anlık kâr/zararını gör</p>
@@ -198,7 +198,7 @@ export default function PortfolioPage() {
                 key={p.id}
                 onClick={() => setActiveId(p.id)}
                 className={cn(
-                  'px-3.5 py-2 rounded-xl text-sm font-semibold transition-all border',
+                  'px-3.5 py-2 rounded-xl text-sm font-display transition-all border',
                   activeId === p.id
                     ? 'bg-accent-primary text-white border-accent-primary'
                     : 'bg-bg-secondary text-text-secondary border-border-subtle hover:text-text-primary'
@@ -225,7 +225,7 @@ export default function PortfolioPage() {
           {portfolios.length === 0 ? (
             <GlassCard className="flex flex-col items-center justify-center p-16 text-center">
               <Wallet className="w-12 h-12 text-border-medium mb-3" />
-              <h3 className="text-sm font-bold text-text-secondary mb-1">Henüz portföyün yok</h3>
+              <h3 className="text-sm font-display text-text-secondary mb-1">Henüz portföyün yok</h3>
               <p className="text-xs text-text-muted max-w-sm">Yukarıdan bir isim ve başlangıç bakiyesi gir, ardından pozisyon ekle.</p>
             </GlassCard>
           ) : loadingActive || !active ? (
@@ -235,36 +235,36 @@ export default function PortfolioPage() {
               {/* Summary */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <GlassCard className="p-4">
-                  <span className="text-[10px] font-bold text-text-muted uppercase">Toplam Maliyet</span>
-                  <div className="text-xl font-extrabold font-mono mt-1 text-text-primary">{formatUsd(totals.cost)}</div>
+                  <span className="text-[10px] font-display text-text-muted uppercase">Toplam Maliyet</span>
+                  <div className="text-xl font-display font-mono mt-1 text-text-primary">{formatUsd(totals.cost)}</div>
                 </GlassCard>
                 <GlassCard className="p-4">
-                  <span className="text-[10px] font-bold text-text-muted uppercase">Anlık Değer</span>
-                  <div className="text-xl font-extrabold font-mono mt-1 text-text-primary">{formatUsd(totals.value)}</div>
+                  <span className="text-[10px] font-display text-text-muted uppercase">Anlık Değer</span>
+                  <div className="text-xl font-display font-mono mt-1 text-text-primary">{formatUsd(totals.value)}</div>
                 </GlassCard>
                 <GlassCard className="p-4">
-                  <span className="text-[10px] font-bold text-text-muted uppercase">Kâr / Zarar</span>
-                  <div className={cn('text-xl font-extrabold font-mono mt-1', totals.pnl >= 0 ? 'text-bullish' : 'text-bearish')}>
+                  <span className="text-[10px] font-display text-text-muted uppercase">Kâr / Zarar</span>
+                  <div className={cn('text-xl font-display font-mono mt-1', totals.pnl >= 0 ? 'text-bullish' : 'text-bearish')}>
                     {totals.pnl >= 0 ? '+' : ''}{formatUsd(totals.pnl)}
                   </div>
                 </GlassCard>
                 <GlassCard className="p-4">
-                  <span className="text-[10px] font-bold text-text-muted uppercase">Getiri %</span>
-                  <div className={cn('text-xl font-extrabold font-mono mt-1', totals.pnlPct >= 0 ? 'text-bullish' : 'text-bearish')}>
+                  <span className="text-[10px] font-display text-text-muted uppercase">Getiri %</span>
+                  <div className={cn('text-xl font-display font-mono mt-1', totals.pnlPct >= 0 ? 'text-bullish' : 'text-bearish')}>
                     {formatPercentage(totals.pnlPct)}
                   </div>
                 </GlassCard>
               </div>
 
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-bold text-text-primary">Açık Pozisyonlar</h2>
+                <h2 className="text-base font-display text-text-primary">Açık Pozisyonlar</h2>
                 <div className="flex items-center gap-3">
                   <button onClick={() => setShowAddForm(!showAddForm)}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-all">
+                    className="flex items-center gap-1.5 text-xs font-display text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-all">
                     <Plus className="w-3.5 h-3.5" /> Pozisyon Ekle
                   </button>
                   <button onClick={() => removePortfolio(active.id, active.name)}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-bearish hover:text-bearish/80 transition-colors">
+                    className="flex items-center gap-1.5 text-xs font-display text-bearish hover:text-bearish/80 transition-colors">
                     <Trash2 className="w-3.5 h-3.5" /> Portföyü Sil
                   </button>
                 </div>
@@ -286,7 +286,7 @@ export default function PortfolioPage() {
                       {searchResults.map((a) => (
                         <button key={a.id} onClick={() => { setPickedAsset(a); setSearch(`${a.symbol} · ${a.name}`); setSearchResults([]); }}
                           className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-bg-secondary text-left transition-colors">
-                          <span className="text-sm font-semibold text-text-primary">{a.symbol} <span className="text-text-muted font-normal">· {a.name}</span></span>
+                          <span className="text-sm font-display text-text-primary">{a.symbol} <span className="text-text-muted font-normal">· {a.name}</span></span>
                         </button>
                       ))}
                       {searchResults.length === 0 && <p className="text-xs text-text-muted text-center py-2">Sonuç yok.</p>}
@@ -299,7 +299,7 @@ export default function PortfolioPage() {
                       <input value={entryPrice} onChange={(e) => setEntryPrice(e.target.value)} type="number" step="any" placeholder="Ortalama Giriş Fiyatı"
                         className="px-3 py-2 text-sm bg-bg-secondary border border-border-subtle rounded-xl text-text-primary outline-none w-44" />
                       <button onClick={submitHolding} disabled={adding || !qty || !entryPrice}
-                        className="text-xs font-semibold bg-accent-primary/15 text-accent-primary px-3 py-2 rounded-lg hover:bg-accent-primary/25 transition-colors disabled:opacity-50">
+                        className="text-xs font-display bg-accent-primary/15 text-accent-primary px-3 py-2 rounded-lg hover:bg-accent-primary/25 transition-colors disabled:opacity-50">
                         {adding ? 'Ekleniyor...' : 'Pozisyonu Ekle'}
                       </button>
                       <button onClick={() => { setPickedAsset(null); setSearch(''); }} className="p-2 text-text-muted hover:text-bearish">
@@ -319,7 +319,7 @@ export default function PortfolioPage() {
                 <div className="glass-panel border border-border-subtle rounded-2xl overflow-hidden">
                   <div className="grid grid-cols-[1.2fr_0.9fr_1fr_1fr_1fr_1fr_auto] gap-3 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
                     {['VARLIK', 'MİKTAR', 'GİRİŞ FİYATI', 'ANLIK FİYAT', 'DEĞER', 'K/Z %', ''].map((h) => (
-                      <span key={h} className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{h}</span>
+                      <span key={h} className="text-[10px] font-display text-text-muted uppercase tracking-wider">{h}</span>
                     ))}
                   </div>
                   <div className="divide-y divide-border-subtle">
@@ -333,12 +333,12 @@ export default function PortfolioPage() {
                       const pnlAmount = value - cost;
                       return (
                         <div key={h.id} className="grid grid-cols-[1.2fr_0.9fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center px-5 py-3 text-xs hover:bg-e-2">
-                          <span className="font-bold text-text-primary">{asset?.symbol ?? '—'}</span>
+                          <span className="font-display text-text-primary">{asset?.symbol ?? '—'}</span>
                           <span className="font-mono text-text-secondary">{h.quantity}</span>
                           <span className="font-mono text-text-secondary">${formatPrice(h.average_entry_price)}</span>
                           <span className="font-mono text-text-primary">${formatPrice(currentPrice)}</span>
                           <span className="font-mono text-text-primary">{formatUsd(value)}</span>
-                          <span className={cn('flex items-center gap-1 font-bold font-mono', pnlPct >= 0 ? 'text-bullish' : 'text-bearish')}>
+                          <span className={cn('flex items-center gap-1 font-display font-mono', pnlPct >= 0 ? 'text-bullish' : 'text-bearish')}>
                             {pnlPct >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                             {formatPercentage(pnlPct)}
                           </span>
@@ -367,15 +367,15 @@ export default function PortfolioPage() {
               {closedHoldings.length > 0 && (
                 <>
                   <div className="flex items-center justify-between pt-2">
-                    <h2 className="text-base font-bold text-text-primary">Kapanan Pozisyonlar</h2>
-                    <span className={cn('text-sm font-bold font-mono', realizedTotal >= 0 ? 'text-bullish' : 'text-bearish')}>
+                    <h2 className="text-base font-display text-text-primary">Kapanan Pozisyonlar</h2>
+                    <span className={cn('text-sm font-display font-mono', realizedTotal >= 0 ? 'text-bullish' : 'text-bearish')}>
                       Gerçekleşen K/Z: {realizedTotal >= 0 ? '+' : ''}{formatUsd(realizedTotal)}
                     </span>
                   </div>
                   <div className="glass-panel border border-border-subtle rounded-2xl overflow-hidden">
                     <div className="grid grid-cols-[1.2fr_0.9fr_1fr_1fr_1fr_1fr_auto] gap-3 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
                       {['VARLIK', 'MİKTAR', 'GİRİŞ', 'ÇIKIŞ', 'GERÇEKLEŞEN K/Z', 'K/Z %', ''].map((h) => (
-                        <span key={h} className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{h}</span>
+                        <span key={h} className="text-[10px] font-display text-text-muted uppercase tracking-wider">{h}</span>
                       ))}
                     </div>
                     <div className="divide-y divide-border-subtle">
@@ -384,14 +384,14 @@ export default function PortfolioPage() {
                         const pnlPct = h.realized_pnl_pct ?? 0;
                         return (
                           <div key={h.id} className="grid grid-cols-[1.2fr_0.9fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center px-5 py-3 text-xs hover:bg-e-2 opacity-90">
-                            <span className="font-bold text-text-primary">{asset?.symbol ?? '—'}</span>
+                            <span className="font-display text-text-primary">{asset?.symbol ?? '—'}</span>
                             <span className="font-mono text-text-secondary">{h.quantity}</span>
                             <span className="font-mono text-text-secondary">${formatPrice(h.average_entry_price)}</span>
                             <span className="font-mono text-text-secondary">${formatPrice(h.exit_price ?? 0)}</span>
-                            <span className={cn('font-mono font-bold', (h.realized_pnl ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
+                            <span className={cn('font-mono font-display', (h.realized_pnl ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
                               {(h.realized_pnl ?? 0) >= 0 ? '+' : ''}{formatUsd(h.realized_pnl ?? 0)}
                             </span>
-                            <span className={cn('flex items-center gap-1 font-bold font-mono', pnlPct >= 0 ? 'text-bullish' : 'text-bearish')}>
+                            <span className={cn('flex items-center gap-1 font-display font-mono', pnlPct >= 0 ? 'text-bullish' : 'text-bearish')}>
                               {pnlPct >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                               {formatPercentage(pnlPct)}
                             </span>

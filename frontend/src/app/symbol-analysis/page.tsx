@@ -28,7 +28,7 @@ function QualityBar({ score }: { score: number }) {
       <div className="w-16 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
         <div className={cn('h-full rounded-full', color)} style={{ width: `${safeScore * 10}%` }} />
       </div>
-      <span className={cn('text-xs font-bold font-mono', text)}>{formatNumber(safeScore, 1)}/10</span>
+      <span className={cn('text-xs font-display font-mono', text)}>{formatNumber(safeScore, 1)}/10</span>
     </div>
   );
 }
@@ -44,8 +44,8 @@ function HtfSplit({ types }: { types: Record<string, number> }) {
         <div className="h-full bg-accent-ui/70 rounded-r-full" style={{ width: `${fvg / total * 100}%` }} />
       </div>
       <div className="flex gap-2 text-[10px] whitespace-nowrap">
-        <span className="text-accent-primary font-bold">OB {ob}</span>
-        <span className="text-accent-ui font-bold">FVG {fvg}</span>
+        <span className="text-accent-primary font-display">OB {ob}</span>
+        <span className="text-accent-ui font-display">FVG {fvg}</span>
       </div>
     </div>
   );
@@ -108,7 +108,7 @@ export default function SymbolAnalysisPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold text-text-primary flex items-center gap-2">
+        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
           <BarChart3 className="w-6 h-6 text-accent-primary" /> Sembol Analizi
         </h1>
         <p className="text-sm text-text-secondary mt-1">
@@ -129,15 +129,15 @@ export default function SymbolAnalysisPage() {
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3">
         <GlassCard className="text-center py-4">
-          <p className="text-3xl font-extrabold font-mono text-text-primary">{data?.total_symbols ?? '—'}</p>
+          <p className="text-3xl font-display font-mono text-text-primary">{data?.total_symbols ?? '—'}</p>
           <p className="text-xs text-text-muted mt-1">İzlenen Sembol</p>
         </GlassCard>
         <GlassCard className="text-center py-4">
-          <p className="text-3xl font-extrabold font-mono text-text-primary">{totalSigs}</p>
+          <p className="text-3xl font-display font-mono text-text-primary">{totalSigs}</p>
           <p className="text-xs text-text-muted mt-1">Toplam Sinyal</p>
         </GlassCard>
         <GlassCard className="text-center py-4">
-          <p className="text-3xl font-extrabold font-mono text-bullish">{globalWR}</p>
+          <p className="text-3xl font-display font-mono text-bullish">{globalWR}</p>
           <p className="text-xs text-text-muted mt-1">Genel Kazanma Oranı</p>
         </GlassCard>
       </div>
@@ -159,7 +159,7 @@ export default function SymbolAnalysisPage() {
               key={s}
               onClick={() => setSort(s)}
               className={cn(
-                'px-3 py-1 text-xs font-semibold rounded-lg transition-all',
+                'px-3 py-1 text-xs font-display rounded-lg transition-all',
                 sort === s ? 'bg-accent-primary text-white' : 'text-text-muted hover:text-text-primary'
               )}
             >
@@ -174,7 +174,7 @@ export default function SymbolAnalysisPage() {
         {/* Head */}
         <div className="grid grid-cols-[2fr_1fr_1.5fr_1.5fr_1.5fr_1.5fr] gap-4 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
           {['SEMBOL', 'TOPLAM', 'KALİTE SKORU', 'KAZANMA ORANI', 'HTF TİPİ (OB/FVG)', 'YÖN DAĞILIMI'].map((h) => (
-            <span key={h} className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{h}</span>
+            <span key={h} className="text-[10px] font-display text-text-muted uppercase tracking-wider">{h}</span>
           ))}
         </div>
 
@@ -202,18 +202,18 @@ export default function SymbolAnalysisPage() {
               >
                 {/* Symbol */}
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-bold font-mono text-xs text-accent-primary flex-shrink-0 overflow-hidden">
+                  <div className="w-9 h-9 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center font-display font-mono text-xs text-accent-primary flex-shrink-0 overflow-hidden">
                     <CoinIcon symbol={sym.symbol} assetType={sym.asset_type} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-text-primary">{sym.symbol}</p>
+                    <p className="text-sm font-display text-text-primary">{sym.symbol}</p>
                     <p className="text-[10px] text-text-muted">{sym.name}</p>
                   </div>
                 </div>
 
                 {/* Total */}
                 <div>
-                  <p className="text-sm font-bold font-mono text-text-primary">{sym.total}</p>
+                  <p className="text-sm font-display font-mono text-text-primary">{sym.total}</p>
                   <p className="text-[10px] text-text-muted">
                     {sym.active > 0 && <span className="text-accent-primary">{sym.active} aktif · </span>}
                     {resolved > 0 ? `${resolved} kapandı` : 'kapanmadı'}
@@ -225,7 +225,7 @@ export default function SymbolAnalysisPage() {
 
                 {/* Win Rate */}
                 <div>
-                  <p className={cn('text-sm font-bold font-mono', wrColor)}>
+                  <p className={cn('text-sm font-display font-mono', wrColor)}>
                     {resolved > 0 ? formatPercentage(sym.win_rate, 0, false) : '—'}
                   </p>
                   {resolved > 0 && (

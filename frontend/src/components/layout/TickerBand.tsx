@@ -58,7 +58,7 @@ function TickerItemDisplay({ item }: { item: TickerItem }) {
 
   return (
     <div className="flex items-center gap-2.5 px-4 py-1 cursor-default group">
-      <span className="text-xs font-semibold text-text-primary group-hover:text-accent-primary transition-colors whitespace-nowrap">
+      <span className="text-xs font-display text-text-primary group-hover:text-accent-primary transition-colors whitespace-nowrap">
         {item.symbol}
       </span>
       <span className="text-xs num font-num-480 text-text-secondary whitespace-nowrap">

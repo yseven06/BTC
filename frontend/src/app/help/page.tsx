@@ -119,7 +119,7 @@ function FaqRow({ item, open, onToggle }: { item: FaqItem; open: boolean; onTogg
         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-e-2 transition-colors"
       >
         <Icon className={cn('w-4 h-4 flex-shrink-0', open ? 'text-accent-primary' : 'text-text-muted')} />
-        <span className="flex-1 text-sm font-semibold text-text-primary">{item.q}</span>
+        <span className="flex-1 text-sm font-display text-text-primary">{item.q}</span>
         <ChevronDown className={cn('w-4 h-4 text-text-muted transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
@@ -138,7 +138,7 @@ export default function HelpPage() {
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold text-text-primary flex items-center gap-2">
+        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
           <HelpCircle className="w-6 h-6 text-accent-primary" /> Yardım Merkezi
         </h1>
         <p className="text-sm text-text-secondary mt-1">
@@ -160,7 +160,7 @@ export default function HelpPage() {
 
       {/* Contact */}
       <GlassCard>
-        <h2 className="text-base font-bold text-text-primary mb-3">İletişim</h2>
+        <h2 className="text-base font-display text-text-primary mb-3">İletişim</h2>
         <p className="text-xs text-text-secondary mb-4">
           Sorularını bize ulaştır — geri dönüş süremiz Pro/Premium kullanıcılar için 24 saat içindedir.
         </p>
@@ -175,7 +175,7 @@ export default function HelpPage() {
             >
               <Mail className="w-4 h-4 text-accent-primary" />
               <div>
-                <p className="text-sm font-semibold text-text-primary">E-posta</p>
+                <p className="text-sm font-display text-text-primary">E-posta</p>
                 <p className="text-xs text-text-muted">{SUPPORT_EMAIL}</p>
               </div>
             </a>
@@ -188,7 +188,7 @@ export default function HelpPage() {
             >
               <MessageCircle className="w-4 h-4 text-accent-primary" />
               <div>
-                <p className="text-sm font-semibold text-text-primary">Telegram Destek</p>
+                <p className="text-sm font-display text-text-primary">Telegram Destek</p>
                 <p className="text-xs text-text-muted">{SUPPORT_TELEGRAM}</p>
               </div>
             </a>
@@ -200,7 +200,7 @@ export default function HelpPage() {
             >
               <Mail className="w-4 h-4 text-accent-primary" />
               <div>
-                <p className="text-sm font-semibold text-text-primary">İletişim & Künye</p>
+                <p className="text-sm font-display text-text-primary">İletişim & Künye</p>
                 <p className="text-xs text-text-muted">Resmi iletişim bilgilerimiz künye sayfamızda yer alır.</p>
               </div>
             </Link>
