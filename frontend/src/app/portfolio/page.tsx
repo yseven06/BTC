@@ -7,6 +7,7 @@ import {
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCardModal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { cn, formatPrice, formatUsd, formatPercentage } from '@/lib/utils';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import {
@@ -356,18 +357,22 @@ export default function PortfolioPage() {
                             {formatPercentage(pnlPct)}
                           </span>
                           <div className="flex items-center gap-1">
-                            <button onClick={() => openShareCard(h, currentPrice, pnlPct, pnlAmount)} title="Paylaş"
-                              className="p-1.5 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-colors">
-                              <Share2 className="w-3.5 h-3.5" />
-                            </button>
+                            <Tooltip content="Paylaş">
+                              <button onClick={() => openShareCard(h, currentPrice, pnlPct, pnlAmount)}
+                                className="p-1.5 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-colors">
+                                <Share2 className="w-3.5 h-3.5" />
+                              </button>
+                            </Tooltip>
                             <button onClick={() => closePosition(h, currentPrice)} disabled={closingId === h.id} title="Pozisyonu Kapat"
                               className="p-1.5 rounded-lg text-text-muted hover:text-amber hover:bg-amber/10 transition-colors disabled:opacity-40">
                               <LogOut className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => removeHolding(h.id)} title="Sil"
-                              className="p-1.5 rounded-lg text-text-muted hover:text-bearish hover:bg-bearish/10 transition-colors">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            <Tooltip content="Sil">
+                              <button onClick={() => removeHolding(h.id)}
+                                className="p-1.5 rounded-lg text-text-muted hover:text-bearish hover:bg-bearish/10 transition-colors">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </Tooltip>
                           </div>
                         </div>
                       );
@@ -409,14 +414,18 @@ export default function PortfolioPage() {
                               {formatPercentage(pnlPct)}
                             </span>
                             <div className="flex items-center gap-1">
-                              <button onClick={() => openShareCard(h, h.exit_price ?? 0, pnlPct, h.realized_pnl ?? 0)} title="Paylaş"
-                                className="p-1.5 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-colors">
-                                <Share2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button onClick={() => removeHolding(h.id)} title="Sil"
-                                className="p-1.5 rounded-lg text-text-muted hover:text-bearish hover:bg-bearish/10 transition-colors">
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <Tooltip content="Paylaş">
+                                <button onClick={() => openShareCard(h, h.exit_price ?? 0, pnlPct, h.realized_pnl ?? 0)}
+                                  className="p-1.5 rounded-lg text-text-muted hover:text-accent-primary hover:bg-accent-primary/10 transition-colors">
+                                  <Share2 className="w-3.5 h-3.5" />
+                                </button>
+                              </Tooltip>
+                              <Tooltip content="Sil">
+                                <button onClick={() => removeHolding(h.id)}
+                                  className="p-1.5 rounded-lg text-text-muted hover:text-bearish hover:bg-bearish/10 transition-colors">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </Tooltip>
                             </div>
                           </div>
                         );

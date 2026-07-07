@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, Plus, Trash2, Search, X, Power } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import {
   fetchAlerts, createAlert, updateAlert, deleteAlert, searchAssets, fetchAssets,
@@ -264,10 +265,12 @@ export default function AlertsPage() {
               <span className={cn('text-micro font-medium px-2 py-0.5 rounded', alert.triggered_at ? 'bg-amber/10 text-amber' : alert.is_active ? 'bg-accent-primary/10 text-accent-primary' : 'bg-bg-tertiary text-text-muted')}>
                 {alert.triggered_at ? 'Tetiklendi' : alert.is_active ? 'Aktif' : 'Pasif'}
               </span>
-              <button onClick={() => toggleActive(alert)} title={alert.is_active ? 'Devre dışı bırak' : 'Aktifleştir'}
-                className={cn('p-1.5 rounded-lg transition-colors', alert.is_active ? 'text-accent-primary hover:bg-accent-primary/10' : 'text-text-muted hover:bg-bg-tertiary')}>
-                <Power className="w-3.5 h-3.5" />
-              </button>
+              <Tooltip content={alert.is_active ? 'Devre dışı bırak' : 'Aktifleştir'}>
+                <button onClick={() => toggleActive(alert)}
+                  className={cn('p-1.5 rounded-lg transition-colors', alert.is_active ? 'text-accent-primary hover:bg-accent-primary/10' : 'text-text-muted hover:bg-bg-tertiary')}>
+                  <Power className="w-3.5 h-3.5" />
+                </button>
+              </Tooltip>
               <button onClick={() => removeAlert(alert)} className="p-1.5 rounded-lg text-text-muted hover:text-bearish hover:bg-bearish/10 transition-colors">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>

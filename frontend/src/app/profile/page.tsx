@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Shield, Calendar, Save, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { useAuth } from '@/lib/auth-context';
 import { updateProfile, changePassword, uploadAvatar } from '@/lib/api';
 import { formatDateTR } from '@/lib/utils';
@@ -185,24 +186,24 @@ export default function ProfilePage() {
             {/* Presets Grid */}
             <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mt-2">
               {PRESET_AVATARS.map((preset, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => setAvatarUrl(preset.url)}
-                  className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
-                    avatarUrl === preset.url
-                      ? 'border-accent-primary scale-95'
-                      : 'border-border-subtle hover:border-border-medium'
-                  }`}
-                  title={preset.name}
-                >
-                  <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" />
-                  {avatarUrl === preset.url && (
-                    <div className="absolute inset-0 bg-accent-primary/20 flex items-center justify-center">
-                      <Check className="w-4 h-4 text-white bg-accent-primary rounded-full p-0.5" />
-                    </div>
-                  )}
-                </button>
+                <Tooltip key={index} content={preset.name}>
+                  <button
+                    type="button"
+                    onClick={() => setAvatarUrl(preset.url)}
+                    className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
+                      avatarUrl === preset.url
+                        ? 'border-accent-primary scale-95'
+                        : 'border-border-subtle hover:border-border-medium'
+                    }`}
+                  >
+                    <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" />
+                    {avatarUrl === preset.url && (
+                      <div className="absolute inset-0 bg-accent-primary/20 flex items-center justify-center">
+                        <Check className="w-4 h-4 text-white bg-accent-primary rounded-full p-0.5" />
+                      </div>
+                    )}
+                  </button>
+                </Tooltip>
               ))}
             </div>
 
