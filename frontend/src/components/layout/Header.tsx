@@ -78,7 +78,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
           <div
             className={cn(
               'relative flex items-center gap-2 rounded-xl px-4 py-2',
-              'bg-bg-primary/60 border transition-all duration-200',
+              'bg-bg-primary/60 border transition-all duration-[var(--dur-state)]',
               searchFocused
                 ? 'border-accent-primary/40'
                 : 'border-border-subtle hover:border-border-medium'
@@ -137,7 +137,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
               className={cn(
                 'relative p-2 rounded-lg',
                 'text-text-secondary hover:text-text-primary',
-                'hover:bg-e-2 transition-all duration-200 focus-ring',
+                'hover:bg-e-2 transition-all duration-[var(--dur-state)] focus-ring',
                 showNotifications && 'bg-white/[0.04] text-text-primary'
               )}
               title={tr('tooltip.notifications')}
@@ -215,7 +215,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
               }}
               className={cn(
                 'flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl',
-                'hover:bg-e-2 transition-all duration-200 focus-ring',
+                'hover:bg-e-2 transition-all duration-[var(--dur-state)] focus-ring',
                 showUserMenu && 'bg-white/[0.04]'
               )}
             >
@@ -228,7 +228,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
               </div>
               <ChevronDown
                 className={cn(
-                  'w-3.5 h-3.5 text-text-muted transition-transform duration-200',
+                  'w-3.5 h-3.5 text-text-muted transition-transform duration-[var(--dur-state)]',
                   showUserMenu && 'rotate-180'
                 )}
               />

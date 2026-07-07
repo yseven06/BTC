@@ -42,7 +42,7 @@ export default function MainLayout({ children, fullWidth = false }: MainLayoutPr
       {/* Main Right Area — no left padding on mobile (drawer overlays), padded for
           the fixed rail on desktop. */}
       <div className={cn(
-        "flex-1 flex flex-col min-w-0 relative transition-all duration-300 pl-0",
+        "flex-1 flex flex-col min-w-0 relative transition-all duration-[var(--dur-state)] pl-0",
         sidebarCollapsed ? "lg:pl-[72px]" : "lg:pl-[260px]"
       )}>
         {/* Top Header (includes TickerBand internally) */}

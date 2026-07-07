@@ -95,7 +95,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
       className={cn(
         'fixed left-0 top-0 z-40 h-screen flex flex-col',
         'glass-panel border-r border-border-subtle',
-        'transition-all duration-300 ease-in-out',
+        'transition-all duration-[var(--dur-state)] ease-in-out',
         // Off-canvas drawer on mobile; always visible on desktop (lg+).
         '-translate-x-full lg:translate-x-0',
         mobileOpen && 'translate-x-0',
@@ -191,7 +191,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
         <button
           onClick={onToggle}
           className={cn(
-            'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-e-2 transition-all duration-200',
+            'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-e-2 transition-all duration-[var(--dur-state)]',
             collapsed && 'justify-center'
           )}
         >

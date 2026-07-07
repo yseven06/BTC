@@ -364,19 +364,19 @@
    ============================================ */
 @layer components {
   .animate-in {
-    animation: fadeIn 0.3s ease-out forwards;
+    animation: fadeIn var(--dur-overlay) ease-out forwards;
   }
 
   .animate-slide-up {
-    animation: slideUp 0.3s ease-out forwards;
+    animation: slideUp var(--dur-overlay) ease-out forwards;
   }
 
   .animate-slide-down {
-    animation: slideDown 0.3s ease-out forwards;
+    animation: slideDown var(--dur-overlay) ease-out forwards;
   }
 
   .animate-scale-in {
-    animation: scaleIn 0.2s ease-out forwards;
+    animation: scaleIn var(--dur-state) ease-out forwards;
   }
 
   .transition-default {

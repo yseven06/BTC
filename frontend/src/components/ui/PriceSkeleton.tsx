@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
  * Self-contained: it is rendered only while the price is missing and unmounts
  * the moment the price arrives, so no parent loading state is needed.
  */
-export function PriceSkeleton({ graceMs = 4000 }: { graceMs?: number }) {
+export function PriceSkeleton({ graceMs = 300 }: { graceMs?: number }) {
   const [waited, setWaited] = useState(false);
 
   useEffect(() => {

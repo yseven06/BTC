@@ -109,7 +109,7 @@ export default function OnboardingChecklist() {
 
       {/* Progress bar */}
       <div className="mt-3 h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
-        <div className="h-full bg-accent-primary transition-all duration-300" style={{ width: `${(done / total) * 100}%` }} />
+        <div className="h-full bg-accent-primary transition-all duration-[var(--dur-settle)]" style={{ width: `${(done / total) * 100}%` }} />
       </div>
 
       {allDone ? (

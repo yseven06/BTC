@@ -181,7 +181,7 @@ function EngineCard({ engine, onClick, compact }: { engine: EngineRow; onClick: 
       title={`${engine.label} — Detayları görmek için tıkla`}
       className={cn(
         'group relative bg-bg-secondary/40 rounded-card',
-        'border transition-all duration-200',
+        'border transition-all duration-[var(--dur-state)]',
         'hover:bg-bg-secondary/60 hover:-translate-y-0.5',
         biasConfig.border,
         'text-left w-full',

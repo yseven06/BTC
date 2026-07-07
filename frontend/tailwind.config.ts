@@ -66,10 +66,10 @@ const config: Config = {
         'num-480': '480', 'num-520': '520', 'num-560': '560',
       },
       animation: {
-        'slide-up': 'slideUp 0.3s ease-out',
-        'slide-down': 'slideDown 0.3s ease-out',
-        'fade-in': 'fadeIn 0.3s ease-out',
-        'scale-in': 'scaleIn 0.2s ease-out',
+        'slide-up': 'slideUp var(--dur-overlay) ease-out',
+        'slide-down': 'slideDown var(--dur-overlay) ease-out',
+        'fade-in': 'fadeIn var(--dur-overlay) ease-out',
+        'scale-in': 'scaleIn var(--dur-state) ease-out',
       },
       keyframes: {
         slideUp: {
