@@ -27,7 +27,7 @@ export function PriceSkeleton({ graceMs = 4000 }: { graceMs?: number }) {
     <span
       role="status"
       aria-label="Fiyat yükleniyor"
-      className="inline-block h-3.5 w-14 rounded bg-text-muted/20 animate-pulse align-middle"
+      className="inline-block h-3.5 w-14 rounded bg-text-muted/20 align-middle"
     />
   );
 }

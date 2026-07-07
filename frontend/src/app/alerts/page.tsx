@@ -246,7 +246,7 @@ export default function AlertsPage() {
           const asset = assetCache[alert.asset_id];
           return (
             <GlassCard key={alert.id} className="flex items-center gap-4">
-              <div className={cn('w-2 h-2 rounded-full flex-shrink-0', !alert.is_active ? 'bg-text-muted' : alert.triggered_at ? 'bg-amber' : 'bg-accent-primary animate-pulse')} />
+              <div className={cn('w-2 h-2 rounded-full flex-shrink-0', !alert.is_active ? 'bg-text-muted' : alert.triggered_at ? 'bg-amber' : 'bg-accent-primary' /* idle-nabiz emekli (P6/M07 MO-06): durum statik lumen */)} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-display text-text-primary">
                   {asset?.symbol ?? '—'} <span className="text-text-muted font-normal">· {describeConditions(alert)}</span>

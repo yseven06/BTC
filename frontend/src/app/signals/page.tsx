@@ -947,7 +947,7 @@ export default function SignalsPage() {
               disabled={generating || refreshing}
               className="flex items-center gap-1.5 text-xs font-display text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
             >
-              <Zap className={cn('w-3.5 h-3.5', generating && 'animate-pulse')} />
+              <Zap className="w-3.5 h-3.5" />
               {generating ? 'Üretiliyor...' : 'Sinyal Üret'}
             </button>
           )}

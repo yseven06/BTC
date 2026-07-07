@@ -235,7 +235,7 @@ export default function ProfilePage() {
                   />
                 </label>
                 {uploading && (
-                  <span className="text-micro text-text-muted animate-pulse">Yükleniyor...</span>
+                  <span className="text-micro text-text-muted">Yükleniyor...</span>
                 )}
               </div>
             </div>

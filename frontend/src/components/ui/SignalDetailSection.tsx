@@ -451,9 +451,8 @@ function RiskBadge({ level }: { level: string | undefined }) {
     <div className={cn(
       'flex items-center gap-2 px-3 py-2 rounded-xl border whitespace-nowrap',
       config.cls,
-      // A risk this severe deserves to draw the eye rather than sit as
-      // static as every other badge on the page.
-      isVeryHigh && 'animate-pulse'
+      // Cok-yuksek risk vurgusu STATIK (P6/M07, MO-06 idle-nabiz yasak):
+      // dikkat cekme isi config.cls yuksek-kontrast renk+ikon+etikette.
     )}>
       <ShieldAlert className="w-4 h-4 flex-shrink-0" />
       <div className="flex flex-col leading-none">

@@ -290,9 +290,9 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <GlassCard key={i} dense>
-              <div className="h-2.5 w-24 rounded bg-white/[0.06] animate-pulse" />
-              <div className="h-8 w-20 mt-2 rounded bg-white/[0.06] animate-pulse" />
-              <div className="h-2 w-28 mt-2 rounded bg-white/[0.04] animate-pulse" />
+              <div className="h-2.5 w-24 rounded bg-white/[0.06]" />
+              <div className="h-8 w-20 mt-2 rounded bg-white/[0.06]" />
+              <div className="h-2 w-28 mt-2 rounded bg-white/[0.04]" />
             </GlassCard>
           ))}
         </div>
