@@ -187,8 +187,8 @@
 @layer base {
   button:not(:disabled),
   a {
-    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-                filter 0.15s ease;
+    transition: transform var(--dur-micro) cubic-bezier(0.4, 0, 0.2, 1),
+                filter var(--dur-micro) ease;
   }
 
   button:not(:disabled):active {
@@ -379,13 +379,6 @@
     animation: scaleIn var(--dur-state) ease-out forwards;
   }
 
-  .transition-default {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .transition-fast {
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  }
 }
 
 /* ============================================
@@ -448,7 +441,9 @@
     padding: 10px 14px;
     border-radius: 10px;
     color: var(--text-secondary);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    /* isinma: transition:all -> spesifik prop (whitelist) + token (P6/M10, MO-01/MO-02) */
+    transition: color var(--dur-state) cubic-bezier(0.4, 0, 0.2, 1),
+                background-color var(--dur-state) cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
