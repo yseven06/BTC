@@ -389,57 +389,37 @@
 }
 
 /* ============================================
-   TP Ladder "Reached" Pulse — only on TP levels
-   that have actually been hit (hit_tpN = true).
-   An unreached target gets no motion at all now —
-   showing live motion on something that hasn't
-   happened yet read as "this is already done",
-   which is exactly backwards. Motion is reserved
-   for the moment a target is genuinely achieved:
-   a breathing glow on the badge + a traveling
-   highlight along the connector line, like a
-   small celebration rather than a progress meter.
+   TP Ladder "Reached" — user_win olay-motion (P6/M04, Bible §06 MO-04/MO-06 + COL-12)
+   Anlam KORUNUR (hit_tpN=true gercek olay) ama uygulama event-only doktrine cekildi:
+   sonsuz-dongu -> TEK-ATIM (iteration 1); ease-in-out -> --ease-signal; 2.4s -> --dur-settle;
+   ham bull-glow rgba -> owned --amber (olay-bagli); gezici glint (tarama tropu) ELENDI.
    ============================================ */
-@keyframes tp-pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35); }
-  50%      { box-shadow: 0 0 14px 3px rgba(16, 185, 129, 0.45); }
-}
+  @keyframes tp-win-photon {
+    0%   { opacity: 0.9; }
+    100% { opacity: 0; }
+  }
 
-.tp-pulse-badge {
-  animation: tp-pulse-glow 2.4s ease-in-out infinite;
-}
+  .tp-pulse-badge {
+    position: relative;
+  }
 
-/* Sweeps a glint fully off-screen on both ends (-100% to 200%, not 0-100%)
-   so the loop's reset is hidden outside the visible track instead of
-   happening mid-line. Using top/bottom/left + width (not `inset` + `width`
-   together — those two conflict on the right edge, which was cutting the
-   glint's travel short and made the loop look like it snapped back before
-   reaching the end). */
-@keyframes tp-pulse-travel {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(200%); }
-}
+  /* TP-hit aninda tek-atim amber foton (opacity-only, konum sabit); biter, statik kalir. */
+  .tp-pulse-badge::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: color-mix(in oklab, var(--amber) 26%, transparent);
+    opacity: 0;
+    pointer-events: none;
+    animation: tp-win-photon var(--dur-settle) var(--ease-signal) 1;
+  }
 
-.tp-pulse-line {
-  position: relative;
-  overflow: hidden;
-}
-
-.tp-pulse-line::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 40%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(16, 185, 129, 0.9) 50%,
-    transparent 100%
-  );
-  animation: tp-pulse-travel 2.4s linear infinite;
-}
+  /* Ulasilan baglayici: gezici glint yerine STATIK owned-highlight (hareket yok). */
+  .tp-pulse-line {
+    background: color-mix(in oklab, var(--amber) 40%, transparent);
+    border-radius: var(--radius-pill);
+  }
 
 /* ============================================
    Score Ring SVG
