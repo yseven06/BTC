@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/lib/auth-context';
 import { LEGAL_META } from '@/lib/legal/registry';
 import { needsReconsent } from '@/lib/legal/semver';
@@ -74,9 +75,22 @@ export function ReconsentGate() {
     }
   };
 
+  // Kanonik <Modal> kabuğu (P7-D15 göçü): blocking re-consent gate.
+  // dismissible=false (backdrop/ESC kapatmaz; yalnız logout veya onay) → onClose no-op.
+  // z-[110] blocking-katman KORUNUR. padded=false: iç içerik BİREBİR korunur
+  // (başlık text-base, AlertTriangle amber, tüm sınıflar) → Typography/Color/Craft'a
+  // dokunulmaz; yalnız kabuk değişir. overflow-y-auto → çok-belge 90vh'de scroll'lar.
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-e-0/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-panel glass-e3-overlay p-5">
+    <Modal
+      open
+      onClose={() => {}}
+      dismissible={false}
+      zIndexClassName="z-[110]"
+      size="max-w-md"
+      padded={false}
+      ariaLabel="Güncellenen Yasal Belgeler"
+    >
+      <div className="overflow-y-auto p-5 grow min-h-0">
         <div className="flex items-start gap-2">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber" aria-hidden />
           <div>
@@ -131,6 +145,6 @@ export function ReconsentGate() {
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
