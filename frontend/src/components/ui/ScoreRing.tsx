@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import clsx from "clsx";
 import { formatPercentage } from '@/lib/utils';
 
@@ -19,16 +19,9 @@ export const ScoreRing: React.FC<ScoreRingProps> = ({
 }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
-  // The ring's CSS transition only fires on a *change*, not on first paint —
-  // rendering the real offset immediately means it shows up already full,
-  // with no "filling in" feel. Starting from an empty ring and flipping to
-  // the real value one frame later gives it something to animate from.
-  const [filled, setFilled] = useState(false);
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setFilled(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
-  const offset = filled ? circumference - (score / 100) * circumference : circumference;
+  // Statik render (P6/M09, Bible §06 MO-04): halka gerçek değerinde doğar —
+  // mount'ta rAF+state ile "dolum" (count-up-benzeri, olaysız dekoratif) KALDIRILDI.
+  const offset = circumference - (score / 100) * circumference;
 
   // Determine indicator color based on score value
   const getStrokeColor = (val: number) => {
@@ -53,7 +46,7 @@ export const ScoreRing: React.FC<ScoreRingProps> = ({
           />
           {/* Progress circle */}
           <circle
-            className={clsx("transition-all duration-1000 ease-out", getStrokeColor(score))}
+            className={getStrokeColor(score)}
             strokeWidth={strokeWidth}
             strokeDasharray={circumference}
             strokeDashoffset={offset}

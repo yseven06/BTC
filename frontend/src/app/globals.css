@@ -422,11 +422,6 @@
     stroke: rgba(148, 163, 184, 0.1);
   }
 
-  .score-ring-progress {
-    transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
-    transform-origin: center;
-    transform: rotate(-90deg);
-  }
 }
 
 /* ============================================
