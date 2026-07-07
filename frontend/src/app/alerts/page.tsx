@@ -123,7 +123,7 @@ export default function AlertsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
+          <h1 className="text-h2 font-display text-text-primary flex items-center gap-2">
             <Bell className="w-6 h-6 text-accent-primary" /> Alarmlar
           </h1>
           <p className="text-sm text-text-secondary mt-1">Fiyat, sinyal ve özel koşul alarmları</p>
@@ -193,14 +193,14 @@ export default function AlertsPage() {
                     {SIGNAL_TYPE_OPTIONS.map((st) => (
                       <button key={st}
                         onClick={() => setSignalTypes((prev) => prev.includes(st) ? prev.filter((x) => x !== st) : [...prev, st])}
-                        className={cn('px-2.5 py-1.5 text-[11px] font-display uppercase rounded-lg border transition-all',
+                        className={cn('px-2.5 py-1.5 text-micro font-medium uppercase rounded-lg border transition-all',
                           signalTypes.includes(st) ? 'bg-accent-primary/15 text-accent-primary border-accent-primary/40' : 'bg-bg-secondary text-text-muted border-border-subtle')}>
                         {st.replace('_', ' ')}
                       </button>
                     ))}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-text-muted">Min. Güven %</span>
+                    <span className="text-micro text-text-muted">Min. Güven %</span>
                     <input value={minConfidence} onChange={(e) => setMinConfidence(e.target.value)} type="number" min={0} max={100}
                       className="bg-bg-secondary border border-border-subtle rounded-lg px-3 py-1.5 text-xs text-text-primary outline-none w-20" />
                   </div>
@@ -253,7 +253,7 @@ export default function AlertsPage() {
                 </p>
                 <p className="text-xs text-text-muted">{formatRelativeTime(alert.created_at)}</p>
               </div>
-              <span className={cn('text-[10px] font-display px-2 py-0.5 rounded', alert.triggered_at ? 'bg-amber/10 text-amber' : alert.is_active ? 'bg-accent-primary/10 text-accent-primary' : 'bg-bg-tertiary text-text-muted')}>
+              <span className={cn('text-micro font-medium px-2 py-0.5 rounded', alert.triggered_at ? 'bg-amber/10 text-amber' : alert.is_active ? 'bg-accent-primary/10 text-accent-primary' : 'bg-bg-tertiary text-text-muted')}>
                 {alert.triggered_at ? 'Tetiklendi' : alert.is_active ? 'Aktif' : 'Pasif'}
               </span>
               <button onClick={() => toggleActive(alert)} title={alert.is_active ? 'Devre dışı bırak' : 'Aktifleştir'}

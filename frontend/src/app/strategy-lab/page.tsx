@@ -60,7 +60,7 @@ function HourHeatmap({ data }: { data: HourData[] }) {
             onMouseEnter={() => setHovered(h)}
             onMouseLeave={() => setHovered(null)}
           >
-            <span className="text-[9px] font-display text-text-muted">{h.hour.toString().padStart(2, '0')}</span>
+            <span className="text-micro font-medium text-text-muted">{h.hour.toString().padStart(2, '0')}</span>
             {h.total > 0 && (
               <span className={cn('text-[8px] font-mono font-display', heatText(h.win_rate, h.total))}>
                 {h.win_rate > 0 ? formatPercentage(h.win_rate, 0, false) : '—'}
@@ -80,7 +80,7 @@ function HourHeatmap({ data }: { data: HourData[] }) {
       )}
 
       {/* Legend */}
-      <div className="flex items-center gap-3 text-[10px] text-text-muted">
+      <div className="flex items-center gap-3 text-micro text-text-muted">
         <span>Düşük</span>
         {['bg-bearish/40','bg-amber/30','bg-amber/50','bg-bullish/40','bg-bullish/80'].map((c, i) => (
           <span key={i} className={cn('w-5 h-3 rounded', c)} />
@@ -109,11 +109,11 @@ function DayHeatmap({ data }: { data: DayData[] }) {
           'flex flex-col items-center gap-1 p-3 rounded-xl border border-border-subtle transition-all hover:scale-105',
           heatColor(d.win_rate, d.total)
         )}>
-          <span className="text-[10px] font-display text-text-muted">{dayAbbr(d.label)}</span>
+          <span className="text-micro font-medium text-text-muted">{dayAbbr(d.label)}</span>
           <span className={cn('text-lg font-display font-mono', heatText(d.win_rate, d.total))}>
             {d.total > 0 ? formatPercentage(d.win_rate, 0, false) : '—'}
           </span>
-          <span className="text-[9px] text-text-muted">{d.total} sinyal</span>
+          <span className="text-micro text-text-muted">{d.total} sinyal</span>
         </div>
       ))}
     </div>
@@ -163,8 +163,8 @@ function RiskBreakdown({ data }: { data: RiskData[] }) {
       {sorted.map((r) => (
         <div key={r.risk_level} className="bg-bg-secondary/50 rounded-xl p-3 border border-border-subtle">
           <p className={cn('text-xs font-display mb-1', colors[r.risk_level])}>{labels[r.risk_level] ?? r.risk_level}</p>
-          <p className="text-2xl font-display font-mono text-text-primary">{r.total}</p>
-          <p className="text-[10px] text-text-muted mt-1">sinyal · {formatPercentage(r.win_rate, 0, false)} kazanma</p>
+          <p className="text-h2 font-display font-mono text-text-primary">{r.total}</p>
+          <p className="text-micro text-text-muted mt-1">sinyal · {formatPercentage(r.win_rate, 0, false)} kazanma</p>
         </div>
       ))}
     </div>
@@ -189,7 +189,7 @@ export default function StrategyLabPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
+        <h1 className="text-h2 font-display text-text-primary flex items-center gap-2">
           <FlaskConical className="w-6 h-6 text-accent-primary" /> Strategy Lab
         </h1>
         <p className="text-sm text-text-secondary mt-1">
@@ -216,17 +216,17 @@ export default function StrategyLabPage() {
           {/* Summary stat */}
           <div className="flex gap-3">
             <GlassCard className="flex-1 text-center py-4">
-              <p className="text-3xl font-display font-mono text-text-primary">{data.total_signals}</p>
+              <p className="text-h1 font-display font-mono text-text-primary">{data.total_signals}</p>
               <p className="text-xs text-text-muted mt-1">Toplam Sinyal</p>
             </GlassCard>
             <GlassCard className="flex-1 text-center py-4">
-              <p className="text-3xl font-display font-mono text-bullish">
+              <p className="text-h1 font-display font-mono text-bullish">
                 {formatPercentage(data.by_direction.find(d => d.direction === 'bullish')?.win_rate ?? 0, 0, false)}
               </p>
               <p className="text-xs text-text-muted mt-1">LONG Kazanma</p>
             </GlassCard>
             <GlassCard className="flex-1 text-center py-4">
-              <p className="text-3xl font-display font-mono text-bearish">
+              <p className="text-h1 font-display font-mono text-bearish">
                 {formatPercentage(data.by_direction.find(d => d.direction === 'bearish')?.win_rate ?? 0, 0, false)}
               </p>
               <p className="text-xs text-text-muted mt-1">SHORT Kazanma</p>

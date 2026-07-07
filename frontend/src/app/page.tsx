@@ -37,7 +37,7 @@ const STEPS = [
 function StatBlock({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="text-center">
-      <div className={cn('text-3xl md:text-4xl num font-num-560', accent ? 'text-bullish' : 'text-text-primary')}>{value}</div>
+      <div className={cn('text-h1 md:text-h1 num font-num-560', accent ? 'text-bullish' : 'text-text-primary')}>{value}</div>
       <div className="text-xs text-text-muted uppercase font-display tracking-wide mt-1">{label}</div>
     </div>
   );
@@ -75,7 +75,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-2.5">
             <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-8 h-8" />
             <span className="text-base font-display gradient-text-brand">TradeMinds AI</span>
-            <span className="text-[9px] font-display uppercase tracking-wider text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
+            <span className="text-micro font-medium uppercase text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-sm font-display text-text-secondary hover:text-text-primary transition-colors">Giriş Yap</Link>
@@ -143,7 +143,7 @@ export default function LandingPage() {
               <StatBlock label="Ort. Getiri" value={formatPercentage(stats.average_return ?? 0)} accent={(stats.average_return ?? 0) >= 0} />
               <StatBlock label="TP1 Vuruş" value={formatPercentage(stats.tp1_hit_rate, 0, false)} />
             </div>
-            <p className="text-[11px] text-text-muted text-center mt-3">
+            <p className="text-micro text-text-muted text-center mt-3">
               Tüm zamanlar · yalnızca gerçek, kapanmış sinyallerden hesaplanır
             </p>
           </div>
@@ -153,7 +153,7 @@ export default function LandingPage() {
       {/* Latest winning signals — only real, resolved WIN signals */}
       {winSignals.length > 0 && (
         <section className="max-w-6xl mx-auto px-6 py-12">
-          <h2 className="text-2xl font-display text-text-primary text-center">Son Kazanan Sinyaller</h2>
+          <h2 className="text-h2 font-display text-text-primary text-center">Son Kazanan Sinyaller</h2>
           <p className="text-sm text-text-secondary text-center mt-2 max-w-xl mx-auto">
             Sistemin gerçek zamanlı ürettiği ve TP'ye ulaşmış kapanmış sinyallerden bir kesit.
           </p>
@@ -162,17 +162,17 @@ export default function LandingPage() {
               <div key={s.id} className="glass-panel border border-border-subtle rounded-card p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-display text-text-primary">{s.asset?.symbol}</span>
-                  <span className="text-[10px] font-display uppercase bg-bullish/15 text-bullish px-2 py-0.5 rounded">
+                  <span className="text-micro font-medium uppercase bg-bullish/15 text-bullish px-2 py-0.5 rounded">
                     {s.direction === 'bullish' ? 'LONG' : 'SHORT'}
                   </span>
                 </div>
-                <div className="text-2xl num font-num-560 text-bullish">
+                <div className="text-h2 num font-num-560 text-bullish">
                   {formatPercentage(s.actual_return ?? 0)}
                 </div>
-                <div className="text-[11px] text-text-muted mt-1.5 font-mono">
+                <div className="text-micro text-text-muted mt-1.5 font-mono">
                   Giriş: {formatPrice(s.entry_zone_low)} → TP: {formatPrice(s.tp1)}
                 </div>
-                <div className="text-[10px] text-text-muted uppercase mt-1">{s.timeframe} · {s.signal_type.replace('_', ' ')}</div>
+                <div className="text-micro text-text-muted uppercase mt-1">{s.timeframe} · {s.signal_type.replace('_', ' ')}</div>
               </div>
             ))}
           </div>
@@ -181,7 +181,7 @@ export default function LandingPage() {
 
       {/* Engines */}
       <section className="max-w-6xl mx-auto px-6 py-16">
-        <h2 className="text-2xl font-display text-text-primary text-center">İhtiyacın Olan Her Şey, Tek Platformda</h2>
+        <h2 className="text-h2 font-display text-text-primary text-center">İhtiyacın Olan Her Şey, Tek Platformda</h2>
         <p className="text-sm text-text-secondary text-center mt-2 max-w-xl mx-auto">
           9 bağımsız AI motoru birlikte çalışıp profesyonel düzeyde bir trading kokpiti sunar.
         </p>
@@ -214,7 +214,7 @@ export default function LandingPage() {
 
       {/* How it works */}
       <section className="max-w-4xl mx-auto px-6 py-16">
-        <h2 className="text-2xl font-display text-text-primary text-center">Dakikalar İçinde Başla</h2>
+        <h2 className="text-h2 font-display text-text-primary text-center">Dakikalar İçinde Başla</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
           {STEPS.map((s) => (
             <div key={s.n} className="text-center">
@@ -230,7 +230,7 @@ export default function LandingPage() {
 
       {/* Transparency: how it works + honest limits + key messages (all verifiable) */}
       <section className="max-w-6xl mx-auto px-6 py-16 border-t border-border-subtle">
-        <h2 className="text-2xl font-display text-text-primary text-center">Şeffaflık: Nasıl Çalışır, Neyi Vaat Etmez</h2>
+        <h2 className="text-h2 font-display text-text-primary text-center">Şeffaflık: Nasıl Çalışır, Neyi Vaat Etmez</h2>
         <p className="text-sm text-text-secondary text-center mt-2 max-w-2xl mx-auto">
           Güçlü bir karar destek aracı sunuyoruz — sihirli bir kutu değil. Sistemin nasıl çalıştığını da, sınırlarını da açıkça paylaşıyoruz.
         </p>
@@ -287,7 +287,7 @@ export default function LandingPage() {
 
       {/* Security & data transparency — every claim is verifiable / implemented */}
       <section className="max-w-6xl mx-auto px-6 py-16 border-t border-border-subtle">
-        <h2 className="text-2xl font-display text-text-primary text-center">Güvenlik ve Veri Şeffaflığı</h2>
+        <h2 className="text-h2 font-display text-text-primary text-center">Güvenlik ve Veri Şeffaflığı</h2>
         <p className="text-sm text-text-secondary text-center mt-2 max-w-2xl mx-auto">
           Verinin nereden geldiğini, nasıl korunduğunu ve gizliliği nasıl ele aldığımızı açıkça paylaşıyoruz.
         </p>
@@ -331,7 +331,7 @@ export default function LandingPage() {
       {/* Pricing teaser */}
       {plans.length > 0 && (
         <section className="max-w-6xl mx-auto px-6 py-16">
-          <h2 className="text-2xl font-display text-text-primary text-center">Basit, Şeffaf Fiyatlandırma</h2>
+          <h2 className="text-h2 font-display text-text-primary text-center">Basit, Şeffaf Fiyatlandırma</h2>
           <p className="text-sm text-text-secondary text-center mt-2">Şeffaf fiyatlandırma, gizli ücret yok — dilediğin an yükselt veya iptal et.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-10 max-w-3xl mx-auto">
             {plans.map((p) => {
@@ -340,7 +340,7 @@ export default function LandingPage() {
                 <div key={p.tier} className={cn('glass-panel border rounded-card p-6', p.recommended ? 'border-accent-primary/40' : 'border-border-subtle')}>
                   <h3 className="text-base font-display text-text-primary">{p.name}</h3>
                   <p className="text-xs text-text-secondary mt-1">{p.description}</p>
-                  <div className="text-3xl num font-num-560 text-text-primary mt-3">
+                  <div className="text-h1 num font-num-560 text-text-primary mt-3">
                     ${monthly?.amount_usd ?? 0}<span className="text-sm text-text-muted font-normal">/ay</span>
                   </div>
                   <ul className="space-y-1.5 mt-4">
@@ -364,7 +364,7 @@ export default function LandingPage() {
 
       {/* Final CTA */}
       <section className="max-w-4xl mx-auto px-6 py-20 text-center">
-        <h2 className="text-2xl md:text-3xl font-display text-text-primary">Trading Avantajını Bugün İnşa Et</h2>
+        <h2 className="text-h2 md:text-h1 font-display text-text-primary">Trading Avantajını Bugün İnşa Et</h2>
         <p className="text-sm text-text-secondary mt-3">Kayıt sonrası dashboard'a anında erişim — kredi kartı gerekmez.</p>
         <Link href="/register" className="inline-flex items-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-7 py-3.5 rounded-xl transition-all hover:shadow-cta mt-6">
           Ücretsiz Hesap Oluştur <ArrowRight className="w-4 h-4" />

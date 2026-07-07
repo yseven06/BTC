@@ -199,13 +199,13 @@ function EngineCard({ engine, onClick, compact }: { engine: EngineRow; onClick: 
       <div className={cn('flex items-center justify-between gap-1.5', compact ? 'mb-2' : 'mb-3')}>
         <span className={cn(
           'font-display text-text-primary uppercase tracking-wide leading-tight line-clamp-2 flex-1',
-          compact ? 'text-[10px]' : 'text-[11px]'
+          compact ? 'text-micro' : 'text-micro'
         )}>
           {engine.label}
         </span>
         <span className={cn(
           'flex-shrink-0 font-display rounded',
-          compact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-0.5',
+          compact ? 'text-micro px-1.5 py-0.5' : 'text-micro px-2 py-0.5',
           biasConfig.bg, biasConfig.text
         )}>
           {biasConfig.label}
@@ -246,7 +246,7 @@ function EngineDetailModal({ engine, symbol, timeframe, onClose }: {
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] text-text-muted uppercase font-display tracking-wider mb-1">
+            <p className="text-micro text-text-muted uppercase font-medium mb-1">
               Motor Analizi
             </p>
             <h3 className="text-lg font-display text-text-primary">{engine.label}</h3>
@@ -258,11 +258,11 @@ function EngineDetailModal({ engine, symbol, timeframe, onClose }: {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-bg-secondary/60 rounded-xl p-3 border border-border-subtle text-center">
-            <p className="text-[10px] text-text-muted uppercase font-display mb-1">Skor</p>
-            <p className="text-2xl font-display font-mono text-text-primary">{formatNumber(engine.score, 1)}<span className="text-sm text-text-muted">/100</span></p>
+            <p className="text-micro text-text-muted uppercase font-medium mb-1">Skor</p>
+            <p className="text-h2 font-display font-mono text-text-primary">{formatNumber(engine.score, 1)}<span className="text-sm text-text-muted">/100</span></p>
           </div>
           <div className="bg-bg-secondary/60 rounded-xl p-3 border border-border-subtle text-center">
-            <p className="text-[10px] text-text-muted uppercase font-display mb-1">
+            <p className="text-micro text-text-muted uppercase font-medium mb-1">
               {engine.name === 'risk_management' ? 'Güvenlik' : 'Yön'}
             </p>
             <p className={cn('text-lg font-display uppercase', biasColor)}>
@@ -275,7 +275,7 @@ function EngineDetailModal({ engine, symbol, timeframe, onClose }: {
 
         {CHART_ENGINES.has(engine.name) && (
           <div>
-            <p className="text-[10px] text-text-muted uppercase font-display tracking-wider mb-2">
+            <p className="text-micro text-text-muted uppercase font-medium mb-2">
               Grafik Üzerinde
             </p>
             <EngineMiniChart
@@ -290,7 +290,7 @@ function EngineDetailModal({ engine, symbol, timeframe, onClose }: {
         <div>
           <button
             onClick={() => setShowFindings((v) => !v)}
-            className="w-full flex items-center justify-between text-[10px] text-text-muted uppercase font-display tracking-wider mb-2 hover:text-text-primary transition-colors"
+            className="w-full flex items-center justify-between text-micro text-text-muted uppercase font-medium mb-2 hover:text-text-primary transition-colors"
           >
             <span>Bulgular ({engine.findings.length})</span>
             <span className="text-accent-primary normal-case">{showFindings ? 'Gizle ▲' : 'Göster ▼'}</span>
@@ -372,7 +372,7 @@ function PriceLadder({ signal }: { signal: ApiSignal }) {
               <div className="flex items-center gap-4">
                 {/* Left label badge */}
                 <div className={cn(
-                  'w-16 text-center text-[11px] font-display py-1.5 rounded-lg border-2 flex items-center justify-center gap-1',
+                  'w-16 text-center text-micro font-medium py-1.5 rounded-lg border-2 flex items-center justify-center gap-1',
                   badgeColorClass,
                   item.emphasize && 'scale-110',
                   item.hit && 'tp-pulse-badge'
@@ -398,7 +398,7 @@ function PriceLadder({ signal }: { signal: ApiSignal }) {
                           ? 'TP1 girişe yakın: küçük ama yüksek olasılıklı ilk hedef (R = ödül/risk)'
                           : 'Ödül/risk: hedefin, giriş–stop mesafesine oranı'}
                       className={cn(
-                        'text-[10px] font-mono font-display px-1.5 py-0.5 rounded border',
+                        'text-micro font-mono font-medium px-1.5 py-0.5 rounded border',
                         lowTp1
                           ? 'text-amber bg-amber/10 border-amber/30'
                           : 'text-text-muted bg-bg-tertiary/60 border-border-subtle'
@@ -428,7 +428,7 @@ function PriceLadder({ signal }: { signal: ApiSignal }) {
           );
         })}
       </div>
-      <p className="mt-3 text-[10px] text-text-muted leading-snug">
+      <p className="mt-3 text-micro text-text-muted leading-snug">
         <span className="font-mono font-display">R</span> = ödül/risk (hedefin, giriş–stop mesafesine oranı).
         TP1 çoğu sinyalde 1R altındadır — küçük ama yüksek olasılıklı ilk kâr kademesidir.
       </p>
@@ -457,7 +457,7 @@ function RiskBadge({ level }: { level: string | undefined }) {
     )}>
       <ShieldAlert className="w-4 h-4 flex-shrink-0" />
       <div className="flex flex-col leading-none">
-        <span className="text-[9px] uppercase font-display tracking-wider opacity-70">Risk</span>
+        <span className="text-micro uppercase font-medium opacity-70">Risk</span>
         <span className="text-xs font-display uppercase tracking-wide mt-0.5">{config.label}</span>
       </div>
     </div>
@@ -577,16 +577,16 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className={cn('font-display text-text-primary', compact ? 'text-base' : 'text-2xl')}>{signal.asset?.symbol}</span>
-                <span className="text-[9px] font-display text-accent-primary bg-accent-primary/10 border border-accent-primary/30 px-1.5 py-0.5 rounded uppercase">
+                <span className={cn('font-display text-text-primary', compact ? 'text-base' : 'text-h2')}>{signal.asset?.symbol}</span>
+                <span className="text-micro font-medium text-accent-primary bg-accent-primary/10 border border-accent-primary/30 px-1.5 py-0.5 rounded uppercase">
                   {signal.timeframe}
                 </span>
               </div>
-              <div className={cn('flex items-center gap-2 font-display tracking-wide', direction.cls, compact ? 'text-lg' : 'text-3xl')}>
+              <div className={cn('flex items-center gap-2 font-display tracking-wide', direction.cls, compact ? 'text-lg' : 'text-h1')}>
                 <DirIcon className={compact ? 'w-4 h-4' : 'w-7 h-7'} />
                 {direction.label}
               </div>
-              <p className={cn('text-text-muted mt-1', compact ? 'text-[10px]' : 'text-[11px] mt-1.5')}>
+              <p className={cn('text-text-muted mt-1', compact ? 'text-micro' : 'text-micro mt-1.5')}>
                 Üretildi: {formatAbsoluteTimeTR(signal.generated_at)} (TR) · {formatRelativeTime(signal.generated_at)}
               </p>
             </div>
@@ -602,20 +602,20 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
                     a signal's strength reads consistently across pages. */}
                 <span className={cn(
                   'font-display font-mono',
-                  compact ? 'text-xl' : 'text-3xl',
+                  compact ? 'text-xl' : 'text-h1',
                   signal.confidence_score >= 80 ? 'text-bullish' : signal.confidence_score >= 65 ? 'text-amber' : 'text-text-muted'
                 )}>
                   {Math.round(signal.confidence_score / 10)}<span className="text-text-muted text-sm">/10</span>
                 </span>
-                <span className="text-[9px] text-text-muted mt-1 font-display uppercase tracking-wider">Kalite</span>
+                <span className="text-micro text-text-muted mt-1 font-medium uppercase">Kalite</span>
               </div>
               <div className="flex flex-col items-center">
                 <ScoreRing score={signal.confidence_score} size={compact ? 50 : 76} strokeWidth={compact ? 4 : 6} />
-                <span className="text-[9px] text-text-muted mt-1 font-display uppercase tracking-wider">Güven</span>
+                <span className="text-micro text-text-muted mt-1 font-medium uppercase">Güven</span>
               </div>
               <div className="flex flex-col items-center">
                 <ScoreRing score={signal.probability_score} size={compact ? 50 : 76} strokeWidth={compact ? 4 : 6} />
-                <span className="text-[9px] text-text-muted mt-1 font-display uppercase tracking-wider">Olasılık</span>
+                <span className="text-micro text-text-muted mt-1 font-medium uppercase">Olasılık</span>
               </div>
             </div>
           </div>
@@ -629,10 +629,10 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
       <div className={compact ? 'flex flex-col gap-4' : 'grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-6'}>
         {/* Trade Plan column */}
         <div>
-          <h3 className={cn('font-display text-text-muted uppercase tracking-wider flex items-center gap-1.5', compact ? 'text-[10px] mb-2' : 'text-xs mb-3')}>
+          <h3 className={cn('font-medium text-text-muted uppercase flex items-center gap-1.5', compact ? 'text-micro mb-2' : 'text-xs mb-3')}>
             <Target className="w-3.5 h-3.5 text-accent-primary" /> İşlem Planı
             {rrRatio !== '—' && (
-              <span className="ml-auto flex items-center gap-1.5 text-[10px] text-text-secondary normal-case font-normal">
+              <span className="ml-auto flex items-center gap-1.5 text-micro text-text-secondary normal-case font-normal">
                 <Scale className="w-3 h-3" />
                 R:R
                 <span className={cn(
@@ -648,11 +648,11 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
         {/* Engine Scores column */}
         {engines.length > 0 && (
           <div>
-            <h3 className={cn('font-display text-text-muted uppercase tracking-wider flex items-center gap-1.5', compact ? 'text-[10px] mb-2' : 'text-xs mb-3')}>
+            <h3 className={cn('font-medium text-text-muted uppercase flex items-center gap-1.5', compact ? 'text-micro mb-2' : 'text-xs mb-3')}>
               <BarChart3 className="w-3.5 h-3.5 text-accent-primary" /> Motor Skorları
               {!compact && (
                 <span
-                  className="ml-auto text-[10px] text-text-muted normal-case font-normal hidden sm:inline"
+                  className="ml-auto text-micro text-text-muted normal-case font-normal hidden sm:inline"
                   title="Bu skorlar sinyalin üretildiği tarama anına ait. Yön değişmediği sürece sistem skorları yeniden hesaplamaz — gerçek bir tersine dönüş (reversal) olduğunda otomatik güncellenir."
                 >
                   Skorlar {formatRelativeTime(signal.generated_at)} hesaplandı · Detay için karta tıkla
@@ -676,7 +676,7 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
       {/* ─── 3. AI Explanation — wide: full width; compact: stacked, scrollable ─── */}
       {availableTabs.length > 0 && (
         <div className={compact ? 'flex-1 flex flex-col min-h-0' : undefined}>
-          <h3 className={cn('font-display text-text-muted uppercase tracking-wider flex items-center gap-1.5', compact ? 'text-[10px] mb-2' : 'text-xs mb-3')}>
+          <h3 className={cn('font-medium text-text-muted uppercase flex items-center gap-1.5', compact ? 'text-micro mb-2' : 'text-xs mb-3')}>
             <FileText className="w-3.5 h-3.5 text-accent-primary" /> AI Açıklaması
           </h3>
 
@@ -687,7 +687,7 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
                   'font-display whitespace-nowrap transition-all',
-                  compact ? 'px-2.5 py-2 text-[10px]' : 'px-4 py-2.5 text-xs',
+                  compact ? 'px-2.5 py-2 text-micro' : 'px-4 py-2.5 text-xs',
                   activeTab === tab.key
                     ? 'bg-accent-primary text-white rounded-t-lg'
                     : 'text-text-muted hover:text-text-primary hover:bg-bg-secondary/40'

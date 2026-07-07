@@ -84,7 +84,7 @@ export default function RegisterPage() {
           </div>
           <div className="flex items-center justify-center gap-2">
             <div className="text-h2 font-display text-text-primary">TradeMinds</div>
-            <span className="text-[9px] font-display uppercase tracking-wider text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
+            <span className="text-micro font-medium uppercase text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
           </div>
           <p className="text-sm text-text-secondary mt-1">Yeni Hesap Oluştur</p>
           <p className="text-xs text-text-muted mt-2">

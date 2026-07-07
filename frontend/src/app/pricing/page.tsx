@@ -132,7 +132,7 @@ export default function PricingPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center max-w-2xl mx-auto">
-        <h1 className="text-3xl font-display text-text-primary">Planlar & Fiyatlandırma</h1>
+        <h1 className="text-h1 font-display text-text-primary">Planlar & Fiyatlandırma</h1>
         <p className="text-sm text-text-secondary mt-2">
           AI motorlarına tam erişim ve sınırsız sinyal için yükselt.
         </p>
@@ -169,7 +169,7 @@ export default function PricingPage() {
               </p>
             )}
             {sub.cancel_at_period_end && (
-              <p className="text-[11px] text-text-muted mt-1 max-w-md">
+              <p className="text-micro text-text-muted mt-1 max-w-md">
                 Aboneliğin mevcut dönem sonunda sona erecek. Devam etmek istersen ödeme ekranından yeniden etkinleştirebilirsin.
               </p>
             )}
@@ -255,7 +255,7 @@ export default function PricingPage() {
                 )}
               >
                 {plan.recommended && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-display uppercase bg-accent-primary text-white px-3 py-1 rounded-full">
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-micro font-medium uppercase bg-accent-primary text-white px-3 py-1 rounded-full">
                     Önerilen
                   </span>
                 )}
@@ -268,20 +268,20 @@ export default function PricingPage() {
 
                 <div className="mb-5">
                   {pricing.amount_usd === 0 ? (
-                    <p className="text-3xl font-display text-text-primary">Ücretsiz</p>
+                    <p className="text-h1 font-display text-text-primary">Ücretsiz</p>
                   ) : (
                     <>
-                      <p className="text-3xl font-display text-text-primary">
+                      <p className="text-h1 font-display text-text-primary">
                         ${pricing.amount_usd}
                         <span className="text-xs font-medium text-text-muted ml-1">/{CYCLE_LABEL[pricing.cycle]}</span>
                       </p>
                       {pricing.months > 1 && (
-                        <p className="text-[11px] text-text-muted mt-0.5">
+                        <p className="text-micro text-text-muted mt-0.5">
                           (~{formatUsd(monthlyEffective)}/ay)
                         </p>
                       )}
                       {pricing.savings_pct > 0 && (
-                        <p className="text-[11px] text-bullish font-display mt-0.5">{formatPercentage(pricing.savings_pct, 0, false)} tasarruf</p>
+                        <p className="text-micro text-bullish font-medium mt-0.5">{formatPercentage(pricing.savings_pct, 0, false)} tasarruf</p>
                       )}
                     </>
                   )}
@@ -329,7 +329,7 @@ export default function PricingPage() {
       )}
 
       {PAYMENTS_ENABLED && (
-        <p className="text-center text-[10px] text-text-muted">
+        <p className="text-center text-micro text-text-muted">
           Ödemeler USD üzerinden alınır. İstediğin zaman iptal edebilirsin.
         </p>
       )}

@@ -117,7 +117,7 @@ export default function WatchlistPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
+        <h1 className="text-h2 font-display text-text-primary flex items-center gap-2">
           <Star className="w-6 h-6 text-accent-primary" /> İzleme Listesi
         </h1>
         <p className="text-sm text-text-secondary mt-1">Kaydettiğin varlıkları tek yerden takip et</p>
@@ -141,7 +141,7 @@ export default function WatchlistPage() {
                 )}
               >
                 {l.name}
-                <span className={cn('text-[10px] font-mono px-1.5 py-0.5 rounded', activeId === l.id ? 'bg-white/20' : 'bg-bg-tertiary')}>
+                <span className={cn('text-micro font-mono px-1.5 py-0.5 rounded', activeId === l.id ? 'bg-white/20' : 'bg-bg-tertiary')}>
                   {l.asset_ids.length}
                 </span>
               </button>
@@ -205,7 +205,7 @@ export default function WatchlistPage() {
                         >
                           <span className="text-sm font-display text-text-primary">{a.symbol} <span className="text-text-muted font-normal">· {a.name}</span></span>
                           {active.asset_ids.includes(a.id) ? (
-                            <span className="text-[10px] text-text-muted">Listede</span>
+                            <span className="text-micro text-text-muted">Listede</span>
                           ) : (
                             <Plus className="w-3.5 h-3.5 text-accent-primary" />
                           )}
@@ -232,19 +232,19 @@ export default function WatchlistPage() {
                       <GlassCard key={id} className="p-4 flex items-center justify-between gap-3">
                         <Link href={`/markets/${asset.symbol}`} className="flex-1 min-w-0 group">
                           <p className="text-sm font-display text-text-primary group-hover:text-accent-primary transition-colors truncate">{asset.symbol}</p>
-                          <p className="text-[11px] text-text-muted truncate">{asset.name}</p>
+                          <p className="text-micro text-text-muted truncate">{asset.name}</p>
                           {live ? (
                             <div className="flex items-center gap-2 mt-1.5">
                               <span className="text-sm font-mono font-display text-text-primary">
                                 {formatPrice(live.price)}
                               </span>
-                              <span className={cn('flex items-center gap-0.5 text-[11px] font-mono font-display', up ? 'text-bullish' : 'text-bearish')}>
+                              <span className={cn('flex items-center gap-0.5 text-micro font-mono font-medium', up ? 'text-bullish' : 'text-bearish')}>
                                 {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                 {formatPercentage(live.changePct24h ?? 0)}
                               </span>
                             </div>
                           ) : (
-                            <span className="text-[11px] text-text-muted">—</span>
+                            <span className="text-micro text-text-muted">—</span>
                           )}
                         </Link>
                         <button onClick={() => removeAsset(id)}

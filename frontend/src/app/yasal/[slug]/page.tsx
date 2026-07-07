@@ -34,7 +34,7 @@ export default async function LegalDocPage(
         </Link>
 
         <header className="mt-4 mb-8 border-b border-white/10 pb-4">
-          <h1 className="text-3xl font-display">{meta.title}</h1>
+          <h1 className="text-h1 font-display">{meta.title}</h1>
           <p className="mt-2 text-xs text-text-muted">
             Sürüm {meta.version}
             {meta.effectiveDate ? ` · Yürürlük tarihi: ${meta.effectiveDate}` : ''}

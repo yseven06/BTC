@@ -50,7 +50,7 @@ export default function MarketsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
+        <h1 className="text-h2 font-display text-text-primary flex items-center gap-2">
           <TrendingUp className="w-6 h-6 text-accent-primary" /> Piyasalar
         </h1>
         <p className="text-sm text-text-secondary mt-1">
@@ -82,7 +82,7 @@ export default function MarketsPage() {
                 <Icon className="w-3.5 h-3.5" />
                 {c.label}
                 <span className={cn(
-                  'text-[10px] font-mono px-1.5 py-0.5 rounded',
+                  'text-micro font-mono px-1.5 py-0.5 rounded',
                   category === c.id ? 'bg-white/20' : 'bg-bg-tertiary/60'
                 )}>
                   {c.count}
@@ -132,7 +132,7 @@ export default function MarketsPage() {
                   <h4 className="font-display text-text-primary text-sm flex items-center gap-1.5">
                     {asset.symbol}
                     <span className={cn(
-                      'text-[9px] font-display uppercase px-1.5 py-0.5 rounded',
+                      'text-micro font-medium uppercase px-1.5 py-0.5 rounded',
                       isStock
                         ? 'bg-accent-ui/15 text-accent-ui'
                         : 'bg-accent-primary/15 text-accent-primary'
@@ -149,11 +149,11 @@ export default function MarketsPage() {
                         {formatPrice(live.price)}
                       </p>
                       {isStock && bistOpen === false ? (
-                        <p className="text-[10px] text-text-muted font-medium">
+                        <p className="text-micro text-text-muted font-medium">
                           Piyasa kapalı · Son kapanış
                         </p>
                       ) : (
-                        <p className={cn('text-[11px] font-mono font-display flex items-center justify-end gap-0.5', up ? 'text-bullish' : 'text-bearish')}>
+                        <p className={cn('text-micro font-mono font-medium flex items-center justify-end gap-0.5', up ? 'text-bullish' : 'text-bearish')}>
                           {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                           {formatPercentage(live.changePct24h ?? 0)}
                         </p>

@@ -96,7 +96,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
+        <h1 className="text-h2 font-display text-text-primary flex items-center gap-2">
           <Settings className="w-6 h-6 text-accent-primary" /> Ayarlar
         </h1>
         <p className="text-sm text-text-secondary mt-1">Uygulama tercihleri ve bildirimler</p>
@@ -167,14 +167,14 @@ export default function SettingsPage() {
               onChange={(e) => setMinConf(Number(e.target.value))}
               className="w-full mt-2 accent-accent-primary"
             />
-            <p className="text-[10px] text-text-muted mt-1">Sadece bu güven değerinin üzerindeki sinyaller bildirilir.</p>
+            <p className="text-micro text-text-muted mt-1">Sadece bu güven değerinin üzerindeki sinyaller bildirilir.</p>
           </div>
 
           {/* Notify HOLD */}
           <div className="flex items-center justify-between">
             <div>
               <label className="text-xs font-display text-text-primary">BEKLE sinyallerini de gönder</label>
-              <p className="text-[10px] text-text-muted">Kapalıyken sadece AL/SAT sinyalleri bildirilir.</p>
+              <p className="text-micro text-text-muted">Kapalıyken sadece AL/SAT sinyalleri bildirilir.</p>
             </div>
             <Toggle checked={notifyHold} onChange={setNotifyHold} />
           </div>

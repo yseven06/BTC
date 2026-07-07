@@ -71,7 +71,7 @@ function TickerItemDisplay({ item }: { item: TickerItem }) {
       {item.price !== 0 && (
         <span
           className={cn(
-            'text-[11px] num font-num-520 whitespace-nowrap',
+            'text-micro num font-num-520 whitespace-nowrap',
             isPositive ? 'text-bullish' : 'text-bearish'
           )}
         >

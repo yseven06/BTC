@@ -57,12 +57,12 @@ function NewsList({ items, loading }: { items: NewsItem[]; loading: boolean }) {
             </a>
           </div>
           {item.summary && item.summary !== item.title && (
-            <p className="text-[11px] text-text-secondary line-clamp-2">{item.summary}</p>
+            <p className="text-micro text-text-secondary line-clamp-2">{item.summary}</p>
           )}
           <div className="flex items-center gap-2 mt-auto">
-            <span className="text-[10px] font-display text-accent-primary">{item.source}</span>
-            <span className="text-[10px] text-text-muted">·</span>
-            <span className="text-[10px] text-text-muted">{formatRelativeTime(item.published_at)}</span>
+            <span className="text-micro font-medium text-accent-primary">{item.source}</span>
+            <span className="text-micro text-text-muted">·</span>
+            <span className="text-micro text-text-muted">{formatRelativeTime(item.published_at)}</span>
           </div>
         </GlassCard>
       ))}
@@ -115,7 +115,7 @@ export default function NewsPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
+          <h1 className="text-h2 font-display text-text-primary flex items-center gap-2">
             <Newspaper className="w-6 h-6 text-accent-primary" /> Kripto Haberler
           </h1>
           <p className="text-sm text-text-secondary mt-1">
@@ -151,7 +151,7 @@ export default function NewsPage() {
       </div>
 
       {data?.cached_at && (
-        <p className="text-[10px] text-text-muted -mt-2">
+        <p className="text-micro text-text-muted -mt-2">
           Son güncelleme: {formatRelativeTime(data.cached_at)}
         </p>
       )}

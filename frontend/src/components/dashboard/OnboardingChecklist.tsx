@@ -139,7 +139,7 @@ export default function OnboardingChecklist() {
                   </span>
                   <span className="flex-1 min-w-0">
                     <span className={cn('block text-sm font-display', isDone ? 'text-text-muted line-through' : 'text-text-primary')}>{s.label}</span>
-                    <span className="block text-[11px] text-text-secondary truncate">{s.desc}</span>
+                    <span className="block text-micro text-text-secondary truncate">{s.desc}</span>
                   </span>
                   {!isDone && <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-accent-primary flex-shrink-0" />}
                 </Link>
@@ -150,7 +150,7 @@ export default function OnboardingChecklist() {
       )}
 
       {/* Bottom note */}
-      <p className="mt-3 text-[11px] text-text-muted text-center">
+      <p className="mt-3 text-micro text-text-muted text-center">
         Bu adımları istediğin zaman atlayabilir veya daha sonra tamamlayabilirsin.
       </p>
     </div>

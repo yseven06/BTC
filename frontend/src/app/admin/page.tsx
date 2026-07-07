@@ -45,8 +45,8 @@ function StatCard({
         <Icon className="w-5 h-5" />
       </div>
       <div>
-        <p className="text-[10px] text-text-muted uppercase font-display tracking-wide">{label}</p>
-        <p className="text-2xl font-display font-mono text-text-primary mt-0.5">{value}</p>
+        <p className="text-micro text-text-muted uppercase font-medium">{label}</p>
+        <p className="text-h2 font-display font-mono text-text-primary mt-0.5">{value}</p>
       </div>
     </GlassCard>
   );
@@ -81,7 +81,7 @@ export default function AdminPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
+          <h1 className="text-h2 font-display text-text-primary flex items-center gap-2">
             <Shield className="w-6 h-6 text-accent-ui" /> Yönetim Paneli
           </h1>
           <p className="text-sm text-text-secondary mt-1">
@@ -229,7 +229,7 @@ function UsersTab({ isSuperAdmin, selfId }: { isSuperAdmin: boolean; selfId: str
       <div className="glass-panel border border-border-subtle rounded-2xl overflow-hidden">
         <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
           {['KULLANICI', 'PROVIDER', 'TIER', 'DURUM', 'ROL', 'İŞLEMLER'].map((h) => (
-            <span key={h} className="text-[10px] font-display text-text-muted uppercase tracking-wider">{h}</span>
+            <span key={h} className="text-micro font-medium text-text-muted uppercase">{h}</span>
           ))}
         </div>
         {busy ? (
@@ -246,18 +246,18 @@ function UsersTab({ isSuperAdmin, selfId }: { isSuperAdmin: boolean; selfId: str
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-display text-text-primary truncate">{u.full_name ?? u.email.split('@')[0]}</p>
-                    <p className="text-[10px] text-text-muted truncate">{u.email}</p>
+                    <p className="text-micro text-text-muted truncate">{u.email}</p>
                   </div>
                 </div>
                 <span className="text-xs text-text-secondary capitalize">{u.provider}</span>
                 <select value={u.tier} onChange={(e) => setTier(u, e.target.value as SubscriptionTier)}
-                  className={cn('text-[11px] font-display uppercase px-2 py-1 rounded cursor-pointer border-0 outline-none', TIER_COLOR[u.tier] ?? TIER_COLOR.free)}>
+                  className={cn('text-micro font-medium uppercase px-2 py-1 rounded cursor-pointer border-0 outline-none', TIER_COLOR[u.tier] ?? TIER_COLOR.free)}>
                   <option value="free">Free</option>
                   <option value="pro">Pro</option>
                   <option value="premium">Premium</option>
                 </select>
                 <button onClick={() => toggleActive(u)}
-                  className={cn('text-[11px] font-display uppercase px-2 py-1 rounded', u.is_active ? 'bg-bullish/15 text-bullish' : 'bg-bearish/15 text-bearish')}>
+                  className={cn('text-micro font-medium uppercase px-2 py-1 rounded', u.is_active ? 'bg-bullish/15 text-bullish' : 'bg-bearish/15 text-bearish')}>
                   {u.is_active ? 'Aktif' : 'Pasif'}
                 </button>
                 <select
@@ -265,7 +265,7 @@ function UsersTab({ isSuperAdmin, selfId }: { isSuperAdmin: boolean; selfId: str
                   disabled={!isSuperAdmin || u.id === selfId}
                   onChange={(e) => setRole(u, e.target.value as UserRole)}
                   title={u.id === selfId ? 'Kendi rolünü değiştiremezsin' : undefined}
-                  className={cn('text-[11px] font-display uppercase px-2 py-1 rounded cursor-pointer border-0 outline-none disabled:cursor-not-allowed disabled:opacity-60', ROLE_COLOR[u.role])}
+                  className={cn('text-micro font-medium uppercase px-2 py-1 rounded cursor-pointer border-0 outline-none disabled:cursor-not-allowed disabled:opacity-60', ROLE_COLOR[u.role])}
                 >
                   <option value="user">Üye</option>
                   <option value="admin">Admin</option>
@@ -393,7 +393,7 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         {isSuperAdmin && (
           <GlassCard className="p-4 space-y-2 md:col-span-2 border-bearish/20">
             <h3 className="text-sm font-display text-text-primary flex items-center gap-1.5"><Trash2 className="w-4 h-4 text-bearish" /> Kapanan Sinyalleri Kalıcı Sil</h3>
-            <p className="text-[11px] text-text-muted">
+            <p className="text-micro text-text-muted">
               Geçmişe düşmüş, gereksiz birikmiş sinyalleri (örn. binlerce HOLD kaydı) kalıcı olarak siler. Aktif sinyallere dokunmaz, geri alınamaz.
             </p>
             <div className="flex items-center gap-2 flex-wrap">
@@ -421,13 +421,13 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 {deletingBulk ? 'Siliniyor...' : 'Kalıcı Sil'}
               </button>
             </div>
-            {delMsg && <p className="text-[11px] text-bullish">{delMsg}</p>}
+            {delMsg && <p className="text-micro text-bullish">{delMsg}</p>}
           </GlassCard>
         )}
 
         <GlassCard className="p-4 space-y-2">
           <h3 className="text-sm font-display text-text-primary flex items-center gap-1.5"><Ban className="w-4 h-4 text-bearish" /> Toplu Temizlik</h3>
-          <p className="text-[11px] text-text-muted">Belirtilen güven skorunun altındaki aktif sinyalleri kullanıcılardan gizler.</p>
+          <p className="text-micro text-text-muted">Belirtilen güven skorunun altındaki aktif sinyalleri kullanıcılardan gizler.</p>
           <div className="flex items-center gap-2">
             <input type="range" min={0} max={100} step={5} value={cleanThreshold} onChange={(e) => setCleanThreshold(Number(e.target.value))} className="flex-1 accent-bearish" />
             <span className="text-xs font-display font-mono w-10 text-center">{formatPercentage(cleanThreshold, 0, false)}</span>
@@ -436,12 +436,12 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               {cleaning ? 'Temizleniyor...' : 'Temizle'}
             </button>
           </div>
-          {cleanMsg && <p className="text-[11px] text-bullish">{cleanMsg}</p>}
+          {cleanMsg && <p className="text-micro text-bullish">{cleanMsg}</p>}
         </GlassCard>
 
         <GlassCard className="p-4 space-y-2">
           <h3 className="text-sm font-display text-text-primary flex items-center gap-1.5"><Play className="w-4 h-4 text-accent-primary" /> Zorla Sinyal Üret</h3>
-          <p className="text-[11px] text-text-muted">Belirli bir sembol + zaman dilimi için anında sinyal üretimini tetikler.</p>
+          <p className="text-micro text-text-muted">Belirli bir sembol + zaman dilimi için anında sinyal üretimini tetikler.</p>
           <div className="flex items-center gap-2">
             <input value={genSymbol} onChange={(e) => setGenSymbol(e.target.value)} placeholder="BTCUSDT"
               className="flex-1 bg-bg-secondary border border-border-subtle rounded-lg px-3 py-1.5 text-xs text-text-primary outline-none focus:border-accent-primary/40" />
@@ -454,7 +454,7 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               {generating ? 'Üretiliyor...' : 'Üret'}
             </button>
           </div>
-          {genMsg && <p className="text-[11px] text-bullish">{genMsg}</p>}
+          {genMsg && <p className="text-micro text-bullish">{genMsg}</p>}
         </GlassCard>
       </div>
 
@@ -476,7 +476,7 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       <div className="glass-panel border border-border-subtle rounded-2xl overflow-hidden">
         <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1.3fr_auto] gap-4 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
           {['SEMBOL', 'TİP', 'GÜVEN', 'TF', 'DURUM', 'ÜRETİLDİ', 'İŞLEM'].map((h) => (
-            <span key={h} className="text-[10px] font-display text-text-muted uppercase tracking-wider">{h}</span>
+            <span key={h} className="text-micro font-medium text-text-muted uppercase">{h}</span>
           ))}
         </div>
         {busy ? (
@@ -513,7 +513,7 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           </div>
         )}
       </div>
-      <p className="text-[11px] text-text-muted">{total} sinyal listeleniyor.</p>
+      <p className="text-micro text-text-muted">{total} sinyal listeleniyor.</p>
     </div>
   );
 }
@@ -587,7 +587,7 @@ function AssetsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             {creating ? 'Ekleniyor...' : 'Ekle'}
           </button>
         </div>
-        {createMsg && <p className="text-[11px] text-bullish">{createMsg}</p>}
+        {createMsg && <p className="text-micro text-bullish">{createMsg}</p>}
       </GlassCard>
 
       <div className="relative max-w-xs">
@@ -599,7 +599,7 @@ function AssetsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       <div className="glass-panel border border-border-subtle rounded-2xl overflow-hidden">
         <div className="grid grid-cols-[1fr_2fr_1fr_1fr_1fr_auto] gap-4 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
           {['SEMBOL', 'AD', 'TİP', 'MARKET', 'DURUM', 'İŞLEM'].map((h) => (
-            <span key={h} className="text-[10px] font-display text-text-muted uppercase tracking-wider">{h}</span>
+            <span key={h} className="text-micro font-medium text-text-muted uppercase">{h}</span>
           ))}
         </div>
         {busy ? (
@@ -613,7 +613,7 @@ function AssetsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 <span className="uppercase text-text-muted">{a.asset_type}</span>
                 <span className="text-text-muted">{a.market ?? '—'}</span>
                 <button onClick={() => toggleActive(a)}
-                  className={cn('text-[11px] font-display uppercase px-2 py-1 rounded w-fit', a.is_active ? 'bg-bullish/15 text-bullish' : 'bg-bearish/15 text-bearish')}>
+                  className={cn('text-micro font-medium uppercase px-2 py-1 rounded w-fit', a.is_active ? 'bg-bullish/15 text-bullish' : 'bg-bearish/15 text-bearish')}>
                   {a.is_active ? 'Aktif' : 'Pasif'}
                 </button>
                 <button onClick={() => removeAsset(a)} disabled={!isSuperAdmin}
@@ -625,7 +625,7 @@ function AssetsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           </div>
         )}
       </div>
-      <p className="text-[11px] text-text-muted">{total} varlık listeleniyor.</p>
+      <p className="text-micro text-text-muted">{total} varlık listeleniyor.</p>
     </div>
   );
 }
@@ -672,7 +672,7 @@ function SystemTab() {
       <div className="glass-panel border border-border-subtle rounded-2xl overflow-hidden">
         <div className="grid grid-cols-[1.5fr_1fr_1.5fr_2fr_auto] gap-4 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
           {['İŞ', 'DURUM', 'SON ÇALIŞMA', 'HATA', 'İŞLEM'].map((h) => (
-            <span key={h} className="text-[10px] font-display text-text-muted uppercase tracking-wider">{h}</span>
+            <span key={h} className="text-micro font-medium text-text-muted uppercase">{h}</span>
           ))}
         </div>
         <div className="divide-y divide-border-subtle">
@@ -693,7 +693,7 @@ function SystemTab() {
               <span className="font-mono text-text-muted">{j.last_run_at ? formatAbsoluteTimeTR(j.last_run_at) : '—'}</span>
               <span className="text-bearish truncate" title={j.last_error ?? ''}>{j.last_error ?? '—'}</span>
               <button onClick={() => trigger(jobId)} disabled={triggering === jobId || j.running}
-                className="flex items-center gap-1 text-[11px] font-display text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-2.5 py-1 rounded-lg transition-all disabled:opacity-50">
+                className="flex items-center gap-1 text-micro font-medium text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-2.5 py-1 rounded-lg transition-all disabled:opacity-50">
                 <Play className="w-3 h-3" /> {triggering === jobId ? 'Tetiklendi' : 'Şimdi Çalıştır'}
               </button>
             </div>
@@ -736,7 +736,7 @@ function AuditTab() {
       <div className="glass-panel border border-border-subtle rounded-2xl overflow-hidden">
         <div className="grid grid-cols-[1.3fr_1.2fr_1.5fr_1.5fr_2fr] gap-4 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
           {['ZAMAN', 'KİM', 'AKSİYON', 'HEDEF', 'DETAY'].map((h) => (
-            <span key={h} className="text-[10px] font-display text-text-muted uppercase tracking-wider">{h}</span>
+            <span key={h} className="text-micro font-medium text-text-muted uppercase">{h}</span>
           ))}
         </div>
         {busy ? (
@@ -751,7 +751,7 @@ function AuditTab() {
                 <span className="text-text-primary truncate">{r.actor_email}</span>
                 <span className="font-display text-accent-primary">{r.action}</span>
                 <span className="text-text-secondary">{r.target_type ? `${r.target_type}${r.target_id ? ` · ${r.target_id.slice(0, 8)}` : ''}` : '—'}</span>
-                <span className="text-text-muted truncate font-mono text-[10px]">{JSON.stringify(r.detail)}</span>
+                <span className="text-text-muted truncate font-mono text-micro">{JSON.stringify(r.detail)}</span>
               </div>
             ))}
           </div>

@@ -80,9 +80,9 @@ export function CookieConsentBanner() {
                 <div className="flex items-center justify-between rounded-lg border border-white/10 bg-bg-primary/40 px-3 py-2">
                   <div>
                     <p className="text-xs font-medium text-text-primary">Zorunlu Çerezler</p>
-                    <p className="text-[11px] text-text-muted">Oturum ve güvenlik — devre dışı bırakılamaz.</p>
+                    <p className="text-micro text-text-muted">Oturum ve güvenlik — devre dışı bırakılamaz.</p>
                   </div>
-                  <span className="shrink-0 rounded-md bg-white/5 px-2 py-1 text-[11px] font-medium text-text-muted">
+                  <span className="shrink-0 rounded-md bg-white/5 px-2 py-1 text-micro font-medium text-text-muted">
                     Her zaman aktif
                   </span>
                 </div>
@@ -90,7 +90,7 @@ export function CookieConsentBanner() {
                 <label className="flex cursor-pointer items-center justify-between rounded-lg border border-white/10 bg-bg-primary/40 px-3 py-2">
                   <div>
                     <p className="text-xs font-medium text-text-primary">Analitik Çerezler</p>
-                    <p className="text-[11px] text-text-muted">Ürün kullanımının ölçümü (PostHog) — isteğe bağlı.</p>
+                    <p className="text-micro text-text-muted">Ürün kullanımının ölçümü (PostHog) — isteğe bağlı.</p>
                   </div>
                   <input
                     type="checkbox"

@@ -13,7 +13,7 @@ export default function LegalIndexPage() {
           ← Ana sayfa
         </Link>
 
-        <h1 className="mt-4 text-3xl font-display">Yasal Belgeler</h1>
+        <h1 className="mt-4 text-h1 font-display">Yasal Belgeler</h1>
         <p className="mt-2 text-sm text-text-muted">
           Gizlilik, kullanım koşulları, çerez ve risk bildirimi dahil tüm yasal metinler.
         </p>

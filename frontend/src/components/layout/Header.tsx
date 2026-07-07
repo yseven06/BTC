@@ -96,7 +96,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
             />
             <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-bg-tertiary/50 border border-border-subtle">
               <Command className="w-3 h-3 text-text-muted" />
-              <span className="text-[10px] font-mono text-text-muted">K</span>
+              <span className="text-micro font-mono text-text-muted">K</span>
             </div>
           </div>
 
@@ -108,14 +108,14 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
                   key={asset.id}
                   className="flex items-center gap-3 px-4 py-2.5 hover:bg-e-2 cursor-pointer border-b border-border-subtle last:border-none"
                 >
-                  <div className="w-7 h-7 rounded-md bg-bg-tertiary border border-border-subtle flex items-center justify-center text-[10px] font-display font-mono text-accent-primary overflow-hidden">
+                  <div className="w-7 h-7 rounded-md bg-bg-tertiary border border-border-subtle flex items-center justify-center text-micro font-medium font-mono text-accent-primary overflow-hidden">
                     <CoinIcon symbol={asset.symbol} assetType={asset.asset_type} />
                   </div>
                   <div>
                     <p className="text-sm font-display text-text-primary">{asset.symbol}</p>
                     <p className="text-xs text-text-muted">{asset.name} · {asset.market}</p>
                   </div>
-                  <span className="ml-auto text-[10px] font-medium text-text-muted bg-bg-tertiary px-2 py-0.5 rounded">
+                  <span className="ml-auto text-micro font-medium text-text-muted bg-bg-tertiary px-2 py-0.5 rounded">
                     {asset.asset_type}
                   </span>
                 </div>
@@ -144,7 +144,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4.5 h-4.5 min-w-[18px] text-[10px] font-display font-mono text-white bg-bearish rounded-full shadow-lg">
+                <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4.5 h-4.5 min-w-[18px] text-micro font-medium font-mono text-white bg-bearish rounded-full shadow-lg">
                   {unreadCount}
                 </span>
               )}
@@ -189,7 +189,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
                             {notif.triggered_at ? 'Triggered' : 'Watching'}
                             {' · '}{notif.alert_type}
                           </p>
-                          <p className="text-[11px] text-text-muted mt-1">
+                          <p className="text-micro text-text-muted mt-1">
                             {formatRelativeTime(notif.created_at)}
                           </p>
                         </div>

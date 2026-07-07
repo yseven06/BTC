@@ -138,7 +138,7 @@ export default function HelpPage() {
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
+        <h1 className="text-h2 font-display text-text-primary flex items-center gap-2">
           <HelpCircle className="w-6 h-6 text-accent-primary" /> Yardım Merkezi
         </h1>
         <p className="text-sm text-text-secondary mt-1">
@@ -209,7 +209,7 @@ export default function HelpPage() {
       </GlassCard>
 
       {/* Disclaimer */}
-      <p className="text-[11px] text-text-muted leading-relaxed border-t border-border-subtle pt-4">
+      <p className="text-micro text-text-muted leading-relaxed border-t border-border-subtle pt-4">
         TradeMinds AI yatırım tavsiyesi sunmaz. Tüm analizler bilgilendirme amaçlıdır.
         Sermaye piyasası araçları yüksek risk içerir; yatırımcılar kendi durumlarına göre
         karar vermeli ve gerekli durumlarda profesyonel danışmanlık almalıdır.

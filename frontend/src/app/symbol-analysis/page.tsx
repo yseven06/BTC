@@ -43,7 +43,7 @@ function HtfSplit({ types }: { types: Record<string, number> }) {
         <div className="h-full bg-accent-primary/70 rounded-l-full" style={{ width: `${ob / total * 100}%` }} />
         <div className="h-full bg-accent-ui/70 rounded-r-full" style={{ width: `${fvg / total * 100}%` }} />
       </div>
-      <div className="flex gap-2 text-[10px] whitespace-nowrap">
+      <div className="flex gap-2 text-micro whitespace-nowrap">
         <span className="text-accent-primary font-display">OB {ob}</span>
         <span className="text-accent-ui font-display">FVG {fvg}</span>
       </div>
@@ -62,7 +62,7 @@ function DirectionSplit({ directions, total }: { directions: Record<string, numb
         <div className="h-full bg-bullish/70 rounded-full" style={{ width: `${pct}%` }} />
       </div>
       <TrendingDown className="w-3 h-3 text-bearish flex-shrink-0" />
-      <span className="text-[10px] text-text-muted whitespace-nowrap">{bull}L / {bear}S</span>
+      <span className="text-micro text-text-muted whitespace-nowrap">{bull}L / {bear}S</span>
     </div>
   );
 }
@@ -108,7 +108,7 @@ export default function SymbolAnalysisPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
+        <h1 className="text-h2 font-display text-text-primary flex items-center gap-2">
           <BarChart3 className="w-6 h-6 text-accent-primary" /> Sembol Analizi
         </h1>
         <p className="text-sm text-text-secondary mt-1">
@@ -129,15 +129,15 @@ export default function SymbolAnalysisPage() {
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3">
         <GlassCard className="text-center py-4">
-          <p className="text-3xl font-display font-mono text-text-primary">{data?.total_symbols ?? '—'}</p>
+          <p className="text-h1 font-display font-mono text-text-primary">{data?.total_symbols ?? '—'}</p>
           <p className="text-xs text-text-muted mt-1">İzlenen Sembol</p>
         </GlassCard>
         <GlassCard className="text-center py-4">
-          <p className="text-3xl font-display font-mono text-text-primary">{totalSigs}</p>
+          <p className="text-h1 font-display font-mono text-text-primary">{totalSigs}</p>
           <p className="text-xs text-text-muted mt-1">Toplam Sinyal</p>
         </GlassCard>
         <GlassCard className="text-center py-4">
-          <p className="text-3xl font-display font-mono text-bullish">{globalWR}</p>
+          <p className="text-h1 font-display font-mono text-bullish">{globalWR}</p>
           <p className="text-xs text-text-muted mt-1">Genel Kazanma Oranı</p>
         </GlassCard>
       </div>
@@ -174,7 +174,7 @@ export default function SymbolAnalysisPage() {
         {/* Head */}
         <div className="grid grid-cols-[2fr_1fr_1.5fr_1.5fr_1.5fr_1.5fr] gap-4 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
           {['SEMBOL', 'TOPLAM', 'KALİTE SKORU', 'KAZANMA ORANI', 'HTF TİPİ (OB/FVG)', 'YÖN DAĞILIMI'].map((h) => (
-            <span key={h} className="text-[10px] font-display text-text-muted uppercase tracking-wider">{h}</span>
+            <span key={h} className="text-micro font-medium text-text-muted uppercase">{h}</span>
           ))}
         </div>
 
@@ -207,14 +207,14 @@ export default function SymbolAnalysisPage() {
                   </div>
                   <div>
                     <p className="text-sm font-display text-text-primary">{sym.symbol}</p>
-                    <p className="text-[10px] text-text-muted">{sym.name}</p>
+                    <p className="text-micro text-text-muted">{sym.name}</p>
                   </div>
                 </div>
 
                 {/* Total */}
                 <div>
                   <p className="text-sm font-display font-mono text-text-primary">{sym.total}</p>
-                  <p className="text-[10px] text-text-muted">
+                  <p className="text-micro text-text-muted">
                     {sym.active > 0 && <span className="text-accent-primary">{sym.active} aktif · </span>}
                     {resolved > 0 ? `${resolved} kapandı` : 'kapanmadı'}
                   </p>
@@ -229,7 +229,7 @@ export default function SymbolAnalysisPage() {
                     {resolved > 0 ? formatPercentage(sym.win_rate, 0, false) : '—'}
                   </p>
                   {resolved > 0 && (
-                    <p className="text-[10px] text-text-muted">
+                    <p className="text-micro text-text-muted">
                       {sym.wins}K / {sym.losses}K / {sym.breakeven}BE
                     </p>
                   )}

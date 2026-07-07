@@ -112,7 +112,7 @@ export default function ProfilePage() {
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
+        <h1 className="text-h2 font-display text-text-primary flex items-center gap-2">
           <User className="w-6 h-6 text-accent-primary" /> Profilim
         </h1>
         <p className="text-sm text-text-secondary mt-1">Hesap bilgilerini güncelle ve şifreni değiştir</p>
@@ -121,7 +121,7 @@ export default function ProfilePage() {
       {/* Identity */}
       <GlassCard>
         <div className="flex items-center gap-4 mb-5">
-          <div className="w-16 h-16 rounded-xl overflow-hidden bg-gradient-to-br from-amber to-accent-primary flex items-center justify-center text-2xl font-display text-white flex-shrink-0">
+          <div className="w-16 h-16 rounded-xl overflow-hidden bg-gradient-to-br from-amber to-accent-primary flex items-center justify-center text-h2 font-display text-white flex-shrink-0">
             {user.avatar_url ? (
               <img src={user.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
@@ -143,18 +143,18 @@ export default function ProfilePage() {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-bg-secondary/50 rounded-xl p-3 border border-border-subtle">
-            <p className="text-[10px] text-text-muted uppercase font-display">Giriş Yöntemi</p>
+            <p className="text-micro text-text-muted uppercase font-medium">Giriş Yöntemi</p>
             <p className="text-sm font-display text-text-primary capitalize mt-0.5">{user.provider ?? 'email'}</p>
           </div>
           <div className="bg-bg-secondary/50 rounded-xl p-3 border border-border-subtle">
-            <p className="text-[10px] text-text-muted uppercase font-display">Hesap Durumu</p>
+            <p className="text-micro text-text-muted uppercase font-medium">Hesap Durumu</p>
             <p className={`text-sm font-display mt-0.5 ${user.is_active ? 'text-bullish' : 'text-bearish'}`}>
               {user.is_active ? 'Aktif' : 'Pasif'}
             </p>
           </div>
           {createdAt && (
             <div className="bg-bg-secondary/50 rounded-xl p-3 border border-border-subtle col-span-2">
-              <p className="text-[10px] text-text-muted uppercase font-display flex items-center gap-1">
+              <p className="text-micro text-text-muted uppercase font-medium flex items-center gap-1">
                 <Calendar className="w-3 h-3" /> Üyelik Tarihi
               </p>
               <p className="text-sm font-display text-text-primary mt-0.5">
@@ -208,7 +208,7 @@ export default function ProfilePage() {
 
             {/* Custom URL Input */}
             <div className="mt-3">
-              <label className="text-[11px] font-display text-text-muted uppercase">Veya Özel Fotoğraf URL'si</label>
+              <label className="text-micro font-medium text-text-muted uppercase">Veya Özel Fotoğraf URL'si</label>
               <input
                 type="text"
                 value={avatarUrl}
@@ -222,7 +222,7 @@ export default function ProfilePage() {
             <div className="mt-3 bg-bg-secondary/30 rounded-xl p-3 border border-border-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-display text-text-primary">Bilgisayardan Fotoğraf Yükle</p>
-                <p className="text-[10px] text-text-muted mt-0.5">PNG, JPG, WEBP veya GIF formatında dosya seçin.</p>
+                <p className="text-micro text-text-muted mt-0.5">PNG, JPG, WEBP veya GIF formatında dosya seçin.</p>
               </div>
               <div className="flex items-center gap-2">
                 <label className="cursor-pointer px-3 py-1.5 rounded-lg bg-bg-tertiary border border-border-subtle hover:border-accent-primary/50 text-xs font-display text-text-primary transition-all flex items-center gap-1.5">
@@ -235,12 +235,12 @@ export default function ProfilePage() {
                   />
                 </label>
                 {uploading && (
-                  <span className="text-[10px] text-text-muted animate-pulse">Yükleniyor...</span>
+                  <span className="text-micro text-text-muted animate-pulse">Yükleniyor...</span>
                 )}
               </div>
             </div>
             {uploadError && (
-              <p className="text-[10px] text-bearish mt-1">{uploadError}</p>
+              <p className="text-micro text-bearish mt-1">{uploadError}</p>
             )}
           </div>
           <div>
@@ -251,7 +251,7 @@ export default function ProfilePage() {
               disabled
               className="w-full mt-1 px-3 py-2.5 text-sm bg-bg-tertiary/50 border border-border-subtle rounded-xl text-text-muted cursor-not-allowed"
             />
-            <p className="text-[10px] text-text-muted mt-1">E-posta değiştirilemez (kimlik için sabit).</p>
+            <p className="text-micro text-text-muted mt-1">E-posta değiştirilemez (kimlik için sabit).</p>
           </div>
         </div>
 

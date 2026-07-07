@@ -227,7 +227,7 @@ export default function SignalHistoryPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-display tracking-tight text-text-primary flex items-center gap-2">
+        <h1 className="text-h2 font-display tracking-tight text-text-primary flex items-center gap-2">
           <History className="w-6 h-6 text-accent-primary" /> Sinyal Geçmişi
         </h1>
         <p className="text-sm text-text-secondary">
@@ -268,33 +268,33 @@ export default function SignalHistoryPage() {
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
             <GlassCard className="p-4">
-              <span className="text-[10px] font-display text-text-muted uppercase">Toplam Kapanan Sinyal</span>
-              <div className="text-2xl font-display font-mono mt-1 text-text-primary">{stats?.closed_count ?? 0}</div>
+              <span className="text-micro font-medium text-text-muted uppercase">Toplam Kapanan Sinyal</span>
+              <div className="text-h2 font-display font-mono mt-1 text-text-primary">{stats?.closed_count ?? 0}</div>
             </GlassCard>
             <GlassCard className="p-4">
-              <span className="text-[10px] font-display text-text-muted uppercase">Başarı Oranı</span>
-              <div className="text-2xl font-display font-mono mt-1 text-bullish">{formatPercentage(stats?.win_rate ?? 0, 0, false)}</div>
+              <span className="text-micro font-medium text-text-muted uppercase">Başarı Oranı</span>
+              <div className="text-h2 font-display font-mono mt-1 text-bullish">{formatPercentage(stats?.win_rate ?? 0, 0, false)}</div>
             </GlassCard>
             <GlassCard className="p-4">
-              <span className="text-[10px] font-display text-text-muted uppercase">TP Vuruş Oranı</span>
-              <div className="text-2xl font-display font-mono mt-1 text-bullish">{formatPercentage(stats?.tp_hit_rate ?? 0, 0, false)}</div>
+              <span className="text-micro font-medium text-text-muted uppercase">TP Vuruş Oranı</span>
+              <div className="text-h2 font-display font-mono mt-1 text-bullish">{formatPercentage(stats?.tp_hit_rate ?? 0, 0, false)}</div>
             </GlassCard>
             <GlassCard className="p-4">
-              <span className="text-[10px] font-display text-text-muted uppercase">Stop Oranı</span>
-              <div className="text-2xl font-display font-mono mt-1 text-bearish">{formatPercentage(stats?.sl_rate ?? 0, 0, false)}</div>
+              <span className="text-micro font-medium text-text-muted uppercase">Stop Oranı</span>
+              <div className="text-h2 font-display font-mono mt-1 text-bearish">{formatPercentage(stats?.sl_rate ?? 0, 0, false)}</div>
             </GlassCard>
             <GlassCard className="p-4">
-              <span className="text-[10px] font-display text-text-muted uppercase">Ort. Getiri</span>
-              <div className={cn('text-2xl font-display font-mono mt-1', (stats?.average_return ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
+              <span className="text-micro font-medium text-text-muted uppercase">Ort. Getiri</span>
+              <div className={cn('text-h2 font-display font-mono mt-1', (stats?.average_return ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
                 {stats?.average_return != null ? formatPercentage(stats.average_return) : '-'}
               </div>
             </GlassCard>
             <GlassCard className="p-4">
-              <span className="text-[10px] font-display text-text-muted uppercase">Kâr Faktörü</span>
-              <div className="text-2xl font-display font-mono mt-1 text-accent-primary">{stats?.profit_factor != null ? formatNumber(stats.profit_factor) : '-'}</div>
+              <span className="text-micro font-medium text-text-muted uppercase">Kâr Faktörü</span>
+              <div className="text-h2 font-display font-mono mt-1 text-accent-primary">{stats?.profit_factor != null ? formatNumber(stats.profit_factor) : '-'}</div>
             </GlassCard>
             <GlassCard className="p-4">
-              <span className="text-[10px] font-display text-text-muted uppercase">En İyi / En Kötü</span>
+              <span className="text-micro font-medium text-text-muted uppercase">En İyi / En Kötü</span>
               <div className="mt-1 space-y-0.5">
                 <div className="text-xs font-display text-bullish font-mono">
                   {stats?.best_signal ? `${stats.best_signal.symbol} ${formatPercentage(stats.best_signal.return)}` : '-'}
@@ -349,7 +349,7 @@ export default function SignalHistoryPage() {
             </div>
 
             <div className="flex items-center gap-2 ml-auto">
-              <span className="text-[10px] text-text-muted font-display uppercase">Min. Güven</span>
+              <span className="text-micro text-text-muted font-medium uppercase">Min. Güven</span>
               <input type="range" min={0} max={100} step={5} value={minConfidence}
                 onChange={(e) => { setMinConfidence(Number(e.target.value)); setPage(1); }}
                 className="w-24 accent-accent-primary cursor-pointer" />
@@ -458,11 +458,11 @@ export default function SignalHistoryPage() {
                       <td className="py-2.5 px-3">
                         <div className="flex flex-col gap-1 items-start">
                           {partialFillDetail(s) && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-display border text-bullish bg-bullish/10 border-bullish/20">
+                            <span className="px-2 py-0.5 rounded text-micro font-medium border text-bullish bg-bullish/10 border-bullish/20">
                               {partialFillDetail(s)}
                             </span>
                           )}
-                          <span className={cn('px-2 py-0.5 rounded text-[10px] font-display border', OUTCOME_COLOR[s.outcome ?? 'active'])}>
+                          <span className={cn('px-2 py-0.5 rounded text-micro font-medium border', OUTCOME_COLOR[s.outcome ?? 'active'])}>
                             {partialFillDetail(s) ? `Kalan: ${outcomeDetail(s)}` : outcomeDetail(s)}
                           </span>
                         </div>
@@ -476,7 +476,7 @@ export default function SignalHistoryPage() {
                       <td className="py-2.5 px-3 num-cell font-num-480 text-text-muted min-w-[110px]">
                         <div>{timeToOutcome(s)}</div>
                         {tpTimings(s).length > 0 && (
-                          <div className="flex flex-col items-end text-[10px] text-bullish/80 normal-case font-sans leading-tight mt-0.5">
+                          <div className="flex flex-col items-end text-micro text-bullish/80 normal-case font-sans leading-tight mt-0.5">
                             {tpTimings(s).map((t) => (
                               <span key={t.label} className="whitespace-nowrap">{t.label}: {formatDuration(t.ms)}</span>
                             ))}

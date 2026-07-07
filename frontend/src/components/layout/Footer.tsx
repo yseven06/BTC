@@ -37,7 +37,7 @@ export function Footer() {
         <InvestmentDisclaimer variant="footer" className="mb-4 max-w-3xl" />
 
         <nav aria-label="Yasal belgeler">
-          <ul className="flex flex-wrap items-center text-[11px] leading-relaxed">
+          <ul className="flex flex-wrap items-center text-micro leading-relaxed">
             {links.map((l, i) => (
               <li key={l.key} className="flex items-center">
                 {l.node}
@@ -51,7 +51,7 @@ export function Footer() {
           </ul>
         </nav>
 
-        <div className="mt-4 flex flex-col gap-1 border-t border-white/5 pt-4 text-[11px] text-text-muted sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-4 flex flex-col gap-1 border-t border-white/5 pt-4 text-micro text-text-muted sm:flex-row sm:items-center sm:justify-between">
           <p>
             <span className="font-medium text-text-secondary">TradeMinds AI</span>
             <span aria-hidden className="mx-1.5 text-white/20">·</span>

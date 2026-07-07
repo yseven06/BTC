@@ -219,7 +219,7 @@ export function EngineMiniChart({ symbol, timeframe, engineName, supportingData 
     };
   }, [candles, engineName, supportingData]);
 
-  if (error) return <p className="text-[11px] text-text-muted text-center py-3">Grafik yüklenemedi.</p>;
+  if (error) return <p className="text-micro text-text-muted text-center py-3">Grafik yüklenemedi.</p>;
   if (!candles) {
     // Must match the real chart's final height (460 price + 160 MACD for
     // engines that render one) — otherwise the panel grows the instant

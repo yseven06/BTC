@@ -10,7 +10,7 @@ export default function BacktestPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
+        <h1 className="text-h2 font-display text-text-primary flex items-center gap-2">
           <FlaskConical className="w-6 h-6 text-accent-primary" /> Backtest
         </h1>
         <p className="text-sm text-text-secondary mt-1">Walk-forward geçmiş simülasyonları</p>

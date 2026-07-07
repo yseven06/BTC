@@ -238,7 +238,7 @@ export default function DashboardPage() {
                 <p className="text-sm font-display text-text-primary">
                   Ücretsiz plandasın — günde {limits.daily_signal_limit} sinyal görüntülüyorsun.
                 </p>
-                <p className="text-[11px] text-text-secondary mt-0.5">
+                <p className="text-micro text-text-secondary mt-0.5">
                   Sınırsız sinyal, Telegram bildirimleri, backtest ve daha fazlası için Pro plana yükselt.
                 </p>
               </div>
@@ -253,7 +253,7 @@ export default function DashboardPage() {
       {/* ── Title Row ── */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h1 className="text-2xl font-display tracking-tight text-text-primary">
+          <h1 className="text-h2 font-display tracking-tight text-text-primary">
             {firstName ? `Hoş geldin, ${firstName}` : 'Gösterge Paneli'}
           </h1>
           <p className="text-sm text-text-secondary mt-0.5">Piyasaları yapay zekâ ile analiz edin, avantaj yakalayın.</p>
@@ -316,9 +316,9 @@ export default function DashboardPage() {
         {/* Closed trades within selected period */}
         <GlassCard dense className="flex items-center justify-between group">
           <div>
-            <span className="text-[10px] font-display text-text-muted uppercase tracking-wide">Bu Dönemde Kapanan İşlem</span>
-            <h3 className="text-3xl num font-num-560 mt-1 text-text-primary">{periodClosedCount}</h3>
-            <span className="text-[10px] text-text-muted font-display mt-1 block">
+            <span className="text-micro font-medium text-text-muted uppercase">Bu Dönemde Kapanan İşlem</span>
+            <h3 className="text-h1 num font-num-560 mt-1 text-text-primary">{periodClosedCount}</h3>
+            <span className="text-micro text-text-muted font-medium mt-1 block">
               {timeRange === '24s' ? 'son 24 saat' : timeRange === '7g' ? 'son 7 gün' : 'son 30 gün'}
             </span>
           </div>
@@ -330,9 +330,9 @@ export default function DashboardPage() {
         {/* Active Signals */}
         <GlassCard dense className="flex items-center justify-between group">
           <div>
-            <span className="text-[10px] font-display text-text-muted uppercase tracking-wide">Aktif Sinyaller</span>
-            <h3 className="text-3xl num font-num-560 mt-1 text-text-primary">{activeCount}</h3>
-            <span className="text-[10px] text-text-muted font-display mt-1 block">
+            <span className="text-micro font-medium text-text-muted uppercase">Aktif Sinyaller</span>
+            <h3 className="text-h1 num font-num-560 mt-1 text-text-primary">{activeCount}</h3>
+            <span className="text-micro text-text-muted font-medium mt-1 block">
               şu an işlem fırsatı (LONG/SHORT)
             </span>
           </div>
@@ -344,9 +344,9 @@ export default function DashboardPage() {
         {/* Win Rate */}
         <GlassCard dense className="flex items-center justify-between group">
           <div>
-            <span className="text-[10px] font-display text-text-muted uppercase tracking-wide">Başarı Oranı</span>
-            <h3 className="text-3xl num font-num-560 mt-1 text-bullish">{formatPercentage(winRate, 0, false)}</h3>
-            <span className="text-[10px] text-text-muted font-display mt-1 block">
+            <span className="text-micro font-medium text-text-muted uppercase">Başarı Oranı</span>
+            <h3 className="text-h1 num font-num-560 mt-1 text-bullish">{formatPercentage(winRate, 0, false)}</h3>
+            <span className="text-micro text-text-muted font-medium mt-1 block">
               {/* Win rate = win / (win + loss + breakeven) — the canonical
                   platform definition (breakeven dilutes it, which is why this
                   is below 50% even though wins outnumber losses). Show the full
@@ -362,9 +362,9 @@ export default function DashboardPage() {
         {/* Avg Return */}
         <GlassCard dense className="flex items-center justify-between group">
           <div>
-            <span className="text-[10px] font-display text-text-muted uppercase tracking-wide">Ortalama Getiri</span>
-            <h3 className={cn("text-3xl num font-num-560 mt-1", avgReturn >= 0 ? "text-bullish" : "text-bearish")}>{formatPercentage(avgReturn)}</h3>
-            <span className="text-[10px] text-text-muted font-display mt-1 block">
+            <span className="text-micro font-medium text-text-muted uppercase">Ortalama Getiri</span>
+            <h3 className={cn("text-h1 num font-num-560 mt-1", avgReturn >= 0 ? "text-bullish" : "text-bearish")}>{formatPercentage(avgReturn)}</h3>
+            <span className="text-micro text-text-muted font-medium mt-1 block">
               tüm zamanlar · işlem başına
             </span>
           </div>
@@ -376,11 +376,11 @@ export default function DashboardPage() {
         {/* Fear & Greed */}
         <GlassCard dense className="flex items-center justify-between group">
           <div>
-            <span className="text-[10px] font-display text-text-muted uppercase tracking-wide">Piyasa Greed Index</span>
-            <h3 className="text-3xl num font-num-560 mt-1" style={{ color: fngColor(fngValue) }}>
+            <span className="text-micro font-medium text-text-muted uppercase">Piyasa Greed Index</span>
+            <h3 className="text-h1 num font-num-560 mt-1" style={{ color: fngColor(fngValue) }}>
               {fngValue}
             </h3>
-            <span className="text-[10px] font-display mt-1 block" style={{ color: fngColor(fngValue) }}>
+            <span className="text-micro font-medium mt-1 block" style={{ color: fngColor(fngValue) }}>
               {fngLabel(fngValue)}
             </span>
           </div>
@@ -420,7 +420,7 @@ export default function DashboardPage() {
             </div>
 
             {globalError && (
-              <p className="text-[11px] text-amber bg-amber/10 border border-amber/20 rounded-lg px-3 py-2 mb-3">
+              <p className="text-micro text-amber bg-amber/10 border border-amber/20 rounded-lg px-3 py-2 mb-3">
                 Piyasa verisi şu an alınamıyor (kaynak geçici olarak sınırlandırıyor — CoinGecko rate limit).
                 {global ? ' Aşağıda son bilinen değerler gösteriliyor.' : ' 30 saniye içinde otomatik tekrar denenecek.'}
               </p>
@@ -428,28 +428,28 @@ export default function DashboardPage() {
             {/* Market stats row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
               <div>
-                <p className="text-[10px] text-text-muted uppercase font-display">Toplam Piyasa Değeri</p>
+                <p className="text-micro text-text-muted uppercase font-medium">Toplam Piyasa Değeri</p>
                 <p className="text-base num font-num-560 text-text-primary mt-0.5">
                   {global ? formatLargeNumber(global.total_market_cap_usd) : '—'}
                 </p>
-                <p className={`text-[11px] font-display ${(global?.market_cap_change_24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish'}`}>
+                <p className={`text-micro font-medium ${(global?.market_cap_change_24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish'}`}>
                   {global ? formatPercentage(global.market_cap_change_24h) : '—'}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-text-muted uppercase font-display">24s Hacim</p>
+                <p className="text-micro text-text-muted uppercase font-medium">24s Hacim</p>
                 <p className="text-base num font-num-560 text-text-primary mt-0.5">
                   {global ? formatLargeNumber(global.total_volume_usd) : '—'}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-text-muted uppercase font-display">BTC Dominance</p>
+                <p className="text-micro text-text-muted uppercase font-medium">BTC Dominance</p>
                 <p className="text-base num font-num-560 text-text-primary mt-0.5">
                   {global ? formatPercentage(global.btc_dominance, 2, false) : '—'}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] text-text-muted uppercase font-display">ETH Dominance</p>
+                <p className="text-micro text-text-muted uppercase font-medium">ETH Dominance</p>
                 <p className="text-base num font-num-560 text-text-primary mt-0.5">
                   {global ? formatPercentage(global.eth_dominance, 2, false) : '—'}
                 </p>
@@ -486,9 +486,9 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {perfCards.map((c, i) => (
                 <div key={i} className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
-                  <p className="text-[10px] text-text-muted uppercase font-display">{c.label}</p>
+                  <p className="text-micro text-text-muted uppercase font-medium">{c.label}</p>
                   <p className={`text-xl num font-num-560 mt-1 ${c.color}`}>{c.value}</p>
-                  {c.sub && <p className="text-[10px] text-text-muted mt-0.5">{c.sub}</p>}
+                  {c.sub && <p className="text-micro text-text-muted mt-0.5">{c.sub}</p>}
                 </div>
               ))}
             </div>
@@ -561,20 +561,20 @@ export default function DashboardPage() {
                       <div className="flex gap-3 mt-0.5">
                         {livePrices[sig.asset?.symbol ?? ''] ? (
                           <>
-                            <span className="text-[10px] font-mono text-text-primary font-display">
+                            <span className="text-micro font-mono text-text-primary font-medium">
                               {formatPrice(livePrices[sig.asset?.symbol ?? ''].price)}
                             </span>
-                            <span className={cn('text-[10px] font-mono font-display',
+                            <span className={cn('text-micro font-mono font-medium',
                               (livePrices[sig.asset?.symbol ?? ''].changePct24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
                               {formatPercentage(livePrices[sig.asset?.symbol ?? ''].changePct24h ?? 0)}
                             </span>
                           </>
                         ) : (
                           <>
-                            <span className="text-[10px] text-text-muted">
+                            <span className="text-micro text-text-muted">
                               TP: <span className="text-bullish font-mono">{sig.tp1 ? formatPrice(sig.tp1) : '—'}</span>
                             </span>
-                            <span className="text-[10px] text-text-muted">
+                            <span className="text-micro text-text-muted">
                               SL: <span className="text-bearish font-mono">{sig.stop_loss ? formatPrice(sig.stop_loss) : '—'}</span>
                             </span>
                           </>
@@ -632,7 +632,7 @@ export default function DashboardPage() {
                 <TrendingUp className="w-4 h-4 text-bullish" />
                 En Çok Kazananlar
               </h2>
-              <span className="text-[10px] text-text-muted bg-bg-secondary px-2 py-0.5 rounded">24 Saat</span>
+              <span className="text-micro text-text-muted bg-bg-secondary px-2 py-0.5 rounded">24 Saat</span>
             </div>
             {gainers.length === 0 ? (
               <p className="text-xs text-text-muted text-center py-4">

@@ -31,7 +31,7 @@ export function LockedOverlay({
           <Crown className="w-4 h-4" /> Plana Yükselt
         </Link>
       ) : (
-        <span className="text-[11px] text-text-muted">Beta sürümünde yakında açılacak.</span>
+        <span className="text-micro text-text-muted">Beta sürümünde yakında açılacak.</span>
       )}
     </div>
   );
@@ -40,7 +40,7 @@ export function LockedOverlay({
 /** Compact inline-locked badge for hiding small areas (e.g. a single card). */
 export function InlineLocked({ feature = 'Pro' }: { feature?: string }) {
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-display uppercase text-amber bg-amber/10 border border-amber/30 px-2 py-0.5 rounded">
+    <span className="inline-flex items-center gap-1 text-micro font-medium uppercase text-amber bg-amber/10 border border-amber/30 px-2 py-0.5 rounded">
       <Lock className="w-2.5 h-2.5" /> {feature}
     </span>
   );

@@ -38,9 +38,9 @@ function humanizeDuration(seconds: number): string {
 function Stat({ label, value, sub, valueCls }: { label: string; value: React.ReactNode; sub?: string; valueCls?: string }) {
   return (
     <div className="flex flex-col">
-      <span className="text-[9px] text-text-muted font-display uppercase tracking-wider">{label}</span>
+      <span className="text-micro text-text-muted font-medium uppercase">{label}</span>
       <span className={cn('font-display text-sm', valueCls ?? 'text-text-primary')}>{value}</span>
-      {sub && <span className="text-[10px] text-text-muted">{sub}</span>}
+      {sub && <span className="text-micro text-text-muted">{sub}</span>}
     </div>
   );
 }
@@ -95,7 +95,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
           </div>
           <button
             onClick={() => setReloadKey((k) => k + 1)}
-            className="text-[11px] font-display text-accent-primary hover:underline"
+            className="text-micro font-medium text-accent-primary hover:underline"
           >
             Tekrar dene
           </button>
@@ -112,7 +112,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
     <GlassCard dense={compact}>
       <h3 className="text-xs font-display text-text-muted uppercase tracking-wider flex items-center gap-1.5 mb-3">
         <Brain className="w-3.5 h-3.5 text-accent-primary" /> Akıllı Durum
-        <span className="ml-auto normal-case font-normal text-[10px] text-text-muted">
+        <span className="ml-auto normal-case font-normal text-micro text-text-muted">
           {data.status_updated_at ? `Güncellendi ${formatRelativeTime(data.status_updated_at)}` : ''}
         </span>
       </h3>
@@ -125,12 +125,12 @@ export function IntelligencePanel({ signalId, compact }: Props) {
             <div className={cn('font-display text-sm flex items-center gap-2', status.cls)}>
               {status.label}
               {data.seconds_in_state != null && data.seconds_in_state >= 60 && (
-                <span className="text-[10px] font-normal text-text-muted">
+                <span className="text-micro font-normal text-text-muted">
                   · {humanizeDuration(data.seconds_in_state)} süredir
                 </span>
               )}
             </div>
-            {data.status_reason && <p className="text-[11px] text-text-secondary mt-0.5">{data.status_reason}</p>}
+            {data.status_reason && <p className="text-micro text-text-secondary mt-0.5">{data.status_reason}</p>}
           </div>
         </div>
       )}
@@ -202,7 +202,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
         <div className="mt-4 pt-3 border-t border-border-subtle">
           <div className="flex items-center gap-2">
             <History className="w-4 h-4 text-accent-primary flex-shrink-0" />
-            <span className="text-[11px] text-text-secondary">
+            <span className="text-micro text-text-secondary">
               Benzer <b className="text-text-primary">{data.similar_setups.match_count}</b> geçmiş setup'ta
               {' '}
               <b className={data.similar_setups.win_rate >= 55 ? 'text-bullish' : data.similar_setups.win_rate <= 45 ? 'text-bearish' : 'text-text-primary'}>
@@ -218,7 +218,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
 
       {/* Adaptive-weights learning indicator */}
       {coin.has_memory && (
-        <div className="mt-4 pt-3 border-t border-border-subtle flex items-center gap-2 text-[10px] text-text-muted">
+        <div className="mt-4 pt-3 border-t border-border-subtle flex items-center gap-2 text-micro text-text-muted">
           <Gauge className="w-3 h-3" />
           {coin.adaptive_active
             ? `Bu coin/zaman dilimi için adaptif ağırlıklar aktif (${coin.total_signals} sinyalden öğrenildi).`

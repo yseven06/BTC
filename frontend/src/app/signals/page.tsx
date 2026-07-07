@@ -140,7 +140,7 @@ function HtfBadge({ label, bullish }: { label: string; bullish: boolean }) {
     <span
       title="Üst zaman dilimi (HTF) / Akıllı Para (SMC) hizası"
       className={cn(
-        'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-display tracking-wide',
+        'inline-flex items-center px-2 py-0.5 rounded text-micro font-medium',
         bullish
           ? 'bg-bullish/15 text-bullish border border-bullish/30'
           : 'bg-bearish/15 text-bearish border border-bearish/30'
@@ -154,7 +154,7 @@ function HtfBadge({ label, bullish }: { label: string; bullish: boolean }) {
 function PurgeBadge({ label, low }: { label: string; low: boolean }) {
   return (
     <span className={cn(
-      'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-display tracking-wide',
+      'inline-flex items-center px-2 py-0.5 rounded text-micro font-medium',
       low
         ? 'bg-bullish/10 text-bullish'
         : 'bg-bearish/10 text-bearish'
@@ -176,7 +176,7 @@ function OutcomeBadge({ outcome }: { outcome: string }) {
   const c = config[outcome] ?? config.active;
   return (
     <span className={cn(
-      'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-display tracking-wide border',
+      'inline-flex items-center px-2 py-0.5 rounded text-micro font-medium border',
       c.cls
     )}>
       {c.label}
@@ -193,7 +193,7 @@ function DirectionBadge({ label, state }: { label: string; state: DirState }) {
   const c = config[state];
   return (
     <span className={cn(
-      'inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-display',
+      'inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-micro font-medium',
       c.cls
     )}>
       {c.icon}
@@ -525,7 +525,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
             <div className="min-w-0">
               <h3 className="font-display text-text-primary flex items-center gap-2 truncate">
                 {sig.asset?.symbol}
-                <span className="text-[9px] font-display text-accent-primary bg-accent-primary/10 border border-accent-primary/30 px-1.5 py-0.5 rounded uppercase">
+                <span className="text-micro font-medium text-accent-primary bg-accent-primary/10 border border-accent-primary/30 px-1.5 py-0.5 rounded uppercase">
                   {sig.timeframe}
                 </span>
               </h3>
@@ -554,7 +554,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
           </div>
 
           {dir.state === 'wait' && (
-            <div className="text-[11px] text-amber/90 bg-amber/10 border border-amber/30 rounded-lg px-3 py-2 flex items-start gap-2">
+            <div className="text-micro text-amber/90 bg-amber/10 border border-amber/30 rounded-lg px-3 py-2 flex items-start gap-2">
               <span className="text-amber">ⓘ</span>
               <span>
                 Bu sinyalde net AL/SAT konsensüsü yok (motorlar uzlaşmadı).
@@ -566,15 +566,15 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
           {/* Scores row */}
           <div className="flex items-center justify-between gap-3">
             <div className="flex-1">
-              <p className="text-[10px] text-text-muted uppercase font-display mb-1">Kalite</p>
+              <p className="text-micro text-text-muted uppercase font-medium mb-1">Kalite</p>
               <QualityBar score={qScore} />
             </div>
             <div className="text-center">
-              <p className="text-[10px] text-text-muted uppercase font-display">Olasılık</p>
+              <p className="text-micro text-text-muted uppercase font-medium">Olasılık</p>
               <p className="text-sm num font-num-520 text-accent-primary">{formatPercentage(Number(sig.probability_score ?? 0), 0, false)}</p>
             </div>
             <div className="text-center">
-              <p className="text-[10px] text-text-muted uppercase font-display">Risk</p>
+              <p className="text-micro text-text-muted uppercase font-medium">Risk</p>
               <p className="text-sm num font-num-520 text-text-primary uppercase">{sig.risk_level}</p>
             </div>
           </div>
@@ -608,7 +608,7 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
             <>
               {summary && (
                 <div className="bg-bg-secondary/40 rounded-xl p-3 border border-border-subtle">
-                  <p className="text-[10px] text-text-muted uppercase font-display mb-1.5">Özet</p>
+                  <p className="text-micro text-text-muted uppercase font-medium mb-1.5">Özet</p>
                   <p className="text-xs text-text-secondary leading-relaxed">{summary}</p>
                 </div>
               )}
@@ -617,37 +617,37 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
               {(longestBullish.length > 0 || longestBearish.length > 0) && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-bullish/5 border border-bullish/20 rounded-xl p-3">
-                    <p className="text-[10px] text-bullish uppercase font-display mb-2 flex items-center gap-1.5">
+                    <p className="text-micro text-bullish uppercase font-medium mb-2 flex items-center gap-1.5">
                       <TrendingUp className="w-3 h-3" /> LONG Lehine
                     </p>
                     {longestBullish.length > 0 ? (
                       <ul className="space-y-1">
                         {longestBullish.map((e) => (
-                          <li key={e.name} className="text-[11px] text-text-primary flex justify-between gap-2">
+                          <li key={e.name} className="text-micro text-text-primary flex justify-between gap-2">
                             <span className="truncate">{e.label}</span>
                             <span className="num font-num-560 text-bullish flex-shrink-0">{e.score.toFixed(0)}</span>
                           </li>
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-[10px] text-text-muted">Lehine motor yok</p>
+                      <p className="text-micro text-text-muted">Lehine motor yok</p>
                     )}
                   </div>
                   <div className="bg-bearish/5 border border-bearish/20 rounded-xl p-3">
-                    <p className="text-[10px] text-bearish uppercase font-display mb-2 flex items-center gap-1.5">
+                    <p className="text-micro text-bearish uppercase font-medium mb-2 flex items-center gap-1.5">
                       <TrendingDown className="w-3 h-3" /> SHORT Lehine
                     </p>
                     {longestBearish.length > 0 ? (
                       <ul className="space-y-1">
                         {longestBearish.map((e) => (
-                          <li key={e.name} className="text-[11px] text-text-primary flex justify-between gap-2">
+                          <li key={e.name} className="text-micro text-text-primary flex justify-between gap-2">
                             <span className="truncate">{e.label}</span>
                             <span className="num font-num-560 text-bearish flex-shrink-0">{e.score.toFixed(0)}</span>
                           </li>
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-[10px] text-text-muted">Aleyhine motor yok</p>
+                      <p className="text-micro text-text-muted">Aleyhine motor yok</p>
                     )}
                   </div>
                 </div>
@@ -656,21 +656,21 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
               {/* On-Chain quick view */}
               {onchain && onchain.applicable && (onchain.fearGreed != null || onchain.athDistance != null) && (
                 <div className="bg-bg-secondary/40 rounded-xl p-3 border border-border-subtle">
-                  <p className="text-[10px] text-text-muted uppercase font-display mb-2">On-Chain Hızlı Bakış</p>
+                  <p className="text-micro text-text-muted uppercase font-medium mb-2">On-Chain Hızlı Bakış</p>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {onchain.fearGreed != null && (
                       <div className="bg-bg-tertiary/60 rounded-lg p-2">
-                        <p className="text-[10px] text-text-muted">Fear &amp; Greed</p>
+                        <p className="text-micro text-text-muted">Fear &amp; Greed</p>
                         <p className={cn('num font-num-560',
                           onchain.fearGreed <= 25 ? 'text-bearish' :
                           onchain.fearGreed >= 75 ? 'text-bullish' : 'text-amber')}>
-                          {onchain.fearGreed} <span className="text-[9px] text-text-muted font-normal">{onchain.fearGreedClass ?? ''}</span>
+                          {onchain.fearGreed} <span className="text-micro text-text-muted font-normal">{onchain.fearGreedClass ?? ''}</span>
                         </p>
                       </div>
                     )}
                     {onchain.athDistance != null && (
                       <div className="bg-bg-tertiary/60 rounded-lg p-2">
-                        <p className="text-[10px] text-text-muted">ATH Mesafesi</p>
+                        <p className="text-micro text-text-muted">ATH Mesafesi</p>
                         <p className={cn('num font-num-560', onchain.athDistance < -30 ? 'text-bullish' : onchain.athDistance > -10 ? 'text-bearish' : 'text-text-primary')}>
                           {formatPercentage(onchain.athDistance, 1, false)}
                         </p>
@@ -678,13 +678,13 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
                     )}
                     {onchain.rank != null && (
                       <div className="bg-bg-tertiary/60 rounded-lg p-2">
-                        <p className="text-[10px] text-text-muted">Piyasa Sırası</p>
+                        <p className="text-micro text-text-muted">Piyasa Sırası</p>
                         <p className="num font-num-560 text-text-primary">#{onchain.rank}</p>
                       </div>
                     )}
                     {onchain.fastFee != null && (
                       <div className="bg-bg-tertiary/60 rounded-lg p-2">
-                        <p className="text-[10px] text-text-muted">BTC Ücret</p>
+                        <p className="text-micro text-text-muted">BTC Ücret</p>
                         <p className="num font-num-560 text-text-primary">{onchain.fastFee} sat/vB</p>
                       </div>
                     )}
@@ -707,9 +707,9 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
                         <span className="text-xs font-display text-text-primary truncate">{e.label}</span>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className={cn('text-[10px] font-display uppercase', bi.color)}>{bi.label}</span>
+                        <span className={cn('text-micro font-medium uppercase', bi.color)}>{bi.label}</span>
                         <span className="text-sm num font-num-520 text-text-primary tabular-nums">
-                          {e.score.toFixed(0)}<span className="text-[10px] text-text-muted">/100</span>
+                          {e.score.toFixed(0)}<span className="text-micro text-text-muted">/100</span>
                         </span>
                       </div>
                     </div>
@@ -763,8 +763,8 @@ function InfoCell({ label, value, accent }: { label: string; value: string; acce
   const cleanAccent = accent.replace(' mono', '');
   return (
     <div className="bg-bg-tertiary/40 rounded-lg p-2">
-      <p className="text-[9px] text-text-muted uppercase font-display mb-0.5">{label}</p>
-      <p className={cn('text-[11px] font-display', cleanAccent, isMono && 'font-mono')}>{value}</p>
+      <p className="text-micro text-text-muted uppercase font-medium mb-0.5">{label}</p>
+      <p className={cn('text-micro font-medium', cleanAccent, isMono && 'font-mono')}>{value}</p>
     </div>
   );
 }
@@ -775,7 +775,7 @@ function LevelRow({ label, value, color, textColor, bold }: {
   return (
     <div className="flex items-center gap-2">
       <span className={cn(
-        'w-12 text-center text-[9px] font-display uppercase py-0.5 rounded text-white',
+        'w-12 text-center text-micro font-medium uppercase py-0.5 rounded text-white',
         color
       )}>
         {label}
@@ -789,7 +789,7 @@ function LevelRow({ label, value, color, textColor, bold }: {
 function LevelCard({ label, value, color }: { label: string; value: number | null | undefined; color: string }) {
   return (
     <div className="bg-bg-secondary/60 rounded-lg p-2 border border-border-subtle">
-      <p className="text-[9px] text-text-muted uppercase font-display mb-0.5">{label}</p>
+      <p className="text-micro text-text-muted uppercase font-medium mb-0.5">{label}</p>
       <p className={cn('text-xs num font-num-520 truncate', color)}>
         {formatPrice(value)}
       </p>
@@ -932,7 +932,7 @@ export default function SignalsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
+          <h1 className="text-h2 font-display text-text-primary flex items-center gap-2">
             <Zap className="w-6 h-6 text-accent-primary" /> Sinyal Merkezi
           </h1>
           <p className="text-sm text-text-secondary mt-1">
@@ -1019,7 +1019,7 @@ export default function SignalsPage() {
             >
               {m.label}
               <span className={cn(
-                'text-[10px] font-mono px-1.5 py-0.5 rounded',
+                'text-micro font-mono px-1.5 py-0.5 rounded',
                 marketFilter === m.id ? 'bg-white/20' : 'bg-bg-tertiary/60'
               )}>
                 {cnt}
@@ -1048,7 +1048,7 @@ export default function SignalsPage() {
             >
               {tf === 'all' ? 'TÜMÜ' : tf.toUpperCase()}
               <span className={cn(
-                'text-[10px] font-mono px-1.5 py-0.5 rounded',
+                'text-micro font-mono px-1.5 py-0.5 rounded',
                 tfFilter === tf ? 'bg-white/20' : 'bg-bg-tertiary/60'
               )}>
                 {cnt}
@@ -1111,7 +1111,7 @@ export default function SignalsPage() {
 
       {/* Min quality slider */}
       <div className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border border-border-subtle rounded-xl">
-        <span className="text-[10px] text-text-muted font-display uppercase">MİN. KALİTE</span>
+        <span className="text-micro text-text-muted font-medium uppercase">MİN. KALİTE</span>
         <input
           type="range" min={0} max={10} step={1}
           value={minQuality}
@@ -1134,7 +1134,7 @@ export default function SignalsPage() {
         {/* Table head */}
         <div className="grid grid-cols-[2fr_1fr_1.2fr_1.5fr_1.3fr_1.5fr_auto] gap-4 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
           {['SEMBOL · TF', 'YÖN', 'ANLIK FİYAT', 'KALİTE SKORU', 'DURUM', 'ÜRETİLDİ', 'ANALİZ'].map((h) => (
-            <span key={h} className="text-[10px] font-display text-text-muted uppercase tracking-wider">{h}</span>
+            <span key={h} className="text-micro font-medium text-text-muted uppercase">{h}</span>
           ))}
         </div>
 
@@ -1198,11 +1198,11 @@ export default function SignalsPage() {
                   <div className="min-w-0">
                     <p className="text-sm font-display text-text-primary truncate flex items-center gap-1.5">
                       {sym}
-                      <span className="text-[9px] font-display text-accent-primary bg-accent-primary/10 border border-accent-primary/30 px-1.5 py-0.5 rounded uppercase">
+                      <span className="text-micro font-medium text-accent-primary bg-accent-primary/10 border border-accent-primary/30 px-1.5 py-0.5 rounded uppercase">
                         {sig.timeframe}
                       </span>
                     </p>
-                    <p className="text-[10px] text-text-muted truncate">{sig.asset?.name}</p>
+                    <p className="text-micro text-text-muted truncate">{sig.asset?.name}</p>
                   </div>
                 </div>
 
@@ -1218,7 +1218,7 @@ export default function SignalsPage() {
                       <p className={cn('text-sm num font-num-520', invalid ? 'text-text-muted line-through' : 'text-text-primary')}>
                         {formatPrice(live.price)}
                       </p>
-                      <p className={cn('text-[10px] font-mono font-display', up ? 'text-bullish' : 'text-bearish')}>
+                      <p className={cn('text-micro font-mono font-medium', up ? 'text-bullish' : 'text-bearish')}>
                         {formatPercentage(live.changePct24h ?? 0)}
                       </p>
                     </div>
@@ -1236,7 +1236,7 @@ export default function SignalsPage() {
                 </div>
 
                 {/* Generation time (TR saati) */}
-                <div className="text-[11px] font-mono text-text-muted">
+                <div className="text-micro font-mono text-text-muted">
                   {formatAbsoluteTimeTR(sig.generated_at)}
                 </div>
 
@@ -1244,7 +1244,7 @@ export default function SignalsPage() {
                 <div>
                   <button
                     onClick={() => setSelected(sig)}
-                    className="flex items-center gap-1 text-[11px] font-display text-text-muted hover:text-accent-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1 rounded-lg transition-all"
+                    className="flex items-center gap-1 text-micro font-medium text-text-muted hover:text-accent-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1 rounded-lg transition-all"
                   >
                     <Eye className="w-3 h-3" /> Analiz
                   </button>

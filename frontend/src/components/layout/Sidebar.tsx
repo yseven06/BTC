@@ -111,9 +111,9 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
           <div className="animate-fade-in overflow-hidden">
             <div className="flex items-center gap-1.5">
               <h1 className="text-base font-display text-text-primary whitespace-nowrap">TradeMinds</h1>
-              <span className="text-[9px] font-display uppercase tracking-wider text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
+              <span className="text-micro font-medium uppercase text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
             </div>
-            <p className="text-[9px] text-text-muted font-medium tracking-wider uppercase">AI Trading</p>
+            <p className="text-micro text-text-muted font-medium uppercase">AI Trading</p>
           </div>
         )}
       </div>
@@ -142,7 +142,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
                 <span className="text-sm animate-fade-in whitespace-nowrap flex-1">{item.label}</span>
               )}
               {!collapsed && badge > 0 && (
-                <span className="flex items-center justify-center min-w-[18px] h-4.5 px-1 text-[10px] font-display font-mono rounded-full bg-accent-primary/20 text-accent-primary">
+                <span className="flex items-center justify-center min-w-[18px] h-4.5 px-1 text-micro font-medium font-mono rounded-full bg-accent-primary/20 text-accent-primary">
                   {badge}
                 </span>
               )}
@@ -161,24 +161,24 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
             <Crown className={cn('w-4 h-4', tier === 'premium' ? 'text-amber' : 'text-amber')} />
             <span className={cn('text-xs font-display', planColor)}>{planName}</span>
             <span className={cn(
-              'ml-auto text-[9px] px-1.5 py-0.5 rounded font-display',
+              'ml-auto text-micro px-1.5 py-0.5 rounded font-medium',
               isFree ? 'bg-text-muted/30 text-text-muted' : 'bg-amber text-e-0'
             )}>
               {isFree ? 'Pasif' : 'Aktif'}
             </span>
           </div>
           {isAdmin ? (
-            <p className="text-[10px] text-text-muted">Sınırsız erişim · tüm özellikler aktif.</p>
+            <p className="text-micro text-text-muted">Sınırsız erişim · tüm özellikler aktif.</p>
           ) : isFree ? (
-            <p className="text-[10px] text-text-muted">{PAYMENTS_ENABLED ? 'Sınırsız sinyal için yükselt.' : 'Ücretsiz plan.'}</p>
+            <p className="text-micro text-text-muted">{PAYMENTS_ENABLED ? 'Sınırsız sinyal için yükselt.' : 'Ücretsiz plan.'}</p>
           ) : expiry ? (
-            <p className="text-[10px] text-text-muted">Sona erme: {expiry}</p>
+            <p className="text-micro text-text-muted">Sona erme: {expiry}</p>
           ) : null}
           {/* Beta: hide the "Yükselt" upgrade CTA for free users while payments are off */}
           {(isAdmin || !isFree || PAYMENTS_ENABLED) && (
             <Link
               href={isAdmin ? '/admin' : '/pricing'}
-              className="mt-2 block w-full text-[10px] font-display text-e-0 bg-amber hover:bg-amber/90 rounded-lg py-1.5 transition-colors text-center"
+              className="mt-2 block w-full text-micro font-medium text-e-0 bg-amber hover:bg-amber/90 rounded-lg py-1.5 transition-colors text-center"
             >
               {isAdmin ? 'Yönetim Paneli' : isFree ? 'Yükselt' : 'Planı Yönet'}
             </Link>
@@ -220,7 +220,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
           {!collapsed && (
             <div className="flex-1 min-w-0 animate-fade-in">
               <p className="text-xs font-display text-text-primary truncate">{displayName}</p>
-              <p className="text-[10px] text-text-muted truncate">{effectiveUser?.email ?? ''}</p>
+              <p className="text-micro text-text-muted truncate">{effectiveUser?.email ?? ''}</p>
             </div>
           )}
           {!collapsed && (

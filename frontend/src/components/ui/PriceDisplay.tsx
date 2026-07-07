@@ -33,7 +33,7 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({
           "num font-num-560 text-text-primary" /* sahipli-numeral: Inter+tnum, agirlik 560; tracking govde-0 (P8/D3+D4) */,
           size === "sm" && "text-sm",
           size === "md" && "text-lg",
-          size === "lg" && "text-2xl md:text-3xl"
+          size === "lg" && "text-h2 md:text-h1"
         )}
       >
         {formattedPrice}

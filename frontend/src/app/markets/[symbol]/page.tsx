@@ -349,7 +349,7 @@ export default function AssetDetailPage() {
         {/* Live price */}
         {live && (
           <div className="flex items-baseline gap-2.5 ml-1 pl-4 border-l border-border-subtle">
-            <p className="text-2xl font-display font-mono text-text-primary">
+            <p className="text-h2 font-display font-mono text-text-primary">
               {formatPrice(live.price)}
             </p>
             <p className={cn('text-sm font-mono font-display flex items-center gap-1', up ? 'text-bullish' : 'text-bearish')}>
@@ -429,7 +429,7 @@ export default function AssetDetailPage() {
                   key={tf}
                   onClick={() => setManualTf(tf)}
                   className={cn(
-                    'px-2.5 py-1 text-[11px] font-display uppercase rounded-md transition-all',
+                    'px-2.5 py-1 text-micro font-medium uppercase rounded-md transition-all',
                     chartTimeframe === tf
                       ? 'bg-accent-primary text-white'
                       : 'text-text-muted hover:text-text-primary'
@@ -450,21 +450,21 @@ export default function AssetDetailPage() {
               </div>
             )}
             {signal && chartMode === 'overlay' && (
-              <span className="text-[10px] text-text-muted hidden lg:inline">
+              <span className="text-micro text-text-muted hidden lg:inline">
                 Giriş · SL · TP seviyeleri grafikte
               </span>
             )}
             <button
               onClick={toggleFullscreen}
               title={manualFullscreen ? 'Tam ekrandan çık (Esc)' : 'Grafiği tam ekran göster'}
-              className="flex items-center gap-1.5 text-[11px] font-display text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-all"
+              className="flex items-center gap-1.5 text-micro font-medium text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-all"
             >
               {manualFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
             </button>
             <button
               onClick={openInTradingView}
               title="Gerçek TradingView'da bu sembolü aç"
-              className="flex items-center gap-1.5 text-[11px] font-display text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-all"
+              className="flex items-center gap-1.5 text-micro font-medium text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-all"
             >
               <ExternalLink className="w-3.5 h-3.5" /> TradingView'da Aç
             </button>
@@ -472,7 +472,7 @@ export default function AssetDetailPage() {
               <button
                 onClick={copyPineScript}
                 title="Giriş/SL/TP seviyelerini TradingView'a yapıştırmak için Pine Script kopyala"
-                className="flex items-center gap-1.5 text-[11px] font-display text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-all"
+                className="flex items-center gap-1.5 text-micro font-medium text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-all"
               >
                 {pineCopied ? <Check className="w-3.5 h-3.5 text-bullish" /> : <Code2 className="w-3.5 h-3.5" />}
                 {pineCopied ? 'Kopyalandı!' : 'Pine Script Kopyala'}
@@ -489,7 +489,7 @@ export default function AssetDetailPage() {
                   <HelpCircle className="w-3.5 h-3.5" />
                 </button>
                 {showPineHint && (
-                  <div className="absolute right-0 top-full mt-2 w-64 glass-e3-overlay rounded-panel p-3 text-[11px] leading-relaxed text-text-secondary z-50">
+                  <div className="absolute right-0 top-full mt-2 w-64 glass-e3-overlay rounded-panel p-3 text-micro leading-relaxed text-text-secondary z-50">
                     <p className="font-display text-text-primary mb-1.5">Nasıl kullanılır?</p>
                     <ol className="list-decimal list-inside space-y-1">
                       <li>Pine Script Kopyala'ya bas</li>
@@ -584,7 +584,7 @@ export default function AssetDetailPage() {
                 </div>
                 <button
                   onClick={() => router.push('/signal-history')}
-                  className="w-full mt-3 text-[11px] text-accent-primary hover:text-accent-ui text-center"
+                  className="w-full mt-3 text-micro text-accent-primary hover:text-accent-ui text-center"
                 >
                   Sinyal Geçmişi'nde tümünü gör →
                 </button>

@@ -181,7 +181,7 @@ export default function PortfolioPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display text-text-primary flex items-center gap-2">
+        <h1 className="text-h2 font-display text-text-primary flex items-center gap-2">
           <PieChart className="w-6 h-6 text-accent-primary" /> Portföy
         </h1>
         <p className="text-sm text-text-secondary mt-1">Pozisyonlarını takip et, anlık kâr/zararını gör</p>
@@ -235,21 +235,21 @@ export default function PortfolioPage() {
               {/* Summary */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <GlassCard className="p-4">
-                  <span className="text-[10px] font-display text-text-muted uppercase">Toplam Maliyet</span>
+                  <span className="text-micro font-medium text-text-muted uppercase">Toplam Maliyet</span>
                   <div className="text-xl font-display font-mono mt-1 text-text-primary">{formatUsd(totals.cost)}</div>
                 </GlassCard>
                 <GlassCard className="p-4">
-                  <span className="text-[10px] font-display text-text-muted uppercase">Anlık Değer</span>
+                  <span className="text-micro font-medium text-text-muted uppercase">Anlık Değer</span>
                   <div className="text-xl font-display font-mono mt-1 text-text-primary">{formatUsd(totals.value)}</div>
                 </GlassCard>
                 <GlassCard className="p-4">
-                  <span className="text-[10px] font-display text-text-muted uppercase">Kâr / Zarar</span>
+                  <span className="text-micro font-medium text-text-muted uppercase">Kâr / Zarar</span>
                   <div className={cn('text-xl font-display font-mono mt-1', totals.pnl >= 0 ? 'text-bullish' : 'text-bearish')}>
                     {totals.pnl >= 0 ? '+' : ''}{formatUsd(totals.pnl)}
                   </div>
                 </GlassCard>
                 <GlassCard className="p-4">
-                  <span className="text-[10px] font-display text-text-muted uppercase">Getiri %</span>
+                  <span className="text-micro font-medium text-text-muted uppercase">Getiri %</span>
                   <div className={cn('text-xl font-display font-mono mt-1', totals.pnlPct >= 0 ? 'text-bullish' : 'text-bearish')}>
                     {formatPercentage(totals.pnlPct)}
                   </div>
@@ -319,7 +319,7 @@ export default function PortfolioPage() {
                 <div className="glass-panel border border-border-subtle rounded-2xl overflow-hidden">
                   <div className="grid grid-cols-[1.2fr_0.9fr_1fr_1fr_1fr_1fr_auto] gap-3 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
                     {['VARLIK', 'MİKTAR', 'GİRİŞ FİYATI', 'ANLIK FİYAT', 'DEĞER', 'K/Z %', ''].map((h) => (
-                      <span key={h} className="text-[10px] font-display text-text-muted uppercase tracking-wider">{h}</span>
+                      <span key={h} className="text-micro font-medium text-text-muted uppercase">{h}</span>
                     ))}
                   </div>
                   <div className="divide-y divide-border-subtle">
@@ -375,7 +375,7 @@ export default function PortfolioPage() {
                   <div className="glass-panel border border-border-subtle rounded-2xl overflow-hidden">
                     <div className="grid grid-cols-[1.2fr_0.9fr_1fr_1fr_1fr_1fr_auto] gap-3 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
                       {['VARLIK', 'MİKTAR', 'GİRİŞ', 'ÇIKIŞ', 'GERÇEKLEŞEN K/Z', 'K/Z %', ''].map((h) => (
-                        <span key={h} className="text-[10px] font-display text-text-muted uppercase tracking-wider">{h}</span>
+                        <span key={h} className="text-micro font-medium text-text-muted uppercase">{h}</span>
                       ))}
                     </div>
                     <div className="divide-y divide-border-subtle">

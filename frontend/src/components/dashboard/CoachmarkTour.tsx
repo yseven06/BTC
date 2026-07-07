@@ -95,7 +95,7 @@ export default function CoachmarkTour() {
         aria-label="Tanıtım turu"
       >
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-display uppercase tracking-wide text-accent-primary">
+          <span className="text-micro font-medium uppercase text-accent-primary">
             Tanıtım · {step + 1}/{STEPS.length}
           </span>
           <button onClick={finish} className="focus-ring rounded text-xs font-display text-text-muted hover:text-text-primary transition-colors">
