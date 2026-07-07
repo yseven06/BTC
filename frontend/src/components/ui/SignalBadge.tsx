@@ -34,11 +34,11 @@ export const SignalBadge: React.FC<SignalBadgeProps> = ({
   // KALDIRILDI (COL-12 semantik-glow=0). strong/normal ayrımı renk-dışı
   // kanallarla korunur: bg/border alfa (10/40 vs 5/20) + pulse (pulse→P6).
   const styleMap = {
-    strong_buy: "bg-bull/10 text-bull border-bull/40 animate-pulse-slow",
+    strong_buy: "bg-bull/10 text-bull border-bull/40",
     buy: "bg-bull/5 text-bull/90 border-bull/20",
     hold: "bg-amber/10 text-amber border-amber/30",
     sell: "bg-bear/5 text-bear/90 border-bear/20",
-    strong_sell: "bg-bear/10 text-bear border-bear/40 animate-pulse-slow",
+    strong_sell: "bg-bear/10 text-bear border-bear/40",
   };
 
   const currentLabel = labels[lang][type.toLowerCase() as keyof typeof labels["tr"]] || type;

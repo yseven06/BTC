@@ -27,7 +27,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
         )}
       />
       {label && (
-        <span className="text-xs font-display text-text-secondary animate-pulse-slow">
+        <span className="text-xs font-display text-text-secondary">
           {label}
         </span>
       )}

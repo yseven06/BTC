@@ -28,7 +28,7 @@ export const SparklineChart: React.FC<SparklineChartProps> = ({
   return (
     <div style={{ width, height }}>
       {chartData.length === 0 ? (
-        <div className="w-full h-full bg-bg-tertiary/20 rounded-md animate-shimmer" />
+        <div className="w-full h-full bg-bg-tertiary/20 rounded-md" />
       ) : (
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 2, bottom: 2, left: 2, right: 2 }}>

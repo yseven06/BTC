@@ -379,17 +379,6 @@
     animation: scaleIn 0.2s ease-out forwards;
   }
 
-  .shimmer-loading {
-    background: linear-gradient(
-      90deg,
-      rgba(148, 163, 184, 0.05) 25%,
-      rgba(148, 163, 184, 0.12) 50%,
-      rgba(148, 163, 184, 0.05) 75%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 2s infinite;
-  }
-
   .transition-default {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
