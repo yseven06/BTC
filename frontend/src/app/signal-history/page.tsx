@@ -227,7 +227,7 @@ export default function SignalHistoryPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-h2 font-display tracking-tight text-text-primary flex items-center gap-2">
+        <h1 className="text-h2 font-display text-text-primary flex items-center gap-2">
           <History className="w-6 h-6 text-accent-primary" /> Sinyal Geçmişi
         </h1>
         <p className="text-sm text-text-secondary">

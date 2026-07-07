@@ -253,7 +253,7 @@ export default function DashboardPage() {
       {/* ── Title Row ── */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div>
-          <h1 className="text-h2 font-display tracking-tight text-text-primary">
+          <h1 className="text-h2 font-display text-text-primary">
             {firstName ? `Hoş geldin, ${firstName}` : 'Gösterge Paneli'}
           </h1>
           <p className="text-sm text-text-secondary mt-0.5">Piyasaları yapay zekâ ile analiz edin, avantaj yakalayın.</p>

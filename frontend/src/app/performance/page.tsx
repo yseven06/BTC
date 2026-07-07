@@ -110,7 +110,7 @@ export default function PerformancePage() {
       {/* Title Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-h2 font-display tracking-tight text-text-primary">
+          <h1 className="text-h2 font-display text-text-primary">
             Performans & Test Merkezi
           </h1>
           <p className="text-sm text-text-secondary">
