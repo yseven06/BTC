@@ -202,6 +202,24 @@
     transform: scale(0.985);
   }
 
+  /* GLOBAL reduced-motion (P6/M13, Bible §06 MO-01/MO-03/MO-10): kullanici tercihinde
+     TUM animasyon/gecis son-kareye duser (0.01ms + tek iterasyon), scroll smooth->auto.
+     Bilgi kaybi 0: olay-motionlari statik son-halini gosterir. Asagidaki buton/link
+     blogu daha guclu (transition:none) oldugundan korunur. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     button:not(:disabled),
     a {
