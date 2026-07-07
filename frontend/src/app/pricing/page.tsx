@@ -15,6 +15,7 @@ import { track } from '@/lib/analytics';
 import { AnalyticsEvent } from '@/lib/analytics-events';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import { CheckoutConfirmModal } from '@/components/billing/CheckoutConfirmModal';
+import { useToast } from '@/components/ui/Toast';
 import { LEGAL_META } from '@/lib/legal/registry';
 
 const CYCLE_LABEL: Record<BillingCycle, string> = {
@@ -39,6 +40,7 @@ const TIER_COLOR: Record<SubscriptionTier, string> = {
 export default function PricingPage() {
   const router = useRouter();
   const search = useSearchParams();
+  const toast = useToast();
 
   const [plans, setPlans] = useState<Plan[]>([]);
   const [sub, setSub] = useState<SubscriptionResponse | null>(null);
@@ -106,7 +108,7 @@ export default function PricingPage() {
         window.location.href = r.url;
       }
     } catch (e: any) {
-      alert('Ödeme başlatılamadı: ' + (e?.message ?? 'bilinmeyen hata'));
+      toast.error('Ödeme başlatılamadı: ' + (e?.message ?? 'bilinmeyen hata'));
     } finally {
       setProcessing(null);
       setPending(null);
@@ -122,7 +124,7 @@ export default function PricingPage() {
       setSub(updated);
       setConfirmCancel(false);
     } catch (e: any) {
-      alert('İptal edilemedi: ' + (e?.message ?? 'bilinmeyen hata'));
+      toast.error('İptal edilemedi: ' + (e?.message ?? 'bilinmeyen hata'));
     } finally {
       setCanceling(false);
     }

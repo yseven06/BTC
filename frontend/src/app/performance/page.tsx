@@ -6,6 +6,7 @@ import { useLanguage } from '@/lib/language-context';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { ScoreRing } from '@/components/ui/ScoreRing';
+import { useToast } from '@/components/ui/Toast';
 import {
   TrendingUp, Play, Activity, CheckCircle,
   TrendingDown, PieChart as ChartIcon, Briefcase, FileDown, AlertTriangle,
@@ -30,6 +31,7 @@ import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 
 export default function PerformancePage() {
   const { tr } = useLanguage();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'analytics' | 'backtest'>('analytics');
   
   const [stats, setStats] = useState<PerformanceSummary | null>(null);
@@ -122,7 +124,7 @@ export default function PerformancePage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => downloadPerformancePdf().catch(() =>
-              alert('PDF indirilemedi. Pro/Premium aboneliği gerekir.'))}
+              toast.error('PDF indirilemedi. Pro/Premium aboneliği gerekir.'))}
             className="flex items-center gap-1.5 text-xs font-display text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-3 py-2 rounded-lg transition-all"
           >
             <FileDown className="w-3.5 h-3.5" /> PDF

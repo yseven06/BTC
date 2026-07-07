@@ -10,6 +10,7 @@ import {
 import { GlassCard } from '@/components/ui/GlassCard';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/lib/auth-context';
 import {
   fetchAdminStats, fetchAdminUsers, updateAdminUser, deleteAdminUser,
@@ -182,6 +183,7 @@ function OverviewTab() {
 // ════════════════════════════════════════════════════════════════════════════
 
 function UsersTab({ isSuperAdmin, selfId }: { isSuperAdmin: boolean; selfId: string }) {
+  const toast = useToast();
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState('');
@@ -206,7 +208,7 @@ function UsersTab({ isSuperAdmin, selfId }: { isSuperAdmin: boolean; selfId: str
       message: `${u.email} kullanıcısının rolü "${ROLE_LABEL[role]}" olarak değiştirilecek. Onaylıyor musun?`,
       variant: 'primary',
       onConfirm: async () => {
-        try { await updateAdminUser(u.id, { role }); load(); } catch (e: any) { alert(e?.message ?? 'İşlem başarısız.'); }
+        try { await updateAdminUser(u.id, { role }); load(); } catch (e: any) { toast.error(e?.message ?? 'İşlem başarısız.'); }
       },
     });
   };
@@ -217,7 +219,7 @@ function UsersTab({ isSuperAdmin, selfId }: { isSuperAdmin: boolean; selfId: str
       message: `${u.email} kalıcı olarak silinecek. Emin misin?`,
       variant: 'danger',
       onConfirm: async () => {
-        try { await deleteAdminUser(u.id); load(); } catch (e: any) { alert(e?.message ?? 'Silinemedi.'); }
+        try { await deleteAdminUser(u.id); load(); } catch (e: any) { toast.error(e?.message ?? 'Silinemedi.'); }
       },
     });
   };
@@ -316,6 +318,7 @@ function UsersTab({ isSuperAdmin, selfId }: { isSuperAdmin: boolean; selfId: str
 // ════════════════════════════════════════════════════════════════════════════
 
 function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+  const toast = useToast();
   const [signals, setSignals] = useState<AdminSignalRow[]>([]);
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -367,7 +370,7 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       message: `${s.symbol} (${s.timeframe}) sinyali kalıcı olarak silinecek. Bu işlem geri alınamaz. Emin misin?`,
       variant: 'danger',
       onConfirm: async () => {
-        try { await deleteAdminSignal(s.id); load(); } catch (e: any) { alert(e?.message ?? 'Silinemedi.'); }
+        try { await deleteAdminSignal(s.id); load(); } catch (e: any) { toast.error(e?.message ?? 'Silinemedi.'); }
       },
     });
   };
@@ -580,6 +583,7 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 // ════════════════════════════════════════════════════════════════════════════
 
 function AssetsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
+  const toast = useToast();
   const [assets, setAssets] = useState<AdminAssetRow[]>([]);
   const [total, setTotal] = useState(0);
   const [q, setQ] = useState('');
@@ -611,7 +615,7 @@ function AssetsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       message: `${a.symbol} ve ona bağlı tüm sinyaller silinecek. Emin misin?`,
       variant: 'danger',
       onConfirm: async () => {
-        try { await deleteAdminAsset(a.id); load(); } catch (e: any) { alert(e?.message ?? 'Silinemedi.'); }
+        try { await deleteAdminAsset(a.id); load(); } catch (e: any) { toast.error(e?.message ?? 'Silinemedi.'); }
       },
     });
   };
@@ -711,6 +715,7 @@ function AssetsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 // ════════════════════════════════════════════════════════════════════════════
 
 function SystemTab() {
+  const toast = useToast();
   const [jobs, setJobs] = useState<Record<string, AdminJobStatus>>({});
   const [busy, setBusy] = useState(false);
   const [triggering, setTriggering] = useState<string | null>(null);
@@ -732,7 +737,7 @@ function SystemTab() {
       await triggerAdminJob(jobId);
       setTimeout(load, 2000);
     } catch (e: any) {
-      alert(e?.message ?? 'İş tetiklenemedi.');
+      toast.error(e?.message ?? 'İş tetiklenemedi.');
     } finally {
       setTimeout(() => setTriggering(null), 2000);
     }
