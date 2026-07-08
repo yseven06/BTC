@@ -38,6 +38,7 @@ export default function SettingsPage() {
   const [chatId, setChatId] = useState('');
   const [minConf, setMinConf] = useState(70);
   const [notifyHold, setNotifyHold] = useState(false);
+  const [notifyLifecycle, setNotifyLifecycle] = useState(false);
   const [enabled, setEnabled] = useState(false);
 
   const [saving, setSaving] = useState(false);
@@ -53,6 +54,7 @@ export default function SettingsPage() {
         setChatId(s.telegram_chat_id ?? '');
         setMinConf(s.min_confidence);
         setNotifyHold(s.notify_hold);
+        setNotifyLifecycle(s.notify_lifecycle);
       })
       .catch(() => {});
   }, []);
@@ -66,6 +68,7 @@ export default function SettingsPage() {
         telegram_chat_id: chatId,
         min_confidence: minConf,
         notify_hold: notifyHold,
+        notify_lifecycle: notifyLifecycle,
         // Only send token if user typed a new one
         ...(botToken ? { telegram_bot_token: botToken } : {}),
       });
@@ -177,6 +180,15 @@ export default function SettingsPage() {
               <p className="text-micro text-text-muted">Kapalıyken sadece AL/SAT sinyalleri bildirilir.</p>
             </div>
             <Toggle checked={notifyHold} onChange={setNotifyHold} />
+          </div>
+
+          {/* Notify LIFECYCLE (P1.2 — proaktif yaşam döngüsü uyarıları) */}
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-xs font-display text-text-primary">Sinyal yaşam döngüsü bildirimleri</label>
+              <p className="text-micro text-text-muted">Sinyal geçersizleşince veya TP'ye yaklaşınca proaktif uyarı gönderilir.</p>
+            </div>
+            <Toggle checked={notifyLifecycle} onChange={setNotifyLifecycle} />
           </div>
 
           {/* Actions */}

@@ -664,6 +664,7 @@ export interface NotificationSettings {
   has_bot_token: boolean;
   min_confidence: number;
   notify_hold: boolean;
+  notify_lifecycle: boolean;
 }
 
 export interface NotificationSettingsUpdate {
@@ -672,6 +673,7 @@ export interface NotificationSettingsUpdate {
   telegram_chat_id?: string;
   min_confidence?: number;
   notify_hold?: boolean;
+  notify_lifecycle?: boolean;
 }
 
 export async function fetchNotificationSettings(): Promise<NotificationSettings> {
