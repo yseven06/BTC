@@ -80,7 +80,7 @@ class Settings(BaseSettings):
     FINNHUB_API_KEY: str = ""
 
     # --- CORS ---
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173", "http://localhost:3001"]
 
     # --- Logging ---
     LOG_LEVEL: str = "INFO"
