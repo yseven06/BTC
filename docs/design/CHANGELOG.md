@@ -5,6 +5,31 @@ Kural: **her revizyon = commit + sürüm artışı + bu dosyada bir satır.** St
 
 ---
 
+## v1.4 — Karot geometri revizyonu · 2026-07-09
+
+> **Kapsam:** Karot konsensüs enstrümanının **geometrik projeksiyonu** revize edildi — "K17 görünüm + K02 matematik". Merkez-eksenli spline (v1.3) → **tek-taraflı fitilli-omurga** (dikey omurga + slot'a mıhlı açısal kanıt-fitilleri + karar-ucu). Değişen yalnız *forma projeksiyon*; K02'nin matematiksel rigor'u (classify eşikleri, 9-slot sıra, rest-state dizisi, dürüstlük fiziği, tüm süre/renk kilitleri, kalıcı yasaklar) **korundu**. Yalnız Bible §05 + ilgili §01/§06 satırları + VL §07/§09 motion-tablosu değişti; kod/CSS/component **bu commit'te değişmedi** (1A-ii ayrı commit). Dört-tur tarafsız tasarım süreci (10+6 konsept, 3-yol kıyas) sonrası kullanıcı kararı.
+
+### Değişen standartlar (K17 formuna adapte)
+- **karot-02 (Bible §05):** `W=120·AXIS=W/2·x=AXIS+c·AMP·Catmull-Rom spline` → `W=96·SPINE_X=24·θᵢ=cᵢ·θmax(34°)·L=32 sabit·karar-ucu`. Fitil boyu sabit → güven yalnız açıya kodlanır (Lie Factor 1). Çarpışma yasası `L·sin(θmax)<step`. Dikey ritim (H/PAD/step) korundu.
+- **karot-05:** hal imzaları → Uzlaşma (paralel fitiller + tint-zarfı + karar-ucu) · Bölünmüş (karışık-açılı fitiller + çift-nokta, karar-ucu yok) · Kararsız (yataya-yapışık θ≈0). Token değerleri (fill .14 · stroke 1.9/1.3) aynen.
+- **karot-06:** render sırası → classify → slots → tint-zarfı → fitiller → glow-underlay → omurga → karar-ucu.
+- **karot-08:** 16px silüet → **3 küme-fitil** (motor aileleri ort.; hal/tint daima 9'lu classify'dan — ölçek-değişmezlik korunur).
+- **karot-13 + micro-loading:** boş-Karot skeleton → 9 fitil yatay-nötr (θ=0) başlar, açısına **döner** (eskiden eksende düğüm).
+- **MO-03 doğum:** düğüm-stagger → fitil-dönüş-stagger (50ms) + karar-ucu spring-oturması; overshoot açıya uygulanır. Süreler aynen.
+- **Terim:** "düğüm/spline/merkez-eksen/zikzak" → "fitil/omurga/slot/karışık-açılı"; §01 `--hl12` "Karot-eksen" → "Karot slot-kılavuzu"; crosshair `x=W/2` → `x=SPINE_X`. VL §07/§09 motion-tablosu hizalandı.
+
+### Eklenen
+- **karot-15 · Geometry Freeze Rule:** v1.4 sonrası geometri · slot · omurga · davranış kuralları **DEĞİŞMEZ**; gelişme yalnız Motion/Material/Rendering/Lighting/Interaction/Premium-Identity katmanlarında. Y2 yasası: imleç kanıtı asla döndürmez (hover yalnız lüminans). Tek yeniden-açılma koşulu: kritik kullanıcı-testi başarısızlığı (16px ≥%85 / 48px ≥%90 yabancı-kör eşiğinin altına düşmek); estetik/trend/tercih geometriyi açmaz.
+
+### Korunan (K02 rigor çekirdeği — 0 değişiklik)
+- classify eşikleri (karot-03: absMean<.30 · eksen-geçiş≥2 · ±.08 bandı) · 9-slot sabit sıra (karot-04) · rest-state dizisi + K1b milestone (karot-09) · renk-kazanılır/tint .14 (karot-07/COL-09) · radyussuz/tel-malzeme/glow-underlay .14 (karot-10) · Karot↔Chart tek-nesne (karot-11) · lifecycle omurgaya dokunmaz (karot-14) · tüm süre/renk kilitleri · kalıcı yasaklar (radar/donut/bar · cyan-tarama · sahte-kesinlik) · iç-dil UI'a çıkmaz.
+
+### Kararlar
+- Tek kanonik sürüm ilkesi korunur; dosya adları sabit (v1.4 belge başlığında + bu changelog'da izlenir, yeniden-adlandırma yok).
+- 1A-ii (Karot.tsx statik primitif) ayrı commit olarak bu revizyonun ardından uygulanır.
+
+---
+
 ## v1.3 — KANONIK · 2026-07-06
 
 > Design Standards tek kanonik sürümü. v1.3 taslakları (Bible + Visual Language) ile onaylı v1.3.1 revizyon planı (19 uygulanan / 3 revize / 1 reddedilen) tek gövdeye **fold** edildi. Bu sürüm, kalite denetimi referansındaki kritik boşlukları (64/100) kapatır. Kanonik kaynak: `docs/design/*.md`; Artifact yalnızca görsel aynadır.

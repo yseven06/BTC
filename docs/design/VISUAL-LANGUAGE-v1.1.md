@@ -1,6 +1,6 @@
 # TradeMinds Visual Language — "Gece Seansı"
 
-**Sürüm:** v1.3 (KANONIK) · **Tarih:** 2026-07-06
+**Sürüm:** v1.4 (KANONIK) · **Tarih:** 2026-07-09 · *(v1.4: Karot geometri revizyonu — fitilli-omurga; motion-tablosu hizalandı; bkz. CHANGELOG)*
 **Statü:** Design Bible'ın **Ek A'sı (Annex A)** — Art Direction / atmosfer · ışık · motion-bütçesi katmanı. Yeni tasarım sistemi değildir.
 **Kanonik kaynak:** bu dosya (`docs/design/`). Dosya adı sabittir; güncel sürüm bu başlıkta ve CHANGELOG'da izlenir. Artifact yalnızca görsel aynadır.
 **Kanoniklik (bkz. Bible §08/C1):** atmosfer · ışık · motion-bütçesi konularında **bu belge kanoniktir**; token/komponent/layout konularında Bible kanoniktir; çelişkide **daha kısıtlayıcı kural kazanır** ve her iki belgede aynı revizyonla kapatılır.
@@ -233,11 +233,11 @@ Bible split-hero'suna ışık planı. Sahne üç ışıkla kurulur — fazlası 
 | Işık sahnede | 0ms | — (statik) | — |
 | Başlık + CTA fade-rise | 0ms | `--dur-settle 520` giriş bandı içinde (reveal) | ease-out |
 | Ürün kartı fade | 400ms | reveal (transform/opacity) | ease-out |
-| Karot omurgaları (soldan, stagger 50ms) | 500ms | `--dur-settle 520` (≤600 app-tavanı) | spring (`--ease-signal` düğüm-çözülme) |
+| Karot fitilleri (yatay-nötrden dönüş, stagger 50ms) + karar-ucu settle | 500ms | `--dur-settle 520` (≤600 app-tavanı) | spring (`--ease-signal` fitil-dönüşü) |
 | Sinyal tozundan cyan doğum nabzı | telemetri-anı | `--dur-photon 150` (nabız) | — |
 
 Anlatı: *AI taradı, sinyal doğdu.* **Reduced-motion:** koreografi atlanır, sahne bitmiş hâliyle açılır; nabız statik parlak nokta olur; scroll-linked her beat statik tam-opak son-kare olarak görünür (bilgi kaybı 0).
-**Migration (v1.1→v1.3):** "Seviye çizgileri stagger 80ms / ~900ms sabit timeline" → Karot omurga settle (stagger **50ms**, `--dur-settle 520`), ve son nabız **telemetri-anı** (sabit ~850ms değil).
+**Migration (v1.1→v1.3):** "Seviye çizgileri stagger 80ms / ~900ms sabit timeline" → Karot fitil-dönüş + karar-ucu settle (stagger **50ms**, `--dur-settle 520`), ve son nabız **telemetri-anı** (sabit ~850ms değil).
 
 ---
 
@@ -323,13 +323,13 @@ Kural: **viewport başına aynı anda en çok 1 ambient animasyon.** Hareket enf
 | Token | Değer | Not |
 |---|---|---|
 | `--dur-micro` | 140ms | Hover/press mikro-etkileşim. Foton ayrı (color-flash). |
-| `--dur-state` | 180ms | Aç/kapa/geçiş; sticky-header aktivasyonu. **Karot düğüm-çözülme bu banda eklenir** (`--ease-signal`). |
+| `--dur-state` | 180ms | Aç/kapa/geçiş; sticky-header aktivasyonu. **Karot fitil-dönüşü bu banda eklenir** (`--ease-signal`). |
 | `--dur-photon` | 150ms | Sayı güncelleme +1 lümen flaşı; konum/scale sabit. Overlay backdrop fade de bu token. |
 | `--dur-warm` | 140ms | Kart yüzey-ısınma + satır-ısınma (ease-out). |
 | `--dur-settle` | 520ms | Karot doğum settle + reveal + count-up. App-motion üst sınır bandı (≤600 sert-tavan). |
 | `--dur-route` | 180ms | Route ışık-devri (giden −1/gelen +1 luminans); layout-anim yok, CLS=0. View Transitions API kullanılmaz. |
 | `--dur-overlay` | 360ms | Modal/dropdown/toast/palette spring settle; app-motion 600 tavanı içinde. |
-| `stagger` | 50ms | Liste-giriş + Karot 9-motor düğüm çözülüşü + loading skeleton. App'te izinli TEK anlamlı stagger. |
+| `stagger` | 50ms | Liste-giriş + Karot 9-motor fitil-dönüşü + loading skeleton. App'te izinli TEK anlamlı stagger. |
 | `press-scale` | .985 (lg) / .96 (sm) | Global press geri bildirimi; süre = `--dur-micro 140`. reduced-motion'da kaldırılır. |
 
 - **Kanonik easing:** `--ease-signal: cubic-bezier(.2,.8,.2,1)` (tek tanım, §06 Bible). Route: giden `ease-in` (−1 lum), gelen `ease-out` (+1 lum). **`ease-in-out` YASAK.** Layout ASLA animasyonlanmaz.
