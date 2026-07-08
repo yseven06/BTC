@@ -714,14 +714,14 @@ Sinyal kartı ürünün kalbi; merkez enstrüman = **Karot** (moat, Consensus In
 
 ### karot-05 · Üç dürüst hal + görsel imzaları
 - **Direktif:** Üç hali ayrı imzayla render et: Uzlaşma (paralel fitiller + yön tinti zarfı + karar-ucu) / Bölünmüş (cyan omurga, tintsiz, karışık-açılı fitiller + eksen-üstü çift-nokta, karar-ucu YOK) / Kararsız (soluk, yataya-yapışık fitiller θ≈0). Tabloda (16px) YALNIZ 2 hal okunur (uzlaştı/bölündü); Kararsız yalnız 48px+.
-- **Token/değer:** Uzlaşma: tint-zarfı fill-opacity 0.14 · fitiller `--tx2` (kanıt, nötr) · omurga+karar-ucu `--cyan` · stroke-width 1.9, opacity 0.95 · Bölünmüş: fitiller `--tx2`, omurga `--cyan`, karar-ucu YOK, tint=null, eksen-üstü çift-nokta `--cyan` · Kararsız: fitiller+omurga `--tx3`, stroke-width 1.3, opacity 0.6. **Cyan-bütçe:** bir Karot'ta cyan yalnız omurga+karar-ucu (tek karar-izi); fitiller ASLA cyan (kanıt=slate) — `micro-cyan-yoğunluk-bütçesi` korunur.
-- **Teknik:** Uzlaşmada omurga→fitil-uçları zarfı yön tintiyle dolar (fill-opacity 0.14); karşıt-yön fitil zarfı boğumlar (dürüstlük fiziği). Bölünmüşte renk kazanılmaz (cyan-nötr) + eksen-üstü sabit çift-nokta imzası (bugün render'da YOK → eklenecek). 16px silüette split ile aynı "uzlaşmadı" okuması yeterli.
+- **Token/değer:** Uzlaşma: tint-zarfı fill-opacity 0.14 · fitiller `--tx2` (kanıt, nötr) · omurga+karar-ucu `--cyan` · stroke-width 1.9, opacity 0.95 · Bölünmüş: fitiller `--tx2`, omurga `--cyan`, karar-ucu YOK, tint=null, eksen-üstü çift-nokta `--cyan` · Kararsız: fitiller+omurga `--tx3`, stroke-width 1.3, opacity 0.6. **Cyan-bütçe:** bir Karot'ta cyan yalnız KARAR-İZİ öğelerinde — omurga + Uzlaşma'da karar-ucu + Bölünmüş'te eksen-üstü çift-nokta (üçü tek karar-izi konsepti; `micro-cyan-yoğunluk-bütçesi` "omurga + 1 provenance" tavanı içinde); fitiller ASLA cyan (kanıt=slate).
+- **Teknik:** Uzlaşmada omurga→fitil-uçları zarfı yön tintiyle dolar (fill-opacity 0.14); karşıt-yön fitil zarfı boğumlar (dürüstlük fiziği). Bölünmüşte renk kazanılmaz (cyan-nötr) + eksen-üstü sabit çift-nokta imzası (1A-ii'de uygulandı; 16px silüette düşer). 16px silüette split ile aynı "uzlaşmadı" okuması yeterli.
 - **DoD:** Üç hal 48px+'ta 1 sn'de ayrılır; çift-nokta imzası eklenmiş; 16px'te yalnız uzlaştı/bölündü; squint'te uzlaşma tinti en belirgin.
-- **Ölçüm:** üç hal ayrı snapshot; yabancı-kör 3 hal @48px %90+; bölünmüş imzası @16px mevcut.
+- **Ölçüm:** üç hal ayrı snapshot; yabancı-kör 3 hal @48px %90+; bölünmüş okuması @16px mevcut (tint-yok + cyan omurga; çift-nokta 48px+).
 
 ### karot-06 · Tek parametrik render fonksiyonu
 - **Direktif:** Tüm haller ve tüm ölçekler (16/48/200px) tek fonksiyonun 9-değerli işaretli-güven dizisinden ürettiği SVG'den doğsun; ölçeğe/hale özel hardcode ASLA yazma.
-- **Token/değer:** `svg(confs, scale, opt) → {html, cl}`; ölçekler 0.16→~16px silüet (3 küme-fitil), 1→~48px kart, büyük→~200px hero; fitil stroke scale≥1→1.9, <1→1.3.
+- **Token/değer:** `svg(confs, scale, opt) → {html, cl}`; ölçekler 0.16→~16px silüet (3 küme-fitil), 1→~48px kart, büyük→~200px hero; fitil/omurga stroke-width: kararsız→1.3 · silüet(<32px, kararsız-dışı)→1.6 · tam-ölçek→1.9.
 - **Teknik:** `svg()`: classify → slots → (consensus) tint-zarfı → fitiller → (consensus && scale≥1) glow underlay → omurga → (consensus) karar-ucu. 16px 3-küme-fitil silüeti (karar-ucu/glow düşer). Ölçek-değişmezliği (karot-08) bu fonksiyonun garantisi.
 - **Ölçüm:** Karot render tek fonksiyona iner; statik Karot SVG asset=0 (kanonik rest-state hariç, karot-09).
 
@@ -824,20 +824,7 @@ Sinyal kartı ürünün kalbi; merkez enstrüman = **Karot** (moat, Consensus In
 ### Signals — Kalıcı Yasaklar
 Radar/örümcek/donut/bar (sinyal-konsensüs) · cyan-tarama AI-tropu · idle-tarama · dönen-radar · sahte-kesinlik/temiz-galibiyet-yayı = kalıcı YASAK. Şiirsel iç-dil (Karot/közleşme/omurga/su-hattı/kesim-dudağı) UI'a çıkmaz (G-08-13).
 
-I now have the complete draft. Let me produce the final canonical §06, §07, §08 with the approved fixes folded in. I'll apply the color lock, duration lock (single-regime discrete tokens, ranges removed), and the specific fixes (K4, K5, K6/D6, O7, O10, O11, D1, D5-reject).
-
-Key changes I'm applying:
-- **Duration lock**: replace all ranges with discrete tokens `--dur-micro 140 · --dur-state 180 · --dur-photon 150 · --dur-warm 140 · --dur-settle 520 · --dur-route 180 · --dur-overlay 360 · stagger 50ms`; app hard-ceiling 600ms; lint x∈set.
-- **Color lock**: `--accent-ui #4E6BE3` for 1px-UI (focus ring/nav/border), `--accent-hover #3450C6` for CTA-fill hover only, `--accent #3B57D4` fill-only.
-- **O11**: spring overshoot ≤8%, settle-tolerance 0.5px, 40-concurrent-settle budget ≤~8 active/frame via GPU + 50ms stagger, DevTools dropped-frame=0.
-- **D1**: route min-ΔL (outgoing −8% L / incoming +6% L).
-- **D5-reject**: idle-silence preserved, "replay on load" rejected — documented.
-- **K4**: 5 concrete lint gates.
-- **K5**: Karot `data-instrument="karot"` exemption.
-- **O10**: originality measurement hardened.
-- **O7**: cmdK/keyboard model spec.
-
-
+---
 
 ## 06 · Motion
 

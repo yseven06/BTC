@@ -27,7 +27,17 @@ const STEP = (H - 2 * PAD) / 8; // 20
 const SIGN_BAND = 0.08, ABSMEAN_WEAK = 0.30, CROSS_SPLIT = 2;
 const REST_STATE = [0.42, 0.55, 0.38, 0.10, 0.48, 0.22, 0.60, 0.35, 0.18];
 
+const ENGINE_COUNT = 9;
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+function sanitizeConfs(confs) {
+  const out = [];
+  for (let i = 0; i < ENGINE_COUNT; i++) {
+    const v = confs[i];
+    out.push(Number.isFinite(v) ? clamp(v, -1, 1) : 0);
+  }
+  return out;
+}
 
 function classify(confs) {
   const signs = confs.map((c) => (c > SIGN_BAND ? 1 : c < -SIGN_BAND ? -1 : 0));
@@ -91,6 +101,15 @@ ok('fitilEnd clamp: c=2 == c=1', near(fitilEnd(2, 50).y2, fitilEnd(1, 50).y2));
 ok('çarpışma yasası L·sin(θmax)<step', L * Math.sin(THETA_MAX) < STEP);
 ok('step = 20', STEP === 20);
 
+// sanitizeConfs — davranış-korur sınır-guard'ı
+const arrEq = (a, b) => a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
+ok('sanitize: geçerli 9-değer kimlik (davranış-korur)', arrEq(sanitizeConfs(REST_STATE), REST_STATE));
+ok('sanitize: NaN/Inf/undef → 0', arrEq(sanitizeConfs([NaN, Infinity, undefined, 0.5, -0.5, 0, 0, 0, 0]), [0, 0, 0, 0.5, -0.5, 0, 0, 0, 0]));
+ok('sanitize: aralık-dışı → [−1,1] klamp', arrEq(sanitizeConfs([2, -2, 0.5, 0, 0, 0, 0, 0, 0]), [1, -1, 0.5, 0, 0, 0, 0, 0, 0]));
+ok('sanitize: uzunluk<9 → 9 (pad 0)', sanitizeConfs([0.1, 0.2, 0.3]).length === 9);
+ok('sanitize: uzunluk>9 → 9 (truncate)', sanitizeConfs(new Array(12).fill(0.5)).length === 9);
+ok('sanitize: sözleşme-uyumlu classify aynı hal', classify(sanitizeConfs(REST_STATE)).state === 'consensus');
+
 // (2) Kaynak-drift koruması — dondurulmuş sabitler karot-geometry.ts'te literal
 const src = readFileSync(join(__dirname, '..', 'src', 'lib', 'karot-geometry.ts'), 'utf8');
 const frozen = [
@@ -103,6 +122,7 @@ const frozen = [
   ['ABSMEAN_WEAK = 0.30', /ABSMEAN_WEAK = 0\.30\b/],
   ['CROSS_SPLIT = 2', /CROSS_SPLIT = 2\b/],
   ['SIGN_BAND = 0.08', /SIGN_BAND = 0\.08\b/],
+  ['sanitizeConfs guard mevcut', /export function sanitizeConfs/],
 ];
 for (const [name, re] of frozen) ok(`freeze: ${name}`, re.test(src));
 ok('ENGINES 9 motor (Teknik…Makro)', /Teknik'[\s\S]*Makro'/.test(src) && (src.match(/'[^']+',/g) || []).length >= 9);

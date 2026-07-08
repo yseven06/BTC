@@ -28,6 +28,12 @@ Kural: **her revizyon = commit + sürüm artışı + bu dosyada bir satır.** St
 - Tek kanonik sürüm ilkesi korunur; dosya adları sabit (v1.4 belge başlığında + bu changelog'da izlenir, yeniden-adlandırma yok).
 - 1A-ii (Karot.tsx statik primitif) ayrı commit olarak bu revizyonun ardından uygulanır.
 
+### Bakım (post-v1.4 · 2026-07-09)
+- Bağımsız doğrulama (4-ajan audit) sonrası tek maintenance commit'i — **yeni kural/geometri YOK**, Geometry Freeze (karot-15) yürürlükte:
+  - **(a)** §05↔§06 arasına önceki bir sürüm-fold'undan kalmış, normatif-olmayan İngilizce taslak-artığı metin ("I now have the complete draft… Key changes I'm applying:") **silindi** → kanonik gövde temizliği (Karot revizyonuyla ilgisiz pre-existing kusur).
+  - **(b)** Doküman↔kod uzlaştırmaları: karot-06 stroke kuralına silüet=1.6 eklendi (kodla birebir); karot-05 cyan-bütçe cümlesi Bölünmüş eksen-üstü çift-noktayı da kapsayacak şekilde netleştirildi + stale "(bugün render'da YOK → eklenecek)" notu güncellendi; karot-05 Ölçüm 16px imza ifadesi düzeltildi.
+  - **(c)** `karot-geometry.ts` + `Karot.tsx` sınır-guard'ı (geçersiz girdi zarif "kararsız/soluk"a düşer): 9-sonlu-değer ∈[−1,1] ve size>0 sözleşmesine uyan girdilerde render **byte-özdeş** (davranış-korur).
+
 ---
 
 ## v1.3 — KANONIK · 2026-07-06

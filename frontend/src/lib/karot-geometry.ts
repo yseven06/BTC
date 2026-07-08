@@ -56,6 +56,22 @@ export interface KarotClassification {
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
 /**
+ * Girdi sınır-guard'ı (defansif). Sözleşme = 9 sonlu değer ∈[−1,1] (karot-04).
+ * SÖZLEŞME-UYUMLU girdide çıktı BİREBİR aynı değerlerdir → **davranış-korur**.
+ * Yalnız geçersiz girdi zarifçe normalize olur: sonlu-olmayan (NaN/±Infinity/undefined)→0,
+ * [−1,1]'e klamp, uzunluk 9'a pad(0)/truncate. Bileşen SINIRINDA çağrılır; geometri
+ * fonksiyonları (classify/fitiller) saf kalır ve 9-sonlu-değer varsayar.
+ */
+export function sanitizeConfs(confs: readonly number[]): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < ENGINE_COUNT; i++) {
+    const v = confs[i];
+    out.push(Number.isFinite(v) ? clamp(v as number, -1, 1) : 0);
+  }
+  return out;
+}
+
+/**
  * Hal-sınıflandırma (karot-03). Öncelik ZORUNLU: weak → split → consensus.
  * Eksen-geçiş sayısı işaret dizisinden hesaplanır — projeksiyondan bağımsız.
  */

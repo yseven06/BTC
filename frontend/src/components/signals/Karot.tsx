@@ -2,7 +2,7 @@ import React from 'react';
 import { clsx } from 'clsx';
 import {
   W, H, PAD, SPINE_X, STEP, SPINE_TOP, SPINE_BOTTOM,
-  classify, fitiller, clusterFitiller, decisionTip, envelopePath,
+  classify, fitiller, clusterFitiller, decisionTip, envelopePath, sanitizeConfs,
   type Fitil,
 } from '@/lib/karot-geometry';
 
@@ -43,13 +43,15 @@ export const Karot: React.FC<KarotProps> = ({
   className,
   title,
 }) => {
-  const silhouette = size < 32;
-  const showGlow = size >= 40;
-  const showGuides = size >= 160;
-  const vbPerPx = H / size; // non-scaling stroke için piksel↔viewBox köprüsü
+  // Sınır-guard'ı (defansif; geçerli girdi=9 sonlu değer ∈[−1,1] · size>0 için render byte-özdeş).
+  const sz = Number.isFinite(size) && size > 0 ? size : 48;
+  const silhouette = sz < 32;
+  const showGlow = sz >= 40;
+  const showGuides = sz >= 160;
+  const vbPerPx = H / sz; // non-scaling stroke için piksel↔viewBox köprüsü
   const dotR = 2 * vbPerPx;
 
-  const data = loading ? ZEROS : confs;
+  const data = sanitizeConfs(loading ? ZEROS : confs);
   const cl = classify(data);
   // loading DAİMA kararsız-görünüm (θ=0, tx3); classify hal'i loading'de bastırılır.
   const state = loading ? 'weak' : cl.state;
@@ -69,8 +71,8 @@ export const Karot: React.FC<KarotProps> = ({
       className={clsx('karot', className)}
       data-instrument="karot"
       data-state={loading ? 'loading' : state}
-      width={(size * W) / H}
-      height={size}
+      width={(sz * W) / H}
+      height={sz}
       viewBox={`0 0 ${W} ${H}`}
       role="img"
       aria-label={title ?? 'Konsensüs enstrümanı'}
