@@ -164,7 +164,7 @@ export default function WatchlistPage() {
                 placeholder="Yeni liste adı..."
                 className="px-3 py-2 text-sm bg-bg-secondary border border-border-subtle rounded-xl text-text-primary outline-none focus:border-accent-primary/40 w-36"
               />
-              <button onClick={createList} disabled={creating || !newListName.trim()}
+              <button onClick={createList} disabled={creating || !newListName.trim()} aria-label="Liste oluştur"
                 className="flex items-center justify-center w-9 h-9 rounded-xl bg-accent-primary/15 text-accent-primary hover:bg-accent-primary/25 transition-colors disabled:opacity-40">
                 <Plus className="w-4 h-4" />
               </button>

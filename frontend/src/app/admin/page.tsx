@@ -723,7 +723,7 @@ function AssetsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                   className={cn('text-micro font-medium uppercase px-2 py-1 rounded w-fit', a.is_active ? 'bg-bullish/15 text-bullish' : 'bg-bearish/15 text-bearish')}>
                   {a.is_active ? 'Aktif' : 'Pasif'}
                 </button>
-                <button onClick={() => removeAsset(a)} disabled={!isSuperAdmin}
+                <button onClick={() => removeAsset(a)} disabled={!isSuperAdmin} aria-label="Varlığı sil"
                   className="p-1.5 rounded-lg text-text-muted hover:text-bearish hover:bg-bearish/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

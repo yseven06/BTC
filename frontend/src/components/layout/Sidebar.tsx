@@ -228,6 +228,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
             <Tooltip content="Çıkış">
               <button
                 onClick={(e) => { e.stopPropagation(); doLogout(); }}
+                aria-label="Çıkış"
                 className="p-1 rounded-lg hover:bg-e-2 text-text-muted hover:text-bearish transition-colors"
               >
                 <LogOut className="w-3.5 h-3.5" />

@@ -257,7 +257,7 @@ export default function AlertsPage() {
                   className="text-xs font-display bg-accent-primary/15 text-accent-primary px-4 py-2 rounded-lg hover:bg-accent-primary/25 transition-colors disabled:opacity-50">
                   {creating ? 'Oluşturuluyor...' : 'Alarmı Oluştur'}
                 </button>
-                <button onClick={() => { resetForm(); setShowForm(false); }} className="p-2 text-text-muted hover:text-bearish">
+                <button onClick={() => { resetForm(); setShowForm(false); }} aria-label="Formu kapat" className="p-2 text-text-muted hover:text-bearish">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -284,12 +284,12 @@ export default function AlertsPage() {
                 {alert.triggered_at ? 'Tetiklendi' : alert.is_active ? 'Aktif' : 'Pasif'}
               </span>
               <Tooltip content={alert.is_active ? 'Devre dışı bırak' : 'Aktifleştir'}>
-                <button onClick={() => toggleActive(alert)}
+                <button onClick={() => toggleActive(alert)} aria-label={alert.is_active ? 'Alarmı devre dışı bırak' : 'Alarmı aktifleştir'}
                   className={cn('p-1.5 rounded-lg transition-colors', alert.is_active ? 'text-accent-primary hover:bg-accent-primary/10' : 'text-text-muted hover:bg-bg-tertiary')}>
                   <Power className="w-3.5 h-3.5" />
                 </button>
               </Tooltip>
-              <button onClick={() => removeAlert(alert)} className="p-1.5 rounded-lg text-text-muted hover:text-bearish hover:bg-bearish/10 transition-colors">
+              <button onClick={() => removeAlert(alert)} aria-label="Alarmı sil" className="p-1.5 rounded-lg text-text-muted hover:text-bearish hover:bg-bearish/10 transition-colors">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </GlassCard>

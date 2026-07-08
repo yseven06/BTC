@@ -364,7 +364,7 @@ export default function AssetDetailPage() {
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
           <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
           <p className="text-xs text-amber-300 flex-1">{changeNotice}</p>
-          <button onClick={() => setChangeNotice(null)} className="text-amber-400/70 hover:text-amber-300 flex-shrink-0">
+          <button onClick={() => setChangeNotice(null)} aria-label="Bildirimi kapat" className="text-amber-400/70 hover:text-amber-300 flex-shrink-0">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -374,7 +374,7 @@ export default function AssetDetailPage() {
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-accent-primary/10 border border-accent-primary/30">
           <AlertTriangle className="w-4 h-4 text-accent-primary flex-shrink-0" />
           <p className="text-xs text-accent-primary flex-1">{tfFallbackNotice}</p>
-          <button onClick={() => setTfFallbackNotice(null)} className="text-accent-primary/70 hover:text-accent-primary flex-shrink-0">
+          <button onClick={() => setTfFallbackNotice(null)} aria-label="Bildirimi kapat" className="text-accent-primary/70 hover:text-accent-primary flex-shrink-0">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
