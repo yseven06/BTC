@@ -16,7 +16,7 @@ uygulanmadı ve ilgili katmanların backlog'una taşındı.
 
 ### → Color System (Phase 9 / §09) backlog
 
-- **P7-D17 — nav-active-accent-bar** · Bible §03 Navigation INT-11
+- **P7-D17 — nav-active-accent-bar** · Bible §03 Navigation INT-11 — ✅ **TAMAMLANDI** (2026-07-08 · commit `6ec8e8e` · main `f7ad058`)
   - **Gerekli:** aktif nav = sol accent-çubuğu `--accent-ui` (2-3px) + `+1 luminans`
     basamağı (E1→E2), glow yok; ikon/aktif renk `--accent-primary → --accent-ui`;
     `.nav-item.active` reçetesini **globals.css'te** bu spec'e bağla.
@@ -26,7 +26,7 @@ uygulanmadı ve ilgili katmanların backlog'una taşındı.
   - **Not:** `.nav-item.active` + `.active::before` (accent-çubuğu) globals.css'te
     zaten var; iş = reçeteyi `--accent-ui` + luminans'a çekmek.
 
-- **P7-D20 — tooltip-static-glow (kalıntı)** · Bible §01 Tooltip / G-00-18
+- **P7-D20 — tooltip-static-glow (kalıntı)** · Bible §01 Tooltip / G-00-18 — ✅ **TAMAMLANDI** (2026-07-08 · commit `18b1fee` · main `f7ad058`)
   - **Gerekli:** `ui/Tooltip` Content `border-border-medium → --hl12` (+ `Arrow
     fill-border-medium → --hl12`).
   - **Neden ertelendi:** border-color token değişimi → Color katmanı.
@@ -34,7 +34,7 @@ uygulanmadı ve ilgili katmanların backlog'una taşındı.
   - **Not:** E3-yüzey + `shadow-e3` (glow değil) kısmı **zaten yapılmış** (plan'ın
     "current"ı bayattı); kalan tek boşluk border → `--hl12`.
 
-- **P7-D22 — checkout-hover-cyan** · Bible §01 Button Migration / COL-04..10
+- **P7-D22 — checkout-hover-cyan** · Bible §01 Button Migration / COL-04..10 — ✅ **TAMAMLANDI** (2026-07-08 · commit `f7ad058` · main `f7ad058`)
   - **Gerekli:** CTA `hover:bg-accent-secondary` (cyan) → `hover:bg-accent-hover`;
     `border-white/10-15` (ham beyaz-alfa) → `--hl12/--hl16` hairline.
   - **Neden ertelendi:** hover/border renk-token değişimi (cyan-tekeli COL-07) →
