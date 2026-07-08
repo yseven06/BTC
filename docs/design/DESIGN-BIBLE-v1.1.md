@@ -714,7 +714,7 @@ Sinyal kartı ürünün kalbi; merkez enstrüman = **Karot** (moat, Consensus In
 
 ### karot-05 · Üç dürüst hal + görsel imzaları
 - **Direktif:** Üç hali ayrı imzayla render et: Uzlaşma (paralel fitiller + yön tinti zarfı + karar-ucu) / Bölünmüş (cyan omurga, tintsiz, karışık-açılı fitiller + eksen-üstü çift-nokta, karar-ucu YOK) / Kararsız (soluk, yataya-yapışık fitiller θ≈0). Tabloda (16px) YALNIZ 2 hal okunur (uzlaştı/bölündü); Kararsız yalnız 48px+.
-- **Token/değer:** Uzlaşma: tint-zarfı fill-opacity 0.14, fitil+omurga stroke-width 1.9, opacity 0.95, karar-ucu cyan · Bölünmüş: fitil+omurga `--cyan`, tint=null, çift-nokta imzası · Kararsız: fitil+omurga `--tx3`, stroke-width 1.3, opacity 0.6.
+- **Token/değer:** Uzlaşma: tint-zarfı fill-opacity 0.14 · fitiller `--tx2` (kanıt, nötr) · omurga+karar-ucu `--cyan` · stroke-width 1.9, opacity 0.95 · Bölünmüş: fitiller `--tx2`, omurga `--cyan`, karar-ucu YOK, tint=null, eksen-üstü çift-nokta `--cyan` · Kararsız: fitiller+omurga `--tx3`, stroke-width 1.3, opacity 0.6. **Cyan-bütçe:** bir Karot'ta cyan yalnız omurga+karar-ucu (tek karar-izi); fitiller ASLA cyan (kanıt=slate) — `micro-cyan-yoğunluk-bütçesi` korunur.
 - **Teknik:** Uzlaşmada omurga→fitil-uçları zarfı yön tintiyle dolar (fill-opacity 0.14); karşıt-yön fitil zarfı boğumlar (dürüstlük fiziği). Bölünmüşte renk kazanılmaz (cyan-nötr) + eksen-üstü sabit çift-nokta imzası (bugün render'da YOK → eklenecek). 16px silüette split ile aynı "uzlaşmadı" okuması yeterli.
 - **DoD:** Üç hal 48px+'ta 1 sn'de ayrılır; çift-nokta imzası eklenmiş; 16px'te yalnız uzlaştı/bölündü; squint'te uzlaşma tinti en belirgin.
 - **Ölçüm:** üç hal ayrı snapshot; yabancı-kör 3 hal @48px %90+; bölünmüş imzası @16px mevcut.
