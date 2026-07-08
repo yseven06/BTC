@@ -139,7 +139,7 @@ export function ReconsentGate() {
             type="button"
             onClick={submit}
             disabled={!allChecked || submitting}
-            className="rounded-lg bg-accent-primary px-4 py-2 text-xs font-display text-white transition-colors hover:bg-accent-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-accent-primary px-4 py-2 text-xs font-display text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? 'Kaydediliyor...' : 'Onayla ve Devam Et'}
           </button>

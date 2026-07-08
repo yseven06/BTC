@@ -61,7 +61,7 @@ export function CookieConsentBanner() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[100] px-3 pb-3 sm:px-4 sm:pb-4">
-      <div className="mx-auto w-full max-w-3xl rounded-xl border border-white/10 bg-e-3 p-4 shadow-e3 sm:p-5">
+      <div className="mx-auto w-full max-w-3xl rounded-xl border border-border-hl12 bg-e-3 p-4 shadow-e3 sm:p-5">
         <div className="flex items-start gap-3">
           <Cookie className="mt-0.5 h-5 w-5 shrink-0 text-accent-primary" aria-hidden />
           <div className="min-w-0 flex-1">
@@ -77,7 +77,7 @@ export function CookieConsentBanner() {
 
             {manage && (
               <div className="mt-3 space-y-2">
-                <div className="flex items-center justify-between rounded-lg border border-white/10 bg-bg-primary/40 px-3 py-2">
+                <div className="flex items-center justify-between rounded-lg border border-border-hl12 bg-bg-primary/40 px-3 py-2">
                   <div>
                     <p className="text-xs font-medium text-text-primary">Zorunlu Çerezler</p>
                     <p className="text-micro text-text-muted">Oturum ve güvenlik — devre dışı bırakılamaz.</p>
@@ -87,7 +87,7 @@ export function CookieConsentBanner() {
                   </span>
                 </div>
 
-                <label className="flex cursor-pointer items-center justify-between rounded-lg border border-white/10 bg-bg-primary/40 px-3 py-2">
+                <label className="flex cursor-pointer items-center justify-between rounded-lg border border-border-hl12 bg-bg-primary/40 px-3 py-2">
                   <div>
                     <p className="text-xs font-medium text-text-primary">Analitik Çerezler</p>
                     <p className="text-micro text-text-muted">Ürün kullanımının ölçümü (PostHog) — isteğe bağlı.</p>
@@ -106,13 +106,13 @@ export function CookieConsentBanner() {
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <button
                 onClick={acceptAll}
-                className="rounded-lg bg-accent-primary px-3 py-2 text-xs font-display text-white transition-colors hover:bg-accent-primary/90"
+                className="rounded-lg bg-accent-primary px-3 py-2 text-xs font-display text-white transition-colors hover:bg-accent-hover"
               >
                 Tümünü Kabul Et
               </button>
               <button
                 onClick={onlyNecessary}
-                className="rounded-lg border border-white/15 px-3 py-2 text-xs font-display text-text-secondary transition-colors hover:bg-e-2"
+                className="rounded-lg border border-border-hl16 px-3 py-2 text-xs font-display text-text-secondary transition-colors hover:bg-e-2"
               >
                 Yalnızca Zorunlu Çerezler
               </button>
@@ -126,7 +126,7 @@ export function CookieConsentBanner() {
               ) : (
                 <button
                   onClick={() => setManage(true)}
-                  className="rounded-lg border border-white/15 px-3 py-2 text-xs font-display text-text-secondary transition-colors hover:bg-e-2"
+                  className="rounded-lg border border-border-hl16 px-3 py-2 text-xs font-display text-text-secondary transition-colors hover:bg-e-2"
                 >
                   Tercihleri Yönet
                 </button>

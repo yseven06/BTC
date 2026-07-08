@@ -63,14 +63,14 @@ export function CheckoutConfirmModal({
         </p>
 
         {/* Critical info — clearly visible, normal size, not hidden */}
-        <div className="mt-4 divide-y divide-white/5 rounded-xl border border-white/10 bg-bg-primary/40 px-4 py-2 text-sm">
+        <div className="mt-4 divide-y divide-white/5 rounded-xl border border-border-hl12 bg-bg-primary/40 px-4 py-2 text-sm">
           <Row label="Paket" value={planName} />
           <Row label="Abonelik süresi" value={cycleLabel} />
           <Row label="Tahsil edilecek tutar" value={`$${amountUsd}`} />
           <Row label="Sonraki otomatik yenileme" value={`${nextRenewalStr} · $${amountUsd}`} />
         </div>
 
-        <div className="mt-3 space-y-2 rounded-xl border border-white/10 bg-bg-primary/40 px-4 py-3 text-xs leading-relaxed text-text-secondary">
+        <div className="mt-3 space-y-2 rounded-xl border border-border-hl12 bg-bg-primary/40 px-4 py-3 text-xs leading-relaxed text-text-secondary">
           <p>
             <strong className="text-text-primary">Otomatik yenileme:</strong> Aboneliğiniz, iptal
             etmediğiniz sürece her dönem sonunda <strong className="text-text-primary">aynı süre ve
