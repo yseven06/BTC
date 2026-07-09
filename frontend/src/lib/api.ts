@@ -421,6 +421,28 @@ export async function fetchSignalIntelligence(signalId: string): Promise<SignalI
   return run;
 }
 
+// ── Lifecycle transitions (SL-b) ───────────────────────────────────────────
+// Raw ordered phase-transition log for one signal (oldest→newest). The UI
+// collapses oscillations + extracts milestones — the payload is never shown raw.
+export interface SignalTransition {
+  from_status: string | null;
+  to_status: string;
+  kind: string;              // birth | transition | resolution
+  reason: string | null;
+  regime: string | null;
+  price: number | null;
+  retrace_to_sl: number | null;
+  progress_to_tp: number | null;
+  structure_event: string | null;
+  momentum_dir: string | null;
+  outcome: string | null;
+  created_at: string;
+}
+
+export async function fetchSignalTransitions(signalId: string): Promise<SignalTransition[]> {
+  return apiFetch<SignalTransition[]>(`/api/v1/signals/${signalId}/transitions`);
+}
+
 // ---------------------------------------------------------------------------
 // Assets
 // ---------------------------------------------------------------------------

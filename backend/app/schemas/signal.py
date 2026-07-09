@@ -105,6 +105,29 @@ class SignalDetailResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class SignalTransitionItem(BaseModel):
+    """One lifecycle phase-transition row from signal_status_history.
+
+    Serves the per-signal timeline (SL-b). Raw and un-collapsed by design —
+    the client suppresses oscillation noise and extracts milestones for display.
+    """
+
+    from_status: Optional[str] = None
+    to_status: str
+    kind: str  # birth | transition | resolution
+    reason: Optional[str] = None
+    regime: Optional[str] = None
+    price: Optional[float] = None
+    retrace_to_sl: Optional[float] = None
+    progress_to_tp: Optional[float] = None
+    structure_event: Optional[str] = None
+    momentum_dir: Optional[str] = None
+    outcome: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class SignalPerformanceResponse(BaseModel):
     """Signal performance tracking response."""
 

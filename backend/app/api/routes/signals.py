@@ -19,7 +19,7 @@ from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models.asset import Asset
 from app.models.signal import Signal, SignalOutcome, SignalPerformance, SignalType, Direction, RiskLevel
-from app.models.intelligence import SignalSnapshot, CoinMemory
+from app.models.intelligence import SignalSnapshot, CoinMemory, SignalStatusHistory
 from app.models.user import User
 from app.backtesting import labels as outcome_labels
 from app.backtesting import lifecycle
@@ -30,6 +30,7 @@ from app.schemas.signal import (
     SignalPerformanceResponse,
     SignalPerformanceSummary,
     SignalResponse,
+    SignalTransitionItem,
     BacktestRequest,
     BacktestResponse,
 )
@@ -730,6 +731,28 @@ async def signal_intelligence(
         "max_drawdown": float(perf.max_drawdown) if perf and perf.max_drawdown is not None else None,
         "bars_to_outcome": perf.bars_to_outcome if perf else None,
     }
+
+
+@router.get(
+    "/{signal_id}/transitions",
+    response_model=List[SignalTransitionItem],
+    summary="Lifecycle phase-transition log for a signal (oldest->newest)",
+)
+async def signal_transitions(
+    signal_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> List[SignalTransitionItem]:
+    """Raw ordered lifecycle transitions from signal_status_history for one
+    signal (birth -> transitions -> resolution). Read-only; no tier gate
+    (mirrors the intelligence panel). Oscillation-collapse and milestone
+    extraction happen client-side -> this endpoint assumes no presentation
+    shape. Empty list when the signal has no recorded history yet."""
+    res = await db.execute(
+        select(SignalStatusHistory)
+        .where(SignalStatusHistory.signal_id == signal_id)
+        .order_by(SignalStatusHistory.created_at.asc())
+    )
+    return [SignalTransitionItem.model_validate(r) for r in res.scalars().all()]
 
 
 @router.get(
