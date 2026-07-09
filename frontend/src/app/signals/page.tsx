@@ -14,6 +14,8 @@ import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { PriceSkeleton } from '@/components/ui/PriceSkeleton';
+import { Karot } from '@/components/signals/Karot';
+import { signalToKarotConfs } from '@/lib/karot-adapter';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1227,8 +1229,16 @@ export default function SignalsPage() {
                   )}
                 </div>
 
-                {/* Quality Score */}
-                <div><QualityBar score={qScore} /></div>
+                {/* Konsensüs (Karot · additif) + Kalite Skoru */}
+                <div className="flex items-center gap-2.5">
+                  <Karot
+                    confs={signalToKarotConfs(sig.engines_data)}
+                    size={18}
+                    title={`Motor konsensüsü — ${sym}`}
+                    className="flex-shrink-0"
+                  />
+                  <QualityBar score={qScore} />
+                </div>
 
                 {/* Outcome status */}
                 <div>
