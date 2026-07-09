@@ -52,6 +52,7 @@ class SignalResponse(BaseModel):
     expires_at: Optional[datetime] = None
     # Live lifecycle state (Adaptive Signal Intelligence) — see Signal model.
     live_status: Optional[str] = None
+    live_status_since: Optional[datetime] = None
     status_reason: Optional[str] = None
     status_updated_at: Optional[datetime] = None
     outcome: Optional[str] = None  # active / win / loss / breakeven / expired

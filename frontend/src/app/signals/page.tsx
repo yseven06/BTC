@@ -16,6 +16,7 @@ import { CoinIcon } from '@/components/ui/CoinIcon';
 import { PriceSkeleton } from '@/components/ui/PriceSkeleton';
 import { Karot } from '@/components/signals/Karot';
 import { signalToKarotConfs } from '@/lib/karot-adapter';
+import { LiveStatusBadge } from '@/components/ui/LiveStatusBadge';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1240,9 +1241,17 @@ export default function SignalsPage() {
                   <QualityBar score={qScore} />
                 </div>
 
-                {/* Outcome status */}
+                {/* Durum — aktif sinyalde canlı yaşam-döngüsü fazı; kapananlarda sonuç rozeti korunur */}
                 <div>
-                  <OutcomeBadge outcome={outcome} />
+                  {outcome === 'active' && sig.live_status ? (
+                    <LiveStatusBadge
+                      status={sig.live_status}
+                      since={sig.live_status_since}
+                      reason={sig.status_reason}
+                    />
+                  ) : (
+                    <OutcomeBadge outcome={outcome} />
+                  )}
                 </div>
 
                 {/* Generation time (TR saati) */}

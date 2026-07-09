@@ -185,6 +185,11 @@ export interface ApiSignal {
   expires_at?: string;
   is_active: boolean;
   outcome?: 'active' | 'win' | 'loss' | 'breakeven' | 'expired' | 'invalidated';
+  // Live lifecycle state (Adaptive Signal Intelligence) — mirrors backend Signal model.
+  live_status?: string | null;
+  live_status_since?: string | null;
+  status_reason?: string | null;
+  status_updated_at?: string | null;
   actual_return?: number | null;
   max_drawdown?: number | null;
   hit_tp1?: boolean;

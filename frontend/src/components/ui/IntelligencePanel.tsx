@@ -4,18 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { GlassCard } from './GlassCard';
 import { cn, formatRelativeTime, formatPercentage, formatNumber } from '@/lib/utils';
 import { fetchSignalIntelligence, type SignalIntelligence } from '@/lib/api';
-import {
-  Brain, Activity, TrendingUp, TrendingDown, AlertTriangle,
-  CheckCircle2, History, Gauge,
-} from 'lucide-react';
-
-// ─── Live status presentation ────────────────────────────────────────────────
-const STATUS_META: Record<string, { label: string; cls: string; bg: string; Icon: React.ElementType }> = {
-  active:         { label: 'Aktif',           cls: 'text-bullish',     bg: 'bg-bullish/10 border-bullish/30',     Icon: CheckCircle2 },
-  approaching_tp: { label: "TP'ye Yaklaşıyor", cls: 'text-accent-primary', bg: 'bg-accent-primary/10 border-accent-primary/30', Icon: TrendingUp },
-  weakening:      { label: 'Zayıflıyor',      cls: 'text-amber',  bg: 'bg-amber/10 border-amber/30', Icon: Activity },
-  invalidating:  { label: 'Geçersizleşiyor', cls: 'text-bearish',     bg: 'bg-bearish/10 border-bearish/30',     Icon: AlertTriangle },
-};
+import { Brain, History, Gauge } from 'lucide-react';
+import { LIVE_STATUS_META } from './LiveStatusBadge';
 
 const REGIME_TR: Record<string, string> = {
   trending_bull: 'Yükseliş Trendi',
@@ -104,7 +94,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
     );
   }
 
-  const status = data.live_status && STATUS_META[data.live_status] ? STATUS_META[data.live_status] : STATUS_META.active;
+  const status = data.live_status && LIVE_STATUS_META[data.live_status] ? LIVE_STATUS_META[data.live_status] : LIVE_STATUS_META.active;
   const StatusIcon = status.Icon;
   const coin = data.coin_memory;
 
