@@ -13,6 +13,8 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { SignalBadge } from '@/components/ui/SignalBadge';
 import { ScoreRing } from '@/components/ui/ScoreRing';
+import { Karot } from '@/components/signals/Karot';
+import { signalToKarotConfs } from '@/lib/karot-adapter';
 import {
   fetchActiveSignals, fetchPerformanceSummary, fetchSignalHistoryStats,
   fetchGlobalMarket, fetchFearGreed, fetchTopGainers,
@@ -582,6 +584,13 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
+                    {/* Konsensüs (Karot · additif · 1A-iii-d · karot-01) — ScoreRing solunda, mevcut layout korunur */}
+                    <Karot
+                      confs={signalToKarotConfs(sig.engines_data)}
+                      size={18}
+                      title={`Motor konsensüsü — ${sig.asset?.symbol ?? ''}`}
+                      className="flex-shrink-0"
+                    />
                     {/* Score ring */}
                     <ScoreRing score={sig.confidence_score} size={52} strokeWidth={4} />
                   </div>
