@@ -110,6 +110,77 @@ ok('sanitize: uzunluk<9 → 9 (pad 0)', sanitizeConfs([0.1, 0.2, 0.3]).length ==
 ok('sanitize: uzunluk>9 → 9 (truncate)', sanitizeConfs(new Array(12).fill(0.5)).length === 9);
 ok('sanitize: sözleşme-uyumlu classify aynı hal', classify(sanitizeConfs(REST_STATE)).state === 'consensus');
 
+// --- Adaptör (karot-adapter.ts aynası) — backend engines_data → 9-slot işaretli-güven ---
+const DEADZONE = 8, GAIN = 2.5;
+const BACKEND_TO_SLOT = {
+  technical_analysis: 0, market_structure: 1, smart_money_concepts: 2, candle_range_theory: 3,
+  volume_analysis: 4, risk_management: 5, fundamental_analysis: 6, onchain_analysis: 7, macro_analysis: 8,
+};
+function scoreToSignedConf(score) {
+  if (!Number.isFinite(score)) return 0;
+  const dev = score - 50;
+  if (Math.abs(dev) < DEADZONE) return 0;
+  return clamp((dev / 50) * GAIN, -1, 1);
+}
+function signalToKarotConfs(ed) {
+  const confs = new Array(9).fill(0);
+  if (!ed || typeof ed !== 'object') return confs;
+  const list = Array.isArray(ed) ? ed : Object.values(ed);
+  for (const e of list) {
+    if (!e || typeof e !== 'object') continue;
+    const name = e.engine_name ?? e.name;
+    if (name === undefined) continue;
+    const slot = BACKEND_TO_SLOT[name];
+    if (slot === undefined) continue;
+    confs[slot] = scoreToSignedConf(Number(e.score));
+  }
+  return confs;
+}
+// birim: scoreToSignedConf
+ok('adapter: score 50 → 0 (nötr)', scoreToSignedConf(50) === 0);
+ok('adapter: score 57 → 0 (ölü-bölge |7|<8)', scoreToSignedConf(57) === 0);
+ok('adapter: score 58 → 0.40 (dev 8, sınır)', near(scoreToSignedConf(58), 0.40));
+ok('adapter: score 69.5 → 0.975', near(scoreToSignedConf(69.5), 0.975));
+ok('adapter: score 72.5 → 1.0 (clamp)', scoreToSignedConf(72.5) === 1);
+ok('adapter: score 35 → −0.75', near(scoreToSignedConf(35), -0.75));
+ok('adapter: score 20 → −1.0 (clamp)', scoreToSignedConf(20) === -1);
+ok('adapter: NaN → 0', scoreToSignedConf(NaN) === 0);
+// birim: signalToKarotConfs eşleme + fallback
+ok('adapter: null → 9 sıfır', arrEq(signalToKarotConfs(null), [0,0,0,0,0,0,0,0,0]));
+ok('adapter: slot eşleme (yalnız market_structure)',
+  arrEq(signalToKarotConfs([{ engine_name: 'market_structure', score: 80 }]), [0, 1, 0, 0, 0, 0, 0, 0, 0]));
+ok('adapter: bilinmeyen motor atlanır',
+  arrEq(signalToKarotConfs([{ engine_name: 'foo_engine', score: 90 }]), [0,0,0,0,0,0,0,0,0]));
+ok('adapter: obje-map biçimi de kabul',
+  arrEq(signalToKarotConfs({ a: { engine_name: 'technical_analysis', score: 100 } }), [1,0,0,0,0,0,0,0,0]));
+// GOLDEN — gerçek DB sinyalleri (2026-07-10) → adapter → classify zinciri
+const SIG_BULL_WEAK = [
+  { engine_name: 'technical_analysis', score: 69.5 }, { engine_name: 'market_structure', score: 53.2 },
+  { engine_name: 'smart_money_concepts', score: 44.2 }, { engine_name: 'candle_range_theory', score: 57.2 },
+  { engine_name: 'volume_analysis', score: 72.5 }, { engine_name: 'risk_management', score: 50 },
+  { engine_name: 'fundamental_analysis', score: 57.5 }, { engine_name: 'onchain_analysis', score: 55 },
+  { engine_name: 'macro_analysis', score: 50 },
+];
+const SIG_BULL_CONS = [
+  { engine_name: 'technical_analysis', score: 71.6 }, { engine_name: 'market_structure', score: 69.6 },
+  { engine_name: 'smart_money_concepts', score: 75 }, { engine_name: 'candle_range_theory', score: 78.8 },
+  { engine_name: 'volume_analysis', score: 54.4 }, { engine_name: 'risk_management', score: 50 },
+  { engine_name: 'fundamental_analysis', score: 57.5 }, { engine_name: 'onchain_analysis', score: 55 },
+  { engine_name: 'macro_analysis', score: 50 },
+];
+const SIG_BEAR_CONS = [
+  { engine_name: 'technical_analysis', score: 30.3 }, { engine_name: 'market_structure', score: 6.1 },
+  { engine_name: 'smart_money_concepts', score: 48 }, { engine_name: 'candle_range_theory', score: 21.2 },
+  { engine_name: 'volume_analysis', score: 46.7 }, { engine_name: 'risk_management', score: 50 },
+  { engine_name: 'fundamental_analysis', score: 57.5 }, { engine_name: 'onchain_analysis', score: 65 },
+  { engine_name: 'macro_analysis', score: 50 },
+];
+ok('golden: düşük-genişlik bull sinyal → weak (dürüst)', classify(signalToKarotConfs(SIG_BULL_WEAK)).state === 'weak');
+const gc = classify(signalToKarotConfs(SIG_BULL_CONS));
+ok('golden: güçlü bull sinyal → consensus/bull', gc.state === 'consensus' && gc.dir === 'bull');
+const gb = classify(signalToKarotConfs(SIG_BEAR_CONS));
+ok('golden: güçlü bear sinyal → consensus/bear', gb.state === 'consensus' && gb.dir === 'bear');
+
 // (2) Kaynak-drift koruması — dondurulmuş sabitler karot-geometry.ts'te literal
 const src = readFileSync(join(__dirname, '..', 'src', 'lib', 'karot-geometry.ts'), 'utf8');
 const frozen = [
@@ -126,6 +197,13 @@ const frozen = [
 ];
 for (const [name, re] of frozen) ok(`freeze: ${name}`, re.test(src));
 ok('ENGINES 9 motor (Teknik…Makro)', /Teknik'[\s\S]*Makro'/.test(src) && (src.match(/'[^']+',/g) || []).length >= 9);
+
+// Adaptör kaynak-drift: kalibrasyon sabitleri + export mevcut (karot-adapter.ts)
+const adapterSrc = readFileSync(join(__dirname, '..', 'src', 'lib', 'karot-adapter.ts'), 'utf8');
+ok('adapter-freeze: DEADZONE = 8', /DEADZONE = 8\b/.test(adapterSrc));
+ok('adapter-freeze: GAIN = 2.5', /GAIN = 2\.5\b/.test(adapterSrc));
+ok('adapter-freeze: signalToKarotConfs export', /export function signalToKarotConfs/.test(adapterSrc));
+ok('adapter-freeze: 9-slot backend eşleme (technical→macro)', /technical_analysis: 0[\s\S]*macro_analysis: 8/.test(adapterSrc));
 
 // --- Rapor ---
 console.log(`\nKarot self-test: ${pass} geçti, ${fail} kaldı (toplam ${pass + fail})`);
