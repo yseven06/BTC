@@ -15,6 +15,8 @@ import {
 import { EngineMiniChart } from '@/components/charts/EngineMiniChart';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { IntelligencePanel } from '@/components/ui/IntelligencePanel';
+import { Karot } from '@/components/signals/Karot';
+import { signalToKarotConfs } from '@/lib/karot-adapter';
 
 // Engines whose supporting_data carries real chart-able coordinates (S/R
 // levels, premium/discount zones, OB/FVG boxes, pattern indices). The rest
@@ -615,6 +617,15 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
               <div className="flex flex-col items-center">
                 <ScoreRing score={signal.probability_score} size={compact ? 50 : 76} strokeWidth={compact ? 4 : 6} />
                 <span className="text-micro text-text-muted mt-1 font-medium uppercase">Olasılık</span>
+              </div>
+              {/* Konsensüs enstrümanı (Karot · additif · 1A-iii-c) — mevcut skorlar korunur */}
+              <div className="flex flex-col items-center">
+                <Karot
+                  confs={signalToKarotConfs(signal.engines_data)}
+                  size={compact ? 48 : 64}
+                  title="Motor konsensüsü — 9 motorun uzlaşma durumu"
+                />
+                <span className="text-micro text-text-muted mt-1 font-medium uppercase">Konsensüs</span>
               </div>
             </div>
           </div>
