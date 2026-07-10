@@ -13,7 +13,10 @@ module.exports = {
     'trademinds/no-raw-hex-outside-root': [true, { severity: 'warning' }],
     'trademinds/no-colored-glow': [true, { severity: 'warning' }],
     'trademinds/no-cyan-surface': [true, { severity: 'warning' }],
-    'trademinds/duration-token-set': [true, { severity: 'warning' }],
+    // gate-5 ERROR (Premium-motion guardrail, PI-0a): CSS süre-token DoD=0 —
+    // reduced-motion 0.01ms muaf (plugin) + scrollbar 0.2s→var(--dur-state).
+    // Diğer 3 gate WARN-mod (kendi component fazlarında error'a çekilecek).
+    'trademinds/duration-token-set': [true, { severity: 'error' }],
   },
   // İzin-listesi (dosya düzeyi): build çıktıları + bağımlılıklar taranmaz.
   ignoreFiles: ['node_modules/**', '.next/**', 'public/**'],

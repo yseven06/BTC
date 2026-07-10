@@ -37,6 +37,17 @@ function isKarotExempt(decl) {
   }
   return false;
 }
+// reduced-motion son-kare (0.01ms) MO-03/MO-10 geregi kanonik "hareketi oldur"
+// degeridir (0 bazi tarayicida transitionend olayini bastirir) → gate-5'ten muaf.
+function inReducedMotion(decl) {
+  let node = decl.parent;
+  while (node) {
+    if (node.type === 'atrule' && node.name === 'media' &&
+        /prefers-reduced-motion/i.test(node.params || '')) return true;
+    node = node.parent;
+  }
+  return false;
+}
 function inRoot(decl) {
   let node = decl.parent;
   while (node) {
@@ -106,18 +117,25 @@ const gate3 = mkRule(
   }
 );
 
+// gate-5 ayrica --dur-*/--stagger TOKEN TANIMLARINI denetler: kullanimda
+// var(--dur-x) "daima serbest" gorundugunden, rogue bir token (or. --dur-x: 900ms)
+// yalnizca tanim noktasinda yakalanabilir (600ms sert-tavan kaynak-kilidi).
+const DUR_TOKEN_RE = /^--(dur|stagger)/;
 const gate5 = mkRule(
   'duration-token-set',
   'gate-5 süre-kümesi: süre ayrık token setinden olmalı {140,150,180,360,520}ms+50ms stagger veya var(--dur-*) (MO-01 tek-rejim; app sert-tavan 600ms)',
   (decl) => {
-    if (!DUR_PROPS.has(decl.prop)) return null;
+    if (inReducedMotion(decl)) return null; // reduced-motion 0.01ms son-kare muaf
+    if (!DUR_PROPS.has(decl.prop) && !DUR_TOKEN_RE.test(decl.prop)) return null;
     let m; DUR_LITERAL_RE.lastIndex = 0;
     const bad = [];
     while ((m = DUR_LITERAL_RE.exec(decl.value))) {
       const ms = parseFloat(m[1]) * (m[2] === 's' ? 1000 : 1);
-      if (ms !== 0 && !ALLOWED_MS.has(ms)) bad.push(`${m[1]}${m[2]}`);
+      if (ms === 0) continue;
+      if (ms > 600) bad.push(`${m[1]}${m[2]} (>600ms sert-tavan)`);
+      else if (!ALLOWED_MS.has(ms)) bad.push(`${m[1]}${m[2]} set-dışı`);
     }
-    return bad.length ? `${decl.prop}: [${bad.join(', ')}] set-dışı` : null;
+    return bad.length ? `${decl.prop}: [${bad.join(', ')}]` : null;
   }
 );
 

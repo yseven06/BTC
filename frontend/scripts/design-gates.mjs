@@ -6,6 +6,10 @@
  *
  *   gate-1/TSX  token-dışı-hex: src TSX/TS içinde ham renk-hex (izin-listesi hariç)
  *   gate-4      kırpılmış-eksen: chart config'lerinde baseline-kırpma desenleri
+ *   gate-5/TSX  süre-token: Tailwind duration-* + inline-style transition/animation
+ *               literalleri ayrık token setinden ({140,150,180,360,520}+50) veya
+ *               var(--dur-*) olmalı (MO-01; app 600ms sert-tavan). CSS ayağı gate-5
+ *               (stylelint) ERROR; TSX ayağı WARN-envanteri (--strict CI'da error).
  *
  * İZİN-LİSTESİ (ALLOW): CSS var() okuyamayan JS/JSON bağlamları — değer --e0 ile
  * elle-senkron tutulur (bkz. layout.tsx yorumu, P1-F/f):
@@ -36,6 +40,39 @@ const CLIP_PATTERNS = [
   [/scaleMargins\s*:\s*\{[^}]*bottom\s*:\s*0\.5/, 'aşırı bottom scaleMargin (görsel kırpma)'],
 ];
 
+// gate-5/TSX süre kümesi (MO-01 ayrık token + 600ms sert-tavan). Named Tailwind
+// duration (duration-micro/state/…) ve duration-[var(--dur-*)] serbest; yakalanan:
+// numerik/arbitrary literal (duration-200, duration-[0.3s]) + inline-style
+// transition/animation literalleri. var(--dur-*) her zaman muaf.
+const DUR_SET = new Set([140, 150, 180, 360, 520, 50]);
+function badDurationsTSX(line) {
+  const bad = [];
+  let m;
+  const push = (label, ms) => {
+    if (ms === 0) return;
+    if (ms > 600) bad.push(`${label} (>600ms sert-tavan)`);
+    else if (!DUR_SET.has(ms)) bad.push(`${label} set-dışı`);
+  };
+  // Tailwind arbitrary: duration-[..]
+  const ARB = /duration-\[([^\]]+)\]/g;
+  while ((m = ARB.exec(line))) {
+    if (/var\(--dur/.test(m[1])) continue;
+    const t = /(\d*\.?\d+)\s*(ms|s)\b/.exec(m[1]);
+    if (t) push(`duration-[${m[1]}]`, parseFloat(t[1]) * (t[2] === 's' ? 1000 : 1));
+  }
+  // Tailwind numerik: duration-200
+  const NUM = /\bduration-(\d+)\b/g;
+  while ((m = NUM.exec(line))) push(`duration-${m[1]}`, parseInt(m[1], 10));
+  // Inline-style: transition/animation(+Duration) literal süreler
+  const INLINE = /(transition|animation)(?:Duration)?\s*:\s*(['"`])([^'"`]*)\2/g;
+  while ((m = INLINE.exec(line))) {
+    if (/var\(--dur/.test(m[3])) continue;
+    let t; const T = /(\d*\.?\d+)\s*(ms|s)\b/g;
+    while ((t = T.exec(m[3]))) push(`${m[1]}: ${t[1]}${t[2]}`, parseFloat(t[1]) * (t[2] === 's' ? 1000 : 1));
+  }
+  return bad;
+}
+
 const files = [];
 (function walk(dir) {
   for (const name of readdirSync(dir)) {
@@ -46,8 +83,9 @@ const files = [];
   }
 })(SRC);
 
-let warnHex = 0, warnClip = 0, allowedHex = 0;
-const report = [];
+let warnHex = 0, warnClip = 0, warnDur = 0, allowedHex = 0;
+const report = [];      // gate-1 + gate-4: DoD=0 → --strict'te commit-BLOKLAR.
+const durReport = [];   // gate-5/TSX: 3 mevcut borç → WARN-envanteri, BLOKLAMAZ (aşağı).
 for (const f of files) {
   const rel = relative(ROOT, f);
   const isAllowed = ALLOW_FILES.some((a) => rel.endsWith(a));
@@ -73,17 +111,29 @@ for (const f of files) {
         if (re.test(line)) { warnClip++; report.push(`  [gate-4] ${rel}:${i + 1}  ${why}`); }
       }
     }
+    for (const d of badDurationsTSX(line)) {
+      warnDur++;
+      durReport.push(`  [gate-5/TSX] ${rel}:${i + 1}  ${d}`);
+    }
   });
 }
 
 console.log('— TradeMinds design-gates (CSS-dışı) —');
 console.log(`taranan: ${files.length} dosya · izin-listesi hex: ${allowedHex} (senkron-envanteri, WARN değil)`);
+// gate-1/gate-4 (DoD=0) — --strict'te commit-BLOKLAR.
 if (report.length) {
   console.log(`WARN ${warnHex} ham-hex (gate-1/TSX) · ${warnClip} kırpılmış-eksen (gate-4):`);
   // İlk 40 satır; tam envanter component fazlarında (P9 Color) grep-DoD=0'a çekilecek.
   report.slice(0, 40).forEach((r) => console.log(r));
   if (report.length > 40) console.log(`  … +${report.length - 40} satır daha (WARN-mod envanteri)`);
 } else {
-  console.log('WARN 0 — temiz.');
+  console.log('WARN 0 — temiz (gate-1/gate-4).');
+}
+// gate-5/TSX (PI-0a) — CSS ayağı stylelint'te ERROR; TSX ayağı henüz DoD>0
+// (3 mevcut borç) olduğundan yalnız WARN-envanteri, --strict'te BLOKLAMAZ.
+// Borçlar component checkpoint'lerinde temizlenince exit koşuluna (report) alınır.
+if (durReport.length) {
+  console.log(`WARN ${warnDur} süre-token (gate-5/TSX · non-blocking envanter; CSS ayağı ERROR):`);
+  durReport.slice(0, 40).forEach((r) => console.log(r));
 }
 process.exit(STRICT && report.length ? 1 : 0);

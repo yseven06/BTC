@@ -248,7 +248,7 @@
   ::-webkit-scrollbar-thumb {
     background: rgba(148, 163, 184, 0.2);
     border-radius: 3px;
-    transition: background 0.2s;
+    transition: background var(--dur-state);
   }
 
   ::-webkit-scrollbar-thumb:hover {
