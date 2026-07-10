@@ -13,7 +13,12 @@ import { LiveStatusBadge } from '@/components/ui/LiveStatusBadge';
 // ─── Column template ──────────────────────────────────────────────────────────
 // Single source for the 7-column grid so the header and every row stay aligned.
 // Both Dashboard ("Şu an") and Sinyal Merkezi mount this ONE table — no duplication.
-const GRID_COLS = 'grid-cols-[2fr_1fr_1.2fr_1.5fr_1.3fr_1.5fr_auto]';
+// PI-2a: her track `minmax(<taban>, <fr>)` — <taban> kolonun okunakli-alti cokmesini
+// engeller. fr davranisi GENIS ekranda AYNEN korunur (taban baglamaz → byte-ozdes);
+// taban yalniz dar viewport'ta baglar → govdedeki overflow-x guard yatay-scroll'a
+// dusurur (squeeze/taşma yerine). Tabanlar gercek icerik-genisliginden turetildi.
+const GRID_TEMPLATE =
+  'minmax(180px,2fr) minmax(92px,1fr) minmax(104px,1.2fr) minmax(150px,1.5fr) minmax(116px,1.3fr) minmax(120px,1.5fr) auto';
 const COLUMNS = ['SEMBOL · TF', 'YÖN', 'ANLIK FİYAT', 'KALİTE SKORU', 'DURUM', 'ÜRETİLDİ', 'ANALİZ'] as const;
 
 // ─── Density ──────────────────────────────────────────────────────────────────
@@ -164,13 +169,13 @@ export function SignalTableRow({
     <div
       className={cn(
         'grid gap-4 items-center px-5 transition-colors',
-        GRID_COLS,
         invalid ? 'bg-bearish/[0.04] opacity-70'
           : selected ? 'bg-accent-primary/[0.06]'
           : 'hover:bg-e-2'
       )}
-      // Vertical padding is density-driven (inherited --row-h); default matches py-3.5.
-      style={{ paddingTop: 'var(--row-h, 0.875rem)', paddingBottom: 'var(--row-h, 0.875rem)' }}
+      // Kolon sablonu inline (minmax fr-floor, GRID_TEMPLATE tek-kaynak) + dikey padding
+      // yogunluk-tabanli (miras --row-h; default py-3.5 ile ozdes).
+      style={{ gridTemplateColumns: GRID_TEMPLATE, paddingTop: 'var(--row-h, 0.875rem)', paddingBottom: 'var(--row-h, 0.875rem)' }}
     >
       {/* Symbol + Timeframe */}
       <div className="flex items-center gap-3 min-w-0">
@@ -251,6 +256,114 @@ export function SignalTableRow({
   );
 }
 
+// ─── Mobile card row (PI-2a) ────────────────────────────────────────────────
+// md-alti (Bible §03 "md alti → kart"): AYNI veri + AYNI hucre-primitifleri, yeni
+// veri YOK. Gecis CSS-only (md:hidden), animasyonsuz (MO-01 layout-anim yasak).
+// Desktop SignalTableRow'a DOKUNULMADI → masaustu byte-ozdes. Analiz butonu touch
+// 44px (Bible mobil). Yeni davranis yok: secim yalniz butonda (satir-genelinde tap
+// eklenmedi), hover/selected/invalid halleri satir ile birebir ayni.
+export function SignalCardRow({
+  sig,
+  live,
+  onSelect,
+  selected = false,
+}: {
+  sig: ApiSignal;
+  live?: LivePrice;
+  onSelect: (sig: ApiSignal) => void;
+  selected?: boolean;
+}) {
+  const sym     = sig.asset?.symbol ?? '';
+  const qScore  = qualityScore(sig.confidence_score);
+  const dir     = directionLabel(sig);
+  const up      = (live?.changePct24h ?? 0) >= 0;
+  const outcome = sig.outcome ?? 'active';
+  const invalid = outcome === 'loss';
+
+  return (
+    <div
+      className={cn(
+        'flex flex-col gap-3 p-4 transition-colors',
+        invalid ? 'bg-bearish/[0.04] opacity-70'
+          : selected ? 'bg-accent-primary/[0.06]'
+          : ''
+      )}
+    >
+      {/* Ust: sembol·TF + yon */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center num font-num-520 text-xs text-accent-primary flex-shrink-0">
+            {sym.slice(0, 2)}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-display text-text-primary truncate flex items-center gap-1.5">
+              {sym}
+              <span className="text-micro font-medium text-accent-primary bg-accent-primary/10 border border-accent-primary/30 px-1.5 py-0.5 rounded uppercase">
+                {sig.timeframe}
+              </span>
+            </p>
+            <p className="text-micro text-text-muted truncate">{sig.asset?.name}</p>
+          </div>
+        </div>
+        <div className={cn('flex-shrink-0', invalid && 'line-through opacity-60')}>
+          <DirectionBadge {...dir} />
+        </div>
+      </div>
+
+      {/* Orta: anlik fiyat + konsensus/kalite */}
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          {live ? (
+            <div className="flex items-baseline gap-2">
+              <span className={cn('text-sm num font-num-520', invalid ? 'text-text-muted line-through' : 'text-text-primary')}>
+                {formatPrice(live.price)}
+              </span>
+              <span className={cn('text-micro font-mono font-medium', up ? 'text-bullish' : 'text-bearish')}>
+                {formatPercentage(live.changePct24h ?? 0)}
+              </span>
+            </div>
+          ) : (
+            <PriceSkeleton />
+          )}
+        </div>
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          <Karot
+            confs={signalToKarotConfs(sig.engines_data)}
+            size={18}
+            title={`Motor konsensüsü — ${sym}`}
+            className="flex-shrink-0"
+          />
+          <QualityBar score={qScore} />
+        </div>
+      </div>
+
+      {/* Alt: durum + uretildi + analiz (touch 44px) */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          {outcome === 'active' && sig.live_status ? (
+            <LiveStatusBadge
+              status={sig.live_status}
+              since={sig.live_status_since}
+              reason={sig.status_reason}
+            />
+          ) : (
+            <OutcomeBadge outcome={outcome} />
+          )}
+          <span className="text-micro font-mono text-text-muted truncate">
+            {formatAbsoluteTimeTR(sig.generated_at)}
+          </span>
+        </div>
+        <button
+          onClick={() => onSelect(sig)}
+          className="flex items-center justify-center gap-1 min-h-[44px] px-3 text-micro font-medium text-text-muted hover:text-accent-primary border border-border-subtle hover:border-accent-primary/40 rounded-lg transition-all flex-shrink-0"
+        >
+          <Eye className="w-3 h-3" /> Analiz
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Table ────────────────────────────────────────────────────────────────────
 interface SignalTableProps {
   /** Rows to render (already filtered/sorted by the caller). */
@@ -292,18 +405,39 @@ export function SignalTable({
       // --row-h cascades to every row's vertical padding (see SignalTableRow).
       style={{ ['--row-h' as string]: ROW_H[density] } as React.CSSProperties}
     >
-      {/* Table head */}
-      <div className={cn('grid gap-4 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30', GRID_COLS)}>
-        {COLUMNS.map((h) => (
-          <span key={h} className="text-micro font-medium text-text-muted uppercase">{h}</span>
-        ))}
+      {/* Masaustu (md+): grid tablo + overflow-x guard — dar viewport'ta kolonlar
+          minmax-tabana carpinca squeeze/taşma yerine yatay-scroll (kart-sinirinda). */}
+      <div className="hidden md:block overflow-x-auto">
+        {/* Table head */}
+        <div
+          className="grid gap-4 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30"
+          style={{ gridTemplateColumns: GRID_TEMPLATE }}
+        >
+          {COLUMNS.map((h) => (
+            <span key={h} className="text-micro font-medium text-text-muted uppercase">{h}</span>
+          ))}
+        </div>
+
+        {!loading && !showEmpty && (
+          <div className="divide-y divide-border-subtle">
+            {rows.map((sig) => (
+              <SignalTableRow
+                key={sig.id}
+                sig={sig}
+                live={livePrices[sig.asset?.symbol ?? '']}
+                onSelect={onSelect}
+                selected={selectedId ? sig.id === selectedId : false}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {loading && (
         // Liste-fetch loading = statik bos-Karot skeleton (Bible §05 micro-loading).
         // animate-pulse KALDIRILDI (sonsuz-pulse = MO-06 ihlali; shimmer/pulse=0).
         // Fitil-stagger doguma aittir (gercek confs) — liste-fetch'e DEGIL; burada
-        // idle-sessiz statik (MO-04). Genislik sabit → layout kaymaz.
+        // idle-sessiz statik (MO-04). Genislik sabit → layout kaymaz. Her iki viewport.
         <div className="flex justify-center py-16">
           <Karot confs={[0,0,0,0,0,0,0,0,0]} loading size={32} title="Sinyaller yükleniyor" />
         </div>
@@ -311,17 +445,20 @@ export function SignalTable({
 
       {!loading && showEmpty && emptyState}
 
-      <div className="divide-y divide-border-subtle">
-        {rows.map((sig) => (
-          <SignalTableRow
-            key={sig.id}
-            sig={sig}
-            live={livePrices[sig.asset?.symbol ?? '']}
-            onSelect={onSelect}
-            selected={selectedId ? sig.id === selectedId : false}
-          />
-        ))}
-      </div>
+      {/* Mobil (md-alti): kart-liste — ayni veri/primitifler, CSS-only, animasyonsuz. */}
+      {!loading && !showEmpty && (
+        <div className="md:hidden divide-y divide-border-subtle">
+          {rows.map((sig) => (
+            <SignalCardRow
+              key={sig.id}
+              sig={sig}
+              live={livePrices[sig.asset?.symbol ?? '']}
+              onSelect={onSelect}
+              selected={selectedId ? sig.id === selectedId : false}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
