@@ -6,6 +6,7 @@ import { cn, formatRelativeTime, formatPercentage, formatNumber } from '@/lib/ut
 import { fetchSignalIntelligence, type SignalIntelligence } from '@/lib/api';
 import { Brain, History, Gauge } from 'lucide-react';
 import { LIVE_STATUS_META } from './LiveStatusBadge';
+import { LifecycleJourney } from './LifecycleJourney';
 
 const REGIME_TR: Record<string, string> = {
   trending_bull: 'Yükseliş Trendi',
@@ -132,6 +133,9 @@ export function IntelligencePanel({ signalId, compact }: Props) {
           <span className="text-sm font-display text-text-primary">{data.detail_label_tr}</span>
         </div>
       )}
+
+      {/* Lifecycle journey — how this signal travelled here (SL-b, static) */}
+      <LifecycleJourney signalId={signalId} />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
         {/* Market regime at signal time */}

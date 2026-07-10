@@ -439,8 +439,25 @@ export interface SignalTransition {
   created_at: string;
 }
 
+// Dedupe concurrent + near-term repeats (panel remounts) — same shape as the
+// intelligence cache, lighter payload. Endpoint is read-only + indexed.
+const _transCache = new Map<string, { ts: number; data: SignalTransition[] }>();
+const _transInflight = new Map<string, Promise<SignalTransition[]>>();
+const TRANS_TTL_MS = 15_000;
+
 export async function fetchSignalTransitions(signalId: string): Promise<SignalTransition[]> {
-  return apiFetch<SignalTransition[]>(`/api/v1/signals/${signalId}/transitions`);
+  const cached = _transCache.get(signalId);
+  if (cached && Date.now() - cached.ts < TRANS_TTL_MS) return cached.data;
+
+  const inflight = _transInflight.get(signalId);
+  if (inflight) return inflight;
+
+  const run = apiFetch<SignalTransition[]>(`/api/v1/signals/${signalId}/transitions`)
+    .then((d) => { _transCache.set(signalId, { ts: Date.now(), data: d }); return d; })
+    .finally(() => { _transInflight.delete(signalId); });
+
+  _transInflight.set(signalId, run);
+  return run;
 }
 
 // ---------------------------------------------------------------------------
