@@ -2,41 +2,29 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Zap, RefreshCw, TrendingUp, TrendingDown, Eye, LineChart, FileDown, ArrowRight, Crown } from 'lucide-react';
+import { Zap, RefreshCw, TrendingUp, TrendingDown, LineChart, FileDown, ArrowRight, Crown } from 'lucide-react';
 import { fetchActiveSignals, triggerBatchGeneration, downloadSignalPdf, type ApiSignal } from '@/lib/api';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useTierLimits } from '@/hooks/useTierLimits';
 import { SignalType } from '@/types';
-import { cn, formatAbsoluteTimeTR, formatPrice, formatPercentage } from '@/lib/utils';
+import { cn, formatPrice, formatPercentage } from '@/lib/utils';
 import { PAYMENTS_ENABLED } from '@/lib/config';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CoinIcon } from '@/components/ui/CoinIcon';
-import { PriceSkeleton } from '@/components/ui/PriceSkeleton';
-import { Karot } from '@/components/signals/Karot';
-import { signalToKarotConfs } from '@/lib/karot-adapter';
-import { LiveStatusBadge } from '@/components/ui/LiveStatusBadge';
+import {
+  SignalTable,
+  qualityScore,
+  directionLabel,
+  QualityBar,
+  OutcomeBadge,
+  DirectionBadge,
+} from '@/components/signals/SignalTable';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function qualityScore(confidence: number): number {
-  return Math.round(confidence / 10);
-}
-
-function qualityColor(score: number): string {
-  if (score >= 8) return 'bg-bullish';
-  if (score >= 6) return 'bg-amber';
-  if (score >= 4) return 'bg-amber/70';
-  return 'bg-bearish';
-}
-
-function qualityTextColor(score: number): string {
-  if (score >= 8) return 'text-bullish';
-  if (score >= 6) return 'text-amber';
-  if (score >= 4) return 'text-amber/80';
-  return 'text-bearish';
-}
+// qualityScore / qualityColor / qualityTextColor + directionLabel now live in
+// components/signals/SignalTable.tsx (shared with the Dashboard table).
 
 /** Derive HTF Alignment label from engine_results JSON */
 function getHtfAlignment(enginesData: any): { label: string; type: 'ob' | 'fvg' | 'neutral'; bullish: boolean } {
@@ -79,17 +67,6 @@ function getPurgeType(enginesData: any): { label: string; low: boolean } | null 
   return null;
 }
 
-type DirState = 'long' | 'short' | 'wait';
-function directionLabel(sig: ApiSignal): { label: string; state: DirState } {
-  const d = (sig.direction ?? '').toLowerCase();
-  const t = (sig.signal_type ?? '').toLowerCase();
-  if (d === 'bullish' || t === 'buy' || t === 'strong_buy')
-    return { label: 'LONG',  state: 'long' };
-  if (d === 'bearish' || t === 'sell' || t === 'strong_sell')
-    return { label: 'SHORT', state: 'short' };
-  return { label: 'BEKLE', state: 'wait' };
-}
-
 interface OnchainInfo {
   fearGreed: number | null;
   fearGreedClass: string | null;
@@ -122,22 +99,6 @@ function getOnchainInfo(enginesData: any): OnchainInfo | null {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function QualityBar({ score }: { score: number }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="w-20 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
-        <div
-          className={cn('h-full rounded-full transition-all', qualityColor(score))}
-          style={{ width: `${score * 10}%` }}
-        />
-      </div>
-      <span className={cn('text-xs num font-num-520', qualityTextColor(score))}>
-        {score}/10
-      </span>
-    </div>
-  );
-}
-
 function HtfBadge({ label, bullish }: { label: string; bullish: boolean }) {
   return (
     <span
@@ -162,44 +123,6 @@ function PurgeBadge({ label, low }: { label: string; low: boolean }) {
         ? 'bg-bullish/10 text-bullish'
         : 'bg-bearish/10 text-bearish'
     )}>
-      {label}
-    </span>
-  );
-}
-
-function OutcomeBadge({ outcome }: { outcome: string }) {
-  const config: Record<string, { label: string; cls: string }> = {
-    active:    { label: 'AKTİF',     cls: 'bg-accent-primary/15 text-accent-primary border-accent-primary/30' },
-    win:       { label: 'KAZANDI ✓', cls: 'bg-bullish/15 text-bullish border-bullish/30' },
-    loss:      { label: 'PATLADI ✗', cls: 'bg-bearish/15 text-bearish border-bearish/30' },
-    breakeven: { label: 'BERABERE',  cls: 'bg-amber/15 text-amber border-amber/30' },
-    expired:   { label: 'GEÇERSİZ',  cls: 'bg-text-muted/15 text-text-muted border-text-muted/30' },
-    invalidated: { label: 'İPTAL EDİLDİ', cls: 'bg-accent-ui/15 text-accent-ui border-accent-ui/30' },
-  };
-  const c = config[outcome] ?? config.active;
-  return (
-    <span className={cn(
-      'inline-flex items-center px-2 py-0.5 rounded text-micro font-medium border',
-      c.cls
-    )}>
-      {c.label}
-    </span>
-  );
-}
-
-function DirectionBadge({ label, state }: { label: string; state: DirState }) {
-  const config = {
-    long:  { cls: 'bg-bullish text-black',     icon: <TrendingUp   className="w-3 h-3" /> },
-    short: { cls: 'bg-bearish text-white',     icon: <TrendingDown className="w-3 h-3" /> },
-    wait:  { cls: 'bg-text-muted/40 text-text-primary border border-text-muted/40', icon: <span className="w-3 h-3 inline-block">⏸</span> },
-  } as const;
-  const c = config[state];
-  return (
-    <span className={cn(
-      'inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-micro font-medium',
-      c.cls
-    )}>
-      {c.icon}
       {label}
     </span>
   );
@@ -1132,22 +1055,14 @@ export default function SignalsPage() {
       </div>
       </div>
 
-      {/* Table */}
-      <div className="glass-panel border border-border-subtle rounded-2xl overflow-hidden">
-        {/* Table head */}
-        <div className="grid grid-cols-[2fr_1fr_1.2fr_1.5fr_1.3fr_1.5fr_auto] gap-4 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
-          {['SEMBOL · TF', 'YÖN', 'ANLIK FİYAT', 'KALİTE SKORU', 'DURUM', 'ÜRETİLDİ', 'ANALİZ'].map((h) => (
-            <span key={h} className="text-micro font-medium text-text-muted uppercase">{h}</span>
-          ))}
-        </div>
-
-        {loading && (
-          <div className="flex justify-center py-16">
-            <div className="w-7 h-7 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
-
-        {!loading && signals.length === 0 && (
+      {/* Table — shared SignalTable (the same component the Dashboard "Şu an" band mounts) */}
+      <SignalTable
+        rows={filtered}
+        livePrices={livePrices}
+        onSelect={setSelected}
+        loading={loading}
+        showEmpty={signals.length === 0}
+        emptyState={
           <EmptyState
             icon={<Zap className="w-6 h-6 text-accent-primary" />}
             title="Şu an aktif sinyal yok"
@@ -1173,106 +1088,8 @@ export default function SignalsPage() {
             }
             className="my-2"
           />
-        )}
-
-        <div className="divide-y divide-border-subtle">
-          {filtered.map((sig) => {
-            const sym    = sig.asset?.symbol ?? '';
-            const live   = livePrices[sym];
-            const qScore = qualityScore(sig.confidence_score);
-            const dir    = directionLabel(sig);
-            const up     = (live?.changePct24h ?? 0) >= 0;
-            const outcome = sig.outcome ?? 'active';
-            const invalid = outcome === 'loss';
-
-            return (
-              <div
-                key={sig.id}
-                className={cn(
-                  "grid grid-cols-[2fr_1fr_1.2fr_1.5fr_1.3fr_1.5fr_auto] gap-4 items-center px-5 py-3.5 transition-colors",
-                  invalid ? 'bg-bearish/[0.04] opacity-70' : 'hover:bg-e-2'
-                )}
-              >
-                {/* Symbol + Timeframe */}
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center num font-num-520 text-xs text-accent-primary flex-shrink-0">
-                    {sym.slice(0, 2)}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-display text-text-primary truncate flex items-center gap-1.5">
-                      {sym}
-                      <span className="text-micro font-medium text-accent-primary bg-accent-primary/10 border border-accent-primary/30 px-1.5 py-0.5 rounded uppercase">
-                        {sig.timeframe}
-                      </span>
-                    </p>
-                    <p className="text-micro text-text-muted truncate">{sig.asset?.name}</p>
-                  </div>
-                </div>
-
-                {/* Direction */}
-                <div className={invalid ? 'line-through opacity-60' : ''}>
-                  <DirectionBadge {...dir} />
-                </div>
-
-                {/* Live Price */}
-                <div>
-                  {live ? (
-                    <div>
-                      <p className={cn('text-sm num font-num-520', invalid ? 'text-text-muted line-through' : 'text-text-primary')}>
-                        {formatPrice(live.price)}
-                      </p>
-                      <p className={cn('text-micro font-mono font-medium', up ? 'text-bullish' : 'text-bearish')}>
-                        {formatPercentage(live.changePct24h ?? 0)}
-                      </p>
-                    </div>
-                  ) : (
-                    <PriceSkeleton />
-                  )}
-                </div>
-
-                {/* Konsensüs (Karot · additif) + Kalite Skoru */}
-                <div className="flex items-center gap-2.5">
-                  <Karot
-                    confs={signalToKarotConfs(sig.engines_data)}
-                    size={18}
-                    title={`Motor konsensüsü — ${sym}`}
-                    className="flex-shrink-0"
-                  />
-                  <QualityBar score={qScore} />
-                </div>
-
-                {/* Durum — aktif sinyalde canlı yaşam-döngüsü fazı; kapananlarda sonuç rozeti korunur */}
-                <div>
-                  {outcome === 'active' && sig.live_status ? (
-                    <LiveStatusBadge
-                      status={sig.live_status}
-                      since={sig.live_status_since}
-                      reason={sig.status_reason}
-                    />
-                  ) : (
-                    <OutcomeBadge outcome={outcome} />
-                  )}
-                </div>
-
-                {/* Generation time (TR saati) */}
-                <div className="text-micro font-mono text-text-muted">
-                  {formatAbsoluteTimeTR(sig.generated_at)}
-                </div>
-
-                {/* Action */}
-                <div>
-                  <button
-                    onClick={() => setSelected(sig)}
-                    className="flex items-center gap-1 text-micro font-medium text-text-muted hover:text-accent-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1 rounded-lg transition-all"
-                  >
-                    <Eye className="w-3 h-3" /> Analiz
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+        }
+      />
 
       {/* Detail Drawer */}
       {selected && <SignalDrawer sig={selected} onClose={() => setSelected(null)} />}
