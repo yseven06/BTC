@@ -31,6 +31,7 @@ import { useAuth } from '@/lib/auth-context';
 import { EmptyState } from '@/components/ui/EmptyState';
 import OnboardingChecklist from '@/components/dashboard/OnboardingChecklist';
 import CoachmarkTour from '@/components/dashboard/CoachmarkTour';
+import { DurumBandi } from '@/components/dashboard/DurumBandi';
 import { Crown, Lock } from 'lucide-react';
 import TradingViewChart from '@/components/charts/TradingViewChart';
 import { chartColor } from '@/lib/chartColors';
@@ -174,6 +175,7 @@ export default function DashboardPage() {
   const winRate = perf?.win_rate ?? 0;
   const avgReturn = perf?.average_return ?? 0;
   const fngValue = fng?.value ?? 50;
+  const periodPhrase = timeRange === '24s' ? '24 saatte' : timeRange === '7g' ? '7 günde' : '30 günde';
 
   // Win rate's true denominator is win + loss + breakeven (the canonical
   // platform definition). Derive shares from the SAME denominator so the cards
@@ -286,6 +288,17 @@ export default function DashboardPage() {
       </div>
 
       <InvestmentDisclaimer variant="inline" />
+
+      {/* ── Durum Bandı — 3-saniye "Şu an" özeti (DE-1, additif, mevcut veriden) ── */}
+      <DurumBandi
+        periodPhrase={periodPhrase}
+        closedCount={periodClosedCount}
+        winRate={winRate}
+        avgReturn={avgReturn}
+        activeCount={activeCount}
+        loading={loading}
+        hasData={!!perf && !dataError}
+      />
 
       {/* ── 5 Stat Cards ── */}
       {loading ? (
