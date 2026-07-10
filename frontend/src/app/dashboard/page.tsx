@@ -32,6 +32,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import OnboardingChecklist from '@/components/dashboard/OnboardingChecklist';
 import CoachmarkTour from '@/components/dashboard/CoachmarkTour';
 import { DurumBandi } from '@/components/dashboard/DurumBandi';
+import { LifecycleHealth } from '@/components/dashboard/LifecycleHealth';
+import { LiveStatusBadge } from '@/components/ui/LiveStatusBadge';
 import { Crown, Lock } from 'lucide-react';
 import TradingViewChart from '@/components/charts/TradingViewChart';
 import { chartColor } from '@/lib/chartColors';
@@ -176,6 +178,12 @@ export default function DashboardPage() {
   const avgReturn = perf?.average_return ?? 0;
   const fngValue = fng?.value ?? 50;
   const periodPhrase = timeRange === '24s' ? '24 saatte' : timeRange === '7g' ? '7 günde' : '30 günde';
+  // Lifecycle-health census over ALL active signals (not just the recent 6) —
+  // client-derived from the already-fetched list, no endpoint.
+  const lifecycleCounts = signals.reduce<Record<string, number>>((acc, s) => {
+    if (s.live_status) acc[s.live_status] = (acc[s.live_status] ?? 0) + 1;
+    return acc;
+  }, {});
 
   // Win rate's true denominator is win + loss + breakeven (the canonical
   // platform definition). Derive shares from the SAME denominator so the cards
@@ -524,6 +532,9 @@ export default function DashboardPage() {
               </Link>
             </div>
 
+            {/* Lifecycle-health census (DE-2 · aktif sinyallerin faz dağılımı · client-türetilir) */}
+            <LifecycleHealth counts={lifecycleCounts} />
+
             {loading ? (
               <div className="py-8 flex justify-center">
                 <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
@@ -569,9 +580,12 @@ export default function DashboardPage() {
 
                     {/* Symbol + badge */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-display text-text-primary">{sig.asset?.symbol}</span>
                         <SignalBadge type={sig.signal_type as SignalType} />
+                        {sig.live_status && sig.live_status !== 'active' && (
+                          <LiveStatusBadge status={sig.live_status} since={sig.live_status_since} reason={sig.status_reason} />
+                        )}
                       </div>
                       <div className="flex gap-3 mt-0.5">
                         {livePrices[sig.asset?.symbol ?? ''] ? (
