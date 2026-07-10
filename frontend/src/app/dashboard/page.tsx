@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   TrendingUp, TrendingDown, Zap, CheckCircle, AlertTriangle,
   LineChart as ChartIcon, ArrowRight, RefreshCw, Activity,
@@ -10,21 +11,16 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { CoinIcon } from '@/components/ui/CoinIcon';
-import { SignalBadge } from '@/components/ui/SignalBadge';
-import { ScoreRing } from '@/components/ui/ScoreRing';
-import { Karot } from '@/components/signals/Karot';
-import { signalToKarotConfs } from '@/lib/karot-adapter';
+import { SignalTable, DensityToggle, type Density } from '@/components/signals/SignalTable';
 import {
   fetchActiveSignals, fetchPerformanceSummary, fetchSignalHistoryStats,
   fetchGlobalMarket, fetchFearGreed, fetchTopGainers,
   type ApiSignal, type PerformanceSummary, type GlobalMarketData,
   type FearGreedData, type CoinMarket,
 } from '@/lib/api';
-import { formatLargeNumber, formatPercentage, cn, formatPrice } from '@/lib/utils';
+import { formatLargeNumber, formatPercentage, cn } from '@/lib/utils';
 import { PAYMENTS_ENABLED } from '@/lib/config';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
-import { SignalType, RiskLevel } from '@/types';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useTierLimits } from '@/hooks/useTierLimits';
 import { useAuth } from '@/lib/auth-context';
@@ -33,7 +29,6 @@ import OnboardingChecklist from '@/components/dashboard/OnboardingChecklist';
 import CoachmarkTour from '@/components/dashboard/CoachmarkTour';
 import { DurumBandi } from '@/components/dashboard/DurumBandi';
 import { LifecycleHealth } from '@/components/dashboard/LifecycleHealth';
-import { LiveStatusBadge } from '@/components/ui/LiveStatusBadge';
 import { AIGorusu } from '@/components/dashboard/AIGorusu';
 import { RiskDagilimi } from '@/components/dashboard/RiskDagilimi';
 import { Crown, Lock } from 'lucide-react';
@@ -89,7 +84,9 @@ function LiveClock() {
 // ---------------------------------------------------------------------------
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [timeRange, setTimeRange] = useState<'24s' | '7g' | '30g'>('24s');
+  const [density, setDensity] = useState<Density>('compact');
 
   const [signals, setSignals] = useState<ApiSignal[]>([]);
   const [perf, setPerf] = useState<PerformanceSummary | null>(null);
@@ -115,7 +112,7 @@ export default function DashboardPage() {
   // "Toplam Sinyal" (all-time, ignored the period selector entirely).
   const [periodClosedCount, setPeriodClosedCount] = useState(0);
 
-  const signalSymbols = signals.slice(0, 6).map((s) => s.asset?.symbol ?? '').filter(Boolean);
+  const signalSymbols = [...new Set(signals.map((s) => s.asset?.symbol ?? '').filter(Boolean))];
   const livePrices = useLivePrices(signalSymbols);
   const limits = useTierLimits();
   const isFreeTier = !limits.loading && limits.tier === 'free';
@@ -174,6 +171,16 @@ export default function DashboardPage() {
     return () => clearInterval(id);
   }, [load]);
 
+  useEffect(() => {
+    const saved = window.localStorage.getItem('tm.dashboard.density');
+    if (saved === 'compact' || saved === 'comfortable') setDensity(saved);
+  }, []);
+
+  const changeDensity = (d: Density) => {
+    setDensity(d);
+    try { window.localStorage.setItem('tm.dashboard.density', d); } catch {}
+  };
+
   // Derived stats
   const activeCount = actionableActiveCount;
   const winRate = perf?.win_rate ?? 0;
@@ -207,11 +214,6 @@ export default function DashboardPage() {
   const breakevenCount = perf?.breakeven_count ?? 0;
   const resolvedCount = winCount + lossCount + breakevenCount;
   const lossShare = resolvedCount ? Math.round((lossCount / resolvedCount) * 100) : 0;
-
-  // "Son Sinyaller" widget only needs the newest 6, but the asset-distribution
-  // pie needs a much larger sample — otherwise it's just 6 equally-weighted
-  // slices that look like a real allocation but aren't.
-  const recentSignals = signals.slice(0, 6);
 
   const assetCounts: Record<string, number> = {};
   signals.forEach((s) => {
@@ -450,6 +452,47 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* ── Şu an — aktif sinyaller tam-genişlik tablo (DE-5c) ── */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-display text-text-primary flex items-center gap-2">
+            <Zap className="w-4 h-4 text-accent-primary" />
+            Aktif Sinyaller
+          </h2>
+          <div className="flex items-center gap-3">
+            <DensityToggle value={density} onChange={changeDensity} />
+            <Link href="/signals" className="text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
+              Tümünü Gör <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+        </div>
+        <LifecycleHealth counts={lifecycleCounts} />
+        <SignalTable
+          rows={signals}
+          livePrices={livePrices}
+          onSelect={() => router.push('/signals')}
+          loading={loading}
+          showEmpty={!loading && signals.length === 0}
+          emptyState={
+            <EmptyState
+              icon={<Zap className="w-6 h-6 text-accent-primary" />}
+              title="Henüz sinyal yok"
+              description="AI motorları piyasayı 7/24 tarıyor. Tüm aktif AL/SAT sinyallerini Sinyal Merkezi'nde incele."
+              action={
+                <Link
+                  href="/signals"
+                  className="focus-ring inline-flex items-center gap-1.5 text-xs font-display bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors"
+                >
+                  Sinyal Merkezi&apos;ne git <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              }
+              className="my-2"
+            />
+          }
+          density={density}
+        />
+      </div>
+
       {/* ── Main Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left 2/3 — Portföy (Performans) önce, Piyasa bağlamı sonra (DE-4 · 3-saniye hiyerarşisi) */}
@@ -540,115 +583,8 @@ export default function DashboardPage() {
           </GlassCard>
         </div>
 
-        {/* Right column — Signals + extras */}
+        {/* Right column */}
         <div className="space-y-5">
-          {/* Recent Signals */}
-          <GlassCard>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-display text-text-primary flex items-center gap-2">
-                <Zap className="w-4 h-4 text-accent-primary" />
-                Son Sinyaller
-              </h2>
-              <Link href="/signals" className="text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
-                Tümünü Gör <ArrowRight className="w-3 h-3" />
-              </Link>
-            </div>
-
-            {/* Lifecycle-health census (DE-2 · aktif sinyallerin faz dağılımı · client-türetilir) */}
-            <LifecycleHealth counts={lifecycleCounts} />
-
-            {loading ? (
-              <div className="py-8 flex justify-center">
-                <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : recentSignals.length === 0 ? (
-              <EmptyState
-                icon={<Zap className="w-6 h-6 text-accent-primary" />}
-                title="Henüz sinyal yok"
-                description="AI motorları piyasayı 7/24 tarıyor. Tüm aktif AL/SAT sinyallerini Sinyal Merkezi'nde incele."
-                action={
-                  <Link
-                    href="/signals"
-                    className="focus-ring inline-flex items-center gap-1.5 text-xs font-display bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors"
-                  >
-                    Sinyal Merkezi&apos;ne git <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                }
-                className="my-2"
-              />
-            ) : (
-              <div className="space-y-3">
-                {recentSignals.map((sig) => {
-                  const dir = sig.signal_type?.toLowerCase() ?? '';
-                  const isBullish = dir.includes('buy');
-                  const isBearish = dir.includes('sell');
-                  const hoverGlow = isBullish
-                    ? 'hover:border-bullish/30'
-                    : isBearish
-                    ? 'hover:border-bearish/30'
-                    : 'hover:border-border-medium';
-                  return (
-                  <div
-                    key={sig.id}
-                    className={cn(
-                      "flex items-center gap-3 p-3 bg-bg-secondary/40 border border-border-subtle rounded-xl transition-all duration-300",
-                      hoverGlow
-                    )}
-                  >
-                    {/* Icon */}
-                    <div className="w-8 h-8 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center num font-num-520 text-xs text-accent-primary flex-shrink-0 overflow-hidden">
-                      {sig.asset?.symbol ? <CoinIcon symbol={sig.asset.symbol} assetType={sig.asset.asset_type} /> : '??'}
-                    </div>
-
-                    {/* Symbol + badge */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-display text-text-primary">{sig.asset?.symbol}</span>
-                        <SignalBadge type={sig.signal_type as SignalType} />
-                        {sig.live_status && sig.live_status !== 'active' && (
-                          <LiveStatusBadge status={sig.live_status} since={sig.live_status_since} reason={sig.status_reason} />
-                        )}
-                      </div>
-                      <div className="flex gap-3 mt-0.5">
-                        {livePrices[sig.asset?.symbol ?? ''] ? (
-                          <>
-                            <span className="text-micro font-mono text-text-primary font-medium">
-                              {formatPrice(livePrices[sig.asset?.symbol ?? ''].price)}
-                            </span>
-                            <span className={cn('text-micro font-mono font-medium',
-                              (livePrices[sig.asset?.symbol ?? ''].changePct24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
-                              {formatPercentage(livePrices[sig.asset?.symbol ?? ''].changePct24h ?? 0)}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-micro text-text-muted">
-                              TP: <span className="text-bullish font-mono">{sig.tp1 ? formatPrice(sig.tp1) : '—'}</span>
-                            </span>
-                            <span className="text-micro text-text-muted">
-                              SL: <span className="text-bearish font-mono">{sig.stop_loss ? formatPrice(sig.stop_loss) : '—'}</span>
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Konsensüs (Karot · additif · 1A-iii-d · karot-01) — ScoreRing solunda, mevcut layout korunur */}
-                    <Karot
-                      confs={signalToKarotConfs(sig.engines_data)}
-                      size={18}
-                      title={`Motor konsensüsü — ${sig.asset?.symbol ?? ''}`}
-                      className="flex-shrink-0"
-                    />
-                    {/* Score ring */}
-                    <ScoreRing score={sig.confidence_score} size={52} strokeWidth={4} />
-                  </div>
-                  );
-                })}
-              </div>
-            )}
-          </GlassCard>
-
           {/* Asset Distribution Pie */}
           <GlassCard>
             <h2 className="text-base font-display text-text-primary mb-4 flex items-center gap-2">

@@ -294,7 +294,7 @@ export function SignalTable({
 
       {loading && (
         <div className="flex justify-center py-16">
-          <div className="w-7 h-7 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+          <Karot confs={[0,0,0,0,0,0,0,0,0]} loading size={32} title="Sinyaller yükleniyor" className="animate-pulse" />
         </div>
       )}
 
