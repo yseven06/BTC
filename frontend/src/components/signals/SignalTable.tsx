@@ -300,8 +300,12 @@ export function SignalTable({
       </div>
 
       {loading && (
+        // Liste-fetch loading = statik bos-Karot skeleton (Bible §05 micro-loading).
+        // animate-pulse KALDIRILDI (sonsuz-pulse = MO-06 ihlali; shimmer/pulse=0).
+        // Fitil-stagger doguma aittir (gercek confs) — liste-fetch'e DEGIL; burada
+        // idle-sessiz statik (MO-04). Genislik sabit → layout kaymaz.
         <div className="flex justify-center py-16">
-          <Karot confs={[0,0,0,0,0,0,0,0,0]} loading size={32} title="Sinyaller yükleniyor" className="animate-pulse" />
+          <Karot confs={[0,0,0,0,0,0,0,0,0]} loading size={32} title="Sinyaller yükleniyor" />
         </div>
       )}
 
