@@ -68,6 +68,10 @@
     --dur-overlay: 360ms;
     --stagger:     50ms;
     --ease-signal: cubic-bezier(0.2, 0.8, 0.2, 1);
+    /* MO-02 sistemik: Tailwind v4 transition-* utility'lerinin DEFAULT easing'ini
+       owned --ease-signal'a çek (built-in cubic-bezier(0.4,0,0.2,1) yerine). Explicit
+       ease-out/ease-in/ease-signal sınıfları --tw-ease ile bunu override eder (muaf). */
+    --default-transition-timing-function: var(--ease-signal);
 
     /* — Radius (Bible §01 craft-radius-scale) */
     --radius-control: 8px;
@@ -187,8 +191,8 @@
 @layer base {
   button:not(:disabled),
   a {
-    transition: transform var(--dur-micro) cubic-bezier(0.4, 0, 0.2, 1),
-                filter var(--dur-micro) ease;
+    transition: transform var(--dur-micro) var(--ease-signal),
+                filter var(--dur-micro) var(--ease-signal);
   }
 
   button:not(:disabled):active {
@@ -459,8 +463,8 @@
     border-radius: 10px;
     color: var(--text-secondary);
     /* isinma: transition:all -> spesifik prop (whitelist) + token (P6/M10, MO-01/MO-02) */
-    transition: color var(--dur-state) cubic-bezier(0.4, 0, 0.2, 1),
-                background-color var(--dur-state) cubic-bezier(0.4, 0, 0.2, 1);
+    transition: color var(--dur-state) var(--ease-signal),
+                background-color var(--dur-state) var(--ease-signal);
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
