@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ScoreRing } from './ScoreRing';
 import { GlassCard } from './GlassCard';
+import { Tooltip } from './Tooltip';
 import { cn, formatRelativeTime, formatAbsoluteTimeTR, formatPrice, formatNumber } from '@/lib/utils';
 import { ApiSignal } from '@/lib/api';
 import { track } from '@/lib/analytics';
@@ -536,6 +537,12 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
   const rrRatio  = calculateRR(signal);
   const engines  = parseEngines(signal.engines_data);
   const tabs     = buildTabs(signal.explanation_tr);
+  // AT-2 provenance: konsensüs dökümü, Karot'un render ettiği AYNI işaretli-güvenden
+  // sayılır (deadzone-tutarlı) → tooltip ile glif birebir uyumlu.
+  const karotConfs = signalToKarotConfs(signal.engines_data);
+  const consensusBull = karotConfs.filter((c) => c > 0).length;
+  const consensusBear = karotConfs.filter((c) => c < 0).length;
+  const consensusNeutral = karotConfs.length - consensusBull - consensusBear;
 
   // Activation event: a user opened a full signal detail (the product's value moment).
   useEffect(() => {
@@ -682,14 +689,30 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
                     Skorlar {formatRelativeTime(signal.generated_at)} hesaplandı · Detay için karta tıkla
                   </span>
                 )}
-                {/* AITL-03 provenance Karot — motora gel/odaklan → fitil vurgulanır (hero Karot ayrı: bakış-özeti) */}
-                <Karot
-                  confs={signalToKarotConfs(signal.engines_data)}
-                  size={32}
-                  highlight={highlightSlot}
-                  className="flex-shrink-0"
-                  title="Motor konsensüsü — bir motora gelince ilgili fitil vurgulanır"
-                />
+                {/* AITL-03 provenance — EngineCard hover/focus → fitil vurgusu (AT-1);
+                    Karot hover/focus → konsensüs dökümü tooltip'i (AT-2). hero Karot ayrı: bakış-özeti */}
+                <Tooltip
+                  content={
+                    <div className="text-center leading-snug">
+                      <div className="font-medium text-text-primary">Motor konsensüsü · {karotConfs.length} motor</div>
+                      <div className="mt-1 flex items-center justify-center gap-1.5 text-micro">
+                        <span className="text-bullish">{consensusBull} LONG</span>
+                        <span className="text-text-muted">·</span>
+                        <span className="text-bearish">{consensusBear} SHORT</span>
+                        <span className="text-text-muted">·</span>
+                        <span className="text-text-muted">{consensusNeutral} nötr</span>
+                      </div>
+                    </div>
+                  }
+                >
+                  <span
+                    tabIndex={0}
+                    className="inline-flex flex-shrink-0 rounded focus-ring"
+                    aria-label={`Motor konsensüsü: ${consensusBull} LONG, ${consensusBear} SHORT, ${consensusNeutral} nötr — dökümü görmek için gelin`}
+                  >
+                    <Karot confs={karotConfs} size={32} highlight={highlightSlot} />
+                  </span>
+                </Tooltip>
               </span>
             </h3>
             <div className={compact ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 gap-3'}>
