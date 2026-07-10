@@ -15,8 +15,8 @@ import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 import {
   fetchActiveSignals, fetchPerformanceSummary, fetchSignalHistoryStats,
   fetchGlobalMarket, fetchFearGreed, fetchTopGainers,
-  type ApiSignal, type PerformanceSummary, type GlobalMarketData,
-  type FearGreedData, type CoinMarket,
+  type ApiSignal, type PerformanceSummary, type SignalHistoryStats,
+  type GlobalMarketData, type FearGreedData, type CoinMarket,
 } from '@/lib/api';
 import { formatLargeNumber, formatPercentage, cn } from '@/lib/utils';
 import { PAYMENTS_ENABLED } from '@/lib/config';
@@ -31,6 +31,7 @@ import { DurumBandi } from '@/components/dashboard/DurumBandi';
 import { LifecycleHealth } from '@/components/dashboard/LifecycleHealth';
 import { AIGorusu } from '@/components/dashboard/AIGorusu';
 import { RiskDagilimi } from '@/components/dashboard/RiskDagilimi';
+import { Sicil } from '@/components/dashboard/Sicil';
 import { Crown, Lock } from 'lucide-react';
 import TradingViewChart from '@/components/charts/TradingViewChart';
 import { chartColor } from '@/lib/chartColors';
@@ -110,7 +111,7 @@ export default function DashboardPage() {
   const [actionableActiveCount, setActionableActiveCount] = useState(0);
   // Closed trades within the selected 24s/7g/30g window — replaces the old
   // "Toplam Sinyal" (all-time, ignored the period selector entirely).
-  const [periodClosedCount, setPeriodClosedCount] = useState(0);
+  const [periodStats, setPeriodStats] = useState<SignalHistoryStats | null>(null);
 
   const signalSymbols = [...new Set(signals.map((s) => s.asset?.symbol ?? '').filter(Boolean))];
   const livePrices = useLivePrices(signalSymbols);
@@ -139,7 +140,7 @@ export default function DashboardPage() {
     if (signalsRes.status === 'fulfilled') setSignals(signalsRes.value.items);
     if (actionableRes.status === 'fulfilled') setActionableActiveCount(actionableRes.value.total);
     if (perfRes.status === 'fulfilled') setPerf(perfRes.value);
-    if (periodRes.status === 'fulfilled') setPeriodClosedCount(periodRes.value.closed_count);
+    if (periodRes.status === 'fulfilled') setPeriodStats(periodRes.value);
     if (globalRes.status === 'fulfilled') {
       const g = globalRes.value;
       setGlobal(g);
@@ -197,6 +198,8 @@ export default function DashboardPage() {
   const avgReturn = perf?.average_return ?? 0;
   const fngValue = fng?.value ?? 50;
   const periodPhrase = timeRange === '24s' ? '24 saatte' : timeRange === '7g' ? '7 günde' : '30 günde';
+  const periodClosedCount = periodStats?.closed_count ?? 0;
+  const periodLabel = timeRange === '24s' ? 'son 24 saat' : timeRange === '7g' ? 'son 7 gün' : 'son 30 gün';
   // Lifecycle-health census over ALL active signals (not just the recent 6) —
   // client-derived from the already-fetched list, no endpoint.
   const lifecycleCounts = signals.reduce<Record<string, number>>((acc, s) => {
@@ -524,6 +527,19 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* ── Sicil — dönem performansı + gerçekleşmiş sonuçlar (DE-5f) ── */}
+      <Sicil
+        profitFactor={periodStats?.profit_factor ?? null}
+        maxDrawdown={perf?.drawdown_analysis?.max_drawdown ?? 0}
+        tpHitRate={periodStats?.tp_hit_rate ?? 0}
+        slRate={periodStats?.sl_rate ?? 0}
+        bestSignal={periodStats?.best_signal ?? null}
+        worstSignal={periodStats?.worst_signal ?? null}
+        periodLabel={periodLabel}
+        loading={loading}
+        hasData={!!perf && !!periodStats && !dataError}
+      />
 
       {/* ── Main Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
