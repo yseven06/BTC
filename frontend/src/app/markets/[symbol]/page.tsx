@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, TrendingUp, TrendingDown, Target, Shield, Zap, ExternalLink, Code2, Check, AlertTriangle, X, Maximize2, Minimize2, HelpCircle } from 'lucide-react';
 import { toTradingViewSymbol } from '@/lib/tradingview';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { SignalBadge } from '@/components/ui/SignalBadge';
 import { ScoreRing } from '@/components/ui/ScoreRing';
 import TradingViewChart from '@/components/charts/TradingViewChart';
@@ -523,9 +524,7 @@ export default function AssetDetailPage() {
                 height={chartHeight}
               />
             ) : (
-              <div className="flex justify-center items-center" style={{ height: chartHeight }}>
-                <div className="w-7 h-7 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
-              </div>
+              <Skeleton className="w-full" style={{ height: chartHeight }} />
             )
           ) : (
             <TradingViewChart
