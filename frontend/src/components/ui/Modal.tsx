@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useId, useRef } from "react";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,9 @@ function isVisible(el: HTMLElement): boolean {
  * kilidi, odak-iadesi, E3 yüzey (.glass-e3-overlay → reduced-transparency opak
  * fallback), z-modal named-token (nested/blocking için override), --dur-overlay/
  * --dur-state açılış animasyonu, body portalı (stacking-context bağımsız).
- * Kapanış animasyonu şimdilik anlık (çıkış-geçişi ayrı iş).
+ * Kapanış: çıkış animasyonu (PI-1a · Toast simetrisi) — enter keyframe'lerinin
+ * (fadeIn/scaleIn) TERS oynatımı (ease-out reverse = ease-in çıkış, MO-02; yeni
+ * keyframe yok), bitince unmount; reduced-motion'da global kural 0.01ms → anlık.
  */
 export function Modal({
   open,
@@ -74,6 +76,12 @@ export function Modal({
   const titleId = useId();
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  const backdropRef = useRef<HTMLDivElement>(null);
+
+  // Çıkış (exit) animasyonu için mount-erteleme (PI-1a · Toast simetrisi):
+  // open=false olunca hemen null DÖNMEK yerine çıkış animasyonunu oynat, bitince kaldır.
+  const [rendered, setRendered] = useState(open);
+  const [closing, setClosing] = useState(false);
 
   const getFocusables = useCallback(() => {
     const panel = panelRef.current;
@@ -82,10 +90,11 @@ export function Modal({
   }, []);
 
   // Açılış: odak-noktasını sakla (bir kez), paneli odakla, gövdeyi kilitle;
-  // kapanışta odağı iade et. deps yalnız [open] → open sürerken prop değişimi
-  // odak-noktasını YENIDEN yakalamaz (lifecycle-review düzeltmesi).
+  // kapanışta odağı iade et. deps [open, rendered]: panel `rendered` olduğunda
+  // (mount-erteleme sonrası) odak hedefe ulaşır; open sürerken prop değişimi
+  // odak-noktasını YENIDEN yakalamaz (rendered aynı kalır → effect yeniden koşmaz).
   useEffect(() => {
-    if (!open) return;
+    if (!open || !rendered) return;
     restoreFocusRef.current = (document.activeElement as HTMLElement) ?? null;
     // İlk odak paneli hedefler (X düğmesine değil — a11y anti-pattern'den kaçınır;
     // SR başlığı duyurur, kullanıcı içeriğe Tab'lar).
@@ -98,7 +107,39 @@ export function Modal({
       restoreFocusRef.current?.focus?.();
       restoreFocusRef.current = null;
     };
-  }, [open]);
+  }, [open, rendered]);
+
+  // open → render/çıkış yaşam-döngüsü köprüsü. Açılışta anında render + enter;
+  // kapanışta çıkış animasyonu başlar (aşağıdaki timer unmount'u zamanlar). Enter gibi
+  // çıkış da global reduced-motion kuralına tabi (süre 0.01ms → timer ~anında → anlık).
+  useEffect(() => {
+    if (open) {
+      setRendered(true);
+      setClosing(false);
+    } else if (rendered) {
+      setClosing(true);
+    }
+  }, [open, rendered]);
+
+  // Çıkış animasyonu SÜRESİ kadar bekle, sonra unmount. Süre backdrop'un computed
+  // animation-duration'ından okunur → tek-kaynak (--dur-overlay) + reduced-motion'da
+  // global kural 0.01ms'ye indirir → ~anlık kaldırma. animationend YERİNE deterministik
+  // timer: enter/exit animationend yarışını (hızlı kapanışta exit'in atlanması) önler.
+  useEffect(() => {
+    if (!closing) return;
+    let ms = 400; // güvenli fallback (>--dur-overlay 360ms)
+    const el = backdropRef.current;
+    if (el) {
+      const raw = getComputedStyle(el).animationDuration.split(",")[0].trim();
+      const parsed = raw.endsWith("ms") ? parseFloat(raw) : parseFloat(raw) * 1000;
+      if (!Number.isNaN(parsed)) ms = parsed + 40; // küçük tampon
+    }
+    const t = setTimeout(() => {
+      setRendered(false);
+      setClosing(false);
+    }, ms);
+    return () => clearTimeout(t);
+  }, [closing]);
 
   // ESC + focus-trap panelin KENDİ onKeyDown'ında (document capture DEĞİL):
   // iç dropdown/popover kendi ESC'ini stopPropagation ile önce yakalayabilir;
@@ -137,15 +178,21 @@ export function Modal({
     [dismissible, getFocusables]
   );
 
-  if (!open || typeof document === "undefined") return null;
+  if (!rendered || typeof document === "undefined") return null;
 
   return createPortal(
     <div
       className={cn(
-        "fixed inset-0 flex justify-center p-4 bg-e-0/70 backdrop-blur-sm animate-in",
+        "fixed inset-0 flex justify-center p-4 bg-e-0/70 backdrop-blur-sm",
+        // Giriş: fadeIn (--dur-overlay). Çıkış: aynı fadeIn'in ters oynatımı
+        // (ease-out reverse = ease-in çıkış); pointer-events-none → çıkış sırasında etkileşim yok.
+        closing
+          ? "pointer-events-none [animation:fadeIn_var(--dur-overlay)_ease-out_reverse_forwards]"
+          : "animate-in",
         zIndexClassName,
         align === "bottom" ? "items-end md:items-center" : "items-center"
       )}
+      ref={backdropRef}
       role="presentation"
       onMouseDown={(e) => {
         downOnBackdrop.current = e.target === e.currentTarget;
@@ -164,7 +211,11 @@ export function Modal({
         tabIndex={-1}
         onKeyDown={onKeyDown}
         className={cn(
-          "glass-e3-overlay rounded-panel w-full flex flex-col max-h-[90vh] outline-none animate-scale-in",
+          "glass-e3-overlay rounded-panel w-full flex flex-col max-h-[90vh] outline-none",
+          // Giriş: scaleIn (--dur-state). Çıkış: aynı scaleIn'in ters oynatımı.
+          closing
+            ? "[animation:scaleIn_var(--dur-state)_ease-out_reverse_forwards]"
+            : "animate-scale-in",
           size,
           className
         )}
