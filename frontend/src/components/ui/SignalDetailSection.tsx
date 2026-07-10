@@ -40,53 +40,6 @@ const ENGINE_LABELS: Record<string, string> = {
   macro_analysis:         'Makro Görünüm',
 };
 
-// ─── EN→TR finding translator (kept from previous file) ─────────────────────
-const FINDING_PATTERNS: [RegExp, string | ((m: RegExpMatchArray) => string)][] = [
-  [/Trend indicators lean bearish \((\d+)\/(\d+) bearish\)/i, (m) => `Trend göstergeleri AYI yönlü (${m[1]}/${m[2]} ayı)`],
-  [/Trend indicators lean bullish \((\d+)\/(\d+) bullish\)/i, (m) => `Trend göstergeleri BOĞA yönlü (${m[1]}/${m[2]} boğa)`],
-  [/MACD:\s*MACD=(-?[\d.]+)\s+Signal=(-?[\d.]+)\s+Hist=(-?[\d.]+)\s*→?\s*bearish/i, (m) => `MACD: MACD=${m[1]} Sinyal=${m[2]} Hist=${m[3]} → AYI`],
-  [/MACD:\s*MACD=(-?[\d.]+)\s+Signal=(-?[\d.]+)\s+Hist=(-?[\d.]+)\s*→?\s*bullish/i, (m) => `MACD: MACD=${m[1]} Sinyal=${m[2]} Hist=${m[3]} → BOĞA`],
-  [/Market structure:\s*(Uptrend|Downtrend|Range)/i, (m) => `Piyasa yapısı: ${m[1] === 'Uptrend' ? 'Yükseliş Trendi' : m[1] === 'Downtrend' ? 'Düşüş Trendi' : 'Yatay Band'}`],
-  [/Swing counts\s*[–-]?\s*HH:(\d+)\s+HL:(\d+)\s+LH:(\d+)\s+LL:(\d+)/i, (m) => `Salınım: HH:${m[1]} HL:${m[2]} LH:${m[3]} LL:${m[4]}`],
-  [/Price is in (DISCOUNT|PREMIUM|EQUILIBRIUM) zone/i, (m) => `Fiyat ${m[1] === 'DISCOUNT' ? 'İSKONTO' : m[1] === 'PREMIUM' ? 'PRİM' : 'DENGE'} bölgesinde`],
-  [/Range position:\s*([\d.]+)%/i, (m) => `Aralık konumu: %${m[1]}`],
-  [/Detected (\d+) unfilled Bearish Fair Value Gap/i, (m) => `${m[1]} doldurulmamış AYI FVG`],
-  [/Detected (\d+) unfilled Bullish Fair Value Gap/i, (m) => `${m[1]} doldurulmamış BOĞA FVG`],
-  [/Expected range state:\s*Contracting \(Ratio:\s*([\d.]+)\)/i, (m) => `Aralık daralmakta (${m[1]})`],
-  [/Expected range state:\s*Expanding \(Ratio:\s*([\d.]+)\)/i, (m) => `Aralık genişlemekte (${m[1]})`],
-  [/Bullish exhaustion/i, 'BOĞA tükenmesi'],
-  [/Bearish exhaustion/i, 'AYI tükenmesi'],
-  [/Smart Money distribution phase/i, 'Akıllı Para DAĞITIM fazı'],
-  [/Smart Money accumulation phase/i, 'Akıllı Para BİRİKİM fazı'],
-  [/Volatility level:\s*LOW/i, 'Volatilite: DÜŞÜK'],
-  [/Volatility level:\s*MEDIUM/i, 'Volatilite: ORTA'],
-  [/Volatility level:\s*HIGH/i, 'Volatilite: YÜKSEK'],
-  [/Recommended Position Size:\s*([\d.]+)% of portfolio/i, (m) => `Önerilen pozisyon: %${m[1]} portföy`],
-  [/Reasonable supply distribution \(([\d.]+)% circulating\)/i, (m) => `Makul arz dağılımı (%${m[1]} dolaşımda)`],
-  [/Low volatility \(ATR ([\d.]+)% of price\)/i, (m) => `Düşük volatilite (ATR fiyatın %${m[1]}'i)`],
-  [/High volatility \(ATR ([\d.]+)% of price\)/i, (m) => `Yüksek volatilite (ATR fiyatın %${m[1]}'i)`],
-  [/Medium volatility \(ATR ([\d.]+)% of price\)/i, (m) => `Orta volatilite (ATR fiyatın %${m[1]}'i)`],
-  [/Pattern:\s*([\w\s]+?)\s*\((\w+),\s*(weak|moderate|strong)\)/i, (m) => `Formasyon: ${m[1]} (${m[2] === 'bullish' ? 'boğa' : m[2] === 'bearish' ? 'ayı' : 'nötr'}, ${m[3] === 'weak' ? 'zayıf' : m[3] === 'moderate' ? 'orta' : 'güçlü'})`],
-];
-
-function translateFinding(s: string): string {
-  if (!s) return s;
-  let out = s;
-  for (const [pat, rep] of FINDING_PATTERNS) {
-    if (typeof rep === 'function') {
-      out = out.replace(pat, (...args) => rep(args.slice(0, args.length - 2) as unknown as RegExpMatchArray));
-    } else {
-      out = out.replace(pat, rep);
-    }
-  }
-  return out
-    .replace(/\bDowntrend\b/g, 'Düşüş trendi')
-    .replace(/\bUptrend\b/g, 'Yükseliş trendi')
-    .replace(/\bbullish\b/gi, 'boğa')
-    .replace(/\bbearish\b/gi, 'ayı')
-    .replace(/\bneutral\b/gi, 'nötr');
-}
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 interface EngineRow {
   name: string;
@@ -312,14 +265,17 @@ function EngineDetailModal({ engine, symbol, timeframe, onClose }: {
             engine.findings.length === 0 ? (
               <p className="text-xs text-text-muted text-center py-4">Detaylı bulgu yok.</p>
             ) : (
-              <ul className="space-y-2">
-                {engine.findings.map((f, i) => (
-                  <li key={i} className="flex gap-2 text-xs text-text-secondary leading-relaxed bg-bg-secondary/40 rounded-lg px-3 py-2 border border-border-subtle">
-                    <span className="text-accent-primary flex-shrink-0">•</span>
-                    <span>{translateFinding(f)}</span>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <p className="text-micro text-text-muted italic mb-2">Motorun ham teknik çıktısı — verbatim, değiştirilmedi.</p>
+                <ul className="space-y-2">
+                  {engine.findings.map((f, i) => (
+                    <li key={i} className="flex gap-2 text-xs text-text-secondary leading-relaxed bg-bg-secondary/40 rounded-lg px-3 py-2 border border-border-subtle">
+                      <span className="text-accent-primary flex-shrink-0">•</span>
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )
           )}
         </div>
@@ -761,7 +717,7 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
             compact ? 'p-4 overflow-y-auto' : 'p-5 min-h-[140px]'
           )}>
             <div className={cn('text-text-secondary leading-relaxed whitespace-pre-wrap', compact ? 'text-xs' : 'text-sm')}>
-              {translateFinding(tabs[activeTab] || 'Bu bölüm için bilgi yok.')}
+              {tabs[activeTab] || 'Bu bölüm için bilgi yok.'}
             </div>
           </div>
         </div>
