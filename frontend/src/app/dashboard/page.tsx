@@ -218,15 +218,9 @@ export default function DashboardPage() {
     return acc;
   }, {});
 
-  // Win rate's true denominator is win + loss + breakeven (the canonical
-  // platform definition). Derive shares from the SAME denominator so the cards
-  // are internally consistent: wins are `winRate`% of resolved, losses are
-  // `lossShare`% — they don't sum to 100 because breakeven takes the rest.
   const winCount = perf?.win_count ?? 0;
   const lossCount = perf?.loss_count ?? 0;
   const breakevenCount = perf?.breakeven_count ?? 0;
-  const resolvedCount = winCount + lossCount + breakevenCount;
-  const lossShare = resolvedCount ? Math.round((lossCount / resolvedCount) * 100) : 0;
 
   const assetCounts: Record<string, number> = {};
   signals.forEach((s) => {
@@ -249,13 +243,6 @@ export default function DashboardPage() {
   const totalReturnPct = equityCurve.length > 1
     ? ((equityCurve[equityCurve.length - 1].capital - equityCurve[0].capital) / equityCurve[0].capital) * 100
     : 0;
-
-  const perfCards = [
-    { label: 'Toplam Getiri', value: formatPercentage(totalReturnPct), color: totalReturnPct >= 0 ? 'text-bullish' : 'text-bearish' },
-    { label: 'Kazanılan İşlemler', value: `${winCount}`, sub: `↗ ${formatPercentage(winRate, 0, false)}`, color: 'text-bullish' },
-    { label: 'Kaybedilen İşlemler', value: `${lossCount}`, sub: `↘ ${formatPercentage(lossShare, 0, false)}`, color: 'text-bearish' },
-    { label: 'Ortalama Getiri', value: formatPercentage(avgReturn), color: avgReturn >= 0 ? 'text-bullish' : 'text-bearish' },
-  ];
 
   return (
     <div className="space-y-5">
@@ -530,6 +517,7 @@ export default function DashboardPage() {
 
       {/* ── Sicil — dönem performansı + gerçekleşmiş sonuçlar (DE-5f) ── */}
       <Sicil
+        totalReturn={totalReturnPct}
         profitFactor={periodStats?.profit_factor ?? null}
         maxDrawdown={perf?.drawdown_analysis?.max_drawdown ?? 0}
         tpHitRate={periodStats?.tp_hit_rate ?? 0}
@@ -543,30 +531,8 @@ export default function DashboardPage() {
 
       {/* ── Main Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Left 2/3 — Portföy (Performans) önce, Piyasa bağlamı sonra (DE-4 · 3-saniye hiyerarşisi) */}
+        {/* Left 2/3 — Piyasa bağlamı (Performans Özeti → Sicil kuşağına taşındı, DE-5g) */}
         <div className="lg:col-span-2 space-y-5">
-          {/* Performance Summary */}
-          <GlassCard>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-display text-text-primary flex items-center gap-2">
-                <Activity className="w-4 h-4 text-accent-primary" />
-                Performans Özeti
-              </h2>
-              <Link href="/performance" className="text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
-                Tümünü Gör <ArrowRight className="w-3 h-3" />
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {perfCards.map((c, i) => (
-                <div key={i} className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
-                  <p className="text-micro text-text-muted uppercase font-medium">{c.label}</p>
-                  <p className={`text-xl num font-num-560 mt-1 ${c.color}`}>{c.value}</p>
-                  {c.sub && <p className="text-micro text-text-muted mt-0.5">{c.sub}</p>}
-                </div>
-              ))}
-            </div>
-          </GlassCard>
-
           {/* Market Overview */}
           <GlassCard>
             {/* Card header */}

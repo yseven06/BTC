@@ -7,6 +7,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { formatPercentage, cn } from '@/lib/utils';
 
 interface SicilProps {
+  totalReturn: number;
   profitFactor: number | null;
   maxDrawdown: number;
   tpHitRate: number;
@@ -19,7 +20,7 @@ interface SicilProps {
 }
 
 export function Sicil({
-  profitFactor, maxDrawdown, tpHitRate, slRate,
+  totalReturn, profitFactor, maxDrawdown, tpHitRate, slRate,
   bestSignal, worstSignal, periodLabel, loading, hasData,
 }: SicilProps) {
   if (loading || !hasData) return null;
@@ -31,12 +32,23 @@ export function Sicil({
           <BarChart3 className="w-4 h-4 text-accent-primary" />
           Sicil
         </h2>
-        <Link href="/signal-history" className="text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
-          Gecmise Git <ArrowRight className="w-3 h-3" />
+        <Link href="/performance" className="text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
+          Detay <ArrowRight className="w-3 h-3" />
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
+          <p className="text-micro text-text-muted uppercase font-medium">Toplam Getiri</p>
+          <p className={cn(
+            'text-xl num font-num-560 mt-1',
+            totalReturn >= 0 ? 'text-bullish' : 'text-bearish',
+          )}>
+            {formatPercentage(totalReturn)}
+          </p>
+          <p className="text-micro text-text-muted mt-0.5">tum zamanlar</p>
+        </div>
+
         <div className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
           <p className="text-micro text-text-muted uppercase font-medium">Kar Faktoru</p>
           <p className={cn(
