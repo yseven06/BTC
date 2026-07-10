@@ -34,6 +34,8 @@ import CoachmarkTour from '@/components/dashboard/CoachmarkTour';
 import { DurumBandi } from '@/components/dashboard/DurumBandi';
 import { LifecycleHealth } from '@/components/dashboard/LifecycleHealth';
 import { LiveStatusBadge } from '@/components/ui/LiveStatusBadge';
+import { AIGorusu } from '@/components/dashboard/AIGorusu';
+import { RiskDagilimi } from '@/components/dashboard/RiskDagilimi';
 import { Crown, Lock } from 'lucide-react';
 import TradingViewChart from '@/components/charts/TradingViewChart';
 import { chartColor } from '@/lib/chartColors';
@@ -182,6 +184,17 @@ export default function DashboardPage() {
   // client-derived from the already-fetched list, no endpoint.
   const lifecycleCounts = signals.reduce<Record<string, number>>((acc, s) => {
     if (s.live_status) acc[s.live_status] = (acc[s.live_status] ?? 0) + 1;
+    return acc;
+  }, {});
+  // AI Görüşü + Risk Dağılımı aggregates — client-derived from active signals.
+  const longCount = signals.filter((s) => String(s.direction ?? '').toLowerCase().includes('bull')).length;
+  const shortCount = signals.filter((s) => String(s.direction ?? '').toLowerCase().includes('bear')).length;
+  const avgConfidence = signals.length
+    ? Math.round(signals.reduce((a, s) => a + (s.confidence_score || 0), 0) / signals.length)
+    : 0;
+  const riskCounts = signals.reduce<Record<string, number>>((acc, s) => {
+    const r = String(s.risk_level ?? '').toLowerCase();
+    if (r) acc[r] = (acc[r] ?? 0) + 1;
     return acc;
   }, {});
 
@@ -427,6 +440,14 @@ export default function DashboardPage() {
           </div>
         </GlassCard>
       </div>
+      )}
+
+      {/* ── AI Görüşü + Risk Dağılımı — aktif sinyallerden client-türetilir (DE-3) ── */}
+      {signals.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <AIGorusu longCount={longCount} shortCount={shortCount} avgConfidence={avgConfidence} />
+          <RiskDagilimi counts={riskCounts} />
+        </div>
       )}
 
       {/* ── Main Grid ── */}
