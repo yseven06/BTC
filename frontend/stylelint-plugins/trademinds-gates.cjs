@@ -48,6 +48,21 @@ function inReducedMotion(decl) {
   }
   return false;
 }
+// LANDING glow-drift muafiyeti (VL:255/308) — landing'in TEK animasyonlu ambient
+// istisnasi: yavas kayan anahtar-isik (transform-only, yon/opaklik anlamli degil).
+// Bu ambient dogasi geregi uzun-sureli (saniyeler) → 600ms app-tavani UYGULANMAZ.
+// KAPSAM SIKI + LANDING-ONLY: muafiyet YALNIZ rezerve `[data-landing-ambient]`
+// marker-selector'unda gecerlidir (isaretsiz her sure/token hala bloklanir; app
+// >600ms kurali DEGISMEDI). isKarotExempt/[data-instrument] ile ayni ancestor-desen.
+// Rezerve marker yalniz landing hero atmosfer-katmaninda kullanilir; baska muafiyet yok.
+function inLandingAmbient(decl) {
+  let node = decl.parent;
+  while (node) {
+    if (node.selector && node.selector.includes('[data-landing-ambient')) return true;
+    node = node.parent;
+  }
+  return false;
+}
 function inRoot(decl) {
   let node = decl.parent;
   while (node) {
@@ -126,6 +141,7 @@ const gate5 = mkRule(
   'gate-5 süre-kümesi: süre ayrık token setinden olmalı {140,150,180,360,520}ms+50ms stagger veya var(--dur-*) (MO-01 tek-rejim; app sert-tavan 600ms)',
   (decl) => {
     if (inReducedMotion(decl)) return null; // reduced-motion 0.01ms son-kare muaf
+    if (inLandingAmbient(decl)) return null; // landing glow-drift (VL:255 landing-only ambient); app 600ms tavani degismedi
     if (!DUR_PROPS.has(decl.prop) && !DUR_TOKEN_RE.test(decl.prop)) return null;
     let m; DUR_LITERAL_RE.lastIndex = 0;
     const bad = [];

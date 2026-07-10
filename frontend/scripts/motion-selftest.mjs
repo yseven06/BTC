@@ -99,6 +99,19 @@ for (const [key, tok] of Object.entries(TW_DUR)) {
 }
 ok(/signal:\s*'var\(--ease-signal\)'/.test(tw), 'tailwind transitionTimingFunction.signal → var(--ease-signal)');
 
+// ── 6 · gate-5 landing carve-out (PI-3b · VL:255 landing-only glow-drift) ─────
+// Landing ambient muafiyeti YALNIZ [data-landing-ambient] marker'inda; app 600ms
+// sert-tavani + set-disi kurali DEGISMEDI. Davranissal kanit: gate5-carveout.test.mjs.
+ok(/function inLandingAmbient\(decl\)/.test(gates), 'carve-out: inLandingAmbient helper mevcut');
+ok(/\[data-landing-ambient/.test(gates), 'carve-out: rezerve marker [data-landing-ambient]');
+ok(/if \(inLandingAmbient\(decl\)\) return null;/.test(gates), 'carve-out: gate-5 inLandingAmbient ile muaf tutuyor');
+ok(/ms > 600/.test(gates), 'global 600ms sert-tavan kurali DEGISMEDI (app icin korunur)');
+ok(/if \(inReducedMotion\(decl\)\) return null;/.test(gates), 'reduced-motion muafiyeti korundu (ikinci muafiyet degil, mevcut)');
+// Yalniz bu iki muafiyet (reduced-motion + landing-ambient) — baska "return null" muafiyeti eklenmedi.
+const gate5Body = (gates.match(/'duration-token-set'[\s\S]*?\n\);/) || [''])[0];
+const exemptionReturns = (gate5Body.match(/return null;/g) || []).length;
+ok(exemptionReturns === 3, `gate-5 muafiyet-cikisi = 3 (reduced-motion + landing-ambient + prop-disi filtre); bulunan ${exemptionReturns}`);
+
 // ── Sonuç ────────────────────────────────────────────────────────────────────
 const total = pass + fail;
 if (fail) {
