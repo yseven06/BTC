@@ -16,7 +16,7 @@ import { EngineMiniChart } from '@/components/charts/EngineMiniChart';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { IntelligencePanel } from '@/components/ui/IntelligencePanel';
 import { Karot } from '@/components/signals/Karot';
-import { signalToKarotConfs } from '@/lib/karot-adapter';
+import { signalToKarotConfs, BACKEND_TO_SLOT } from '@/lib/karot-adapter';
 
 // Engines whose supporting_data carries real chart-able coordinates (S/R
 // levels, premium/discount zones, OB/FVG boxes, pattern indices). The rest
@@ -174,12 +174,22 @@ function engineBiasLabels(engineName: string): BiasLabelConfig {
 }
 
 /** Engine card — horizontal compact layout, score + bias, click for full detail */
-function EngineCard({ engine, onClick, compact }: { engine: EngineRow; onClick: () => void; compact?: boolean }) {
+function EngineCard({ engine, onClick, onHighlightStart, onHighlightEnd, compact }: {
+  engine: EngineRow;
+  onClick: () => void;
+  onHighlightStart?: () => void;
+  onHighlightEnd?: () => void;
+  compact?: boolean;
+}) {
   const biasConfig = (engineBiasLabels(engine.name))[engine.bias];
 
   return (
     <button
       onClick={onClick}
+      onMouseEnter={onHighlightStart}
+      onMouseLeave={onHighlightEnd}
+      onFocus={onHighlightStart}
+      onBlur={onHighlightEnd}
       title={`${engine.label} — Detayları görmek için tıkla`}
       className={cn(
         'group relative bg-bg-secondary/40 rounded-card',
@@ -519,6 +529,9 @@ interface SignalDetailSectionProps {
 export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal, compact = false }) => {
   const [openEngine, setOpenEngine]   = useState<EngineRow | null>(null);
   const [activeTab, setActiveTab]     = useState<keyof ExplanationTabs>('summary');
+  // AITL-03 çapraz-vurgu: kullanıcının motor-grid'de gezindiği/odaklandığı motor
+  // slotu — Motor Skorları başlığındaki küçük Karot'ta eşleşen fitili vurgular.
+  const [highlightSlot, setHighlightSlot] = useState<number>(-1);
 
   const rrRatio  = calculateRR(signal);
   const engines  = parseEngines(signal.engines_data);
@@ -660,14 +673,24 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
           <div>
             <h3 className={cn('font-medium text-text-muted uppercase flex items-center gap-1.5', compact ? 'text-micro mb-2' : 'text-xs mb-3')}>
               <BarChart3 className="w-3.5 h-3.5 text-accent-primary" /> Motor Skorları
-              {!compact && (
-                <span
-                  className="ml-auto text-micro text-text-muted normal-case font-normal hidden sm:inline"
-                  title="Bu skorlar sinyalin üretildiği tarama anına ait. Yön değişmediği sürece sistem skorları yeniden hesaplamaz — gerçek bir tersine dönüş (reversal) olduğunda otomatik güncellenir."
-                >
-                  Skorlar {formatRelativeTime(signal.generated_at)} hesaplandı · Detay için karta tıkla
-                </span>
-              )}
+              <span className="ml-auto flex items-center gap-2 min-w-0">
+                {!compact && (
+                  <span
+                    className="text-micro text-text-muted normal-case font-normal hidden sm:inline truncate"
+                    title="Bu skorlar sinyalin üretildiği tarama anına ait. Yön değişmediği sürece sistem skorları yeniden hesaplamaz — gerçek bir tersine dönüş (reversal) olduğunda otomatik güncellenir."
+                  >
+                    Skorlar {formatRelativeTime(signal.generated_at)} hesaplandı · Detay için karta tıkla
+                  </span>
+                )}
+                {/* AITL-03 provenance Karot — motora gel/odaklan → fitil vurgulanır (hero Karot ayrı: bakış-özeti) */}
+                <Karot
+                  confs={signalToKarotConfs(signal.engines_data)}
+                  size={32}
+                  highlight={highlightSlot}
+                  className="flex-shrink-0"
+                  title="Motor konsensüsü — bir motora gelince ilgili fitil vurgulanır"
+                />
+              </span>
             </h3>
             <div className={compact ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 gap-3'}>
               {engines.map((engine) => (
@@ -675,6 +698,8 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
                   key={engine.name}
                   engine={engine}
                   onClick={() => setOpenEngine(engine)}
+                  onHighlightStart={() => setHighlightSlot(BACKEND_TO_SLOT[engine.name] ?? -1)}
+                  onHighlightEnd={() => setHighlightSlot(-1)}
                   compact={compact}
                 />
               ))}
