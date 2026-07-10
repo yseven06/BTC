@@ -22,6 +22,7 @@ import { formatLargeNumber, formatPercentage, cn } from '@/lib/utils';
 import { PAYMENTS_ENABLED } from '@/lib/config';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import { useLivePrices } from '@/hooks/useLivePrices';
+import { useExitPresence } from '@/hooks/useExitPresence';
 import { useTierLimits } from '@/hooks/useTierLimits';
 import { useAuth } from '@/lib/auth-context';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -78,6 +79,44 @@ function LiveClock() {
     return () => clearInterval(id);
   }, []);
   return <span className="text-sm text-text-muted font-mono">{time}</span>;
+}
+
+// ---------------------------------------------------------------------------
+// Neden? — inline detay paneli (PI-2c disclosure settle)
+// Kullanıcı-tetikli açılış/kapanış: scaleIn (giriş) + ters scaleIn (çıkış), PI-1a
+// deterministik-timer mekanizması (useExitPresence). transform/opacity-only → CLS=0,
+// MO-01 layout-anim yok. Dış shell animasyonlanır; SignalDetailSection'a dokunulmaz.
+// ---------------------------------------------------------------------------
+function ReasonPanel({ signal, onClose }: { signal: ApiSignal | null; onClose: () => void }) {
+  const { rendered, closing, value, ref } = useExitPresence<ApiSignal>(signal);
+  if (!rendered || !value) return null;
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        'glass-panel border border-border-subtle rounded-2xl overflow-hidden',
+        closing
+          ? '[animation:scaleIn_var(--dur-state)_ease-out_reverse_forwards]'
+          : 'animate-scale-in'
+      )}
+    >
+      <div className="flex items-center justify-between px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
+        <h3 className="text-sm font-display text-text-primary flex items-center gap-2">
+          <Activity className="w-4 h-4 text-accent-primary" />
+          {value.asset?.symbol} · Neden?
+        </h3>
+        <button
+          onClick={onClose}
+          className="text-text-muted hover:text-text-primary p-1 rounded-lg hover:bg-bg-secondary transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="p-5">
+        <SignalDetailSection signal={value} compact />
+      </div>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -494,25 +533,8 @@ export default function DashboardPage() {
         />
 
         {/* ── Neden — seçili sinyalin inline detay paneli (DE-5e) ── */}
-        {selectedSignal && (
-          <div className="glass-panel border border-border-subtle rounded-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
-              <h3 className="text-sm font-display text-text-primary flex items-center gap-2">
-                <Activity className="w-4 h-4 text-accent-primary" />
-                {selectedSignal.asset?.symbol} · Neden?
-              </h3>
-              <button
-                onClick={() => setSelectedSignal(null)}
-                className="text-text-muted hover:text-text-primary p-1 rounded-lg hover:bg-bg-secondary transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-5">
-              <SignalDetailSection signal={selectedSignal} compact />
-            </div>
-          </div>
-        )}
+        {/* PI-2c: açılış/kapanış disclosure settle (scaleIn, PI-1a mekanizması). */}
+        <ReasonPanel signal={selectedSignal} onClose={() => setSelectedSignal(null)} />
       </div>
 
       {/* ── Sicil — dönem performansı + gerçekleşmiş sonuçlar (DE-5f) ── */}

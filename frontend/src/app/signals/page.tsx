@@ -8,6 +8,7 @@ import { useLivePrices } from '@/hooks/useLivePrices';
 import { useTierLimits } from '@/hooks/useTierLimits';
 import { SignalType } from '@/types';
 import { cn, formatPrice, formatPercentage } from '@/lib/utils';
+import { useExitPresence } from '@/hooks/useExitPresence';
 import { PAYMENTS_ENABLED } from '@/lib/config';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
@@ -416,8 +417,18 @@ function parseExplanation(raw: string | null | undefined): ParsedExplanation {
 
 type DrawerTab = 'overview' | 'engines' | 'explanation';
 
-function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void }) {
+function SignalDrawer({ sig: sigProp, onClose }: { sig: ApiSignal | null; onClose: () => void }) {
   const [tab, setTab] = useState<DrawerTab>('overview');
+  // PI-2c: overlay açılış/kapanış settle (fadeIn backdrop + scaleIn panel, PI-1a
+  // deterministik-timer mekanizması). Dış shell animasyonlanır; içerik değişmez.
+  const { rendered, closing, value, ref: backdropRef } = useExitPresence<ApiSignal>(sigProp);
+  // Yeni sinyal açılınca sekmeyi başa al (her-zaman-render + presence deseninde
+  // otomatik remount yok → sekme kalıcı olmasın diye açık-id değişince sıfırla).
+  const openId = sigProp?.id;
+  useEffect(() => { if (openId) setTab('overview'); }, [openId]);
+
+  if (!rendered || !value) return null;
+  const sig = value; // çıkış boyunca önbellekli non-null; aşağıdaki tüm `sig` referansları değişmez
 
   const htf     = getHtfAlignment(sig.engines_data);
   const purge   = getPurgeType(sig.engines_data);
@@ -437,11 +448,22 @@ function SignalDrawer({ sig, onClose }: { sig: ApiSignal; onClose: () => void })
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4 bg-e-0/60 backdrop-blur-sm"
+      ref={backdropRef}
+      className={cn(
+        'fixed inset-0 z-50 flex items-end md:items-center justify-center p-4 bg-e-0/60 backdrop-blur-sm',
+        closing
+          ? 'pointer-events-none [animation:fadeIn_var(--dur-overlay)_ease-out_reverse_forwards]'
+          : 'animate-in'
+      )}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-3xl glass-panel border border-border-medium rounded-2xl flex flex-col max-h-[90vh]"
+        className={cn(
+          'w-full max-w-3xl glass-panel border border-border-medium rounded-2xl flex flex-col max-h-[90vh]',
+          closing
+            ? '[animation:scaleIn_var(--dur-state)_ease-out_reverse_forwards]'
+            : 'animate-scale-in'
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Sticky Header ── */}
@@ -1112,7 +1134,8 @@ export default function SignalsPage() {
       />
 
       {/* Detail Drawer */}
-      {selected && <SignalDrawer sig={selected} onClose={() => setSelected(null)} />}
+      {/* PI-2c: hep-render + presence (useExitPresence) → çıkış animasyonu oynar, sonra unmount. */}
+      <SignalDrawer sig={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }
