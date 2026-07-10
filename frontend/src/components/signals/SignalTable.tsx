@@ -146,10 +146,12 @@ export function SignalTableRow({
   sig,
   live,
   onSelect,
+  selected = false,
 }: {
   sig: ApiSignal;
   live?: LivePrice;
   onSelect: (sig: ApiSignal) => void;
+  selected?: boolean;
 }) {
   const sym     = sig.asset?.symbol ?? '';
   const qScore  = qualityScore(sig.confidence_score);
@@ -163,7 +165,9 @@ export function SignalTableRow({
       className={cn(
         'grid gap-4 items-center px-5 transition-colors',
         GRID_COLS,
-        invalid ? 'bg-bearish/[0.04] opacity-70' : 'hover:bg-e-2'
+        invalid ? 'bg-bearish/[0.04] opacity-70'
+          : selected ? 'bg-accent-primary/[0.06]'
+          : 'hover:bg-e-2'
       )}
       // Vertical padding is density-driven (inherited --row-h); default matches py-3.5.
       style={{ paddingTop: 'var(--row-h, 0.875rem)', paddingBottom: 'var(--row-h, 0.875rem)' }}
@@ -263,6 +267,8 @@ interface SignalTableProps {
   emptyState?: React.ReactNode;
   /** Row density; default 'comfortable' renders byte-identically to the legacy table. */
   density?: Density;
+  /** Highlight the row whose signal id matches (master-detail on Dashboard). */
+  selectedId?: string;
 }
 
 /**
@@ -278,6 +284,7 @@ export function SignalTable({
   showEmpty = false,
   emptyState,
   density = 'comfortable',
+  selectedId,
 }: SignalTableProps) {
   return (
     <div
@@ -307,6 +314,7 @@ export function SignalTable({
             sig={sig}
             live={livePrices[sig.asset?.symbol ?? '']}
             onSelect={onSelect}
+            selected={selectedId ? sig.id === selectedId : false}
           />
         ))}
       </div>

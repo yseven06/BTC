@@ -2,16 +2,16 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   TrendingUp, TrendingDown, Zap, CheckCircle, AlertTriangle,
-  LineChart as ChartIcon, ArrowRight, RefreshCw, Activity,
+  LineChart as ChartIcon, ArrowRight, RefreshCw, Activity, X,
 } from 'lucide-react';
 import {
   ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SignalTable, DensityToggle, type Density } from '@/components/signals/SignalTable';
+import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 import {
   fetchActiveSignals, fetchPerformanceSummary, fetchSignalHistoryStats,
   fetchGlobalMarket, fetchFearGreed, fetchTopGainers,
@@ -84,9 +84,9 @@ function LiveClock() {
 // ---------------------------------------------------------------------------
 
 export default function DashboardPage() {
-  const router = useRouter();
   const [timeRange, setTimeRange] = useState<'24s' | '7g' | '30g'>('24s');
   const [density, setDensity] = useState<Density>('compact');
+  const [selectedSignal, setSelectedSignal] = useState<ApiSignal | null>(null);
 
   const [signals, setSignals] = useState<ApiSignal[]>([]);
   const [perf, setPerf] = useState<PerformanceSummary | null>(null);
@@ -180,6 +180,16 @@ export default function DashboardPage() {
     setDensity(d);
     try { window.localStorage.setItem('tm.dashboard.density', d); } catch {}
   };
+
+  const handleSignalSelect = (sig: ApiSignal) => {
+    setSelectedSignal((prev) => (prev?.id === sig.id ? null : sig));
+  };
+
+  useEffect(() => {
+    if (selectedSignal && !signals.find((s) => s.id === selectedSignal.id)) {
+      setSelectedSignal(null);
+    }
+  }, [signals, selectedSignal]);
 
   // Derived stats
   const activeCount = actionableActiveCount;
@@ -470,7 +480,8 @@ export default function DashboardPage() {
         <SignalTable
           rows={signals}
           livePrices={livePrices}
-          onSelect={() => router.push('/signals')}
+          onSelect={handleSignalSelect}
+          selectedId={selectedSignal?.id}
           loading={loading}
           showEmpty={!loading && signals.length === 0}
           emptyState={
@@ -491,6 +502,27 @@ export default function DashboardPage() {
           }
           density={density}
         />
+
+        {/* ── Neden — seçili sinyalin inline detay paneli (DE-5e) ── */}
+        {selectedSignal && (
+          <div className="glass-panel border border-border-subtle rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
+              <h3 className="text-sm font-display text-text-primary flex items-center gap-2">
+                <Activity className="w-4 h-4 text-accent-primary" />
+                {selectedSignal.asset?.symbol} · Neden?
+              </h3>
+              <button
+                onClick={() => setSelectedSignal(null)}
+                className="text-text-muted hover:text-text-primary p-1 rounded-lg hover:bg-bg-secondary transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5">
+              <SignalDetailSection signal={selectedSignal} compact />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Main Grid ── */}
