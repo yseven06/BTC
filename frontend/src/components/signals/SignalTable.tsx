@@ -16,6 +16,13 @@ import { LiveStatusBadge } from '@/components/ui/LiveStatusBadge';
 const GRID_COLS = 'grid-cols-[2fr_1fr_1.2fr_1.5fr_1.3fr_1.5fr_auto]';
 const COLUMNS = ['SEMBOL · TF', 'YÖN', 'ANLIK FİYAT', 'KALİTE SKORU', 'DURUM', 'ÜRETİLDİ', 'ANALİZ'] as const;
 
+// ─── Density ──────────────────────────────────────────────────────────────────
+// User-controlled row density. Drives the per-row vertical padding via the
+// inherited `--row-h` custom property. 'comfortable' = 0.875rem = the historical
+// py-3.5 (byte-identical default); 'compact' = 0.5rem for more rows per screen.
+export type Density = 'comfortable' | 'compact';
+const ROW_H: Record<Density, string> = { comfortable: '0.875rem', compact: '0.5rem' };
+
 // ─── Quality helpers ──────────────────────────────────────────────────────────
 export function qualityScore(confidence: number): number {
   return Math.round(confidence / 10);
@@ -101,6 +108,39 @@ export function DirectionBadge({ label, state }: { label: string; state: DirStat
   );
 }
 
+// ─── Density toggle ───────────────────────────────────────────────────────────
+const DENSITY_OPTS: { id: Density; label: string }[] = [
+  { id: 'comfortable', label: 'Rahat' },
+  { id: 'compact', label: 'Sıkışık' },
+];
+
+/**
+ * Segmented Rahat/Sıkışık control. Purely a user preference — flips row density
+ * instantly (no fetch, no motion). Shared so the Dashboard "Şu an" band reuses it.
+ */
+export function DensityToggle({ value, onChange }: { value: Density; onChange: (d: Density) => void }) {
+  return (
+    <div className="inline-flex items-center gap-0.5 p-0.5 bg-bg-secondary border border-border-subtle rounded-xl">
+      {DENSITY_OPTS.map((o) => (
+        <button
+          key={o.id}
+          onClick={() => onChange(o.id)}
+          aria-pressed={value === o.id}
+          title={o.id === 'compact' ? 'Sıkışık satırlar — ekranda daha çok sinyal' : 'Rahat satırlar'}
+          className={cn(
+            'px-2.5 py-1 text-micro font-medium rounded-lg transition-colors',
+            value === o.id
+              ? 'bg-accent-primary text-white'
+              : 'text-text-muted hover:text-text-primary'
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ─── Row ──────────────────────────────────────────────────────────────────────
 export function SignalTableRow({
   sig,
@@ -121,10 +161,12 @@ export function SignalTableRow({
   return (
     <div
       className={cn(
-        'grid gap-4 items-center px-5 py-3.5 transition-colors',
+        'grid gap-4 items-center px-5 transition-colors',
         GRID_COLS,
         invalid ? 'bg-bearish/[0.04] opacity-70' : 'hover:bg-e-2'
       )}
+      // Vertical padding is density-driven (inherited --row-h); default matches py-3.5.
+      style={{ paddingTop: 'var(--row-h, 0.875rem)', paddingBottom: 'var(--row-h, 0.875rem)' }}
     >
       {/* Symbol + Timeframe */}
       <div className="flex items-center gap-3 min-w-0">
@@ -219,6 +261,8 @@ interface SignalTableProps {
   showEmpty?: boolean;
   /** Page-specific empty state node. */
   emptyState?: React.ReactNode;
+  /** Row density; default 'comfortable' renders byte-identically to the legacy table. */
+  density?: Density;
 }
 
 /**
@@ -233,9 +277,14 @@ export function SignalTable({
   loading = false,
   showEmpty = false,
   emptyState,
+  density = 'comfortable',
 }: SignalTableProps) {
   return (
-    <div className="glass-panel border border-border-subtle rounded-2xl overflow-hidden">
+    <div
+      className="glass-panel border border-border-subtle rounded-2xl overflow-hidden"
+      // --row-h cascades to every row's vertical padding (see SignalTableRow).
+      style={{ ['--row-h' as string]: ROW_H[density] } as React.CSSProperties}
+    >
       {/* Table head */}
       <div className={cn('grid gap-4 px-5 py-3 border-b border-border-subtle bg-bg-secondary/30', GRID_COLS)}>
         {COLUMNS.map((h) => (

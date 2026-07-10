@@ -15,6 +15,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import {
   SignalTable,
+  DensityToggle,
+  type Density,
   qualityScore,
   directionLabel,
   QualityBar,
@@ -745,6 +747,20 @@ export default function SignalsPage() {
   const [dirFilter, setDirFilter] = useState<DirFilter>('all');
   const [marketFilter, setMarketFilter] = useState<'all' | 'crypto' | 'stock'>('all');
   const [minQuality, setMinQuality] = useState(5);
+  // Row density preference (user-only, persisted). Default 'comfortable' keeps the
+  // legacy look; restored from localStorage after mount to avoid hydration mismatch.
+  const [density, setDensity] = useState<Density>('comfortable');
+  // Restore saved preference after mount (default stays 'comfortable' for SSR parity).
+  useEffect(() => {
+    const saved = window.localStorage.getItem('tm.signals.density');
+    if (saved === 'compact' || saved === 'comfortable') setDensity(saved);
+  }, []);
+  // Persist ONLY on an explicit user toggle — a mount-time persist effect would
+  // clobber the saved value with the default before the restore re-render lands.
+  const changeDensity = (d: Density) => {
+    setDensity(d);
+    try { window.localStorage.setItem('tm.signals.density', d); } catch { /* ignore */ }
+  };
   // Aynı sembol için en kaliteli timeframe'i göster, diğerlerini gizle.
   // Kullanıcı her timeframe'i ayrı görmek istiyorsa bunu kapatabilir.
   const [dedupBySymbol, setDedupBySymbol] = useState(true);
@@ -1035,23 +1051,26 @@ export default function SignalsPage() {
         })()}
       </div>
 
-      {/* Min quality slider */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border border-border-subtle rounded-xl">
-        <span className="text-micro text-text-muted font-medium uppercase">MİN. KALİTE</span>
-        <input
-          type="range" min={0} max={10} step={1}
-          value={minQuality}
-          onChange={(e) => setMinQuality(Number(e.target.value))}
-          className="w-24 accent-accent-primary cursor-pointer"
-        />
-        <span className={cn(
-          'text-xs num font-num-520 min-w-[40px] text-center',
-          minQuality >= 7 ? 'text-bullish' :
-          minQuality >= 5 ? 'text-amber' :
-          minQuality >= 3 ? 'text-amber/80' : 'text-text-muted'
-        )}>
-          {minQuality}/10
-        </span>
+      {/* Min quality slider + row-density toggle */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border border-border-subtle rounded-xl">
+          <span className="text-micro text-text-muted font-medium uppercase">MİN. KALİTE</span>
+          <input
+            type="range" min={0} max={10} step={1}
+            value={minQuality}
+            onChange={(e) => setMinQuality(Number(e.target.value))}
+            className="w-24 accent-accent-primary cursor-pointer"
+          />
+          <span className={cn(
+            'text-xs num font-num-520 min-w-[40px] text-center',
+            minQuality >= 7 ? 'text-bullish' :
+            minQuality >= 5 ? 'text-amber' :
+            minQuality >= 3 ? 'text-amber/80' : 'text-text-muted'
+          )}>
+            {minQuality}/10
+          </span>
+        </div>
+        <DensityToggle value={density} onChange={changeDensity} />
       </div>
       </div>
 
@@ -1061,6 +1080,7 @@ export default function SignalsPage() {
         livePrices={livePrices}
         onSelect={setSelected}
         loading={loading}
+        density={density}
         showEmpty={signals.length === 0}
         emptyState={
           <EmptyState
