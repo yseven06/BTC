@@ -452,8 +452,31 @@ export default function DashboardPage() {
 
       {/* ── Main Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Market Overview — left 2/3 */}
+        {/* Left 2/3 — Portföy (Performans) önce, Piyasa bağlamı sonra (DE-4 · 3-saniye hiyerarşisi) */}
         <div className="lg:col-span-2 space-y-5">
+          {/* Performance Summary */}
+          <GlassCard>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-display text-text-primary flex items-center gap-2">
+                <Activity className="w-4 h-4 text-accent-primary" />
+                Performans Özeti
+              </h2>
+              <Link href="/performance" className="text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
+                Tümünü Gör <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {perfCards.map((c, i) => (
+                <div key={i} className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
+                  <p className="text-micro text-text-muted uppercase font-medium">{c.label}</p>
+                  <p className={`text-xl num font-num-560 mt-1 ${c.color}`}>{c.value}</p>
+                  {c.sub && <p className="text-micro text-text-muted mt-0.5">{c.sub}</p>}
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+
+          {/* Market Overview */}
           <GlassCard>
             {/* Card header */}
             <div className="flex items-center justify-between mb-4">
@@ -514,28 +537,6 @@ export default function DashboardPage() {
               </Link>
             </div>
             <TradingViewChart symbol="BTCUSDT" timeframe="1h" height={360} compact />
-          </GlassCard>
-
-          {/* Performance Summary */}
-          <GlassCard>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-display text-text-primary flex items-center gap-2">
-                <Activity className="w-4 h-4 text-accent-primary" />
-                Performans Özeti
-              </h2>
-              <Link href="/performance" className="text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
-                Tümünü Gör <ArrowRight className="w-3 h-3" />
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {perfCards.map((c, i) => (
-                <div key={i} className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
-                  <p className="text-micro text-text-muted uppercase font-medium">{c.label}</p>
-                  <p className={`text-xl num font-num-560 mt-1 ${c.color}`}>{c.value}</p>
-                  {c.sub && <p className="text-micro text-text-muted mt-0.5">{c.sub}</p>}
-                </div>
-              ))}
-            </div>
           </GlassCard>
         </div>
 
