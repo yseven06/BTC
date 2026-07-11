@@ -123,7 +123,7 @@ export default function LandingPage() {
 
   const [proof, setProof] = useState<LandingProof | null>(null);
   const [proofLoaded, setProofLoaded] = useState(false);
-  const [winSignals, setWinSignals] = useState<ApiSignal[]>([]);
+  const [sicilSignals, setSicilSignals] = useState<ApiSignal[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
 
   useEffect(() => {
@@ -135,7 +135,13 @@ export default function LandingPage() {
       .then(setProof)
       .catch((e) => console.error('Landing: canlı-masa verisi alınamadı', e))
       .finally(() => setProofLoaded(true));
-    fetchSignalHistory({ outcome: 'win', page_size: 4 }).then((r) => setWinSignals(r.items)).catch((e) => console.error('Landing: kazanan sinyaller alınamadı', e));
+    // CP-5c — Sicil: son kapananlar, SONUCA GÖRE FİLTRESİZ (anti-cherry-pick).
+    // only_resolved expired/invalidated da dönebilir → W/L/BE'ye süzülür (yön-yansız), ilk 6.
+    fetchSignalHistory({ only_resolved: true, page_size: 10 })
+      .then((r) => setSicilSignals(
+        r.items.filter((s) => s.outcome === 'win' || s.outcome === 'loss' || s.outcome === 'breakeven').slice(0, 6),
+      ))
+      .catch((e) => console.error('Landing: sicil alınamadı', e));
     fetchPlans().then((r) => setPlans(r.plans.filter((p) => p.tier !== 'free'))).catch((e) => console.error('Landing: planlar alınamadı', e));
   }, []);
 
@@ -192,13 +198,13 @@ export default function LandingPage() {
               TradeMinds bir yatırım danışmanı değildir; analiz aracıdır. Karar ve risk sana aittir.
             </p>
             {/* R5: ikincil CTA çerçevesiz metin-link — sol kolonda tek kutu (squint: H1 + tek CTA).
-                Mobilde dikey istif (CTA sarma-fix). Metin CP-5c'de "Gerçek Sicili Gör"e geçecek. */}
+                Mobilde dikey istif (CTA sarma-fix). CP-5c: ikincil CTA kanıta davet eder (#sicil). */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-7">
               <Link href="/register" className="inline-flex items-center justify-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-6 py-3 rounded-xl transition-all hover:shadow-cta">
                 Ücretsiz Başla <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link href="/pricing" className="inline-flex items-center gap-1.5 text-sm font-display text-text-secondary hover:text-text-primary transition-colors">
-                Fiyatlandırmayı Gör <ArrowRight className="w-4 h-4" />
+              <Link href="#sicil" className="inline-flex items-center gap-1.5 text-sm font-display text-text-secondary hover:text-text-primary transition-colors">
+                Gerçek Sicili Gör <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>
@@ -213,27 +219,35 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Latest winning signals — only real, resolved WIN signals */}
-      {winSignals.length > 0 && (
-        <section className="max-w-6xl mx-auto px-6 py-12">
-          <h2 className="text-h2 font-display text-text-primary text-center">Son Kazanan Sinyaller</h2>
+      {/* Sicil — CP-5c: son kapanan sinyaller, SONUCA GÖRE FİLTRESİZ (anti-cherry-pick,
+          kilitli karar). Kazanan da kaybeden de aynı sicilde; "yalnız-kazanan" bölümü emekli. */}
+      {sicilSignals.length > 0 && (
+        <section id="sicil" className="max-w-6xl mx-auto px-6 py-12 scroll-mt-16">
+          <h2 className="text-h2 font-display text-text-primary text-center">Sicil: Son Kapanan Sinyaller</h2>
           <p className="text-sm text-text-secondary text-center mt-2 max-w-xl mx-auto">
-            Sistemin gerçek zamanlı ürettiği ve TP'ye ulaşmış kapanmış sinyallerden bir kesit.
+            Sonuca göre filtrelenmedi — kazanan da kaybeden de burada.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
-            {winSignals.map((s) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
+            {sicilSignals.map((s) => (
               <div key={s.id} className="glass-panel border border-border-subtle rounded-card p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-display text-text-primary">{s.asset?.symbol}</span>
-                  <span className="text-micro font-medium uppercase bg-bullish/15 text-bullish px-2 py-0.5 rounded">
-                    {s.direction === 'bullish' ? 'LONG' : 'SHORT'}
+                  <span className="text-sm font-display text-text-primary">
+                    {s.asset?.symbol}
+                    <span className={'ml-2 text-micro font-medium uppercase ' + (s.direction === 'bullish' ? 'text-bullish' : 'text-bearish')}>
+                      {s.direction === 'bullish' ? 'LONG' : 'SHORT'}
+                    </span>
                   </span>
+                  {s.outcome && s.outcome in OUTCOME_PILL && (
+                    <span className={'text-micro font-medium uppercase px-2 py-0.5 rounded ' + OUTCOME_PILL[s.outcome as keyof typeof OUTCOME_PILL].cls}>
+                      {OUTCOME_PILL[s.outcome as keyof typeof OUTCOME_PILL].label}
+                    </span>
+                  )}
                 </div>
-                <div className="text-h2 num font-num-560 text-bullish">
+                <div className={'text-h2 num font-num-560 ' + ((s.actual_return ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
                   {formatPercentage(s.actual_return ?? 0)}
                 </div>
                 <div className="text-micro text-text-muted mt-1.5 font-mono">
-                  Giriş: {formatPrice(s.entry_zone_low)} → TP: {formatPrice(s.tp1)}
+                  Giriş: {formatPrice(s.entry_zone_low)} → TP: {formatPrice(s.tp1)}{s.closed_at ? ' · ' + relTime(s.closed_at) : ''}
                 </div>
                 <div className="text-micro text-text-muted uppercase mt-1">{s.timeframe} · {s.signal_type.replace('_', ' ')}</div>
               </div>
