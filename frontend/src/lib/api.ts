@@ -254,6 +254,30 @@ export async function fetchPerformanceSummary(): Promise<PerformanceSummary> {
   return apiFetch<PerformanceSummary>('/api/v1/signals/performance');
 }
 
+// CP-5a — Landing "Canlı Masa" verisi. Aynı-origin Next route'undan (ISR 60s,
+// app/api/landing/proof) gelir; backend'e DOĞRUDAN gitmez (Anayasa: anonim poll yok).
+// lastClosed=null ⇒ kart render edilmez (7g bayatlık/veri-yok — fail-open, fake-data yok).
+export interface LandingProof {
+  lastClosed: {
+    symbol: string;
+    direction: 'bullish' | 'bearish';
+    entryLow: number;
+    entryHigh: number;
+    returnPct: number;
+    outcome: 'win' | 'loss' | 'breakeven';
+    closedAt: string;
+  } | null;
+  teaser: Array<{ symbol: string; direction: 'bullish' | 'bearish'; liveStatus: string | null }>;
+  activeTotal: number;
+  generatedAt: string;
+}
+
+export async function fetchLandingProof(): Promise<LandingProof> {
+  const res = await fetch('/api/landing/proof', { cache: 'no-store' });
+  if (!res.ok) throw new Error(`landing proof: HTTP ${res.status}`);
+  return res.json();
+}
+
 export interface SignalHistoryFilters {
   asset_id?: string;
   symbol?: string;
