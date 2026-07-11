@@ -585,6 +585,7 @@ Semantik `<table>` (div-grid değil). `md` altında satır → **kart**'a dönü
 
 ### hero-squint-testi-dod · Squint testi (hero DoD zorlayıcı fonksiyon)
 - **Direktif:** Açılış/hero'da gözler kısılınca en parlak iki öge YALNIZ enstrüman (Karot) ve birincil CTA; parlaklık hiçbir şekilde öneri/dikkat itmez (legal). DoD zorlayıcı fonksiyonu.
+- **⚠ v1.4.1 landing carve-out (C2, CHANGELOG):** LANDING-hero'da Karot marka-yüzeyi yasağı (bağlayıcı kullanıcı kararı) üstün olduğundan bu test landing'de "en parlak 2 = **H1 + birincil CTA**" olarak okunur; landing "Canlı Masa" teaser'ı read-only vitrindir ve "her sinyal yüzeyinde Karot zorunlu" kuralındaki *sinyal yüzeyi* tanımının DIŞINDADIR. Ürün-içi (app) yüzeylerde bu maddenin aslı ve Karot-zorunluluğu aynen geçerlidir.
 - **Token/değer:** en parlak 2 öge = {Karot, birincil CTA}; dekoratif ışık daima loş/yönlü.
 - **Teknik:** Hero'nun en yüksek luminanslı pikselleri veri (Karot omurgası/doğum nabzı) + birincil CTA; dekoratif ışık (anahtar/dolgu/bokeh) daima loş (VL§07 üç-ışık bütçesi).
 - **Ölçüm:** hero screenshot Gaussian blur (~8px) + eşikleme sonrası en parlak iki bölge Karot ve CTA; dekoratif luminans ≤ veri luminans.

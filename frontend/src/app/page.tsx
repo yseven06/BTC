@@ -4,15 +4,16 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Brain, TrendingUp, Shield, BarChart3, Microscope, History, Zap, Wallet,
+  TrendingUp, Shield, BarChart3, Microscope, History, Zap, Wallet,
   ArrowRight, CheckCircle, Activity, Target, Globe, FileDown, Bell,
   Info, Layers, Eye, UserCheck, Lock,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
+import { LIVE_STATUS_META } from '@/components/ui/LiveStatusBadge';
 import {
-  fetchPerformanceSummary, fetchSignalHistory, fetchPlans,
-  type PerformanceSummary, type ApiSignal, type Plan,
+  fetchSignalHistory, fetchPlans, fetchLandingProof,
+  type ApiSignal, type Plan, type LandingProof,
 } from '@/lib/api';
 import { cn, formatPercentage, formatPrice } from '@/lib/utils';
 
@@ -34,11 +35,84 @@ const STEPS = [
   { n: '3', title: 'Akıllı Takip Et', desc: 'Telegram\'dan anında haberdar ol, performansını Sinyal Geçmişi\'nde gör.' },
 ];
 
-function StatBlock({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+// CP-5b — Canlı Masa: hero'nun gerçek-veri paneli (K-D/b1: Karot'suz read-only vitrin).
+// R1: bölgeler yalnız hairline ile ayrılır (kutu-içinde-kutu yok). Veri yoksa üst seviye
+// paneli hiç render etmez (K1 düşüşü); yüklenirken min-h çerçeve rezervi (Rezerv-B, CLS 0).
+const OUTCOME_PILL = {
+  win:       { label: 'TP', cls: 'bg-bullish/15 text-bullish' },
+  loss:      { label: 'SL', cls: 'bg-bearish/15 text-bearish' },
+  breakeven: { label: 'BE', cls: 'bg-bg-tertiary/60 text-text-secondary' },
+} as const;
+
+function relTime(iso: string): string {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days <= 0) return 'bugün';
+  if (days === 1) return 'dün';
+  return `${days} gün önce`;
+}
+
+function CanliMasa({ proof }: { proof: LandingProof | null }) {
+  const lc = proof?.lastClosed ?? null;
+  const time = proof
+    ? new Date(proof.generatedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+    : null;
   return (
-    <div className="text-center">
-      <div className={cn('text-h1 md:text-h1 num font-num-560', accent ? 'text-bullish' : 'text-text-primary')}>{value}</div>
-      <div className="text-xs text-text-muted uppercase font-display tracking-wide mt-1">{label}</div>
+    <div className="glass-panel border border-border-subtle rounded-card p-4 min-h-[380px]">
+      <div className="flex items-center justify-between">
+        <span className="text-micro font-medium uppercase tracking-wide text-text-secondary">Canlı — gerçek sinyallerden</span>
+        {time && <span className="text-micro font-mono text-text-muted">{time}</span>}
+      </div>
+
+      {lc && (
+        <div className="border-t border-border-subtle mt-3 pt-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-display text-text-primary">
+              {lc.symbol}
+              {/* twMerge özel text-micro'yu renk sınıflarıyla çakıştırıp düşürüyor → düz birleştirme */}
+              <span className={'ml-2 text-micro font-medium uppercase ' + (lc.direction === 'bullish' ? 'text-bullish' : 'text-bearish')}>
+                {lc.direction === 'bullish' ? 'LONG' : 'SHORT'}
+              </span>
+            </span>
+            <span className={'text-micro font-medium uppercase px-2 py-0.5 rounded ' + OUTCOME_PILL[lc.outcome].cls}>
+              {OUTCOME_PILL[lc.outcome].label}
+            </span>
+          </div>
+          {/* R6: yüzde panelin en büyük rakamı (text-h3 = 18px, ölçek-içi).
+              NOT: cn/twMerge özel text-h3'ü renk sanıp text-bullish/bearish ile çakıştırıp
+              düşürüyor → düz string birleştirme (kazananlar kartıyla aynı desen). */}
+          <div className={'text-h3 num font-num-560 mt-1.5 ' + (lc.returnPct >= 0 ? 'text-bullish' : 'text-bearish')}>
+            {formatPercentage(lc.returnPct)}
+          </div>
+          <div className="text-micro font-mono text-text-muted mt-1">
+            Giriş: {formatPrice(lc.entryLow)} · {relTime(lc.closedAt)}
+          </div>
+          <div className="text-micro text-text-muted mt-2">Son kapanan sinyal — sonuca göre seçilmedi.</div>
+        </div>
+      )}
+
+      {proof && proof.teaser.length > 0 && (
+        <div className="border-t border-border-subtle mt-3 divide-y divide-border-subtle">
+          {proof.teaser.map((t) => (
+            <div key={t.symbol} className="flex items-center gap-3 py-2 text-xs">
+              <span className="flex-1 font-display text-text-primary">{t.symbol}</span>
+              <span className={'text-micro font-medium uppercase ' + (t.direction === 'bullish' ? 'text-bullish' : 'text-bearish')}>
+                {t.direction === 'bullish' ? 'LONG' : 'SHORT'}
+              </span>
+              <span className="text-text-secondary">
+                {(t.liveStatus && LIVE_STATUS_META[t.liveStatus as keyof typeof LIVE_STATUS_META]?.label) || 'Aktif'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {proof && proof.activeTotal > 0 && (
+        <div className="border-t border-border-subtle mt-3 pt-3">
+          <Link href="/register" className="text-xs font-display text-accent-primary hover:text-accent-ui transition-colors">
+            {proof.activeTotal} aktif sinyalin tamamı ürün içinde →
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
@@ -47,7 +121,8 @@ export default function LandingPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
 
-  const [stats, setStats] = useState<PerformanceSummary | null>(null);
+  const [proof, setProof] = useState<LandingProof | null>(null);
+  const [proofLoaded, setProofLoaded] = useState(false);
   const [winSignals, setWinSignals] = useState<ApiSignal[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
 
@@ -56,7 +131,10 @@ export default function LandingPage() {
   }, [user, loading, router]);
 
   useEffect(() => {
-    fetchPerformanceSummary().then(setStats).catch((e) => console.error('Landing: performans özeti alınamadı', e));
+    fetchLandingProof()
+      .then(setProof)
+      .catch((e) => console.error('Landing: canlı-masa verisi alınamadı', e))
+      .finally(() => setProofLoaded(true));
     fetchSignalHistory({ outcome: 'win', page_size: 4 }).then((r) => setWinSignals(r.items)).catch((e) => console.error('Landing: kazanan sinyaller alınamadı', e));
     fetchPlans().then((r) => setPlans(r.plans.filter((p) => p.tier !== 'free'))).catch((e) => console.error('Landing: planlar alınamadı', e));
   }, []);
@@ -65,7 +143,9 @@ export default function LandingPage() {
     return <div className="min-h-screen flex items-center justify-center bg-bg-primary"><div className="w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
 
-  const resolved = (stats?.win_count ?? 0) + (stats?.loss_count ?? 0) + (stats?.breakeven_count ?? 0);
+  // Panel yalnız gerçek veri varken yaşar; yüklenme bitip veri yoksa hero K1'e düşer (fake-data yok).
+  const hasProofPanel = !!proof && (!!proof.lastClosed || proof.teaser.length > 0);
+  const showPanelArea = !proofLoaded || hasProofPanel;
 
   return (
     <div className="min-h-screen bg-bg-primary">
@@ -86,72 +166,51 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="max-w-6xl mx-auto px-6 pt-16 pb-12 text-center">
-        <h1
-          className="font-display text-text-primary max-w-3xl mx-auto"
-          style={{ fontSize: 'clamp(32px, calc(3.5vw + 12px), 48px)', letterSpacing: '-0.03em', lineHeight: 1.04, fontWeight: 650 }}
-        >{/* CP-1b: imza H1 (K-A kilit) + landing display band (K-H): mobil 32px taban -> masaustu 48px tavan, mevcut font */}
-          9 motor.<br />
-          Tek yargı.<br />
-          Gizli değil.
-        </h1>
-        <p className="text-base md:text-lg text-text-secondary mt-5 max-w-2xl mx-auto">
-          9 bağımsız AI motoru kripto piyasalarını 7/24 analiz eder. Her sinyal gerekçesi ve gerçek
-          sonucu ile kayda geçer. Kazananları da kaybedenleri de aynı sicilde görürsün.
-        </p>
-
-        {/* Canlı kanıt (fold üstü) — gerçek veriden beslenir; veri yoksa statik güven rozetleri */}
-        {stats && resolved > 0 ? (
-          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-6 text-sm">
-            <span className="inline-flex items-center gap-1.5 font-display text-text-secondary">
-              <CheckCircle className="w-4 h-4 text-bullish" />
-              <span className="num font-num-560 text-bullish">{formatPercentage(stats.win_rate, 0, false)}</span> başarı oranı
-            </span>
-            <span className="inline-flex items-center gap-1.5 font-display text-text-secondary">
-              <Activity className="w-4 h-4 text-accent-primary" />
-              <span className="num font-num-560 text-text-primary">{resolved.toLocaleString('tr-TR')}</span> kapanan sinyal
-            </span>
-            {stats.average_return != null && (
-              <span className="inline-flex items-center gap-1.5 font-display text-text-secondary">
-                <TrendingUp className={cn('w-4 h-4', stats.average_return >= 0 ? 'text-bullish' : 'text-bearish')} />
-                <span className={cn('num font-num-560', stats.average_return >= 0 ? 'text-bullish' : 'text-bearish')}>
-                  {formatPercentage(stats.average_return)}
-                </span> ort. getiri
-              </span>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mt-6 text-sm text-text-secondary">
-            <span className="inline-flex items-center gap-1.5 font-display"><Brain className="w-4 h-4 text-accent-primary" /> 9 AI motoru</span>
-            <span className="inline-flex items-center gap-1.5 font-display"><Activity className="w-4 h-4 text-accent-primary" /> 7/24 tarama</span>
-            <span className="inline-flex items-center gap-1.5 font-display"><Shield className="w-4 h-4 text-accent-primary" /> Otomatik risk yönetimi</span>
-          </div>
-        )}
-
-        <div className="flex items-center justify-center gap-3 mt-7">
-          <Link href="/register" className="flex items-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-6 py-3 rounded-xl transition-all hover:shadow-cta">
-            Ücretsiz Başla <ArrowRight className="w-4 h-4" />
-          </Link>
-          <Link href="/pricing" className="text-sm font-display text-text-secondary hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-6 py-3 rounded-xl transition-colors">
-            Fiyatlandırmayı Gör
-          </Link>
-        </div>
-
-        {/* Live stats strip — real data, no placeholders */}
-        {stats && resolved > 0 && (
-          <div className="max-w-3xl mx-auto mt-14">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-6 glass-panel border border-border-subtle rounded-2xl">
-              <StatBlock label="Başarı Oranı" value={formatPercentage(stats.win_rate, 0, false)} accent />
-              <StatBlock label="Kapanan Sinyal" value={resolved.toLocaleString('tr-TR')} />
-              <StatBlock label="Ort. Getiri" value={formatPercentage(stats.average_return ?? 0)} accent={(stats.average_return ?? 0) >= 0} />
-              <StatBlock label="TP1 Vuruş" value={formatPercentage(stats.tp1_hit_rate, 0, false)} />
-            </div>
-            <p className="text-micro text-text-muted text-center mt-3">
-              Tüm zamanlar · yalnızca gerçek, kapanmış sinyallerden hesaplanır
+      {/* Hero — CP-5b: 55/45 "Canlı Masa" (K-D/b1 + R1-R6). Rezerv-A: section relative =
+          atmosfer host (CP-6 ışık katmanı buraya girer; arka-plan çocuklara gömülmez).
+          Eski %-şerit + istatistik kutusu kaldırıldı (K-B2+ bandı CP-2'de hero-dışı gelir). */}
+      <section className="relative max-w-6xl mx-auto px-6 pt-24 pb-12">
+        <div className={cn(showPanelArea && 'md:grid md:grid-cols-[11fr_9fr] md:gap-12 lg:gap-16')}>
+          {/* Sol kolon — R3: max-w sınırı; öğeler ayrık sibling (Rezerv-C: gelecek reveal hedefleri) */}
+          <div className="max-w-[32rem]">
+            <p className="text-micro font-medium uppercase tracking-wide text-text-secondary">
+              KRİPTO SİNYAL İSTİHBARATI — BETA
             </p>
+            <h1
+              className="font-display text-text-primary mt-4"
+              style={{ fontSize: 'clamp(32px, calc(3.5vw + 12px), 48px)', letterSpacing: '-0.03em', lineHeight: 1.04, fontWeight: 650 }}
+            >{/* imza H1 (K-A kilit) + landing display band (K-H) — CP-1b'den birebir */}
+              9 motor.<br />
+              Tek yargı.<br />
+              Gizli değil.
+            </h1>
+            <p className="text-base md:text-lg text-text-secondary mt-5">
+              9 bağımsız AI motoru kripto piyasalarını 7/24 analiz eder. Her sinyal gerekçesi ve gerçek
+              sonucu ile kayda geçer. Kazananları da kaybedenleri de aynı sicilde görürsün.
+            </p>
+            <p className="text-sm text-text-secondary mt-4">
+              TradeMinds bir yatırım danışmanı değildir; analiz aracıdır. Karar ve risk sana aittir.
+            </p>
+            {/* R5: ikincil CTA çerçevesiz metin-link — sol kolonda tek kutu (squint: H1 + tek CTA).
+                Mobilde dikey istif (CTA sarma-fix). Metin CP-5c'de "Gerçek Sicili Gör"e geçecek. */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-7">
+              <Link href="/register" className="inline-flex items-center justify-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-6 py-3 rounded-xl transition-all hover:shadow-cta">
+                Ücretsiz Başla <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link href="/pricing" className="inline-flex items-center gap-1.5 text-sm font-display text-text-secondary hover:text-text-primary transition-colors">
+                Fiyatlandırmayı Gör <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
-        )}
+
+          {/* Sağ panel — R2: 32px dikey ofset (diagonal gerilim). Yüklenirken çerçeve
+              rezervi durur (CLS 0); yükleme bitip veri yoksa alan tamamen kalkar (K1). */}
+          {showPanelArea && (
+            <div className="mt-10 md:mt-8">
+              <CanliMasa proof={proof} />
+            </div>
+          )}
+        </div>
       </section>
 
       {/* Latest winning signals — only real, resolved WIN signals */}

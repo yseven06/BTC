@@ -5,6 +5,12 @@ Kural: **her revizyon = commit + sürüm artışı + bu dosyada bir satır.** St
 
 ---
 
+## v1.4.1 — Landing-hero vitrin istisnaları (C2 mini-revizyon) · 2026-07-12
+
+> **Kapsam:** Design Constitution v1 / CP-5b (K-D=b1 kilitli kararı). Yalnız iki dar landing-istisnası; token/motion/renk/Karot-geometrisi **değişmedi**; app yüzeylerinde hiçbir kural değişmedi.
+- **İstisna-1 (Karot-zorunluluğu):** Landing-hero'daki "Canlı Masa" teaser'ı **read-only pazarlama vitrinidir**; "her sinyal yüzeyinde Karot zorunlu" kuralındaki *sinyal yüzeyi* tanımının **dışındadır**. Gerekçe: Karot marka-yüzeyi yasağı (bağlayıcı kullanıcı kararı, landing-hero dahil) kanonik dokümanı geçer; ürün-içi tüm sinyal yüzeylerinde zorunluluk aynen sürer.
+- **İstisna-2 (squint-gate landing carve-out):** `hero-squint-testi-dod` landing'de "en parlak 2 öge = **H1 + birincil CTA**" olarak okunur (Karot ürün-içi yüzeylerde kalır). Bible ilgili §'ine dipnot işlendi.
+
 ## v1.4 — Karot geometri revizyonu · 2026-07-09
 
 > **Kapsam:** Karot konsensüs enstrümanının **geometrik projeksiyonu** revize edildi — "K17 görünüm + K02 matematik". Merkez-eksenli spline (v1.3) → **tek-taraflı fitilli-omurga** (dikey omurga + slot'a mıhlı açısal kanıt-fitilleri + karar-ucu). Değişen yalnız *forma projeksiyon*; K02'nin matematiksel rigor'u (classify eşikleri, 9-slot sıra, rest-state dizisi, dürüstlük fiziği, tüm süre/renk kilitleri, kalıcı yasaklar) **korundu**. Yalnız Bible §05 + ilgili §01/§06 satırları + VL §07/§09 motion-tablosu değişti; kod/CSS/component **bu commit'te değişmedi** (1A-ii ayrı commit). Dört-tur tarafsız tasarım süreci (10+6 konsept, 3-yol kıyas) sonrası kullanıcı kararı.
