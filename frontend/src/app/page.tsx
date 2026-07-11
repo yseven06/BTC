@@ -69,8 +69,8 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-bg-primary">
-      {/* Nav */}
-      <header className="border-b border-border-subtle">
+      {/* Nav — sticky (CP-1a): opak --e0 zemin + alt-hairline; scroll'da erisim korunur. z-10 = --z-sticky (kanonik olcek). */}
+      <header className="sticky top-0 z-10 bg-bg-primary border-b border-border-subtle">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-8 h-8" />

@@ -16,8 +16,8 @@ import { Inter } from "next/font/google";
 const inter = Inter({ subsets: ["latin", "latin-ext"], variable: "--font-sans", display: "swap" });
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-const SITE_TITLE = "TradeMinds AI - Advanced Trading Intelligence Platform";
-const SITE_DESCRIPTION = "AI-Powered trading signals, technical market structure analysis, and automated risk scoring for Crypto markets.";
+const SITE_TITLE = "TradeMinds AI — Kripto Sinyal ve Analiz Platformu";
+const SITE_DESCRIPTION = "9 AI motoruyla kripto piyasaları için sinyal üretimi, piyasa yapısı analizi ve otomatik risk skorlaması.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     url: SITE_URL,
     siteName: "TradeMinds AI",
-    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "TradeMinds AI — Advanced Trading Intelligence Platform" }],
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "TradeMinds AI — Kripto Sinyal ve Analiz Platformu" }],
     locale: "tr_TR",
     type: "website",
   },
