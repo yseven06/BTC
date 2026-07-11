@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   TrendingUp, Shield, BarChart3, Microscope, History, Zap, Wallet,
   ArrowRight, CheckCircle, Activity, Target, Globe, FileDown, Bell,
-  Info, Layers, Eye, UserCheck, Lock,
+  Info, Layers, Eye, Lock,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
@@ -348,7 +348,8 @@ export default function LandingPage() {
       <section className="max-w-6xl mx-auto px-6 py-16 border-t border-border-subtle">
         <h2 className="text-h2 font-display text-text-primary text-center">Şeffaflık: Nasıl Çalışır, Neyi Vaat Etmez</h2>
         <p className="text-sm text-text-secondary text-center mt-2 max-w-2xl mx-auto">
-          Güçlü bir karar destek aracı sunuyoruz — sihirli bir kutu değil. Sistemin nasıl çalıştığını da, sınırlarını da açıkça paylaşıyoruz.
+          TradeMinds bir "sinyal grubu" değildir — denetlenebilir bir kayıt defteridir.
+          Neyi yapmadığımız, neyi yaptığımız kadar nettir.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-10">
@@ -379,21 +380,26 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* 3 key messages — prominent, professional */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-          {[
-            { icon: Info, title: 'Yatırım tavsiyesi değildir', desc: 'Tüm analizler bilgilendirme amaçlıdır; bireysel yatırım tavsiyesi sunmaz.' },
-            { icon: UserCheck, title: 'Nihai karar senindir', desc: 'Uygunluk analizi yapılmaz; kararı kendi bilgin ve risk profiline göre verirsin.' },
-            { icon: Lock, title: 'Senin adına işlem yapmaz', desc: 'TradeMinds yalnızca analiz ve karar desteği sunar; hesabında emir göndermez.' },
-          ].map((m) => (
-            <div key={m.title} className="rounded-card border border-border-subtle bg-bg-secondary/40 p-5">
-              <div className="w-9 h-9 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3">
-                <m.icon className="w-5 h-5 text-accent-primary" />
-              </div>
-              <h3 className="text-sm font-display text-text-primary">{m.title}</h3>
-              <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">{m.desc}</p>
-            </div>
-          ))}
+        {/* Ne Yapmayız — CP-3: negatif-taahhüt paneli (Prensip-2/legal-metin alt-kümesi;
+            hizmet dili, TAMAMEN NÖTR — bull/bear tinti yok). Eski 3 anahtar-mesaj kartı
+            buraya konsolide edildi; üçlü-mesaj (a/b/c) madde 4 + madde 2 + alttaki inline
+            InvestmentDisclaimer ile bölüm gövdesinde BİRLİKTE yaşamaya devam eder (Prensip-4). */}
+        <div className="glass-panel border border-border-subtle rounded-card p-6 mt-6">
+          <h3 className="text-sm font-display text-text-primary">Ne yapmayız</h3>
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 mt-4">
+            {[
+              'Borsa API anahtarı veya cüzdan bağlantısı istemeyiz; paranıza erişimimiz olmaz.',
+              'Adınıza işlem yapmayız — emir iletmeyiz, portföy yönetmeyiz.',
+              'Getiri garantisi vermeyiz; hiçbir sinyal kâr vaadi değildir.',
+              'Kişiye özel yatırım tavsiyesi vermeyiz; uygunluk analizi yapmayız.',
+              'Kayıpları saklamayız — sicil, sonuca göre filtrelenmez.',
+            ].map((madde, i) => (
+              <li key={madde} className={'flex gap-2 text-xs text-text-secondary leading-relaxed' + (i === 4 ? ' md:col-span-2' : '')}>
+                <CheckCircle className="w-4 h-4 text-text-secondary flex-shrink-0 mt-0.5" />
+                {madde}
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div className="max-w-3xl mx-auto mt-8">
