@@ -219,6 +219,45 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Kanıt Bandı — CP-2 (K-B2+): HAM DAĞILIM + TP1, tek dipnot. Hairline üst+alt,
+          kutu YOK; TAMAMEN NÖTR renk (kilitli karar: dağılıma başarı/başarısızlık hissi
+          verecek yeşil-kırmızı sunum yok). Oran/ortalama-getiri metrikleri landing'e dönmez (K-B2+).
+          Yüklenirken alan rezervi (CLS 0); veri yoksa bant render edilmez. */}
+      {(!proofLoaded || proof?.stats) && (
+        <section className="max-w-6xl mx-auto px-6 pb-4">
+          {proof?.stats ? (
+            <div className="border-y border-border-subtle py-5">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2">
+                <span className="text-h3 num font-num-560 text-text-primary">{proof.stats.closedTotal.toLocaleString('tr-TR')}</span>
+                <span className="text-sm font-display text-text-secondary">kapanmış sinyal¹</span>
+                <span className="text-sm text-text-muted px-1" aria-hidden="true">·</span>
+                <span className="text-base num font-num-560 text-text-primary">{proof.stats.winCount.toLocaleString('tr-TR')}</span>
+                <span className="text-sm font-display text-text-secondary">kazanç</span>
+                <span className="text-sm text-text-muted px-1" aria-hidden="true">·</span>
+                <span className="text-base num font-num-560 text-text-primary">{proof.stats.lossCount.toLocaleString('tr-TR')}</span>
+                <span className="text-sm font-display text-text-secondary">kayıp</span>
+                <span className="text-sm text-text-muted px-1" aria-hidden="true">·</span>
+                <span className="text-base num font-num-560 text-text-primary">{proof.stats.breakevenCount.toLocaleString('tr-TR')}</span>
+                <span className="text-sm font-display text-text-secondary">başabaş</span>
+                {proof.stats.tp1Rate != null && (
+                  <>
+                    <span className="text-sm text-text-muted px-1" aria-hidden="true">·</span>
+                    <span className="text-sm font-display text-text-secondary">TP1'e ulaşma</span>
+                    <span className="text-base num font-num-560 text-text-primary">{formatPercentage(proof.stats.tp1Rate, 0, false)}¹</span>
+                  </>
+                )}
+              </div>
+              <p className="text-micro text-text-secondary mt-3">
+                ¹ Tüm zamanlar · {proof.stats.closedTotal.toLocaleString('tr-TR')} kapanmış sinyal · sonuca göre
+                filtrelenmedi · geçmiş performans gelecek sonuçların göstergesi değildir.
+              </p>
+            </div>
+          ) : (
+            <div className="min-h-[64px]" />
+          )}
+        </section>
+      )}
+
       {/* Sicil — CP-5c: son kapanan sinyaller, SONUCA GÖRE FİLTRESİZ (anti-cherry-pick,
           kilitli karar). Kazanan da kaybeden de aynı sicilde; "yalnız-kazanan" bölümü emekli. */}
       {sicilSignals.length > 0 && (

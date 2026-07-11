@@ -269,6 +269,15 @@ export interface LandingProof {
   } | null;
   teaser: Array<{ symbol: string; direction: 'bullish' | 'bearish'; liveStatus: string | null }>;
   activeTotal: number;
+  // CP-2 — K-B2+ kanıt bandı: ham dağılım + TP1. tp1Rate=null ⇒ N-floor (route'ta tek-kaynak)
+  // ya da veri-yok → yüzde render edilmez. stats=null ⇒ bant render edilmez.
+  stats: {
+    closedTotal: number;
+    winCount: number;
+    lossCount: number;
+    breakevenCount: number;
+    tp1Rate: number | null;
+  } | null;
   generatedAt: string;
 }
 

@@ -28,8 +28,20 @@ export interface LandingProofPayload {
     liveStatus: string | null;
   }>;
   activeTotal: number;
+  // CP-2 — K-B2+ kanıt bandı: HAM DAĞILIM + TP1 (win_rate/ort.getiri landing'e dönmez).
+  // closedTotal = W+L+BE (expired/invalidated süreç-iptalleri hariç — Sicil süzgeciyle tutarlı).
+  // N-floor (30) TEK-KAYNAK burada: küçük örneklemde yüzde yanıltıcı → tp1Rate=null (yalnız sayım).
+  stats: {
+    closedTotal: number;
+    winCount: number;
+    lossCount: number;
+    breakevenCount: number;
+    tp1Rate: number | null;
+  } | null;
   generatedAt: string;
 }
+
+const N_FLOOR = 30;
 
 async function fetchJson(path: string): Promise<any | null> {
   try {
@@ -43,11 +55,12 @@ async function fetchJson(path: string): Promise<any | null> {
 }
 
 export async function GET() {
-  const [historyRes, activeRes] = await Promise.all([
+  const [historyRes, activeRes, perfRes] = await Promise.all([
     // Son KAPANAN sinyal — outcome-filtresiz (anti-cherry-pick kuralı; kayıp da döner).
     // Backend sıralaması: coalesce(closed_at, generated_at) DESC → ilk kayıt = son kapanan.
     fetchJson('/api/v1/signals/history?only_resolved=true&page_size=1'),
     fetchJson('/api/v1/signals?only_actionable=true&page_size=3'),
+    fetchJson('/api/v1/signals/performance'),
   ]);
 
   let lastClosed: LandingProofPayload['lastClosed'] = null;
@@ -80,10 +93,31 @@ export async function GET() {
     }))
     .filter((t: { symbol: string }) => t.symbol !== '');
 
+  let stats: LandingProofPayload['stats'] = null;
+  if (
+    perfRes &&
+    typeof perfRes.win_count === 'number' &&
+    typeof perfRes.loss_count === 'number' &&
+    typeof perfRes.breakeven_count === 'number'
+  ) {
+    const closedTotal = perfRes.win_count + perfRes.loss_count + perfRes.breakeven_count;
+    stats = {
+      closedTotal,
+      winCount: perfRes.win_count,
+      lossCount: perfRes.loss_count,
+      breakevenCount: perfRes.breakeven_count,
+      tp1Rate:
+        closedTotal >= N_FLOOR && typeof perfRes.tp1_hit_rate === 'number'
+          ? perfRes.tp1_hit_rate
+          : null,
+    };
+  }
+
   const payload: LandingProofPayload = {
     lastClosed,
     teaser,
     activeTotal: activeRes?.total ?? 0,
+    stats,
     generatedAt: new Date().toISOString(),
   };
 
