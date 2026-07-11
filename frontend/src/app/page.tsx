@@ -88,13 +88,17 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 pt-16 pb-12 text-center">
-        <h1 className="text-h1 font-display text-text-primary max-w-3xl mx-auto">{/* H1 32/-0.025/650 tek-deger (P8/D9+D6+D7); hero mekanigi Phase 4 - dokunulmadi */}
-          9 AI motoru kripto piyasalarını 7/24 tarar,{' '}
-          <span>doğrulanabilir sinyaller</span> üretir
+        <h1
+          className="font-display text-text-primary max-w-3xl mx-auto"
+          style={{ fontSize: 'clamp(32px, calc(3.5vw + 12px), 48px)', letterSpacing: '-0.03em', lineHeight: 1.04, fontWeight: 650 }}
+        >{/* CP-1b: imza H1 (K-A kilit) + landing display band (K-H): mobil 32px taban -> masaustu 48px tavan, mevcut font */}
+          9 motor.<br />
+          Tek yargı.<br />
+          Gizli değil.
         </h1>
         <p className="text-base md:text-lg text-text-secondary mt-5 max-w-2xl mx-auto">
-          Akıllı Para (SMC), otomatik risk skorlaması ve gerçek zamanlı performans takibiyle
-          duygusal kararları geride bırak — veriye dayalı işlem yap.
+          9 bağımsız AI motoru kripto piyasalarını 7/24 analiz eder. Her sinyal gerekçesi ve gerçek
+          sonucu ile kayda geçer. Kazananları da kaybedenleri de aynı sicilde görürsün.
         </p>
 
         {/* Canlı kanıt (fold üstü) — gerçek veriden beslenir; veri yoksa statik güven rozetleri */}
