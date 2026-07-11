@@ -72,6 +72,31 @@ ayrıca engine_scores/regime_data/mtf_trends/vol/sentiment zaten saklar (tam bir
 `telemetry_version` ile versiyonlu. Geometri matematiği `app/services/trade_geometry.py`
 tek-kaynak (birth + trade-path aynı planned_rr/dist tanımını paylaşır).
 
+### `extra.entry` — entry-tespiti (PASİF, CP-1 · Trading Logic BACKLOG-B)
+`app/engines/ai_decision/entry_telemetry.py :: build_entry_telemetry(signal, df)` ile
+çözümde üretilir; `SignalTradePath.extra["entry"]`'e yazılır. **PASİF ölçüm:** hiçbir
+sistem (win-rate, UI, rapor, Adaptive Learning, Coin Memory) bu alanı OKUMAZ — yalnız
+gelecekteki **shadow ölçümü (CP-2)** için ham veri. Reading A (pullback-gate): "entry" =
+giriş-bölgesi ortası (`entry_mid`, canlı tracker fill referansı).
+
+| Alan | Anlam | Not |
+|---|---|---|
+| `telemetry_version` | `entry` sözleşme sürümü (bugün `1`) | — |
+| `entry_level` | ölçülen giriş seviyesi = zone-ortası (Reading A) | — |
+| `data_available` | doğum-sonrası gözlemlenecek bar var mı | `False` ⇒ "veri yok" (≠ hiç girmedi) |
+| `entry_reached` | fiyat entry_level'a ulaştı mı | LONG: `low≤level` · SHORT: `high≥level` |
+| `entry_reached_at` | ilk ulaşma zamanı (ISO, naive) | — |
+| `bars_to_entry` | doğumdan entry'ye bar sayısı | — |
+| `wait_seconds` | doğum→entry (hiç girmezse doğum→son bar) | bekleme süresi |
+| `max_zone_penetration_pct` | fiyat zone'a ne kadar derin çekildi (0..1) | 0=piyasa kenarı, 1=uzak (S/R) kenar; dejenere zone'da `None` |
+| `never_entered` | çözümde entry yok | **anlamlı "girmeden öldü" sinyali** (shadow bunu `outcome` ile join eder) |
+
+**Not (Reading A geometrisi):** "entry'den önce geçersizleşme" alanı YOK. SL entry-ortasının
+ötesinde (LONG'da altında) olduğundan fiyat SL'ye ulaşmadan entry'den geçer → böyle bir
+bayrak yapısal olarak ~her zaman `False` (ölü gürültü) olurdu. Anlamlı ihlal sinyali
+`never_entered`'dır. Gerçek "önce-geçersizleşme" ancak **Reading B**'de (fiyattan uzak
+limit-entry'ler) anlam kazanır ve o faza ertelendi.
+
 ### `extra.shadow` — rezerve (extensible)
 Alternatif-geometri **shadow-policy** sonuçları (Adaptive Learning v2 — canlı geometriyi
 değiştirmeden "ne olurdu" karşılaştırması). Şu an `None`.

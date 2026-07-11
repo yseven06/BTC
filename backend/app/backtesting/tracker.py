@@ -28,6 +28,7 @@ from app.services.coin_memory import update_coin_memory, update_trade_mgmt_stats
 from app.services.lifecycle_log import make_event
 from app.notifications.service import notify_lifecycle, LIFECYCLE_ALERT_STATES
 from app.backtesting.trade_path import compute_trade_path
+from app.engines.ai_decision.entry_telemetry import build_entry_telemetry
 from app.backtesting.resolution_core import resolve_trade_path
 from app.models.intelligence import SignalSnapshot
 
@@ -36,7 +37,7 @@ async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, t
                                      mfe_pct, mae_pct, bars_total, mfe_bar_idx, mae_bar_idx,
                                      tp1_bar_idx, post_tp1_mfe, post_tp1_mae, intrabar_ambiguous,
                                      still_forming, realized_return, outcome_val, detail_label,
-                                     resolved_by_sl=False, is_expired_flag=False):
+                                     resolved_by_sl=False, is_expired_flag=False, df=None):
     """Fail-open: build + persist one SignalTradePath row. ANY error is swallowed
     (logged) so trade-path instrumentation can NEVER block trade resolution,
     change an outcome, or affect signal_performance / coin_memory."""
@@ -59,6 +60,9 @@ async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, t
         ez_low = float(signal.entry_zone_low) if signal.entry_zone_low is not None else None
         ez_high = float(signal.entry_zone_high) if signal.entry_zone_high is not None else None
         birth = snap.extra.get("birth") if (snap and isinstance(snap.extra, dict)) else None
+        # CP-1 PASSIVE entry-detection telemetry (inside the fail-open envelope;
+        # read by NOTHING — pure shadow-analysis material at extra["entry"]).
+        entry_tel = build_entry_telemetry(signal, df)
         row = compute_trade_path(
             signal_id=signal.id, asset_id=signal.asset_id,
             symbol=(signal.asset.symbol if signal.asset else None),
@@ -79,6 +83,7 @@ async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, t
             sl_before_tp=sl_before_tp, resolution_source=resolution_source,
             tp_touched_but_sl_won=tp_touched_but_sl_won,
             entry_zone_low=ez_low, entry_zone_high=ez_high, birth=birth,
+            entry_telemetry=entry_tel,
         )
         db.add(row)
         # Coin Memory v2 rollup (also inside the fail-open envelope) — derivable
@@ -90,7 +95,7 @@ async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, t
 
 
 async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, live_price,
-                                             realized_return, gave_back_after_tp1=None):
+                                             realized_return, gave_back_after_tp1=None, df=None):
     """Fail-open trade-path write for the LIVE-SL shortcut (mid-candle stop).
     No bar-walk here, so most path metrics are genuinely UNMEASURED → kept NULL
     (never 0), so the learning layer can tell 'not measured' from '0 happened'.
@@ -111,6 +116,8 @@ async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, liv
             adverse = (entry - live_price) / entry * 100.0 if signal.direction.value == "bullish" \
                 else (live_price - entry) / entry * 100.0
             mae_pct = round(max(0.0, adverse), 4)
+        # CP-1 PASSIVE entry-detection telemetry (fail-open envelope; read by NOTHING).
+        entry_tel = build_entry_telemetry(signal, df)
         row = compute_trade_path(
             signal_id=signal.id, asset_id=signal.asset_id,
             symbol=(signal.asset.symbol if signal.asset else None),
@@ -135,6 +142,7 @@ async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, liv
             entry_zone_low=(float(signal.entry_zone_low) if signal.entry_zone_low is not None else None),
             entry_zone_high=(float(signal.entry_zone_high) if signal.entry_zone_high is not None else None),
             birth=(snap.extra.get("birth") if (snap and isinstance(snap.extra, dict)) else None),
+            entry_telemetry=entry_tel,
             source="live",
         )
         db.add(row)
@@ -374,7 +382,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 await _write_trade_path_live_sl_failopen(
                     db, signal, perf, entry=entry, sl=effective_sl,
                     live_price=live_hit["live_price"], realized_return=pnl_pct,
-                    gave_back_after_tp1=gave_back,
+                    gave_back_after_tp1=gave_back, df=dfs_by_signal_id.get(signal.id),
                 )
                 resolved_count += 1
                 details.append({
@@ -625,6 +633,7 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                     still_forming=False, realized_return=pnl_pct,
                     outcome_val=outcome.value, detail_label=perf.detail_label,
                     resolved_by_sl=resolved_by_sl, is_expired_flag=is_expired_flag,
+                    df=df,
                 )
 
                 details.append({

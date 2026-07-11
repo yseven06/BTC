@@ -99,6 +99,7 @@ def build_trade_path_extra(
     entry_zone_low: Optional[float] = None,
     entry_zone_high: Optional[float] = None,
     birth: Optional[dict] = None,
+    entry_telemetry: Optional[dict] = None,
 ) -> dict:
     """Rich, versioned ``extra`` telemetry for a resolved SignalTradePath.
 
@@ -157,6 +158,7 @@ def build_trade_path_extra(
         "gave_back_after_tp1": gave_back_after_tp1,
         # --- reserved future slots (extensible — fill WITHOUT a schema change) ---
         "birth": birth,   # birth-time geometry provenance (from SignalSnapshot.extra["birth"])
+        "entry": entry_telemetry,  # CP-1 PASSIVE entry-detection (Reading A midpoint); read by NOTHING
         "shadow": None,   # reserved: alternative-geometry shadow-policy outcomes (Adaptive Learning v2)
     }
 
@@ -207,6 +209,7 @@ def compute_trade_path(
     entry_zone_low: Optional[float] = None,
     entry_zone_high: Optional[float] = None,
     birth: Optional[dict] = None,
+    entry_telemetry: Optional[dict] = None,
     source: str = "live",
 ) -> SignalTradePath:
     """Build (don't persist) a SignalTradePath from resolution-time primitives."""
@@ -224,7 +227,7 @@ def compute_trade_path(
         realized_return=realized_return, gave_back_after_tp1=gave_back_after_tp1,
         resolution_source=resolution_source, tp_touched_but_sl_won=tp_touched_but_sl_won,
         sl_before_tp=sl_before_tp, entry_zone_low=entry_zone_low, entry_zone_high=entry_zone_high,
-        birth=birth,
+        birth=birth, entry_telemetry=entry_telemetry,
     )
 
     return SignalTradePath(
