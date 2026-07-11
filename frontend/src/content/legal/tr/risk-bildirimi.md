@@ -105,7 +105,7 @@ her zaman erişilebilir olacağını garanti etmez.
 
 ## 8. Veri Kaynağı ve Üçüncü Taraf Riskleri
 
-Platform, fiyat ve piyasa verilerini **Binance, MEXC, Yahoo Finance, CoinGecko,
+Platform, fiyat ve piyasa verilerini **Binance, MEXC, CoinGecko,
 TradingView** ve benzeri üçüncü taraf veri sağlayıcılardan temin eder. Bu verilerde
 **gecikme, kesinti, eksiklik veya hata** bulunabilir ve veriler gerçek zamanlı olmayabilir.
 Platform, anılan veri sağlayıcıların doğruluğunu, eksiksizliğini veya sürekliliğini taahhüt

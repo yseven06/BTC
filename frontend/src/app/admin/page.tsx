@@ -683,8 +683,6 @@ function AssetsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             className="text-xs px-2 py-1.5"
             options={[
               { value: 'crypto', label: 'Kripto' },
-              { value: 'stock', label: 'BIST' },
-              { value: 'forex', label: 'Forex' },
             ]}
           />
           <input value={newMarket} onChange={(e) => setNewMarket(e.target.value)} placeholder="Market (binance)"

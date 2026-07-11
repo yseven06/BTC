@@ -121,39 +121,8 @@ export default function MacroPage() {
         </div>
       </div>
 
-      {/* KAP disclosures */}
-      <div>
-        <h2 className="text-sm font-display text-text-primary mb-3 flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-accent-primary" /> KAP Açıklamaları (BIST)
-        </h2>
-        {kap.length === 0 ? (
-          <GlassCard>
-            <p className="text-xs text-text-muted text-center py-6">KAP açıklamaları alınamadı.</p>
-          </GlassCard>
-        ) : (
-          <div className="glass-panel border border-border-subtle rounded-2xl divide-y divide-border-subtle overflow-hidden">
-            {kap.map((d, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-e-2 transition-colors">
-                <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center text-micro font-medium font-mono text-accent-primary">
-                  {(d.company ?? '?').slice(0, 3)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-display text-text-primary truncate">{d.title}</p>
-                  <p className="text-micro text-text-muted">
-                    {d.company} · {d.category}
-                    {d.published && ` · ${formatRelativeTime(d.published)}`}
-                  </p>
-                </div>
-                {d.url && (
-                  <a href={d.url} target="_blank" rel="noreferrer" className="flex-shrink-0 text-text-muted hover:text-accent-primary p-1">
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Crypto-only ürün (2026-07): "KAP Açıklamaları (BIST)" bölümü kaldırıldı;
+          global makro (FED/DXY/risk) korunur. */}
     </div>
   );
 }

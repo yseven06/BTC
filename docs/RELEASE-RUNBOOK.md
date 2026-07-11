@@ -86,3 +86,42 @@ ENVIRONMENT=production mutlaka set**.
 ## 7. Sınırlar (post-beta)
 CI/CD yok (deploy manuel) · scheduler ayrı worker'a çıkarılmadı (tek-replika zorunlu) · migration down-script
 yok (ileri-telafi modeli) · object storage / nonce-CSP açık. Bunlar bilinçli post-beta.
+
+## 8. Crypto-only cutover (CP-1) — operasyonel rollout adımı (⚠️ migration DEĞİL)
+> **İlke:** TradeMinds artık **%100 crypto-only**. Kod tarafı (crypto-only backend filtreleri +
+> kullanıcı-yüzeyi temizliği) commit'te versiyonlu ve **deterministik/tekrar-üretilebilir**. BIST
+> asset'lerinin canlı DB'de pasifleştirilmesi **bilinçli olarak migration değildir** — DB durum
+> mutasyonu kod commit'inden ayrı, aşağıdaki operasyonel adımla uygulanır. Böylece commit yalnızca kodu
+> temsil eder, DB durumundan bağımsız kalır.
+>
+> **Not (katman ayrımı):** Kod filtreleri (`assets.py`/`signals.py` → `asset_type==CRYPTO`) DB'den
+> **bağımsız** çalışır; commit canlıya geçtiğinde BIST **kullanıcıya zaten görünmez** olur. Aşağıdaki
+> adımın tek ek işlevi **scheduler'ın BIST üretimini durdurması** (yeni BIST sinyali/veri üretmemesi).
+> BIST kodu (yahoo_collector, market_hours, useBistStatus, macro TCMB/KAP, logolar) **dormant** kalır →
+> **CP-2** temizler. Geçmiş BIST verisi hard-DELETE + STOCK enum migration'ı = **CP-3** (bu adımda YOK).
+
+**Rollout sırası (kod deploy edildikten SONRA, §3 tamamlanınca):**
+1. **BIST asset'lerini pasifleştir** (aktif olan tümünü):
+   ```sql
+   UPDATE assets SET is_active = false
+   WHERE asset_type = 'STOCK' AND is_active = true
+   RETURNING symbol;   -- pasifleştirilenleri kaydet (rollback için)
+   ```
+2. **Scheduler doğrulaması:** bir tarama döngüsü sonrası (Admin → "Şimdi Çalıştır" veya doğal cycle)
+   **yeni STOCK sinyali ÜRETİLMEMELİ** — scheduler `Asset.is_active == True` filtreler.
+   Doğrula: `SELECT count(*) FROM signals s JOIN assets a ON a.id=s.asset_id
+   WHERE a.asset_type='STOCK' AND s.created_at > <cutover_ts>;` ⇒ **0**.
+3. **Crypto-only QA:**
+   - API: `/assets?page_size=200` ⇒ **0 BIST** (yalnız crypto); `/signals?page_size=100` ⇒ **0 BIST**.
+   - UI (gerçek tarayıcı): Sinyal Merkezi (HİSSE filtresi yok) · Piyasalar (TÜMÜ==KRİPTO, HİSSE sekmesi yok)
+     · Makro (KAP-açıklaması bölümü yok, global makro var) · Sinyal Geçmişi (BIST seçeneği yok) · Landing
+     ("BIST/Hisse/Yahoo" ifadesi yok).
+4. **Rollout'u tamamla:** 1–3 geçtiyse cutover kapatılır; aksi halde geri-al (aşağı) + kök-neden.
+
+**Rollback (bu operasyonel adım için):**
+```sql
+-- Adım 1'de RETURNING ile kaydedilen sembolleri geri aç:
+UPDATE assets SET is_active = true WHERE asset_type='STOCK' AND symbol IN (<kaydedilen semboller>);
+```
+Not: Asset-reaktivasyonu **UI'ı geri getirmez** (kod filtresi BIST'i yine gizler); yalnız scheduler'ın
+BIST üretimini yeniden açar. Kullanıcı-yüzeyini geri almak için **kod rollback** (§5-A) gerekir.

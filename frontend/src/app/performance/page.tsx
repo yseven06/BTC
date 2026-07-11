@@ -335,7 +335,7 @@ export default function PerformancePage() {
             <h3 className="text-base font-display text-text-primary mb-4">Backtest Ayarları</h3>
             <form onSubmit={handleRunBacktest} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-display text-text-secondary uppercase">Hisse / Kripto Kodu</label>
+                <label className="text-xs font-display text-text-secondary uppercase">Kripto Kodu</label>
                 <input
                   type="text"
                   value={symbol}
@@ -449,7 +449,7 @@ export default function PerformancePage() {
                 <Play className="w-12 h-12 text-border-medium mb-3" />
                 <h4 className="text-sm font-display text-text-secondary">Simülasyon Bekleniyor</h4>
                 <p className="text-xs text-text-muted max-w-[280px] mt-1">
-                  Hisse veya coin belirterek walk-forward geçmiş simülasyonu başlatın.
+                  Coin belirterek walk-forward geçmiş simülasyonu başlatın.
                 </p>
               </div>
             ) : (

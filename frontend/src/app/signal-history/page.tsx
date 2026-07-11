@@ -316,7 +316,6 @@ export default function SignalHistoryPage() {
               className="bg-bg-secondary border border-border-subtle rounded-lg px-3 py-1.5 text-xs text-text-primary">
               <option value="all">Tüm Piyasalar</option>
               <option value="crypto">Kripto</option>
-              <option value="stock">BIST</option>
             </select>
 
             <select value={outcome} onChange={(e) => { setOutcome(e.target.value as any); setPage(1); }}

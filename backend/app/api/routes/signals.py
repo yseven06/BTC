@@ -17,7 +17,7 @@ from sqlalchemy.orm import joinedload
 
 from app.auth.dependencies import get_current_user
 from app.database import get_db
-from app.models.asset import Asset
+from app.models.asset import Asset, AssetType
 from app.models.signal import Signal, SignalOutcome, SignalPerformance, SignalType, Direction, RiskLevel
 from app.models.intelligence import SignalSnapshot, CoinMemory, SignalStatusHistory
 from app.models.user import User
@@ -72,7 +72,11 @@ async def list_signals(
     if free_cap > 0:
         # Cap how many they can ask for and how many we surface in total.
         page_size = min(page_size, free_cap)
-    query = select(Signal).where(Signal.is_active == True)
+    # Crypto-only ürün (2026-07): BIST/hisse kaldırıldı — sinyaller yalnız kripto.
+    query = select(Signal).where(
+        Signal.is_active == True,
+        Signal.asset.has(Asset.asset_type == AssetType.CRYPTO),
+    )
 
     if asset_id is not None:
         query = query.where(Signal.asset_id == asset_id)
@@ -180,7 +184,9 @@ async def signal_history(
     List all signals including inactive/expired ones, with rich filtering
     so users can audit how past signals actually played out.
     """
-    query = select(Signal).join(Asset).outerjoin(SignalPerformance)
+    # Crypto-only ürün: geçmiş yalnız kripto (BIST arşiv verisi kullanıcıya gösterilmez).
+    query = (select(Signal).join(Asset).outerjoin(SignalPerformance)
+             .where(Asset.asset_type == AssetType.CRYPTO))
 
     if asset_id is not None:
         query = query.where(Signal.asset_id == asset_id)
@@ -260,6 +266,8 @@ async def signal_history_stats(
     from sqlalchemy import case
 
     def _filters(q):
+        # Crypto-only ürün: istatistikler yalnız kripto (BIST arşivi hariç).
+        q = q.where(Asset.asset_type == AssetType.CRYPTO)
         if market is not None:
             q = q.where(Asset.asset_type == market)
         if date_from is not None:
@@ -528,7 +536,8 @@ async def lifecycle_metrics(
 
     # 3) Prevented flip-flops (the cheap counter) + actual immediate reversals.
     flip_prevented = (await db.execute(text(
-        "SELECT COALESCE(SUM(flipflop_prevented_count),0) FROM signals"
+        "SELECT COALESCE(SUM(flipflop_prevented_count),0) FROM signals "
+        "WHERE asset_id IN (SELECT id FROM assets WHERE asset_type = 'CRYPTO')"
     ))).scalar()
     actual_flipflops = (await db.execute(text(
         f"""WITH t AS (
@@ -578,6 +587,7 @@ async def lifecycle_metrics(
             JOIN signal_performances p ON p.signal_id = h.signal_id
             JOIN signals s ON s.id = h.signal_id
             WHERE s.is_active = false AND p.outcome <> 'ACTIVE'
+              AND s.asset_id IN (SELECT id FROM assets WHERE asset_type = 'CRYPTO')
             GROUP BY 1"""
     ))).fetchall()
     inv = _acc_block(inv_rows)
@@ -595,6 +605,7 @@ async def lifecycle_metrics(
             JOIN signal_performances p ON p.signal_id = h.signal_id
             JOIN signals s ON s.id = h.signal_id
             WHERE s.is_active = false
+              AND s.asset_id IN (SELECT id FROM assets WHERE asset_type = 'CRYPTO')
             GROUP BY 1"""
     ))).fetchall()
     appr = {str(r[0]): r[1] for r in appr_rows}

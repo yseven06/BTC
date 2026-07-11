@@ -30,7 +30,7 @@ const ENGINES = [
 
 const STEPS = [
   { n: '1', title: 'Ücretsiz Kaydol', desc: '30 saniyede hesap aç, kredi kartı gerekmez.' },
-  { n: '2', title: 'Kripto & BIST\'i Canlı İzle', desc: '9 AI motoru kripto ve BIST\'i 7/24 tarayıp sinyal üretir.' },
+  { n: '2', title: 'Kripto Piyasalarını Canlı İzle', desc: '9 AI motoru kripto piyasalarını 7/24 tarayıp sinyal üretir.' },
   { n: '3', title: 'Akıllı Takip Et', desc: 'Telegram\'dan anında haberdar ol, performansını Sinyal Geçmişi\'nde gör.' },
 ];
 
@@ -89,7 +89,7 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 pt-16 pb-12 text-center">
         <h1 className="text-h1 font-display text-text-primary max-w-3xl mx-auto">{/* H1 32/-0.025/650 tek-deger (P8/D9+D6+D7); hero mekanigi Phase 4 - dokunulmadi */}
-          9 AI motoru kripto ve BIST'i 7/24 tarar,{' '}
+          9 AI motoru kripto piyasalarını 7/24 tarar,{' '}
           <span>doğrulanabilir sinyaller</span> üretir
         </h1>
         <p className="text-base md:text-lg text-text-secondary mt-5 max-w-2xl mx-auto">
@@ -257,7 +257,7 @@ export default function LandingPage() {
             </div>
             <ul className="space-y-3 text-xs text-text-secondary leading-relaxed">
               <li className="flex gap-2"><Info className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" /> AI çıktıları yanlış veya eksik olabilir; tek başına değil, kendi araştırmanla birlikte değerlendirilmelidir.</li>
-              <li className="flex gap-2"><Info className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" /> Veriler üçüncü taraf sağlayıcılardan gelir (Binance, Yahoo Finance, CoinGecko); gecikme veya hata olabilir.</li>
+              <li className="flex gap-2"><Info className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" /> Veriler üçüncü taraf sağlayıcılardan gelir (Binance, CoinGecko); gecikme veya hata olabilir.</li>
               <li className="flex gap-2"><Info className="w-4 h-4 text-text-muted flex-shrink-0 mt-0.5" /> Geçmiş performans geleceği garanti etmez; kesintisiz veya hatasız hizmet garantisi verilmez.</li>
             </ul>
           </div>
@@ -299,7 +299,6 @@ export default function LandingPage() {
             <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">Fiyat ve piyasa verileri tanınmış sağlayıcılardan gelir:</p>
             <ul className="mt-3 space-y-1.5 text-xs text-text-secondary">
               <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Binance — kripto fiyat/mum verisi</li>
-              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Yahoo Finance — BIST hisse verisi</li>
               <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> CoinGecko — piyasa metadata & Fear/Greed</li>
             </ul>
           </div>

@@ -70,7 +70,7 @@ durumda aktarım **KVKK'nın yurt dışına aktarım hükümleri** çerçevesind
 - **Hata izleme ve ürün analitiği:** (ör. Sentry; PostHog — yalnızca onayla),
 - **Ödeme:** ödeme/abonelik hizmet sağlayıcısı (ör. Stripe),
 - **Bot/kötüye kullanım koruması:** Cloudflare Turnstile (adaptif doğrulama),
-- **Piyasa veri sağlayıcıları:** Binance, MEXC, Yahoo Finance, CoinGecko, TradingView
+- **Piyasa veri sağlayıcıları:** Binance, MEXC, CoinGecko, TradingView
   (kural olarak kişisel veri içermeyen piyasa verileri).
 
 **Bot/kötüye kullanım koruması (Cloudflare Turnstile):** Giriş, kayıt ve ödeme gibi

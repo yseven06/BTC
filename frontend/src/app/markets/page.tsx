@@ -54,7 +54,7 @@ export default function MarketsPage() {
           <TrendingUp className="w-6 h-6 text-accent-primary" /> Piyasalar
         </h1>
         <p className="text-sm text-text-secondary mt-1">
-          Takip edilen kripto ve hisse varlıkları — grafik için tıkla
+          Takip edilen kripto varlıkları — grafik için tıkla
         </p>
       </div>
 
@@ -65,7 +65,6 @@ export default function MarketsPage() {
           {([
             { id: 'all',    label: 'TÜMÜ',   icon: BarChart3, count: assets.length },
             { id: 'crypto', label: 'KRİPTO', icon: Bitcoin,   count: cryptoCount },
-            { id: 'stock',  label: 'HİSSE',  icon: Building2, count: stockCount },
           ] as const).map((c) => {
             const Icon = c.icon;
             return (
@@ -137,7 +136,7 @@ export default function MarketsPage() {
                         ? 'bg-accent-ui/15 text-accent-ui'
                         : 'bg-accent-primary/15 text-accent-primary'
                     )}>
-                      {isStock ? 'BIST' : 'CRYPTO'}
+                      CRYPTO
                     </span>
                   </h4>
                   <p className="text-xs text-text-secondary truncate">{asset.name}</p>

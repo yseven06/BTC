@@ -116,7 +116,7 @@ biçimde kullanmanız için size sınırlı bir kullanım hakkı tanır; mülkiy
 
 ## 9. Üçüncü Taraf Hizmetler ve Veri Kaynakları
 
-Hizmet; **Binance, MEXC, Yahoo Finance, CoinGecko, TradingView** gibi üçüncü taraf veri
+Hizmet; **Binance, MEXC, CoinGecko, TradingView** gibi üçüncü taraf veri
 sağlayıcılara, ödeme kuruluşlarına ve altyapı hizmetlerine dayanır. Bu kaynaklardaki veriler
 gerçek zamanlı olmayabilir; gecikme, kesinti veya hata içerebilir. Platform, üçüncü taraf
 hizmet ve verilerin doğruluğundan, sürekliliğinden veya kesintisizliğinden ve bu kaynaklardan

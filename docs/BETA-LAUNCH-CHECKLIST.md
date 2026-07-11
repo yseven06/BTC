@@ -25,6 +25,9 @@ Ayrıntı: [RELEASE-RUNBOOK.md](./RELEASE-RUNBOOK.md) · [DEPLOYMENT.md](./DEPLO
 mevcut DB → **bir kez `migrate.py stamp`** (0003 yıkıcı re-run = veri kaybı). 3. Backend deploy (Railway,
 preDeploy migrate) → **migrate fail ise PROMOTE ETME**. 4. `/health` 200. 5. Frontend deploy (Vercel).
 6. Doğrulama (§5). 7. UptimeRobot + Sentry. (Tek replika + `--workers 1` korunur.)
+8. **Crypto-only cutover (CP-1) — operasyonel adım (migration DEĞİL):** BIST asset'lerini pasifleştir →
+   scheduler doğrula (yeni STOCK sinyali 0) → crypto-only QA (API+UI) → tamamla. Kod filtreleri
+   commit'te; DB deaktivasyonu ayrı operasyonel adım. Ayrıntı: [RELEASE-RUNBOOK.md](./RELEASE-RUNBOOK.md) §8.
 
 ## 4. Rollback sırası
 - **Uygulama (hızlı, varsayılan):** Backend → Railway önceki deployment'a Redeploy/Rollback; Frontend →

@@ -767,7 +767,8 @@ export default function SignalsPage() {
   const [selected, setSelected]   = useState<ApiSignal | null>(null);
   const [tfFilter, setTfFilter]   = useState<TfFilter>('all');
   const [dirFilter, setDirFilter] = useState<DirFilter>('all');
-  const [marketFilter, setMarketFilter] = useState<'all' | 'crypto' | 'stock'>('all');
+  // Crypto-only ürün: market filtresi kaldırıldı; sabit 'all' → tüm (kripto) sinyaller.
+  const marketFilter: 'all' | 'crypto' | 'stock' = 'all';
   const [minQuality, setMinQuality] = useState(5);
   // Row density preference (user-only, persisted). Default 'comfortable' keeps the
   // legacy look; restored from localStorage after mount to avoid hydration mismatch.
@@ -959,39 +960,8 @@ export default function SignalsPage() {
       {/* Filters row */}
       <div className="flex items-center gap-3 flex-wrap">
 
-      {/* Market filter: crypto vs stock — keeps fast-moving 15m/1h crypto
-          signals from drowning out the slower-moving, mostly 4h/1d stock
-          signals when browsing "everything" together. */}
-      <div className="flex items-center gap-1 p-1 bg-bg-secondary border border-border-subtle rounded-xl w-fit">
-        {([
-          { id: 'all',    label: 'TÜMÜ' },
-          { id: 'crypto', label: 'KRİPTO' },
-          { id: 'stock',  label: 'HİSSE' },
-        ] as { id: 'all' | 'crypto' | 'stock'; label: string }[]).map((m) => {
-          const qualified = signals.filter((s) => qualityScore(s.confidence_score) >= minQuality);
-          const cnt = m.id === 'all' ? qualified.length : qualified.filter((s) => s.asset?.asset_type === m.id).length;
-          return (
-            <button
-              key={m.id}
-              onClick={() => setMarketFilter(m.id)}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 text-xs font-display rounded-lg transition-all',
-                marketFilter === m.id
-                  ? 'bg-accent-primary text-white'
-                  : 'text-text-muted hover:text-text-primary'
-              )}
-            >
-              {m.label}
-              <span className={cn(
-                'text-micro font-mono px-1.5 py-0.5 rounded',
-                marketFilter === m.id ? 'bg-white/20' : 'bg-bg-tertiary/60'
-              )}>
-                {cnt}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Crypto-only ürün (2026-07): market filtresi (TÜMÜ/KRİPTO/HİSSE) kaldırıldı;
+          marketFilter state 'all' varsayılanında kalır → tüm (kripto) sinyaller görünür. */}
 
       {/* Timeframe filter */}
       <div className="flex items-center gap-1 p-1 bg-bg-secondary border border-border-subtle rounded-xl w-fit">

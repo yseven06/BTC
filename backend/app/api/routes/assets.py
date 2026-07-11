@@ -36,7 +36,8 @@ async def list_assets(
     """
     List assets with optional filtering and pagination.
     """
-    query = select(Asset)
+    # Crypto-only ürün (2026-07): BIST/hisse kaldırıldı — public varlık listesi yalnız kripto.
+    query = select(Asset).where(Asset.asset_type == AssetType.CRYPTO)
 
     if asset_type is not None:
         try:

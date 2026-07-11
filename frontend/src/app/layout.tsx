@@ -17,7 +17,7 @@ const inter = Inter({ subsets: ["latin", "latin-ext"], variable: "--font-sans", 
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 const SITE_TITLE = "TradeMinds AI - Advanced Trading Intelligence Platform";
-const SITE_DESCRIPTION = "AI-Powered trading signals, technical market structure analysis, and automated risk scoring for Crypto and BIST markets.";
+const SITE_DESCRIPTION = "AI-Powered trading signals, technical market structure analysis, and automated risk scoring for Crypto markets.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
