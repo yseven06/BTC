@@ -5,6 +5,26 @@ Kural: **her revizyon = commit + sürüm artışı + bu dosyada bir satır.** St
 
 ---
 
+## v1.5 — K-J motion-paketi: veri-foton + T3 carve-out (VL revizyonu) · 2026-07-12
+
+> **Kapsam:** K-J karar seansı — Motion Doctrine v1'deki `[GATED: K-J]` maddelerin tamamı (7/7) kullanıcı onayıyla yasalaştı; etiketler `[ONAYLI: VL v1.5]` oldu (`[GATED: K-C2]` ayrı kapıdır, kapalı kalır). Değişen belgeler: VL (başlık+§Ölçüm+süre-tablosu+Lint satırı), Bible §01 tek-rejim parantezi (v1.5 eki), Motion Doctrine (etiket-geçişi + §9). **Bu CP yalnız belge+enforcement-altyapısıdır — ürün davranışı değişmedi** (uygulama ayrı CP'ler: M-L1 → M-P1).
+
+### Onaylanan 7 madde (kilit şartlarıyla)
+1. **`--dur-flash: 300ms`** — kanonik set {140,150,180,**300**,360,520}+50 oldu; 8 semantik token = 6 ayrık değer; app 600ms sert-tavanı değişmedi.
+2. **Foton→`background-color` istisnası (dar-tanım):** yalnız gerçek-olay-bağlı + geçici (tek-atım) + coalesced (görünür değişim başına 1, satır-başı ≥~2s) bg-tint; kalıcı/hover/dekoratif bg-transition istisnaya girmez. Compositor-only kuralının tek renk-istisnası.
+3. **Bull/bear geçici yüzey-alfa:** yalnız mevcut `/10–/15` alfa-ailesi (rozet hücreleriyle aynı); **COL-11 hex kilidi açılmadı**; "bull/bear asla glow/atmosfer" aynen (bu alan-içi tint).
+4. **T3 landing-reveal carve-out:** öğe-başı süreler set-İÇİ (≤520+stagger 50); **sekans-toplamı ≤1.2s yalnız landing** (`once` + `sessionStorage` + reduced'da tamamen atlanır); app tavanı değişmez — landing-mühürlü (glow-drift emsali).
+5. **Reduce-assert:** motion-selftest reduced-motion 3-katman + scroll-auto assert'leri (mevcut, v1.5'te köprü-assert'lerle genişledi: 42→51).
+6. **M-L1 Hero Reveal** (uygulama CP'si): **H1 STATİK/anında** (LCP şartı), CLS 0, tek-oynatım.
+7. **M-P1 Tick Photon** (uygulama CP'si): coalesced + 60sn pulse-gözlemi + flash-anı kontrast DoD; reduce'ta renk-bilgisi kalır.
+
+### Enforcement senkronu (aynı CP)
+- `globals.css` `--dur-flash: 300ms` + `tailwind.config.ts` `transitionDuration.flash` köprüsü.
+- `trademinds-gates.cjs` ALLOWED_MS + gate-5 mesajı · `design-gates.mjs` DUR_SET · `motion-selftest.mjs` EXPECT_DUR/TW_DUR + gate↔token küme-eşitliği (51/51 geçer).
+
+### Bakım (bu revizyonda)
+- VL süre-tablosu `--dur-settle` satırındaki bayat "**count-up**" ibaresi kaldırıldı (count-up Motion Doctrine'de yasak; v1.3'ten kalan metin artığıydı — davranış zaten yoktu).
+
 ## Motion Doctrine v1 — kanonikleştirme (yeni belge) · 2026-07-12
 
 > **Kapsam:** `MOTION-DOCTRINE-v1.md` design-standards ailesine KANONİK olarak eklendi — Landing + Dashboard + Signal Center + tüm uygulama için tek motion referansı. **Bu bir Bible/VL kural-revizyonu DEĞİLDİR** (VL v1.4 değerleri aynen; sürüm artmadı): doktrin, Constitution §8 + MP-v1 motion paketinin icra-belgesidir. `[GATED: K-J]` etiketli maddeler (--dur-flash 300 · foton→bg-color · bull/bear yüzey-alfa · T3 landing-reveal carve-out ≤1.2s) **K-J / VL v1.5 paketi onaylanana dek yürürlükte değildir** — doktrin onları tanımlar, yasalaştırmaz. Uygulama önkoşulları (§8 M-0: MO-01 sidebar + gate-5 TSX borçları) `e848674` ile kapandı; gate-5 TSX envanteri 0.

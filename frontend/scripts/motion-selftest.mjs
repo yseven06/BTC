@@ -37,6 +37,7 @@ function ok(cond, label) {
 const EXPECT_DUR = {
   '--dur-micro': 140, '--dur-state': 180, '--dur-photon': 150, '--dur-warm': 140,
   '--dur-settle': 520, '--dur-route': 180, '--dur-overlay': 360, '--stagger': 50,
+  '--dur-flash': 300, // v1.5 (K-J): veri-foton bg-tint
 };
 for (const [tok, ms] of Object.entries(EXPECT_DUR)) {
   const m = css.match(new RegExp(`${tok}\\s*:\\s*(\\d+)ms`));
@@ -93,7 +94,8 @@ if (twKf) {
 
 // ── 5 · tailwind köprüsü token-bağlı ─────────────────────────────────────────
 const TW_DUR = { micro: '--dur-micro', state: '--dur-state', photon: '--dur-photon', warm: '--dur-warm',
-  settle: '--dur-settle', route: '--dur-route', overlay: '--dur-overlay', stagger: '--stagger' };
+  settle: '--dur-settle', route: '--dur-route', overlay: '--dur-overlay', stagger: '--stagger',
+  flash: '--dur-flash' };
 for (const [key, tok] of Object.entries(TW_DUR)) {
   ok(new RegExp(`${key}:\\s*'var\\(${tok}\\)'`).test(tw), `tailwind transitionDuration.${key} → var(${tok})`);
 }

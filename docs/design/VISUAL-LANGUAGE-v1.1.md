@@ -1,6 +1,6 @@
 # TradeMinds Visual Language — "Gece Seansı"
 
-**Sürüm:** v1.4 (KANONIK) · **Tarih:** 2026-07-09 · *(v1.4: Karot geometri revizyonu — fitilli-omurga; motion-tablosu hizalandı; bkz. CHANGELOG)*
+**Sürüm:** v1.5 (KANONIK) · **Tarih:** 2026-07-12 · *(v1.5: K-J motion-paketi — `--dur-flash 300` + foton bg-tint dar-tanımı + T3 landing-reveal carve-out; v1.4: Karot geometri revizyonu; bkz. CHANGELOG)*
 **Statü:** Design Bible'ın **Ek A'sı (Annex A)** — Art Direction / atmosfer · ışık · motion-bütçesi katmanı. Yeni tasarım sistemi değildir.
 **Kanonik kaynak:** bu dosya (`docs/design/`). Dosya adı sabittir; güncel sürüm bu başlıkta ve CHANGELOG'da izlenir. Artifact yalnızca görsel aynadır.
 **Kanoniklik (bkz. Bible §08/C1):** atmosfer · ışık · motion-bütçesi konularında **bu belge kanoniktir**; token/komponent/layout konularında Bible kanoniktir; çelişkide **daha kısıtlayıcı kural kazanır** ve her iki belgede aynı revizyonla kapatılır.
@@ -316,7 +316,8 @@ Kural: **viewport başına aynı anda en çok 1 ambient animasyon.** Hareket enf
 - **Token/değer:** viewport başına ≤1 ambient (yalnız landing) · yüksek-frekans → foton `--dur-photon 150` flaş (konum/scale sabit) · düşük-frekans olay → ayrılmış mikro-hareket `--dur-settle 520` (≤600 tavan) · yaş > X → statik (X = veri-gated).
 - **Teknik:** Frekans-tabanlı bütçe; sık güncellenen değerler (canlı fiyat, komut paleti) hareket taşımaz, yalnız foton flaşı (`--dur-photon 150` +1 lümen, konum sabit). Aynı satırda ≥2 canlı sayı foton'ları **senkronize edilmez** (yapay "canlılık dalgası" yasak). Bayatlayan/eski veride hareket durur (yaş damgası).
 - **DoD:** Canlı fiyat hücresi hareketsiz (yalnız foton); aynı satırdaki foton'lar senkron değil; eski veri statik + yaş damgalı; landing'de aynı anda ≤1 ambient.
-- **Ölçüm:** Canlı fiyat güncellemesinde layout-shift=0, yalnız opacity/color flaşı (`--dur-photon 150`); landing ambient ≤1; foton tetikleyicileri per-hücre bağımsız (ortak zamanlayıcı yasağı).
+- **Ölçüm:** Canlı fiyat güncellemesinde layout-shift=0, yalnız opacity/color flaşı (`--dur-photon 150`) **veya v1.5 veri-fotonu: olay-bağlı geçici `background-color` tint'i (`--dur-flash 300`)**; landing ambient ≤1; foton tetikleyicileri per-hücre bağımsız (ortak zamanlayıcı yasağı).
+- **v1.5 veri-foton dar-tanımı (K-J):** bg-tint YALNIZ gerçek telemetri olayına bağlı, geçici (tek-atım, sönümlü) ve **coalesced** (görünür değişim başına 1; satır-başı ≥~2s) olabilir; kalıcı/hover/dekoratif `background-color` transition'ları bu istisnaya GİRMEZ. Tint rengi yalnız mevcut bull/bear alfa-ailesinden (`/10–/15` bandı — 20-hücre setindeki rozet hücreleriyle aynı aile; yeni hex/alfa yok); "bull/bear asla glow/atmosfer" kuralı aynen geçerlidir (bu glow değil, alan-içi tint). Flash-anı metin-kontrast ölçümü uygulama-CP'sinin DoD'udur.
 
 ### Süre tablosu (kapalı küme · ayrık token)
 
@@ -326,15 +327,17 @@ Kural: **viewport başına aynı anda en çok 1 ambient animasyon.** Hareket enf
 | `--dur-state` | 180ms | Aç/kapa/geçiş; sticky-header aktivasyonu. **Karot fitil-dönüşü bu banda eklenir** (`--ease-signal`). |
 | `--dur-photon` | 150ms | Sayı güncelleme +1 lümen flaşı; konum/scale sabit. Overlay backdrop fade de bu token. |
 | `--dur-warm` | 140ms | Kart yüzey-ısınma + satır-ısınma (ease-out). |
-| `--dur-settle` | 520ms | Karot doğum settle + reveal + count-up. App-motion üst sınır bandı (≤600 sert-tavan). |
+| `--dur-settle` | 520ms | Karot doğum settle + reveal. App-motion üst sınır bandı (≤600 sert-tavan). *(v1.5: "count-up" ibaresi kaldırıldı — count-up Motion Doctrine'de yasaktır; bayat v1.3 metniydi.)* |
 | `--dur-route` | 180ms | Route ışık-devri (giden −1/gelen +1 luminans); layout-anim yok, CLS=0. View Transitions API kullanılmaz. |
 | `--dur-overlay` | 360ms | Modal/dropdown/toast/palette spring settle; app-motion 600 tavanı içinde. |
+| `--dur-flash` | 300ms | **v1.5 (K-J):** veri-foton bg-tint (yukarıdaki dar-tanım). İlk kullanım M-P1 (SignalTable fiyat hücresi). |
 | `stagger` | 50ms | Liste-giriş + Karot 9-motor fitil-dönüşü + loading skeleton. App'te izinli TEK anlamlı stagger. |
 | `press-scale` | .985 (lg) / .96 (sm) | Global press geri bildirimi; süre = `--dur-micro 140`. reduced-motion'da kaldırılır. |
 
 - **Kanonik easing:** `--ease-signal: cubic-bezier(.2,.8,.2,1)` (tek tanım, §06 Bible). Route: giden `ease-in` (−1 lum), gelen `ease-out` (+1 lum). **`ease-in-out` YASAK.** Layout ASLA animasyonlanmaz.
 - **Route ışık-devri (ölçüm):** giden computed lightness −1 E-basamağı, gelen +1 (before/after assert).
-- **Lint (süre kilidi):** `transition-duration` ∈ {140,150,180,360,520} (+ stagger 50) token seti dışı = **red**; hiçbir değer 600ms sert-tavanı aşmaz.
+- **Lint (süre kilidi):** `transition-duration` ∈ {140,150,180,**300**,360,520} (+ stagger 50) token seti dışı = **red**; hiçbir değer 600ms sert-tavanı aşmaz. *(v1.5: enforcement üçlüsü senkron — `trademinds-gates.cjs` + `design-gates.mjs` + `motion-selftest.mjs`.)*
+- **v1.5 T3 landing-reveal carve-out (K-J):** landing'in tek-seferlik açılış koreografisinde öğe-başı süreler kanonik set-İÇİ kalır (≤520 + stagger 50); **SEKANS TOPLAMI ≤1.2s** yalnız landing'de izinlidir (`once` + `sessionStorage` + reduced-motion'da tamamen atlanır; IntersectionObserver-tetikli, scroll-scrubbing değil). **App'in 600ms tek-animasyon sert-tavanı DEĞİŞMEZ** — carve-out landing'e mühürlüdür (glow-drift emsali).
 - Tümü `prefers-reduced-motion`'da kapanır (ambient dâhil — Canvas statik kare çizer).
 - **Migration (v1.1→v1.3):** süre **aralıkları** (120–160 / 150–200 / ~500-600 …) → **ayrık token** (140/150/180/360/520 + stagger 50); "skeleton shimmer / sayı-tick renk-flash" → **sinyal-Karot skeleton (boş-Karot) + foton-tick**; route "fade/opacity" → "ışık-devri (giden −1/gelen +1 lum)"; durum-etiketli shimmer kalıcı yasak (§11).
 

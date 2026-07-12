@@ -26,7 +26,8 @@ const SURFACE_PROPS = new Set(['background', 'background-color', 'background-ima
 const SHADOW_PROPS = new Set(['box-shadow', 'text-shadow']);
 const DUR_PROPS = new Set(['transition-duration', 'animation-duration', 'transition', 'animation']);
 // MO-01 ayrık küme (ms) + stagger; 0 daima serbest; var(--dur-*) token'ları daima serbest.
-const ALLOWED_MS = new Set([140, 150, 180, 360, 520, 50]);
+// v1.5 (K-J): +300 = --dur-flash (veri-foton bg-tint; olay-bağlı/coalesced).
+const ALLOWED_MS = new Set([140, 150, 180, 300, 360, 520, 50]);
 const DUR_LITERAL_RE = /(\d*\.?\d+)\s*(ms|s)\b/g;
 
 function isKarotExempt(decl) {
@@ -138,7 +139,7 @@ const gate3 = mkRule(
 const DUR_TOKEN_RE = /^--(dur|stagger)/;
 const gate5 = mkRule(
   'duration-token-set',
-  'gate-5 süre-kümesi: süre ayrık token setinden olmalı {140,150,180,360,520}ms+50ms stagger veya var(--dur-*) (MO-01 tek-rejim; app sert-tavan 600ms)',
+  'gate-5 süre-kümesi: süre ayrık token setinden olmalı {140,150,180,300,360,520}ms+50ms stagger veya var(--dur-*) (MO-01 tek-rejim; app sert-tavan 600ms)',
   (decl) => {
     if (inReducedMotion(decl)) return null; // reduced-motion 0.01ms son-kare muaf
     if (inLandingAmbient(decl)) return null; // landing glow-drift (VL:255 landing-only ambient); app 600ms tavani degismedi

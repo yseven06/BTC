@@ -110,6 +110,7 @@ const config: Config = {
       transitionDuration: {
         micro: 'var(--dur-micro)', state: 'var(--dur-state)', photon: 'var(--dur-photon)', warm: 'var(--dur-warm)',
         settle: 'var(--dur-settle)', route: 'var(--dur-route)', overlay: 'var(--dur-overlay)', stagger: 'var(--stagger)',
+        flash: 'var(--dur-flash)',
       },
       transitionTimingFunction: {
         signal: 'var(--ease-signal)',

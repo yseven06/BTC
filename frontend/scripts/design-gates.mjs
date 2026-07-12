@@ -7,7 +7,7 @@
  *   gate-1/TSX  token-dışı-hex: src TSX/TS içinde ham renk-hex (izin-listesi hariç)
  *   gate-4      kırpılmış-eksen: chart config'lerinde baseline-kırpma desenleri
  *   gate-5/TSX  süre-token: Tailwind duration-* + inline-style transition/animation
- *               literalleri ayrık token setinden ({140,150,180,360,520}+50) veya
+ *               literalleri ayrık token setinden ({140,150,180,300,360,520}+50) veya
  *               var(--dur-*) olmalı (MO-01; app 600ms sert-tavan). CSS ayağı gate-5
  *               (stylelint) ERROR; TSX ayağı WARN-envanteri (--strict CI'da error).
  *
@@ -44,7 +44,7 @@ const CLIP_PATTERNS = [
 // duration (duration-micro/state/…) ve duration-[var(--dur-*)] serbest; yakalanan:
 // numerik/arbitrary literal (duration-200, duration-[0.3s]) + inline-style
 // transition/animation literalleri. var(--dur-*) her zaman muaf.
-const DUR_SET = new Set([140, 150, 180, 360, 520, 50]);
+const DUR_SET = new Set([140, 150, 180, 300, 360, 520, 50]); // v1.5: +300 (--dur-flash, K-J)
 function badDurationsTSX(line) {
   const bad = [];
   let m;

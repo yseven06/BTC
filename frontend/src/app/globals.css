@@ -66,6 +66,7 @@
     --dur-settle:  520ms;
     --dur-route:   180ms;
     --dur-overlay: 360ms;
+    --dur-flash:   300ms; /* K-J/VL v1.5: veri-foton bg-tint (olay-bağlı, coalesced) — ilk kullanım M-P1'de */
     --stagger:     50ms;
     --ease-signal: cubic-bezier(0.2, 0.8, 0.2, 1);
     /* MO-02 sistemik: Tailwind v4 transition-* utility'lerinin DEFAULT easing'ini
