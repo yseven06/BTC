@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -43,6 +43,29 @@ const OUTCOME_PILL = {
   loss:      { label: 'SL', cls: 'bg-bearish/15 text-bearish' },
   breakeven: { label: 'BE', cls: 'bg-bg-tertiary/60 text-text-secondary' },
 } as const;
+
+// M-L1 · T3 fold-altı bölüm reveal'ı (Doctrine §1/§3): viewport-girişte TEK-ATIM
+// 'rv-in' — IntersectionObserver pasif (scroll-listener yok), ilk kesişimde
+// disconnect (once). active=false ise düz section'dır: IO hiç kurulmaz, statik hal
+// (reduce / oturumda-tekrar / storage-yok dalları). Koşullu-mount bölümlerde
+// ref-callback IO'yu mount anında kurar; React 19 ref-cleanup ile sızıntısız.
+function RevealSection({ active, id, className, children }: {
+  active: boolean; id?: string; className?: string; children: React.ReactNode;
+}) {
+  const ref = useCallback((el: HTMLElement | null) => {
+    if (!el) return;
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { el.classList.add('rv-in'); io.disconnect(); }
+    }, { rootMargin: '0px 0px -10% 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return (
+    <section ref={active ? ref : undefined} id={id} className={active ? className + ' rv-section' : className}>
+      {children}
+    </section>
+  );
+}
 
 function relTime(iso: string): string {
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
@@ -126,6 +149,22 @@ export default function LandingPage() {
   const [sicilSignals, setSicilSignals] = useState<ApiSignal[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
 
+  // M-L1 · T3 reveal kararı — bir kez, ilk render'da (VL v1.5 / K-J):
+  // reduce'ta ve aynı oturumda tekrar-görüntülemede attribute hiç basılmaz →
+  // statik dal; storage kapalıysa da statik (fail-safe). İçerik yalnız client'ta
+  // mount olduğundan (auth-loading spinner'ı) FOUC/hydration riski yapısal yok.
+  const [reveal] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+      if (sessionStorage.getItem('tm_landing_reveal') === '1') return false;
+      sessionStorage.setItem('tm_landing_reveal', '1');
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
   useEffect(() => {
     if (!loading && user) router.replace('/dashboard');
   }, [user, loading, router]);
@@ -154,7 +193,7 @@ export default function LandingPage() {
   const showPanelArea = !proofLoaded || hasProofPanel;
 
   return (
-    <div className="landing-atmosphere min-h-screen bg-bg-primary">{/* CP-6/K-C1: grain zemin katmanı (R3; yalnız landing) */}
+    <div className="landing-atmosphere min-h-screen bg-bg-primary" data-landing-reveal={reveal ? '' : undefined}>{/* CP-6/K-C1: grain zemin katmanı (R3; yalnız landing) · M-L1: reveal yalnız attribute varken yaşar */}
       {/* Nav — sticky (CP-1a): opak --e0 zemin + alt-hairline; scroll'da erisim korunur. z-10 = --z-sticky (kanonik olcek). */}
       <header className="sticky top-0 z-10 bg-bg-primary border-b border-border-subtle">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -180,7 +219,9 @@ export default function LandingPage() {
         <div className={cn(showPanelArea && 'md:grid md:grid-cols-[11fr_9fr] md:gap-12 lg:gap-16')}>
           {/* Sol kolon — R3: max-w sınırı; öğeler ayrık sibling (Rezerv-C: gelecek reveal hedefleri) */}
           <div className="max-w-[32rem]">
-            <p className="text-micro font-medium uppercase tracking-wide text-text-secondary">
+            {/* M-L1 sekans: rv-1..5 = mikro-etiket→alt-metin→dürüst-satır→CTA→panel.
+                H1 + nav STATİK (K-J kilidi: LCP) — rv sınıfı ASLA almaz. */}
+            <p className="text-micro font-medium uppercase tracking-wide text-text-secondary rv-1">
               KRİPTO SİNYAL İSTİHBARATI — BETA
             </p>
             <h1
@@ -191,16 +232,16 @@ export default function LandingPage() {
               Tek yargı.<br />
               Gizli değil.
             </h1>
-            <p className="text-base md:text-lg text-text-secondary mt-5">
+            <p className="text-base md:text-lg text-text-secondary mt-5 rv-2">
               9 bağımsız AI motoru kripto piyasalarını 7/24 analiz eder. Her sinyal gerekçesi ve gerçek
               sonucu ile kayda geçer. Kazananları da kaybedenleri de aynı sicilde görürsün.
             </p>
-            <p className="text-sm text-text-secondary mt-4">
+            <p className="text-sm text-text-secondary mt-4 rv-3">
               TradeMinds bir yatırım danışmanı değildir; analiz aracıdır. Karar ve risk sana aittir.
             </p>
             {/* R5: ikincil CTA çerçevesiz metin-link — sol kolonda tek kutu (squint: H1 + tek CTA).
                 Mobilde dikey istif (CTA sarma-fix). CP-5c: ikincil CTA kanıta davet eder (#sicil). */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-7">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-7 rv-4">
               <Link href="/register" className="inline-flex items-center justify-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-6 py-3 rounded-xl transition-all hover:shadow-cta">
                 Ücretsiz Başla <ArrowRight className="w-4 h-4" />
               </Link>
@@ -213,7 +254,7 @@ export default function LandingPage() {
           {/* Sağ panel — R2: 32px dikey ofset (diagonal gerilim). Yüklenirken çerçeve
               rezervi durur (CLS 0); yükleme bitip veri yoksa alan tamamen kalkar (K1). */}
           {showPanelArea && (
-            <div className="mt-10 md:mt-8">
+            <div className="mt-10 md:mt-8 rv-5">
               <CanliMasa proof={proof} />
             </div>
           )}
@@ -225,7 +266,7 @@ export default function LandingPage() {
           verecek yeşil-kırmızı sunum yok). Oran/ortalama-getiri metrikleri landing'e dönmez (K-B2+).
           Yüklenirken alan rezervi (CLS 0); veri yoksa bant render edilmez. */}
       {(!proofLoaded || proof?.stats) && (
-        <section className="max-w-6xl mx-auto px-6 pb-6">
+        <RevealSection active={reveal} className="max-w-6xl mx-auto px-6 pb-6">
           {proof?.stats ? (
             <div className="border-y border-border-subtle py-5">
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2">
@@ -256,13 +297,13 @@ export default function LandingPage() {
           ) : (
             <div className="min-h-[64px]" />
           )}
-        </section>
+        </RevealSection>
       )}
 
       {/* Sicil — CP-5c: son kapanan sinyaller, SONUCA GÖRE FİLTRESİZ (anti-cherry-pick,
           kilitli karar). Kazanan da kaybeden de aynı sicilde; "yalnız-kazanan" bölümü emekli. */}
       {sicilSignals.length > 0 && (
-        <section id="sicil" className="max-w-6xl mx-auto px-6 pt-16 pb-24 scroll-mt-16">
+        <RevealSection active={reveal} id="sicil" className="max-w-6xl mx-auto px-6 pt-16 pb-24 scroll-mt-16">
           <h2 className="text-h2 font-display text-text-primary text-center">Sicil: Son Kapanan Sinyaller</h2>
           <p className="text-sm text-text-secondary text-center mt-2 max-w-xl mx-auto">
             Sonuca göre filtrelenmedi — kazanan da kaybeden de burada.
@@ -293,14 +334,14 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-        </section>
+        </RevealSection>
       )}
 
       {/* Motorlar — CP-4: 9 eşit ikon-kart (klişe #8) yerine asimetrik iki-parça:
           ferah anlatı (sol) + KUTUSUZ hairline motor-listesi (sağ; "boşluk→hairline→asla-kutu").
           İçerik hiyerarşisi: 9 motor eşit-önemli (konsensüs tezi) → vurgulu-tek-kart değil,
           form değişimi. İkonlar nötr (renk=anlam; motor ikonu eylem/AI-karar değil). */}
-      <section className="max-w-6xl mx-auto px-6 py-24">
+      <RevealSection active={reveal} className="max-w-6xl mx-auto px-6 py-24">
         <div className="md:grid md:grid-cols-[5fr_7fr] md:gap-12 lg:gap-16">
           <div>
             <h2 className="text-h2 font-display text-text-primary">Sinyalin arkasındaki 9 motor</h2>
@@ -332,10 +373,10 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
-      </section>
+      </RevealSection>
 
       {/* How it works */}
-      <section className="max-w-4xl mx-auto px-6 py-24">
+      <RevealSection active={reveal} className="max-w-4xl mx-auto px-6 py-24">
         <h2 className="text-h2 font-display text-text-primary text-center">Dakikalar İçinde Başla</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
           {STEPS.map((s) => (
@@ -348,10 +389,10 @@ export default function LandingPage() {
             </div>
           ))}
         </div>
-      </section>
+      </RevealSection>
 
       {/* Transparency: how it works + honest limits + key messages (all verifiable) */}
-      <section className="max-w-6xl mx-auto px-6 py-24 border-t border-border-subtle">
+      <RevealSection active={reveal} className="max-w-6xl mx-auto px-6 py-24 border-t border-border-subtle">
         <h2 className="text-h2 font-display text-text-primary text-center">Şeffaflık: Nasıl Çalışır, Neyi Vaat Etmez</h2>
         <p className="text-sm text-text-secondary text-center mt-2 max-w-2xl mx-auto">
           TradeMinds bir "sinyal grubu" değildir — denetlenebilir bir kayıt defteridir.
@@ -411,12 +452,12 @@ export default function LandingPage() {
         <div className="max-w-3xl mx-auto mt-8">
           <InvestmentDisclaimer variant="inline" />
         </div>
-      </section>
+      </RevealSection>
 
       {/* Güvenlik — CP-4: 3'lü eşit grid kırıldı — veri-kaynakları karta değil hairline
           bandına (Kanıt-Bandı dili; 2 madde kart olmayı hak etmiyor); altta 2 kart.
           Başlık sola-dayalı (içerik-bölümü; tören-bölümleri ortalanmış kalır). */}
-      <section className="max-w-6xl mx-auto px-6 py-24 border-t border-border-subtle">
+      <RevealSection active={reveal} className="max-w-6xl mx-auto px-6 py-24 border-t border-border-subtle">
         <h2 className="text-h2 font-display text-text-primary">Güvenlik ve Veri Şeffaflığı</h2>
         <p className="text-sm text-text-secondary mt-2 max-w-2xl">
           Verinin nereden geldiğini, nasıl korunduğunu ve gizliliği nasıl ele aldığımızı açıkça paylaşıyoruz.
@@ -454,11 +495,11 @@ export default function LandingPage() {
             <Link href="/yasal" className="inline-block mt-3 text-xs font-display text-accent-primary hover:underline">Yasal belgeleri incele →</Link>
           </div>
         </div>
-      </section>
+      </RevealSection>
 
       {/* Pricing teaser */}
       {plans.length > 0 && (
-        <section className="max-w-6xl mx-auto px-6 py-24">
+        <RevealSection active={reveal} className="max-w-6xl mx-auto px-6 py-24">
           <h2 className="text-h2 font-display text-text-primary text-center">Basit, Şeffaf Fiyatlandırma</h2>
           <p className="text-sm text-text-secondary text-center mt-2">Şeffaf fiyatlandırma, gizli ücret yok — dilediğin an yükselt veya iptal et.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-10 max-w-3xl mx-auto">
@@ -487,18 +528,18 @@ export default function LandingPage() {
               Tüm planları ve süre seçeneklerini gör →
             </Link>
           </div>
-        </section>
+        </RevealSection>
       )}
 
       {/* Final CTA — CP-4: sıfat-başlık → manifesto-uyumlu kapanış; buton metni tüm
           primary'lerle hizalandı (K-A minor kapanışı: tek metin "Ücretsiz Başla"). */}
-      <section className="max-w-4xl mx-auto px-6 pt-24 pb-32 text-center">
+      <RevealSection active={reveal} className="max-w-4xl mx-auto px-6 pt-24 pb-32 text-center">
         <h2 className="text-h2 md:text-h1 font-display text-text-primary">Sicil ortada. Karar senin.</h2>
         <p className="text-sm text-text-secondary mt-3">Kayıt sonrası dashboard'a anında erişim — kredi kartı gerekmez.</p>
         <Link href="/register" className="inline-flex items-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-7 py-3.5 rounded-xl transition-all hover:shadow-cta mt-6">
           Ücretsiz Başla <ArrowRight className="w-4 h-4" />
         </Link>
-      </section>
+      </RevealSection>
 
       {/* Footer is provided globally by LayoutShell (<Footer />): single-source
           investment disclaimer + legal links + cookie settings. No page-local

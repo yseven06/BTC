@@ -412,6 +412,63 @@
 }
 
 /* ============================================
+   M-L1 · T3 Landing Reveal — tek-seferlik açılış koreografisi (VL v1.5 / K-J onayı)
+   YALNIZ [data-landing-reveal] altında yaşar (app'e sızmaz); attribute'u landing
+   karar-mantığı basar (ilk oturum-ziyareti + reduce-değil + storage yazılabilir).
+   H1 + nav STATİK (K-J kilidi: LCP) — asla .rv-* sınıfı almaz.
+   Compositor-only: opacity + transform(≤8px). Sekans: rv-1..4 = --dur-overlay +
+   stagger; rv-5 panel = --dur-settle, delay 4×stagger → son bitiş 720ms ≤ 1.2s
+   (T3 carve-out bütçesi, landing-mühürlü). Fold-altı: .rv-section IO-girişte
+   .rv-in ile tek-atım (delay 0, once). JS ölürse attribute da basılmaz → statik.
+   ============================================ */
+@keyframes landing-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+[data-landing-reveal] .rv-1,
+[data-landing-reveal] .rv-2,
+[data-landing-reveal] .rv-3,
+[data-landing-reveal] .rv-4,
+[data-landing-reveal] .rv-5 {
+  opacity: 0;
+  animation-name: landing-rise;
+  animation-duration: var(--dur-overlay);
+  animation-timing-function: var(--ease-signal);
+  animation-fill-mode: both;
+}
+[data-landing-reveal] .rv-2 { animation-delay: calc(var(--stagger) * 1); }
+[data-landing-reveal] .rv-3 { animation-delay: calc(var(--stagger) * 2); }
+[data-landing-reveal] .rv-4 { animation-delay: calc(var(--stagger) * 3); }
+[data-landing-reveal] .rv-5 {
+  animation-delay: calc(var(--stagger) * 4);
+  animation-duration: var(--dur-settle);
+}
+
+/* Fold-altı bölümler: IO 'rv-in' basana dek gizli (layout yerinde — CLS 0);
+   giriş tek-atım fade + 8px rise. */
+[data-landing-reveal] .rv-section {
+  opacity: 0;
+}
+[data-landing-reveal] .rv-section.rv-in {
+  animation: landing-rise var(--dur-overlay) var(--ease-signal) both;
+}
+
+/* Emniyet katmanı: reduce'ta T3 tamamen atlanır (JS guard attribute'u zaten
+   basmaz; bu blok oturum-ortası reduce-değişimini de anında statiğe düşürür). */
+@media (prefers-reduced-motion: reduce) {
+  [data-landing-reveal] .rv-1,
+  [data-landing-reveal] .rv-2,
+  [data-landing-reveal] .rv-3,
+  [data-landing-reveal] .rv-4,
+  [data-landing-reveal] .rv-5,
+  [data-landing-reveal] .rv-section {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* ============================================
    TP Ladder "Reached" — user_win olay-motion (P6/M04, Bible §06 MO-04/MO-06 + COL-12)
    Anlam KORUNUR (hit_tpN=true gercek olay) ama uygulama event-only doktrine cekildi:
    sonsuz-dongu -> TEK-ATIM (iteration 1); ease-in-out -> --ease-signal; 2.4s -> --dur-settle;

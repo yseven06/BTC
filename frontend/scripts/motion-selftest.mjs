@@ -80,7 +80,7 @@ for (const m of css.matchAll(/@keyframes\s+([\w-]+)\s*\{((?:[^{}]|\{[^{}]*\})*)\
   checkKeyframeProps(css, m[2], `css:${m[1]}`);
 }
 // globals.css beklenen keyframe'ler mevcut mu
-for (const kf of ['route-cycle-in', 'tp-win-photon']) {
+for (const kf of ['route-cycle-in', 'tp-win-photon', 'landing-rise']) {
   ok(new RegExp(`@keyframes\\s+${kf}\\b`).test(css), `keyframe ${kf} mevcut`);
 }
 // tailwind.config keyframes objesi (slideUp/slideDown/fadeIn/scaleIn)
@@ -113,6 +113,29 @@ ok(/if \(inReducedMotion\(decl\)\) return null;/.test(gates), 'reduced-motion mu
 const gate5Body = (gates.match(/'duration-token-set'[\s\S]*?\n\);/) || [''])[0];
 const exemptionReturns = (gate5Body.match(/return null;/g) || []).length;
 ok(exemptionReturns === 3, `gate-5 muafiyet-cikisi = 3 (reduced-motion + landing-ambient + prop-disi filtre); bulunan ${exemptionReturns}`);
+
+// ── 7 · M-L1 T3 landing-reveal kilitleri (VL v1.5 / K-J) ─────────────────────
+// (a) Scope-sızıntı yasağı: her .rv-* selector'ü [data-landing-reveal] altında
+//     yaşar — app yüzeyine sızamaz (Doctrine: T3 YALNIZ landing).
+const cssNoComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+const rvSelectorLines = cssNoComments.split('\n')
+  .map((l) => l.trim())
+  .filter((l) => /\.rv-/.test(l) && /[,{]\s*$/.test(l));
+ok(rvSelectorLines.length >= 8, `M-L1: .rv-* selector satırları mevcut (bulunan: ${rvSelectorLines.length})`);
+ok(rvSelectorLines.every((l) => l.startsWith('[data-landing-reveal]')),
+  'M-L1: tüm .rv-* selector\'leri [data-landing-reveal] scope-içi (app-sızıntısı yok)');
+// (b) Reduce emniyet katmanı: reveal reduce'ta tamamen atlanır (animation none +
+//     opacity 1) — .rv-section reduce-listesinin son selector'ü, blok gövdesine bitişik.
+ok(/\[data-landing-reveal\] \.rv-section \{ animation: none; opacity: 1; \}/.test(cssN),
+  'M-L1: reduce emniyet bloğu (animation:none + opacity:1) mevcut');
+// (c) T3 sekans-bütçe kilidi: max stagger-çarpanı × --stagger + --dur-settle ≤ 1200ms
+//     (VL v1.5 carve-out: sekans toplamı ≤1.2s; öğe süreleri zaten set-içi).
+const staggerMults = [...css.matchAll(/calc\(var\(--stagger\) \* (\d+)\)/g)].map((m) => Number(m[1]));
+ok(staggerMults.length >= 4, `M-L1: stagger-çarpanlı delay katmanları mevcut (bulunan: ${staggerMults.length})`);
+if (staggerMults.length) {
+  const worstMs = Math.max(...staggerMults) * EXPECT_DUR['--stagger'] + EXPECT_DUR['--dur-settle'];
+  ok(worstMs <= 1200, `M-L1: T3 sekans en-geç-bitiş ${worstMs}ms ≤ 1200ms (carve-out bütçesi)`);
+}
 
 // ── Sonuç ────────────────────────────────────────────────────────────────────
 const total = pass + fail;
