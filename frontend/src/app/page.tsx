@@ -164,8 +164,9 @@ export default function LandingPage() {
             <span className="text-micro font-medium uppercase text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm font-display text-text-secondary hover:text-text-primary transition-colors">Giriş Yap</Link>
-            <Link href="/register" className="text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors">
+            {/* CP-4/E: mobilde Giriş gizli (MP-v1 nav spec: logo+CTA kalır) — nav-CTA sarma fix'i */}
+            <Link href="/login" className="hidden sm:inline text-sm font-display text-text-secondary hover:text-text-primary transition-colors">Giriş Yap</Link>
+            <Link href="/register" className="whitespace-nowrap text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors">
               Ücretsiz Başla
             </Link>
           </div>
@@ -175,7 +176,7 @@ export default function LandingPage() {
       {/* Hero — CP-5b: 55/45 "Canlı Masa" (K-D/b1 + R1-R6). Rezerv-A: section relative =
           atmosfer host (CP-6 ışık katmanı buraya girer; arka-plan çocuklara gömülmez).
           Eski %-şerit + istatistik kutusu kaldırıldı (K-B2+ bandı CP-2'de hero-dışı gelir). */}
-      <section className="relative max-w-6xl mx-auto px-6 pt-24 pb-12">
+      <section className="relative max-w-6xl mx-auto px-6 pt-24 pb-16">
         <div className={cn(showPanelArea && 'md:grid md:grid-cols-[11fr_9fr] md:gap-12 lg:gap-16')}>
           {/* Sol kolon — R3: max-w sınırı; öğeler ayrık sibling (Rezerv-C: gelecek reveal hedefleri) */}
           <div className="max-w-[32rem]">
@@ -224,7 +225,7 @@ export default function LandingPage() {
           verecek yeşil-kırmızı sunum yok). Oran/ortalama-getiri metrikleri landing'e dönmez (K-B2+).
           Yüklenirken alan rezervi (CLS 0); veri yoksa bant render edilmez. */}
       {(!proofLoaded || proof?.stats) && (
-        <section className="max-w-6xl mx-auto px-6 pb-4">
+        <section className="max-w-6xl mx-auto px-6 pb-6">
           {proof?.stats ? (
             <div className="border-y border-border-subtle py-5">
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2">
@@ -261,7 +262,7 @@ export default function LandingPage() {
       {/* Sicil — CP-5c: son kapanan sinyaller, SONUCA GÖRE FİLTRESİZ (anti-cherry-pick,
           kilitli karar). Kazanan da kaybeden de aynı sicilde; "yalnız-kazanan" bölümü emekli. */}
       {sicilSignals.length > 0 && (
-        <section id="sicil" className="max-w-6xl mx-auto px-6 py-12 scroll-mt-16">
+        <section id="sicil" className="max-w-6xl mx-auto px-6 pt-16 pb-24 scroll-mt-16">
           <h2 className="text-h2 font-display text-text-primary text-center">Sicil: Son Kapanan Sinyaller</h2>
           <p className="text-sm text-text-secondary text-center mt-2 max-w-xl mx-auto">
             Sonuca göre filtrelenmedi — kazanan da kaybeden de burada.
@@ -295,41 +296,46 @@ export default function LandingPage() {
         </section>
       )}
 
-      {/* Engines */}
-      <section className="max-w-6xl mx-auto px-6 py-16">
-        <h2 className="text-h2 font-display text-text-primary text-center">İhtiyacın Olan Her Şey, Tek Platformda</h2>
-        <p className="text-sm text-text-secondary text-center mt-2 max-w-xl mx-auto">
-          9 bağımsız AI motoru birlikte çalışıp profesyonel düzeyde bir trading kokpiti sunar.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-10">
-          {ENGINES.map((e) => (
-            <div key={e.title} className="glass-panel border border-border-subtle rounded-card p-5">
-              <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3">
-                <e.icon className="w-5 h-5 text-accent-primary" />
+      {/* Motorlar — CP-4: 9 eşit ikon-kart (klişe #8) yerine asimetrik iki-parça:
+          ferah anlatı (sol) + KUTUSUZ hairline motor-listesi (sağ; "boşluk→hairline→asla-kutu").
+          İçerik hiyerarşisi: 9 motor eşit-önemli (konsensüs tezi) → vurgulu-tek-kart değil,
+          form değişimi. İkonlar nötr (renk=anlam; motor ikonu eylem/AI-karar değil). */}
+      <section className="max-w-6xl mx-auto px-6 py-24">
+        <div className="md:grid md:grid-cols-[5fr_7fr] md:gap-12 lg:gap-16">
+          <div>
+            <h2 className="text-h2 font-display text-text-primary">Sinyalin arkasındaki 9 motor</h2>
+            <p className="text-sm text-text-secondary mt-3 leading-relaxed">
+              9 bağımsız AI motoru birlikte çalışıp profesyonel düzeyde bir trading kokpiti sunar.
+            </p>
+            <div className="mt-8 space-y-3">
+              {[
+                { icon: History, label: 'Sinyal Geçmişi' },
+                { icon: Microscope, label: 'Strategy Lab' },
+                { icon: BarChart3, label: 'Sembol Analizi' },
+                { icon: Wallet, label: 'Portföy Takibi' },
+              ].map((f) => (
+                <div key={f.label} className="flex items-center gap-2 text-sm font-display text-text-secondary">
+                  <CheckCircle className="w-4 h-4 text-bullish flex-shrink-0" /> {f.label}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-10 md:mt-0 border-y border-border-subtle divide-y divide-border-subtle">
+            {ENGINES.map((e) => (
+              <div key={e.title} className="flex items-start gap-3 py-3">
+                <e.icon className="w-4 h-4 text-text-secondary flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-display text-text-primary">{e.title}</h3>
+                  <p className="text-xs text-text-secondary mt-0.5 leading-relaxed">{e.desc}</p>
+                </div>
               </div>
-              <h3 className="text-sm font-display text-text-primary">{e.title}</h3>
-              <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">{e.desc}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Beyond signals: platform tools */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-          {[
-            { icon: History, label: 'Sinyal Geçmişi' },
-            { icon: Microscope, label: 'Strategy Lab' },
-            { icon: BarChart3, label: 'Sembol Analizi' },
-            { icon: Wallet, label: 'Portföy Takibi' },
-          ].map((f) => (
-            <div key={f.label} className="flex items-center gap-2 text-sm font-display text-text-secondary">
-              <CheckCircle className="w-4 h-4 text-bullish flex-shrink-0" /> {f.label}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
       {/* How it works */}
-      <section className="max-w-4xl mx-auto px-6 py-16">
+      <section className="max-w-4xl mx-auto px-6 py-24">
         <h2 className="text-h2 font-display text-text-primary text-center">Dakikalar İçinde Başla</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
           {STEPS.map((s) => (
@@ -345,7 +351,7 @@ export default function LandingPage() {
       </section>
 
       {/* Transparency: how it works + honest limits + key messages (all verifiable) */}
-      <section className="max-w-6xl mx-auto px-6 py-16 border-t border-border-subtle">
+      <section className="max-w-6xl mx-auto px-6 py-24 border-t border-border-subtle">
         <h2 className="text-h2 font-display text-text-primary text-center">Şeffaflık: Nasıl Çalışır, Neyi Vaat Etmez</h2>
         <p className="text-sm text-text-secondary text-center mt-2 max-w-2xl mx-auto">
           TradeMinds bir "sinyal grubu" değildir — denetlenebilir bir kayıt defteridir.
@@ -407,23 +413,24 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Security & data transparency — every claim is verifiable / implemented */}
-      <section className="max-w-6xl mx-auto px-6 py-16 border-t border-border-subtle">
-        <h2 className="text-h2 font-display text-text-primary text-center">Güvenlik ve Veri Şeffaflığı</h2>
-        <p className="text-sm text-text-secondary text-center mt-2 max-w-2xl mx-auto">
+      {/* Güvenlik — CP-4: 3'lü eşit grid kırıldı — veri-kaynakları karta değil hairline
+          bandına (Kanıt-Bandı dili; 2 madde kart olmayı hak etmiyor); altta 2 kart.
+          Başlık sola-dayalı (içerik-bölümü; tören-bölümleri ortalanmış kalır). */}
+      <section className="max-w-6xl mx-auto px-6 py-24 border-t border-border-subtle">
+        <h2 className="text-h2 font-display text-text-primary">Güvenlik ve Veri Şeffaflığı</h2>
+        <p className="text-sm text-text-secondary mt-2 max-w-2xl">
           Verinin nereden geldiğini, nasıl korunduğunu ve gizliliği nasıl ele aldığımızı açıkça paylaşıyoruz.
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-10">
-          {/* Data sources */}
-          <div className="glass-panel border border-border-subtle rounded-card p-6">
-            <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3"><Globe className="w-5 h-5 text-accent-primary" /></div>
-            <h3 className="text-sm font-display text-text-primary">Gerçek veri kaynakları</h3>
-            <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">Fiyat ve piyasa verileri tanınmış sağlayıcılardan gelir:</p>
-            <ul className="mt-3 space-y-1.5 text-xs text-text-secondary">
-              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Binance — kripto fiyat/mum verisi</li>
-              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> CoinGecko — piyasa metadata & Fear/Greed</li>
-            </ul>
-          </div>
+        <div className="border-y border-border-subtle py-3 mt-8 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className="text-micro font-medium uppercase tracking-wide text-text-secondary">Gerçek veri kaynakları</span>
+          <span className="text-sm text-text-muted px-1" aria-hidden="true">·</span>
+          <span className="text-sm font-display text-text-primary">Binance</span>
+          <span className="text-sm text-text-secondary">— kripto fiyat/mum verisi</span>
+          <span className="text-sm text-text-muted px-1" aria-hidden="true">·</span>
+          <span className="text-sm font-display text-text-primary">CoinGecko</span>
+          <span className="text-sm text-text-secondary">— piyasa metadata & Fear/Greed</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
           {/* Security */}
           <div className="glass-panel border border-border-subtle rounded-card p-6">
             <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3"><Shield className="w-5 h-5 text-accent-primary" /></div>
@@ -451,7 +458,7 @@ export default function LandingPage() {
 
       {/* Pricing teaser */}
       {plans.length > 0 && (
-        <section className="max-w-6xl mx-auto px-6 py-16">
+        <section className="max-w-6xl mx-auto px-6 py-24">
           <h2 className="text-h2 font-display text-text-primary text-center">Basit, Şeffaf Fiyatlandırma</h2>
           <p className="text-sm text-text-secondary text-center mt-2">Şeffaf fiyatlandırma, gizli ücret yok — dilediğin an yükselt veya iptal et.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-10 max-w-3xl mx-auto">
@@ -483,12 +490,13 @@ export default function LandingPage() {
         </section>
       )}
 
-      {/* Final CTA */}
-      <section className="max-w-4xl mx-auto px-6 py-20 text-center">
-        <h2 className="text-h2 md:text-h1 font-display text-text-primary">Trading Avantajını Bugün İnşa Et</h2>
+      {/* Final CTA — CP-4: sıfat-başlık → manifesto-uyumlu kapanış; buton metni tüm
+          primary'lerle hizalandı (K-A minor kapanışı: tek metin "Ücretsiz Başla"). */}
+      <section className="max-w-4xl mx-auto px-6 pt-24 pb-32 text-center">
+        <h2 className="text-h2 md:text-h1 font-display text-text-primary">Sicil ortada. Karar senin.</h2>
         <p className="text-sm text-text-secondary mt-3">Kayıt sonrası dashboard'a anında erişim — kredi kartı gerekmez.</p>
         <Link href="/register" className="inline-flex items-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-7 py-3.5 rounded-xl transition-all hover:shadow-cta mt-6">
-          Ücretsiz Hesap Oluştur <ArrowRight className="w-4 h-4" />
+          Ücretsiz Başla <ArrowRight className="w-4 h-4" />
         </Link>
       </section>
 
