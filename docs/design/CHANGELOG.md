@@ -5,6 +5,10 @@ Kural: **her revizyon = commit + sürüm artışı + bu dosyada bir satır.** St
 
 ---
 
+## Motion Doctrine v1 — kanonikleştirme (yeni belge) · 2026-07-12
+
+> **Kapsam:** `MOTION-DOCTRINE-v1.md` design-standards ailesine KANONİK olarak eklendi — Landing + Dashboard + Signal Center + tüm uygulama için tek motion referansı. **Bu bir Bible/VL kural-revizyonu DEĞİLDİR** (VL v1.4 değerleri aynen; sürüm artmadı): doktrin, Constitution §8 + MP-v1 motion paketinin icra-belgesidir. `[GATED: K-J]` etiketli maddeler (--dur-flash 300 · foton→bg-color · bull/bear yüzey-alfa · T3 landing-reveal carve-out ≤1.2s) **K-J / VL v1.5 paketi onaylanana dek yürürlükte değildir** — doktrin onları tanımlar, yasalaştırmaz. Uygulama önkoşulları (§8 M-0: MO-01 sidebar + gate-5 TSX borçları) `e848674` ile kapandı; gate-5 TSX envanteri 0.
+
 ## v1.4.2 — Landing atmosferi: key-light + grain (K-C1 mini-revizyon) · 2026-07-12
 
 > **Kapsam:** Design Constitution v1 / CP-6 (K-C1 karar seansı, ΔL %6 kilidi). Yalnız landing; app/dashboard'a atmosfer **eklenmez** (R5). Motion/drift/3D YOK — tamamen statik (R6).
