@@ -612,6 +612,42 @@
 }
 
 /* ============================================
+   M-P1 · Tick Photon — canlı fiyat hücresinin veri-fotonu (VL v1.5 / K-J)
+   Desen = tp-win-photon emsali: STATİK color-mix zemin + OPACITY-only sönüm
+   (keyframe'de renk yok → compositor-only kilidi istisnasız korunur).
+   Tint %12 (= /10–/15 bandı, COL-11 hex açılmadı); overlay METNİN ALTINDA
+   (z:-1 + isolation) → flash-anı kontrastı en-güvenli. Tetik + coalesce JS'te
+   (LivePriceCell): GÖRÜNÜR değişim başına 1, hücre-başı ≥2s, yön = tick yönü,
+   per-hücre bağımsız. Tek-atım: iteration 1, fill yok → biter, base opacity
+   0'a döner; restart key-remount ile (timer/animationend'e güven yok).
+   Reduce: global katman fotonu kapatır — bilgi kaybı yok (rakam anlık +
+   yön-renkli 24s yüzdesi kalıcı). Landing'e giremez (SignalTable app-only).
+   ============================================ */
+@keyframes price-flash {
+  from { opacity: 0.9; }
+  to   { opacity: 0; }
+}
+
+.price-flash-up,
+.price-flash-down {
+  position: relative;
+  isolation: isolate;
+}
+.price-flash-up::after,
+.price-flash-down::after {
+  content: '';
+  position: absolute;
+  inset: -2px -6px;
+  z-index: -1;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  animation: price-flash var(--dur-flash) var(--ease-signal) 1;
+}
+.price-flash-up::after   { background: color-mix(in oklab, var(--bull) 12%, transparent); }
+.price-flash-down::after { background: color-mix(in oklab, var(--bear) 12%, transparent); }
+
+/* ============================================
    Selection Colors
    ============================================ */
 /* Bible §01 micro-selection: owned accent %22 color-mix (tarayıcı-mavisi default değil) */

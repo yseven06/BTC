@@ -80,7 +80,7 @@ for (const m of css.matchAll(/@keyframes\s+([\w-]+)\s*\{((?:[^{}]|\{[^{}]*\})*)\
   checkKeyframeProps(css, m[2], `css:${m[1]}`);
 }
 // globals.css beklenen keyframe'ler mevcut mu
-for (const kf of ['route-cycle-in', 'tp-win-photon', 'landing-rise']) {
+for (const kf of ['route-cycle-in', 'tp-win-photon', 'landing-rise', 'price-flash']) {
   ok(new RegExp(`@keyframes\\s+${kf}\\b`).test(css), `keyframe ${kf} mevcut`);
 }
 // tailwind.config keyframes objesi (slideUp/slideDown/fadeIn/scaleIn)
@@ -136,6 +136,20 @@ if (staggerMults.length) {
   const worstMs = Math.max(...staggerMults) * EXPECT_DUR['--stagger'] + EXPECT_DUR['--dur-settle'];
   ok(worstMs <= 1200, `M-L1: T3 sekans en-geç-bitiş ${worstMs}ms ≤ 1200ms (carve-out bütçesi)`);
 }
+
+// ── 8 · M-P1 Tick Photon kilitleri (VL v1.5 / K-J) ───────────────────────────
+// Foton = token-süre + kanonik easing + TEK-ATIM (iteration 1; loop'a dönüşemez).
+ok(/animation: price-flash var\(--dur-flash\) var\(--ease-signal\) 1;/.test(css),
+  'M-P1: foton animasyonu --dur-flash + --ease-signal + iteration 1');
+// Tint yalnız owned bull/bear %12 color-mix (hex yok; /10–/15 bandı, COL-11 kapalı).
+ok(/\.price-flash-up::after\s*\{ background: color-mix\(in oklab, var\(--bull\) 12%, transparent\); \}/.test(css) &&
+   /\.price-flash-down::after\s*\{ background: color-mix\(in oklab, var\(--bear\) 12%, transparent\); \}/.test(css),
+  'M-P1: tint = color-mix var(--bull/--bear) %12 (hex yok)');
+// Overlay metnin ALTINDA (z:-1) + isolation — flash-anı kontrast güvencesinin CSS ayağı.
+ok(/\.price-flash-up,\s*\.price-flash-down \{\s*position: relative;\s*isolation: isolate;/.test(css),
+  'M-P1: flash host relative + isolate');
+ok(/\.price-flash-up::after,\s*\.price-flash-down::after \{[^}]*z-index: -1;/.test(css),
+  'M-P1: foton overlay z-index -1 (metnin altında)');
 
 // ── Sonuç ────────────────────────────────────────────────────────────────────
 const total = pass + fail;

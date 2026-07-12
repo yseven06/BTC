@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Eye, TrendingUp, TrendingDown } from 'lucide-react';
 import { type ApiSignal } from '@/lib/api';
 import { type LivePrice } from '@/hooks/useLivePrices';
@@ -59,6 +59,66 @@ export function directionLabel(sig: ApiSignal): { label: string; state: DirState
 }
 
 // ─── Cell primitives ──────────────────────────────────────────────────────────
+
+// M-P1 · Tick Photon (VL v1.5 / K-J) — fiyat hücresinin veri-fotonu.
+// Tetik = GÖRÜNÜR değişim (formatlanmış fiyat farkı; ham float'ın görünmez
+// basamak oynaması flaş üretmez) + coalesce (hücre-başı ≥2s). Yön = tick yönü.
+// Rakam ASLA tween'lenmez, konum oynamaz (::after overlay, z-altı — CSS'te).
+// Tek-atım/restart = key-remount (timer yok, animationend'e güven yok).
+// Per-hücre bağımsız tetik (ortak zamanlayıcı yasağı). invalid (kayıp) satırda
+// foton bastırılır — "SL/kayıpta asla alarm" (sakinlik ciddiyettir).
+// Reduce'ta global katman fotonu kapatır; bilgi kaybı yok (rakam anlık +
+// yön-renkli 24s yüzdesi kalıcı). İki görünüm (tablo/kart) de BU hücreyi
+// kullanır; gizli görünüm display:none olduğundan animasyonu hiç koşmaz.
+const FLASH_MIN_GAP_MS = 2000;
+
+export function LivePriceCell({
+  live,
+  invalid,
+  layout,
+}: {
+  live?: LivePrice;
+  invalid: boolean;
+  layout: 'stack' | 'inline';
+}) {
+  const prevRef = useRef<{ display: string; price: number; ts: number } | null>(null);
+  const [flash, setFlash] = useState<{ dir: 'up' | 'down'; seq: number }>({ dir: 'up', seq: 0 });
+
+  const price = live?.price;
+  useEffect(() => {
+    if (price == null) return;
+    const display = formatPrice(price);
+    const prev = prevRef.current;
+    if (prev === null) { prevRef.current = { display, price, ts: 0 }; return; } // ilk değer: olay değil
+    if (prev.display === display) return; // görünmez basamak oynaması: foton yok, kayıt değişmez
+    const now = Date.now();
+    const fire = !invalid && price !== prev.price && now - prev.ts >= FLASH_MIN_GAP_MS;
+    const dir: 'up' | 'down' = price > prev.price ? 'up' : 'down';
+    prevRef.current = { display, price, ts: fire ? now : prev.ts };
+    if (fire) setFlash((f) => ({ dir, seq: f.seq + 1 }));
+  }, [price, invalid]);
+
+  if (!live) return <PriceSkeleton />;
+
+  const up = (live.changePct24h ?? 0) >= 0;
+  const priceCls = cn('text-sm num font-num-520', invalid ? 'text-text-muted line-through' : 'text-text-primary');
+  const pctCls = cn('text-micro font-mono font-medium', up ? 'text-bullish' : 'text-bearish');
+  const flashCls = flash.seq > 0 ? (flash.dir === 'up' ? 'price-flash-up' : 'price-flash-down') : '';
+
+  return layout === 'stack' ? (
+    <div key={flash.seq} className={flashCls || undefined}>
+      <p className={priceCls}>{formatPrice(live.price)}</p>
+      <p className={pctCls}>{formatPercentage(live.changePct24h ?? 0)}</p>
+    </div>
+  ) : (
+    // twMerge özel price-flash-* sınıfına dokunmaz; yine de emsal gereği düz birleştirme.
+    <div key={flash.seq} className={'flex items-baseline gap-2' + (flashCls ? ' ' + flashCls : '')}>
+      <span className={priceCls}>{formatPrice(live.price)}</span>
+      <span className={pctCls}>{formatPercentage(live.changePct24h ?? 0)}</span>
+    </div>
+  );
+}
+
 export function QualityBar({ score }: { score: number }) {
   return (
     <div className="flex items-center gap-2">
@@ -161,7 +221,6 @@ export function SignalTableRow({
   const sym     = sig.asset?.symbol ?? '';
   const qScore  = qualityScore(sig.confidence_score);
   const dir     = directionLabel(sig);
-  const up      = (live?.changePct24h ?? 0) >= 0;
   const outcome = sig.outcome ?? 'active';
   const invalid = outcome === 'loss';
 
@@ -198,20 +257,9 @@ export function SignalTableRow({
         <DirectionBadge {...dir} />
       </div>
 
-      {/* Live Price */}
+      {/* Live Price — M-P1: veri-foton hücresi (tek-kaynak LivePriceCell) */}
       <div>
-        {live ? (
-          <div>
-            <p className={cn('text-sm num font-num-520', invalid ? 'text-text-muted line-through' : 'text-text-primary')}>
-              {formatPrice(live.price)}
-            </p>
-            <p className={cn('text-micro font-mono font-medium', up ? 'text-bullish' : 'text-bearish')}>
-              {formatPercentage(live.changePct24h ?? 0)}
-            </p>
-          </div>
-        ) : (
-          <PriceSkeleton />
-        )}
+        <LivePriceCell live={live} invalid={invalid} layout="stack" />
       </div>
 
       {/* Konsensüs (Karot · additif) + Kalite Skoru */}
@@ -276,7 +324,6 @@ export function SignalCardRow({
   const sym     = sig.asset?.symbol ?? '';
   const qScore  = qualityScore(sig.confidence_score);
   const dir     = directionLabel(sig);
-  const up      = (live?.changePct24h ?? 0) >= 0;
   const outcome = sig.outcome ?? 'active';
   const invalid = outcome === 'loss';
 
@@ -310,21 +357,10 @@ export function SignalCardRow({
         </div>
       </div>
 
-      {/* Orta: anlik fiyat + konsensus/kalite */}
+      {/* Orta: anlik fiyat + konsensus/kalite — M-P1: veri-foton hücresi (tek-kaynak) */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          {live ? (
-            <div className="flex items-baseline gap-2">
-              <span className={cn('text-sm num font-num-520', invalid ? 'text-text-muted line-through' : 'text-text-primary')}>
-                {formatPrice(live.price)}
-              </span>
-              <span className={cn('text-micro font-mono font-medium', up ? 'text-bullish' : 'text-bearish')}>
-                {formatPercentage(live.changePct24h ?? 0)}
-              </span>
-            </div>
-          ) : (
-            <PriceSkeleton />
-          )}
+          <LivePriceCell live={live} invalid={invalid} layout="inline" />
         </div>
         <div className="flex items-center gap-2.5 flex-shrink-0">
           <Karot
