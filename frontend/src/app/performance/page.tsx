@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { chartColor } from '@/lib/chartColors';
+import { fetchActionableActiveTotal } from '@/lib/active-signal';
 import { useLanguage } from '@/lib/language-context';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
@@ -38,6 +39,10 @@ export default function PerformancePage() {
   const [stats, setStats] = useState<PerformanceSummary | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
+  // CP-7 tek sayı sözlüğü: "Aktif Sinyaller" kartı kanonik actionable toplamdan
+  // beslenir (stats.active_count HOLD içerir — kullanıcı-yüzeyinde kullanılmaz).
+  // null ⇒ "—" (asla eski/şişkin sayıya düşülmez).
+  const [activeTotal, setActiveTotal] = useState<number | null>(null);
 
   const [symbol, setSymbol] = useState('BTCUSDT');
   const [timeframe, setTimeframe] = useState('1h');
@@ -69,6 +74,7 @@ export default function PerformancePage() {
 
   useEffect(() => {
     fetchStats();
+    fetchActionableActiveTotal().then(setActiveTotal).catch(() => setActiveTotal(null));
   }, []);
 
   const handleRunBacktest = async (e: React.FormEvent) => {
@@ -210,7 +216,7 @@ export default function PerformancePage() {
                 <GlassCard className="flex justify-between items-center">
                   <div>
                     <span className="text-xs font-display text-text-secondary uppercase">Aktif Sinyaller</span>
-                    <h3 className="text-h1 font-display font-mono mt-1 text-text-primary">{stats.active_count}</h3>
+                    <h3 className="text-h1 font-display font-mono mt-1 text-text-primary">{activeTotal ?? '—'}</h3>
                     <p className="text-micro text-text-muted mt-1">Piyasada takip edilen aktif işlem</p>
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center text-accent-ui">

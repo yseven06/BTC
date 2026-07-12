@@ -13,9 +13,10 @@ import { cn, formatDateTR } from '@/lib/utils';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { PAYMENTS_ENABLED } from '@/lib/config';
 import {
-  fetchMySubscription, fetchActiveSignals,
+  fetchMySubscription,
   type SubscriptionResponse,
 } from '@/lib/api';
+import { fetchActionableActiveTotal } from '@/lib/active-signal';
 import { useAuth } from '@/lib/auth-context';
 import { useAlerts } from '@/hooks/useAlerts';
 
@@ -66,7 +67,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
 
   useEffect(() => {
     fetchMySubscription().then(setSub).catch(() => {});
-    fetchActiveSignals({ only_actionable: true, page_size: 1 }).then((r) => setSignalBadge(r.total)).catch(() => {});
+    // CP-7 tek sayı sözlüğü: rozet = kanonik actionable toplam (dashboard/SC/performance ile aynı).
+    fetchActionableActiveTotal().then(setSignalBadge).catch(() => {});
   }, []);
 
   const navBadges: Record<string, number> = { signals: signalBadge, alerts: alertBadge };

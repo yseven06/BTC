@@ -59,6 +59,9 @@ export async function GET() {
     // Son KAPANAN sinyal — outcome-filtresiz (anti-cherry-pick kuralı; kayıp da döner).
     // Backend sıralaması: coalesce(closed_at, generated_at) DESC → ilk kayıt = son kapanan.
     fetchJson('/api/v1/signals/history?only_resolved=true&page_size=1'),
+    // CP-7 tek sayı sözlüğü: only_actionable=true = kanonik "aktif sinyal" tanımı
+    // (lib/active-signal.ts — bu route server-side olduğundan client api-sabitini
+    // import edemez; tanım-eşitliği bu atıfla bağlıdır). activeTotal = buradaki total.
     fetchJson('/api/v1/signals?only_actionable=true&page_size=3'),
     fetchJson('/api/v1/signals/performance'),
   ]);

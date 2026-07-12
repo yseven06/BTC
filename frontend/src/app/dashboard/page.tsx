@@ -18,6 +18,7 @@ import {
   type ApiSignal, type PerformanceSummary, type SignalHistoryStats,
   type GlobalMarketData, type FearGreedData, type CoinMarket,
 } from '@/lib/api';
+import { ACTIVE_SIGNAL_PARAMS } from '@/lib/active-signal';
 import { formatLargeNumber, formatPercentage, cn } from '@/lib/utils';
 import { PAYMENTS_ENABLED } from '@/lib/config';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
@@ -144,9 +145,10 @@ export default function DashboardPage() {
   // Core platform data (signals + performance) unreachable — surface an honest
   // error + retry instead of rendering misleading zeros as if they were real.
   const [dataError, setDataError] = useState(false);
-  // Actual count of actionable (non-HOLD) active signals — matches what
-  // Sinyal Merkezi shows by default ("SADECE AL/SAT"), unlike perf.active_count
-  // which includes HOLD and so reads much higher than what's really tradeable.
+  // CP-7 tek sayı sözlüğü (lib/active-signal.ts): sayaç, tablo, lifecycle-census
+  // ve AI-Görüşü/Risk agregaları AYNI actionable fetch'inden beslenir —
+  // kart-tablo-sayaç aynı sayıyı söyler; Sinyal Merkezi default'uyla birebir
+  // (süperset kuralı). perf.active_count HOLD içerir → kullanıcı-yüzeyinde yok.
   const [actionableActiveCount, setActionableActiveCount] = useState(0);
   // Closed trades within the selected 24s/7g/30g window — replaces the old
   // "Toplam Sinyal" (all-time, ignored the period selector entirely).
@@ -166,9 +168,8 @@ export default function DashboardPage() {
     const periodHours = timeRange === '24s' ? 24 : timeRange === '7g' ? 24 * 7 : 24 * 30;
     const dateFrom = new Date(Date.now() - periodHours * 3600_000).toISOString();
 
-    const [signalsRes, actionableRes, perfRes, periodRes, globalRes, fngRes, gainersRes] = await Promise.allSettled([
-      fetchActiveSignals({ page_size: 100 }),
-      fetchActiveSignals({ only_actionable: true, page_size: 1 }),
+    const [signalsRes, perfRes, periodRes, globalRes, fngRes, gainersRes] = await Promise.allSettled([
+      fetchActiveSignals({ ...ACTIVE_SIGNAL_PARAMS, page_size: 100 }),
       fetchPerformanceSummary(),
       fetchSignalHistoryStats({ date_from: dateFrom }),
       fetchGlobalMarket(),
@@ -176,8 +177,11 @@ export default function DashboardPage() {
       fetchTopGainers(5),
     ]);
 
-    if (signalsRes.status === 'fulfilled') setSignals(signalsRes.value.items);
-    if (actionableRes.status === 'fulfilled') setActionableActiveCount(actionableRes.value.total);
+    // Tek response = tek evren: satırlar (items) + sayaç (total) aynı fetch'ten.
+    if (signalsRes.status === 'fulfilled') {
+      setSignals(signalsRes.value.items);
+      setActionableActiveCount(signalsRes.value.total);
+    }
     if (perfRes.status === 'fulfilled') setPerf(perfRes.value);
     if (periodRes.status === 'fulfilled') setPeriodStats(periodRes.value);
     if (globalRes.status === 'fulfilled') {

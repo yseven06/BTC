@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Zap, RefreshCw, TrendingUp, TrendingDown, LineChart, FileDown, ArrowRight, Crown } from 'lucide-react';
 import { fetchActiveSignals, triggerBatchGeneration, downloadSignalPdf, type ApiSignal } from '@/lib/api';
+import { ACTIVE_SIGNAL_PARAMS } from '@/lib/active-signal';
 import { useLivePrices } from '@/hooks/useLivePrices';
 import { useTierLimits } from '@/hooks/useTierLimits';
 import { SignalType } from '@/types';
@@ -850,7 +851,7 @@ export default function SignalsPage() {
   const load = async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true); else setLoading(true);
     try {
-      const res = await fetchActiveSignals({ page_size: 100, only_actionable: true });
+      const res = await fetchActiveSignals({ ...ACTIVE_SIGNAL_PARAMS, page_size: 100 });
       setSignals(res.items);
       setTotal(res.total);
     } catch { /**/ } finally {
@@ -867,7 +868,7 @@ export default function SignalsPage() {
       const startCount = signals.length;
       for (let i = 0; i < 60; i++) { // up to 5 min polling
         await new Promise((r) => setTimeout(r, 5000));
-        const res = await fetchActiveSignals({ page_size: 100, only_actionable: true });
+        const res = await fetchActiveSignals({ ...ACTIVE_SIGNAL_PARAMS, page_size: 100 });
         if (res.total > startCount || res.total > 0) {
           setSignals(res.items);
           setTotal(res.total);
