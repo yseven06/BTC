@@ -96,7 +96,9 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
       className={cn(
         'fixed left-0 top-0 z-40 h-screen flex flex-col',
         'glass-panel border-r border-border-subtle',
-        'transition-all duration-[var(--dur-state)] ease-signal',
+        /* M-0a (MO-01): transition-all → transition-transform. Mobil drawer kayması (transform)
+           animasyonlu KALIR; genişlik (72↔220) artık ANLIK SNAP — layout-anim yasağı (Doctrine §5). */
+        'transition-transform duration-[var(--dur-state)] ease-signal',
         // Off-canvas drawer on mobile; always visible on desktop (lg+).
         '-translate-x-full lg:translate-x-0',
         mobileOpen && 'translate-x-0',
@@ -192,7 +194,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
         <button
           onClick={onToggle}
           className={cn(
-            'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-e-2 transition-all duration-[var(--dur-state)]',
+            'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-e-2 transition-colors duration-[var(--dur-warm)]',
             collapsed && 'justify-center'
           )}
         >
@@ -207,7 +209,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
 
       {/* User Section */}
       <div className={cn('px-2 py-3 border-t border-border-subtle', collapsed ? 'flex justify-center' : '')}>
-        <div className={cn('flex items-center gap-2.5 rounded-xl p-2 hover:bg-e-2 transition-all cursor-pointer', collapsed && 'justify-center')}>
+        <div className={cn('flex items-center gap-2.5 rounded-xl p-2 hover:bg-e-2 transition-colors duration-[var(--dur-warm)] cursor-pointer', collapsed && 'justify-center')}>
           <div className="relative flex-shrink-0">
             <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-amber to-accent-primary flex items-center justify-center">
               {effectiveUser?.avatar_url ? (

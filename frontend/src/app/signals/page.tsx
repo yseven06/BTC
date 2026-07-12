@@ -1005,8 +1005,9 @@ export default function SignalsPage() {
           return (
             <div className="relative flex bg-bg-secondary border border-border-subtle rounded-xl p-1 w-[300px]">
               {/* Sliding highlight — animates left/width on filter change instead of swapping a static class. */}
+              {/* M-0b: gate-5 borcu — 300ms set-dışı → --dur-state (180); transition-all → yalnız left (property-explicit). */}
               <div
-                className={cn('absolute top-1 bottom-1 rounded-lg transition-all duration-300 ease-out', DIR_OPTIONS[activeIndex]?.pill)}
+                className={cn('absolute top-1 bottom-1 rounded-lg transition-[left] duration-[var(--dur-state)]', DIR_OPTIONS[activeIndex]?.pill)}
                 style={{ width: 'calc(33.333% - 3px)', left: `calc(${activeIndex * 33.333}% + 2px)` }}
               />
               {DIR_OPTIONS.map((d) => {

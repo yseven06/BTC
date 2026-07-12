@@ -138,7 +138,7 @@ export default function NewsPage() {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-display transition-all duration-200 ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-display transition-colors duration-[var(--dur-state)] ${
               tab === t.id
                 ? 'bg-accent-primary text-white'
                 : 'text-text-muted hover:text-text-primary'

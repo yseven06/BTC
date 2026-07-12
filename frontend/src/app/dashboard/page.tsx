@@ -462,12 +462,10 @@ export default function DashboardPage() {
             </span>
           </div>
           {/* Mini gauge */}
-          <div
-            className="relative w-12 h-12 flex-shrink-0 rounded-full transition-shadow duration-300"
-            style={{ '--tw-shadow-color': fngColor(fngValue) } as React.CSSProperties}
-            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 16px ${fngColor(fngValue)}55`; }}
-            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
-          >
+          {/* M-0b: hover'daki JS-inline renkli-glow KALDIRILDI (Doctrine: glow yalnız CTA +
+              data-lifecycle-event; gölge animate edilmez; gate-2 renkli-glow — JS'te olduğu
+              için lint göremiyordu). 300ms süre borcu da bununla düştü. */}
+          <div className="relative w-12 h-12 flex-shrink-0 rounded-full">
             <svg viewBox="0 0 44 44" className="w-full h-full -rotate-90">
               {/* white-alpha .05 → hl10 (D9-12); SVG attr var() çözmez → CSS stroke property */}
               <circle cx="22" cy="22" r="18" fill="none" style={{ stroke: 'var(--hl10)' }} strokeWidth="4" />
