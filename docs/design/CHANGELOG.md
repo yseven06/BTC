@@ -5,6 +5,16 @@ Kural: **her revizyon = commit + sürüm artışı + bu dosyada bir satır.** St
 
 ---
 
+## v1.4.2 — Landing atmosferi: key-light + grain (K-C1 mini-revizyon) · 2026-07-12
+
+> **Kapsam:** Design Constitution v1 / CP-6 (K-C1 karar seansı, ΔL %6 kilidi). Yalnız landing; app/dashboard'a atmosfer **eklenmez** (R5). Motion/drift/3D YOK — tamamen statik (R6).
+- **R1:** `--light-key` landing-hero'da aktive; token revize: konum sağ-üst(78% −10%) → **sol-üst (20% −12%)** (tek-güneş doktrini + squint "H1+CTA" uyumu), alfa **.11 → .05** (görünür bölgede **ΔL* ≤ +6**, CIE; E0 L*≈2 → merkez ≈8). Hex değişmedi (COL-11'e dokunulmadı). Sayfada 1 key; yalnız hero-section katmanı.
+- **R2:** `--light-fill` (cyan dolgu) landing'de **kullanılmaz** — gate-3 cyan-yüzey tekeli; VL "anahtar+dolgu" planı landing için "yalnız anahtar" olarak daraltıldı (Bible Hero-atmosfer §'ine dipnot).
+- **R3:** Grain: tüm landing zemini, tek statik katman (feTurbulence + saturate-0 = renksiz), opaklık **%2.5** (≤%3), `z:-1` + `isolation` → metin/veri üstüne asla.
+- **R4:** Işık-envanteri kilidi: key×1 + kabin-ışığı (cut-lip/hairline) + olay-glow (CTA); final-yükseliş kompozisyonla, ikinci ışık yok.
+- **R5:** App/dashboard atmosfersiz (idle-sessiz + Bloomberg "estetik ≯ veri" ilkesi) — açık sınır.
+- **R6:** Işık statik; drift v1'de yok; gelecek parallax'ta (VL ≤3 strata) ışık = stratum-0.
+
 ## v1.4.1 — Landing-hero vitrin istisnaları (C2 mini-revizyon) · 2026-07-12
 
 > **Kapsam:** Design Constitution v1 / CP-5b (K-D=b1 kilitli kararı). Yalnız iki dar landing-istisnası; token/motion/renk/Karot-geometrisi **değişmedi**; app yüzeylerinde hiçbir kural değişmedi.

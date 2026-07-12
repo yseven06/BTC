@@ -592,6 +592,7 @@ Semantik `<table>` (div-grid değil). `md` altında satır → **kart**'a dönü
 
 ### Hero — atmosfer / ışık
 Hero anahtar+dolgu ışığı owned-blue/cyan ufuk (kanonik plan VL§07). Her ışık gerçek bir olayı temsil eder; ambient dekoratif değildir.
+- **⚠ v1.4.2 (K-C1, CHANGELOG):** LANDING'de yalnız **anahtar** ışık aktive edildi (`--light-key`: sol-üst kaynak, ΔL* ≤ +6, statik/drift'siz, sayfada 1); **dolgu (`--light-fill`, cyan) landing'de KULLANILMAZ** (gate-3 cyan-yüzey tekeli). Grain: tüm landing zemini, ≤%3, renksiz, metin üstünde asla. **App/dashboard'a atmosfer eklenmez** (idle-sessiz + "estetik ≯ veri"). Işık-envanteri kilidi: key×1 + kabin + olay-glow; final-yükseliş kompozisyonla.
 
 | Token | Değer |
 |---|---|

@@ -90,7 +90,10 @@
     --z-tour:     100;
 
     /* — Atmosfer ışık (VL §02) — owned rgb; yaşayan-Hero altyapısı (henüz referanssız) */
-    --light-key:  radial-gradient(1200px 600px at 78% -10%, rgb(59 87 212 / 0.11), transparent 60%);
+    /* K-C1/v1.4.2: konum sağ-üst(78%)→SOL-ÜST (tek-güneş doktrini; squint: en parlak 2 = H1+CTA);
+       alfa .11→.05 → görünür bölgede ΔL* ≤ +6 (CIE; E0 L*≈2, merkez ≈8). Hex değişmedi (COL-11).
+       STATİK — drift/motion yok (R6). */
+    --light-key:  radial-gradient(1200px 600px at 20% -12%, rgb(59 87 212 / 0.05), transparent 60%);
     --light-fill: radial-gradient(800px 480px at -4% 30%, rgb(37 224 212 / 0.05), transparent 55%);
 
     /* ── v1.1 ALIAS'LARI (aynı-değer → byte-identical; mevcut utility'ler kırılmaz) ── */
@@ -513,6 +516,39 @@
   .focus-ring:focus-visible {
     outline: 2px solid var(--accent-ui);
     outline-offset: 2px;
+  }
+
+  /* ── CP-6 / K-C1 (v1.4.2): Landing atmosferi — STATİK; motion/drift YOK (R6);
+     app/dashboard'a uygulanmaz (R5). Katman sırası: zemin → grain → key-light → içerik. ── */
+
+  /* Grain (R3): tüm landing zemini, tek katman, opaklık ≤%3; metin/veri ÜSTÜNE ASLA
+     (z:-1 + isolate). feTurbulence + saturate-0 = renksiz doku (renk=anlam; token-dışı hex yok). */
+  .landing-atmosphere {
+    position: relative;
+    isolation: isolate;
+  }
+  .landing-atmosphere::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+  }
+
+  /* Key-light (R1): sayfada 1, YALNIZ hero; statik radyal luminans (glow değil). */
+  .hero-light {
+    isolation: isolate;
+  }
+  .hero-light::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: var(--light-key);
   }
 
 }

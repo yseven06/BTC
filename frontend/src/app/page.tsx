@@ -154,7 +154,7 @@ export default function LandingPage() {
   const showPanelArea = !proofLoaded || hasProofPanel;
 
   return (
-    <div className="min-h-screen bg-bg-primary">
+    <div className="landing-atmosphere min-h-screen bg-bg-primary">{/* CP-6/K-C1: grain zemin katmanı (R3; yalnız landing) */}
       {/* Nav — sticky (CP-1a): opak --e0 zemin + alt-hairline; scroll'da erisim korunur. z-10 = --z-sticky (kanonik olcek). */}
       <header className="sticky top-0 z-10 bg-bg-primary border-b border-border-subtle">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -176,7 +176,7 @@ export default function LandingPage() {
       {/* Hero — CP-5b: 55/45 "Canlı Masa" (K-D/b1 + R1-R6). Rezerv-A: section relative =
           atmosfer host (CP-6 ışık katmanı buraya girer; arka-plan çocuklara gömülmez).
           Eski %-şerit + istatistik kutusu kaldırıldı (K-B2+ bandı CP-2'de hero-dışı gelir). */}
-      <section className="relative max-w-6xl mx-auto px-6 pt-24 pb-16">
+      <section className="hero-light relative max-w-6xl mx-auto px-6 pt-24 pb-16">{/* CP-6/K-C1: key-light ×1 (R1; sol-üst, statik) */}
         <div className={cn(showPanelArea && 'md:grid md:grid-cols-[11fr_9fr] md:gap-12 lg:gap-16')}>
           {/* Sol kolon — R3: max-w sınırı; öğeler ayrık sibling (Rezerv-C: gelecek reveal hedefleri) */}
           <div className="max-w-[32rem]">
