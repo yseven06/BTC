@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
@@ -233,6 +234,42 @@ def _resolve_signal_bar_walk(*, direction, entry, stop_loss, tp1, tp2, tp3,
 
 # Timeframe → seconds, for scaling the lifecycle min-state-duration.
 _TF_SECONDS = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400, "1w": 604800}
+
+# ── CP-F0-1B: fetch window ───────────────────────────────────────────────────
+# Floor. detect_regime needs >= 30 bars and takes its ATR baseline from the last
+# 50, so this is a correctness floor, not a nicety. It is also what keeps the
+# fetch — and therefore everything downstream of it — unchanged for every signal
+# whose age already fits inside it.
+_MIN_FETCH_BARS = 100
+# Binance /klines hard API maximum.
+_MAX_FETCH_BARS = 1000
+# Birth candle + still-forming candle + bar-alignment skew + margin.
+_FETCH_BUFFER_BARS = 5
+# The observation/lifecycle read stays on the pre-CP window (see the df_obs use
+# below): tail(_OBS_BARS) of a widened frame IS the frame the old fetch returned.
+_OBS_BARS = 100
+
+
+def _recovery_fetch_limit(timeframe_str: str, generated_at: Any, now: datetime) -> int:
+    """Candles to fetch so the resolution walk can cover generated_at → now.
+
+    PURE: no I/O, clock injected. A fixed 100 bars spans only 25h on M15 while a
+    signal lives 48h, so a TP/SL landing in the uncovered gap (i.e. after any
+    downtime long enough to age the signal past the window) was invisible to the
+    bar-walk and the signal fell through to EXPIRED instead. Scale to age.
+
+    Returns exactly _MIN_FETCH_BARS whenever the age fits — true for every
+    timeframe except M15 past ~23.75h — so the request is byte-identical to the
+    pre-CP one for effectively the whole book.
+    """
+    tf_seconds = _TF_SECONDS.get(timeframe_str, 3600)
+    gen = pd.Timestamp(generated_at)
+    gen = gen.tz_localize(timezone.utc) if gen.tzinfo is None else gen
+    ref = pd.Timestamp(now)
+    ref = ref.tz_localize(timezone.utc) if ref.tzinfo is None else ref
+    age_seconds = max(0.0, (ref - gen).total_seconds())
+    needed = math.ceil(age_seconds / tf_seconds) + _FETCH_BUFFER_BARS
+    return min(max(_MIN_FETCH_BARS, needed), _MAX_FETCH_BARS)
 
 
 def _recent_structure_event(df, max_age_bars: int = 15) -> str | None:
@@ -673,16 +710,28 @@ async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
                 # price retrace AND structure+momentum together. Hysteresis and
                 # a timeframe-scaled min-state-duration damp pass-to-pass
                 # flip-flop (escalation toward danger stays immediate).
+                # CP-F0-1B: the fetch window now scales with signal age so the
+                # bar-walk above can cover generated_at → now. Everything in THIS
+                # block reads indicators off the WHOLE frame — detect_regime's
+                # EMA/Wilder recursion and analyse_market_structure's swing scan
+                # both shift when handed more history — so a widened frame would
+                # silently move regime/structure, and with them live_status. That
+                # is a lifecycle change this CP explicitly does not make. Pin the
+                # observation read to the pre-CP window: tail(_OBS_BARS) of the
+                # widened frame IS the frame the old fetch returned, so regime,
+                # structure and momentum stay byte-identical. Only the resolution
+                # walk (df_after) sees the extra history.
+                df_obs = df.tail(_OBS_BARS)
                 try:
-                    cur_regime = detect_regime(df).regime.value
+                    cur_regime = detect_regime(df_obs).regime.value
                 except Exception:
                     cur_regime = None
-                structure_event = _recent_structure_event(df)
+                structure_event = _recent_structure_event(df_obs)
                 # Immediate momentum (INVALIDATING confirmed-cluster path) +
                 # v2.2 persistence-filtered momentum (WEAKENING trigger only,
                 # N=2 consecutive bars) to damp single-bar active↔weakening churn.
-                momentum_dir = lifecycle.momentum_direction(df)
-                momentum_dir_weak = lifecycle.momentum_direction(df, persist=2)
+                momentum_dir = lifecycle.momentum_direction(df_obs)
+                momentum_dir_weak = lifecycle.momentum_direction(df_obs, persist=2)
 
                 now_eval = datetime.now(timezone.utc)
                 prev_status = signal.live_status
@@ -851,9 +900,20 @@ async def _fetch_market_data_for_signal(
     logger.info(f"Checking performance for signal {signal.id} - {symbol} ({signal.timeframe.value})")
     try:
         if asset.asset_type.value == "stock" or symbol.endswith(".IS"):
+            # Yahoo path deliberately untouched: its limit interacts with the
+            # collector's cache/end_date handling, and the BIST branch is slated
+            # for removal by the crypto-only pivot — no reason to risk it.
             df = await yahoo.fetch_ohlcv(symbol, timeframe_str, limit=100)
         else:
-            df = await binance.fetch_ohlcv(symbol, timeframe_str, limit=100)
+            limit = _recovery_fetch_limit(
+                timeframe_str, signal.generated_at, datetime.now(timezone.utc)
+            )
+            if limit > _MIN_FETCH_BARS:
+                logger.info(
+                    "[Tracker] %s (%s) is older than the default window — fetching %d bars "
+                    "so the walk covers generated_at → now", symbol, timeframe_str, limit,
+                )
+            df = await binance.fetch_ohlcv(symbol, timeframe_str, limit=limit)
         return signal.id, df
     except Exception as e:
         logger.error(f"Failed to fetch market data for {symbol} during tracking: {str(e)}")
