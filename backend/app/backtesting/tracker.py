@@ -282,6 +282,34 @@ def _sig_time_aware(signal):
     return ts.tz_localize(timezone.utc) if ts.tzinfo is None else ts
 
 
+def _window_reaches_generation(signal, df) -> bool:
+    """Does the fetched frame reach back to the signal's birth? PURE.
+
+    The walk can only see what was fetched. If the OLDEST bar in the frame opens
+    after generated_at, the bars in between were never fetched: a TP/SL that
+    happened there is invisible, the walk reports nothing, and the signal falls
+    through to the wall-clock expiry check — which then books an outcome on
+    evidence it does not have. A fetch that FAILS is fail-safe (df is None, the
+    caller skips, the signal stays ACTIVE); a fetch that comes back SHORT is not,
+    because it looks like a perfectly good frame.
+
+    CP-F0-1B scales the request to the signal's age, so this should not happen. It
+    still can if a gap outruns Binance's 1000-candle ceiling (~8.4 days of downtime
+    on M15) or the exchange returns fewer bars than asked for (a data gap, a halt).
+    Neither has ever been observed — the longest outage on record is 2.55 days, and
+    no signal has ever come close to the cap. This reports the condition rather
+    than resolving quietly, so that if the assumption ever breaks it says so.
+
+    The bar CONTAINING generated_at opens at or before it, so `<=` is full
+    coverage; a signal born exactly on a bar open counts as covered.
+    """
+    if df is None or getattr(df, "empty", True):
+        return True                      # not this check's question — caller skips these
+    first = pd.Timestamp(df.index[0])
+    first = first.tz_localize(timezone.utc) if first.tzinfo is None else first
+    return first <= _sig_time_aware(signal)
+
+
 def _live_ladder_flags(signal, df):
     """CP-F0-1H: (hit_tp1, hit_tp2) as THIS pass's bars show them, or None when the
     bars cannot answer — the caller then falls back to the stored flags.
@@ -617,6 +645,23 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
             # Post-generation bars + the birth-candle rule — single source, shared
             # with the live-SL shortcut's ladder replay (CP-F0-1H). Policy unchanged.
             df_after = _post_signal_bars(signal, df)
+
+            # CP-F0-1F: report — do NOT act on — a frame that does not reach back to
+            # generated_at. Resolution below is deliberately unchanged: the condition
+            # has never been observed, so leaving signals ACTIVE for it would be a
+            # behaviour change bought with no evidence. This only makes it visible.
+            # cap-bound (len == the ceiling) means downtime outran the 1000-candle
+            # limit; short of it means the exchange had no data to give.
+            if not _window_reaches_generation(signal, df):
+                logger.warning(
+                    "[Tracker] %s (%s) signal %s: fetched window starts at %s but the "
+                    "signal was generated at %s — %d bars, cap-bound=%s. The walk cannot "
+                    "see a TP/SL before that first bar, so an unresolved signal may reach "
+                    "the expiry check on incomplete evidence.",
+                    symbol, _map_db_timeframe(signal.timeframe), signal.id,
+                    df.index[0], signal.generated_at, len(df),
+                    len(df) >= _MAX_FETCH_BARS,
+                )
 
             if df_after.empty:
                 logger.info(f"No new price bars recorded since signal generation for {symbol}")
