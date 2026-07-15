@@ -295,7 +295,54 @@ from app.collectors.yahoo_collector import YahooCollector
 logger = logging.getLogger(__name__)
 
 
+# ── CP-F0-1E: single-flight ──────────────────────────────────────────────────
+# Three callers reach the tracker — the */2min cron job, the admin "Şimdi
+# Çalıştır" button (trigger_job_now, which fires a raw asyncio task and so is NOT
+# covered by APScheduler's max_instances=1), and POST /signals/track-performance
+# (any authenticated user, in the request's own session). Two of the three had no
+# overlap protection at all, so a pass could run concurrently with another: both
+# SELECT is_active signals (no row lock), both walk, both write. Today the damage
+# is contained by accident — signal_trade_path.signal_id is UNIQUE, so the second
+# pass's INSERT collides at commit and its whole transaction rolls back — but that
+# is fragile (it depends on a constraint nobody added for this reason), it costs a
+# wasted pass plus a false "error" on the admin job board, and it does not cover
+# the non-resolving path at all (duplicate lifecycle events and Telegram alerts).
+#
+# A plain module flag, not asyncio.Lock: a Lock makes the second caller WAIT, and
+# we want it to SKIP — the pass repeats every 2 minutes, so skipped work is never
+# lost, whereas queueing ticks behind a slow pass piles them up. There is no await
+# between the read and the write below, and asyncio is single-threaded, so the
+# check-and-set is atomic by construction (a Lock's .locked() + acquire is not).
+#
+# In-memory is sufficient *because* the deployment is pinned to one replica with
+# --workers 1 (docs/DEPLOYMENT.md, railway.json numReplicas: 1, Procfile) — the
+# same constraint APScheduler already relies on. If the scheduler is ever pulled
+# out into its own worker, this guard must become a cross-process one.
+_tracking_in_flight = False
+
+
 async def track_and_resolve_active_signals(db: AsyncSession) -> Dict[str, Any]:
+    """Single-flight wrapper — at most one tracking pass runs at a time.
+
+    A concurrent caller returns immediately with ``skipped`` instead of waiting.
+    The successful path's return value is unchanged (no extra keys), so every
+    existing caller keeps reading the same contract.
+    """
+    global _tracking_in_flight
+    if _tracking_in_flight:
+        logger.info("[Tracker] a pass is already in flight — skipping this call")
+        return {"processed": 0, "resolved": 0, "details": [], "skipped": True}
+    _tracking_in_flight = True
+    try:
+        return await _track_and_resolve_active_signals_impl(db)
+    finally:
+        # finally, not a trailing assignment: a pass that raises (a failed commit,
+        # a collector blowing up) must not leave the flag stuck True and wedge
+        # every future pass for the lifetime of the process.
+        _tracking_in_flight = False
+
+
+async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, Any]:
     """Scans all active signals, checks subsequent market action, and updates database outcomes."""
     logger.info("Initializing active signal performance tracking run")
 

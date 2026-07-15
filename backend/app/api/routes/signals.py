@@ -1080,6 +1080,15 @@ async def manual_track_performance(
     """
     try:
         summary = await track_and_resolve_active_signals(db)
+        if summary.get("skipped"):
+            # A pass was already in flight (cron tick, admin trigger, or another
+            # caller). Not an error — the running pass covers the same signals, and
+            # the cron repeats every 2 minutes — so answer 200, not 500.
+            return {
+                "status": "skipped",
+                "message": "Performans takibi zaten çalışıyor.",
+                "details": [],
+            }
         return {
             "status": "success",
             "message": f"Processed {summary['processed']} active signals. Resolved {summary['resolved']}.",
