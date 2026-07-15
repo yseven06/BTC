@@ -419,11 +419,19 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
       updateSignalLabel();
       return;
     }
-    // The exact market price at signal time = the close of the bar that
-    // contained generatedAt. A bare above-bar arrow can't sit at a price (so
-    // "top or bottom of the candle?" stayed ambiguous); instead the segment's
-    // left dot marks the point and an HTML price chip is pinned right on it.
-    const signalPrice = startCandle.close;
+    // Anchor the dot/chip to the signal's OWN price (entry-zone midpoint), which
+    // is TIMEFRAME-INDEPENDENT — not the containing candle's close. The close of
+    // the bar that holds generatedAt differs per timeframe: on a coarse or
+    // still-forming bar it is the latest price, so the same signal appeared ABOVE
+    // the entry zone on 1H (close = live price) yet INSIDE it on 15M (close = the
+    // finished signal-bar). The entry midpoint is the price the signal was issued
+    // at, so the marker sits at the same level on every timeframe. Fallback to the
+    // candle close only when the entry zone is absent (defensive).
+    const entryMid =
+      signal.entryLow != null && signal.entryHigh != null
+        ? (signal.entryLow + signal.entryHigh) / 2
+        : signal.entryLow ?? signal.entryHigh ?? null;
+    const signalPrice = entryMid ?? startCandle.close;
     const p = signalPrice >= 100 ? 2 : signalPrice >= 0.01 ? 4 : signalPrice >= 0.0001 ? 6 : 8;
     const priceStr = signalPrice.toLocaleString('tr-TR', {
       minimumFractionDigits: p, maximumFractionDigits: p,
@@ -440,7 +448,7 @@ export function TradingChart({ candles, signal, height = 480 }: TradingChartProp
     // Pin the chip + vertical line onto the signal point.
     signalAnchorRef.current = { time: startCandle.time, price: signalPrice, text: `Sinyal · ${priceStr}` };
     requestAnimationFrame(updateSignalLabel);
-  }, [signal?.generatedAt, candles, updateSignalLabel]);
+  }, [signal?.generatedAt, signal?.entryLow, signal?.entryHigh, candles, updateSignalLabel]);
 
   return (
     <div className="relative">
