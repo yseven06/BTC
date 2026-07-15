@@ -232,6 +232,102 @@ def _resolve_signal_bar_walk(*, direction, entry, stop_loss, tp1, tp2, tp3,
     }
 
 
+def _post_signal_bars(signal, df):
+    """The bars a pass may walk for `signal`: everything strictly after
+    generated_at, plus the still-forming candle collapsed to its live close.
+
+    VERBATIM extraction of what the tracking loop did inline — CP-F0-1H needs this
+    exact frame in a second place (the live-SL shortcut), and re-implementing the
+    birth-candle rule there would be the surest way to let the two drift apart.
+    The rule itself is untouched; see the comments below, which came with it.
+    """
+    # We filter for candles that happened *after* signal generation time
+    # Parse signal.generated_at to pandas datetime (naive or timezone-aware matching)
+    sig_time = pd.to_datetime(signal.generated_at).tz_localize(None)
+    df_naive_idx = df.index.tz_localize(None)
+    df_after = df[df_naive_idx > sig_time]
+
+    # The candle still forming when the signal was generated opened
+    # *before* sig_time, so the strict `> sig_time` filter above drops
+    # it entirely — but its live high/low already reflect everything
+    # that's happened since (Binance's klines endpoint returns the
+    # in-progress candle with continuously-updated high/low). Without
+    # this, a TP/SL touch happening in that very candle stayed
+    # invisible until the next candle opened — for 1h/4h/1d signals
+    # that's up to a full timeframe period of "still active" lag
+    # even after price had genuinely already hit the level.
+    last_candle_time = df_naive_idx[-1]
+    if last_candle_time not in df_after.index.tz_localize(None):
+        # This candle opened before the signal existed, so we don't
+        # know whether its high/low wick happened before or after
+        # sig_time — OHLCV has no intra-candle ordering. A signal
+        # created mid-candle can be reacting to a wick that already
+        # passed, with price since pulling back toward/through entry;
+        # treating that wick as a post-signal TP/SL touch produces a
+        # false positive (e.g. "TP1 alındı" while the chart shows the
+        # signal arrow sitting after the only candle that ever
+        # touched TP1). Collapse high/low to the live close here so
+        # only confirmed since-the-signal price action can trigger a
+        # hit; once the candle closes, the next pass resumes normal
+        # high/low checks on it as a completed bar.
+        still_forming = df.iloc[[-1]].copy()
+        still_forming["high"] = still_forming["close"]
+        still_forming["low"] = still_forming["close"]
+        df_after = pd.concat([df_after, still_forming])
+    return df_after
+
+
+def _sig_time_aware(signal):
+    ts = pd.Timestamp(signal.generated_at)
+    return ts.tz_localize(timezone.utc) if ts.tzinfo is None else ts
+
+
+def _live_ladder_flags(signal, df):
+    """CP-F0-1H: (hit_tp1, hit_tp2) as THIS pass's bars show them, or None when the
+    bars cannot answer — the caller then falls back to the stored flags.
+
+    The live-SL shortcut books against perf.hit_tp1, which is only as fresh as the
+    last pass that ran. Across a gap (the machine was off) nothing updated it, so a
+    trade that banked TP1 inside the gap and then broke its stop still reads
+    hit_tp1=False and gets booked as a FULL original-stop loss instead of 50% at
+    TP1 plus the remainder at breakeven. CP-F0-1B widened the fetch window so the
+    walk can now see into that gap; this hands the shortcut what the walk sees.
+
+    Deliberately NOT changed: _check_live_sl_hit's own effective-stop threshold
+    still uses the stored flag. A stale False there is conservative — it makes the
+    check fire later (on the original stop rather than breakeven), and a check that
+    doesn't fire falls through to the walk, which resolves correctly on its own.
+    """
+    if df is None or getattr(df, "empty", True):
+        return None
+    if signal.tp1 is None or signal.tp2 is None or signal.tp3 is None:
+        return None
+    if signal.entry_zone_low is None or signal.entry_zone_high is None:
+        return None
+    entry = float(signal.entry_zone_high + signal.entry_zone_low) / 2.0
+    if entry <= 0:
+        return None
+    try:
+        bars = _post_signal_bars(signal, df)
+        if bars.empty:
+            return None
+        bw = _resolve_signal_bar_walk(
+            direction=signal.direction.value, entry=entry,
+            stop_loss=float(signal.stop_loss),
+            tp1=float(signal.tp1), tp2=float(signal.tp2), tp3=float(signal.tp3),
+            opens=bars["open"].values, highs=bars["high"].values,
+            lows=bars["low"].values, closes=bars["close"].values,
+            times=bars.index.tolist(), sig_time_aware=_sig_time_aware(signal),
+        )
+    except Exception as exc:
+        # Never let the ladder probe block a resolution: fall back to the stored
+        # flags, i.e. exactly the pre-CP behaviour.
+        logger.warning("[Tracker] ladder replay failed for %s (using stored flags): %s",
+                       getattr(signal, "id", "?"), exc)
+        return None
+    return bool(bw["hit_tp1"]), bool(bw["hit_tp2"])
+
+
 # Timeframe → seconds, for scaling the lifecycle min-state-duration.
 _TF_SECONDS = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400, "1w": 604800}
 
@@ -430,15 +526,21 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                 if not perf:
                     perf = SignalPerformance(signal_id=signal.id, outcome=SignalOutcome.ACTIVE)
                     db.add(perf)
-                # KEY1-d: honor the stored TP1/TP2 scale-out. A TP1-banked trade closes
+                # KEY1-d: honor the TP1/TP2 scale-out. A TP1-banked trade closes
                 # its REMAINING share at breakeven (entry), not the full position at the
                 # original stop (BUG-6/7/8). TP1-not-hit is UNCHANGED (full original-stop
                 # loss). Single source: live_sl_realized mirrors step_bar's 0.50/0.30 + BE.
+                # CP-F0-1H: read the scale-out from THIS pass's bars, not from perf —
+                # perf is only as fresh as the last pass that ran, so a TP1 banked
+                # during a gap reads False and books a full loss (see _live_ladder_flags).
+                # No bars to answer with → stored flags, i.e. the pre-CP behaviour.
+                _flags = _live_ladder_flags(signal, dfs_by_signal_id.get(signal.id))
+                _hit1, _hit2 = _flags if _flags else (bool(perf.hit_tp1), bool(perf.hit_tp2))
                 realized_frac, effective_sl, gave_back = live_sl_realized(
                     signal.direction.value, entry, float(signal.stop_loss),
                     float(signal.tp1) if signal.tp1 is not None else entry,
                     float(signal.tp2) if signal.tp2 is not None else entry,
-                    bool(perf.hit_tp1), bool(perf.hit_tp2),
+                    _hit1, _hit2,
                 )
                 pnl_pct = realized_frac * 100.0
                 signal.is_active = False
@@ -512,39 +614,9 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                 logger.warning(f"No price data returned for {symbol}")
                 continue
 
-            # We filter for candles that happened *after* signal generation time
-            # Parse signal.generated_at to pandas datetime (naive or timezone-aware matching)
-            sig_time = pd.to_datetime(signal.generated_at).tz_localize(None)
-            df_naive_idx = df.index.tz_localize(None)
-            df_after = df[df_naive_idx > sig_time]
-
-            # The candle still forming when the signal was generated opened
-            # *before* sig_time, so the strict `> sig_time` filter above drops
-            # it entirely — but its live high/low already reflect everything
-            # that's happened since (Binance's klines endpoint returns the
-            # in-progress candle with continuously-updated high/low). Without
-            # this, a TP/SL touch happening in that very candle stayed
-            # invisible until the next candle opened — for 1h/4h/1d signals
-            # that's up to a full timeframe period of "still active" lag
-            # even after price had genuinely already hit the level.
-            last_candle_time = df_naive_idx[-1]
-            if last_candle_time not in df_after.index.tz_localize(None):
-                # This candle opened before the signal existed, so we don't
-                # know whether its high/low wick happened before or after
-                # sig_time — OHLCV has no intra-candle ordering. A signal
-                # created mid-candle can be reacting to a wick that already
-                # passed, with price since pulling back toward/through entry;
-                # treating that wick as a post-signal TP/SL touch produces a
-                # false positive (e.g. "TP1 alındı" while the chart shows the
-                # signal arrow sitting after the only candle that ever
-                # touched TP1). Collapse high/low to the live close here so
-                # only confirmed since-the-signal price action can trigger a
-                # hit; once the candle closes, the next pass resumes normal
-                # high/low checks on it as a completed bar.
-                still_forming = df.iloc[[-1]].copy()
-                still_forming["high"] = still_forming["close"]
-                still_forming["low"] = still_forming["close"]
-                df_after = pd.concat([df_after, still_forming])
+            # Post-generation bars + the birth-candle rule — single source, shared
+            # with the live-SL shortcut's ladder replay (CP-F0-1H). Policy unchanged.
+            df_after = _post_signal_bars(signal, df)
 
             if df_after.empty:
                 logger.info(f"No new price bars recorded since signal generation for {symbol}")
@@ -737,15 +809,21 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                 # position is still open (scaled out, riding to TP3/SL), so
                 # record their hit times now rather than waiting for the
                 # eventual full close.
+                # CP-F0-1H: write the flag and its timestamp from the SAME walk
+                # result. They used to disagree: the flag was overwritten every
+                # pass while the timestamp was only ever written when truthy, so a
+                # TP1 that one pass saw and the next did not left hit_tp1=False
+                # beside a populated tp1_hit_at (5 such rows exist). The resolved
+                # branch above already writes both unconditionally; this makes the
+                # two branches agree. Safe to clear now that CP-F0-1B removed the
+                # truncated-window case — what a later walk drops is a stale
+                # reading it no longer supports, not data it simply failed to see.
                 perf.hit_tp1 = hit_tp1
                 perf.hit_tp2 = hit_tp2
                 perf.hit_tp3 = hit_tp3
-                if tp1_hit_at:
-                    perf.tp1_hit_at = tp1_hit_at
-                if tp2_hit_at:
-                    perf.tp2_hit_at = tp2_hit_at
-                if tp3_hit_at:
-                    perf.tp3_hit_at = tp3_hit_at
+                perf.tp1_hit_at = tp1_hit_at
+                perf.tp2_hit_at = tp2_hit_at
+                perf.tp3_hit_at = tp3_hit_at
                 perf.max_drawdown = max(0.0, max_drawdown)
                 perf.mfe_pct = max(0.0, max_favorable)
                 perf.bars_to_outcome = bars_to_outcome
