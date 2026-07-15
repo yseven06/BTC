@@ -15,12 +15,16 @@ from typing import Any, Awaitable, Dict
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 
 from app.database import async_session_factory
 from app.models.asset import Asset, AssetType
+from app.models.intelligence import SignalSnapshot
 from app.models.signal import Signal, SignalOutcome, SignalPerformance, SignalType, Direction, RiskLevel
+from app.engines.ai_decision.birth_telemetry import (
+    build_exposure_telemetry, exposure_unavailable,
+)
 from app.models.price_data import Timeframe as DBTimeframe
 from app.collectors.binance_collector import BinanceCollector
 from app.collectors.yahoo_collector import YahooCollector
@@ -155,6 +159,75 @@ RISK_MAP = {
     "low": RiskLevel.LOW, "medium": RiskLevel.MEDIUM,
     "high": RiskLevel.HIGH, "very_high": RiskLevel.VERY_HIGH,
 }
+
+
+async def _collect_exposure(db, *, direction, timeframe, regime_label, now) -> Dict[str, Any]:
+    """CP-OBS-1A probe: aggregate directional exposure at signal birth.
+
+    READ-ONLY + FAIL-OPEN. Runs inside a SAVEPOINT so that even a failing probe
+    statement cannot poison the caller's transaction — the signal is always born,
+    with an `unavailable` marker instead of counts. MUST be called BEFORE the new
+    Signal is added, otherwise it would count itself. The result is telemetry ONLY:
+    no decision, gate or filter reads it (see CP-OBS-1B; live guards are future
+    shadow work, deliberately NOT implemented here).
+    """
+    try:
+        async with db.begin_nested():   # savepoint — isolates any probe failure
+            act = (await db.execute(
+                select(
+                    func.count().filter(Signal.direction == Direction.BULLISH).label("long_n"),
+                    func.count().filter(Signal.direction == Direction.BEARISH).label("short_n"),
+                    func.count(func.distinct(Signal.asset_id)).label("coins"),
+                    func.count().filter(Signal.timeframe == timeframe).label("same_tf"),
+                    func.count().filter(
+                        (Signal.timeframe == timeframe) & (Signal.direction == direction)
+                    ).label("same_tf_dir"),
+                ).where(Signal.is_active.is_(True))
+            )).one()
+
+            since_1h, since_3h = now - timedelta(hours=1), now - timedelta(hours=3)
+            st = (await db.execute(
+                select(
+                    func.count().filter(SignalPerformance.closed_at >= since_1h).label("s1h"),
+                    func.count().filter(SignalPerformance.closed_at >= since_3h).label("s3h"),
+                )
+                .select_from(SignalPerformance)
+                .join(Signal, Signal.id == SignalPerformance.signal_id)
+                .where(
+                    (SignalPerformance.outcome == SignalOutcome.LOSS)
+                    & (Signal.direction == direction)
+                    & (SignalPerformance.closed_at >= since_3h)
+                )
+            )).one()
+
+            same_regime = same_regime_dir = None
+            if regime_label:
+                rg = (await db.execute(
+                    select(
+                        func.count().label("n"),
+                        func.count().filter(Signal.direction == direction).label("n_dir"),
+                    )
+                    .select_from(Signal)
+                    .join(SignalSnapshot, SignalSnapshot.signal_id == Signal.id)
+                    .where(Signal.is_active.is_(True) & (SignalSnapshot.regime == regime_label))
+                )).one()
+                same_regime, same_regime_dir = rg.n, rg.n_dir
+
+        return build_exposure_telemetry(
+            direction=getattr(direction, "value", direction),
+            active_long=act.long_n,
+            active_short=act.short_n,
+            same_timeframe_active=act.same_tf,
+            same_direction_same_timeframe_active=act.same_tf_dir,
+            concurrent_coin_count=act.coins,
+            same_direction_stop_1h=st.s1h,
+            same_direction_stop_3h=st.s3h,
+            same_regime_active=same_regime,
+            same_direction_same_regime_active=same_regime_dir,
+        )
+    except Exception as exc:   # never block a birth on a telemetry probe
+        logger.warning("[Scheduler] Exposure probe failed: %s", exc)
+        return exposure_unavailable(type(exc).__name__)
 
 
 async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") -> None:
@@ -367,6 +440,15 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 logger.info("[Scheduler] %s %s scan resulted in HOLD — not persisted.", symbol, timeframe)
                 return
 
+            # CP-OBS-1A (ADDITIVE telemetry): probe the book's aggregate directional
+            # exposure BEFORE this signal is added, so it never counts itself. The
+            # decision above is already final — this reads nothing back and changes
+            # nothing; it only records the state this idea was born into.
+            exposure = await _collect_exposure(
+                db, direction=new_direction, timeframe=db_tf,
+                regime_label=regime_label, now=now,
+            )
+
             new_sig = Signal(
                 asset_id=asset.id,
                 signal_type=new_type,
@@ -412,7 +494,8 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
             # the actual signal from being saved.
             try:
                 snapshot = build_snapshot(new_sig.id, decision, df, regime=regime_result,
-                                          engine_weights=engine_weights, adaptive_active=adaptive_active)
+                                          engine_weights=engine_weights, adaptive_active=adaptive_active,
+                                          exposure=exposure)
                 db.add(snapshot)
             except Exception as snap_exc:
                 logger.warning("[Scheduler] Snapshot build failed for %s: %s", symbol, snap_exc)

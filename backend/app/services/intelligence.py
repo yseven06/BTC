@@ -49,6 +49,7 @@ def build_snapshot(
     regime: Optional[RegimeResult] = None,
     engine_weights: Optional[Dict[str, float]] = None,
     adaptive_active: Optional[bool] = None,
+    exposure: Optional[Dict[str, Any]] = None,
 ) -> SignalSnapshot:
     """Construct (but do not persist) a SignalSnapshot from the decision payload.
 
@@ -108,20 +109,31 @@ def build_snapshot(
         composite_probability=decision.get("probability_score"),
         mtf_trends=decision.get("mtf_trends", {}),
         extra={"birth": _enrich_birth(decision.get("birth_telemetry"),
-                                      engine_weights, adaptive_active, regime_label)},
+                                      engine_weights, adaptive_active, regime_label,
+                                      exposure)},
     )
 
 
-def _enrich_birth(birth, engine_weights, adaptive_active, regime_label):
+def _enrich_birth(birth, engine_weights, adaptive_active, regime_label, exposure=None):
     """A8-1 (ADDITIVE telemetry): stamp the engine weights actually used + whether
     the coin's learned (adaptive) layer was applied + the regime, so a future
     adaptive-vs-base measurement is possible. NEVER re-read by any decision. Safe if
-    birth is None or the inputs are absent (returns the input unchanged)."""
-    if not isinstance(birth, dict) or (engine_weights is None and adaptive_active is None):
+    birth is None or the inputs are absent (returns the input unchanged).
+
+    CP-OBS-1A adds `exposure` (aggregate directional exposure at birth) as a second
+    INDEPENDENT additive layer: each layer only applies when its own inputs are
+    present, so passing exposure alone can never fabricate A8-1 keys (and vice
+    versa) — every pre-existing call path stays byte-identical."""
+    if not isinstance(birth, dict):
         return birth
-    return {
-        **birth,
-        "engine_weights_used": engine_weights,
-        "adaptive_active": bool(adaptive_active) if adaptive_active is not None else None,
-        "regime": regime_label,
-    }
+    out = birth
+    if engine_weights is not None or adaptive_active is not None:
+        out = {
+            **out,
+            "engine_weights_used": engine_weights,
+            "adaptive_active": bool(adaptive_active) if adaptive_active is not None else None,
+            "regime": regime_label,
+        }
+    if exposure is not None:
+        out = {**out, "exposure": exposure}
+    return out

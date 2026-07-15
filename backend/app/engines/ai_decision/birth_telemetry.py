@@ -105,3 +105,74 @@ def build_birth_telemetry(
         "signal_type": signal_type,
         "direction": direction,
     }
+
+
+# ── CP-OBS-1A · Aggregate directional exposure at birth ──────────────────────
+# WHY: the CP-OBS-1B read-only report found the book's entire edge (+290) is
+# handed back by correlated same-direction stop clusters (-278), and EVERY large
+# cluster was preceded by 83-96% one-sided exposure (up to 44 LONG / 1 SHORT).
+# The system never recorded that state, so it can neither be measured forward
+# nor shadow-tested. This captures it. ADDITIVE — never read by any decision.
+EXPOSURE_TELEMETRY_VERSION = 1
+
+
+def exposure_unavailable(reason: str) -> Dict[str, Any]:
+    """Safe placeholder when the exposure probe fails — the signal MUST still be
+    born. Structured + short so a FAILED probe stays distinguishable from a
+    genuine 'no exposure' (all-zero) reading in later analysis."""
+    return {
+        "version": EXPOSURE_TELEMETRY_VERSION,
+        "unavailable": True,
+        "reason": (str(reason) or "unknown")[:120],
+    }
+
+
+def build_exposure_telemetry(
+    *,
+    direction: Optional[str],
+    active_long: int,
+    active_short: int,
+    same_timeframe_active: int,
+    same_direction_same_timeframe_active: int,
+    concurrent_coin_count: int,
+    same_direction_stop_1h: int,
+    same_direction_stop_3h: int,
+    same_regime_active: Optional[int] = None,
+    same_direction_same_regime_active: Optional[int] = None,
+) -> Dict[str, Any]:
+    """PURE: raw counts -> versioned exposure dict. No DB, no clock, no I/O.
+
+    Counts EXCLUDE the signal being born (the probe runs before it is added), so
+    the reading answers "what was the book already holding when this idea was
+    minted?". same_direction/opposite are None for a NEUTRAL/HOLD direction (the
+    question is undefined without a side)."""
+    active_total = active_long + active_short
+    side = (direction or "").upper()
+
+    if side == "BULLISH":
+        same_direction_active, opposite_direction_active = active_long, active_short
+    elif side == "BEARISH":
+        same_direction_active, opposite_direction_active = active_short, active_long
+    else:
+        same_direction_active = opposite_direction_active = None
+
+    def _share(x: int) -> Optional[float]:
+        return round(x / active_total, 4) if active_total else None
+
+    return {
+        "version": EXPOSURE_TELEMETRY_VERSION,
+        "active_total": active_total,
+        "active_long": active_long,
+        "active_short": active_short,
+        "long_share": _share(active_long),
+        "short_share": _share(active_short),
+        "same_direction_active": same_direction_active,
+        "opposite_direction_active": opposite_direction_active,
+        "same_timeframe_active": same_timeframe_active,
+        "same_direction_same_timeframe_active": same_direction_same_timeframe_active,
+        "concurrent_coin_count": concurrent_coin_count,
+        "same_direction_stop_1h": same_direction_stop_1h,
+        "same_direction_stop_3h": same_direction_stop_3h,
+        "same_regime_active": same_regime_active,
+        "same_direction_same_regime_active": same_direction_same_regime_active,
+    }
