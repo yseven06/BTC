@@ -109,25 +109,39 @@ def regime_weights(regime: Optional[str]) -> Dict[str, float]:
     return _normalize(tilted)
 
 
+def _decision_adaptive_weights(memory: Optional[CoinMemory]) -> Optional[Dict[str, float]]:
+    """The learned multipliers the DECISION should use, derived from the feature at
+    read time rather than read from the stored cache (F0-L2).
+
+    memory.adaptive_weights is a cache the fold writes; it stays for telemetry and
+    the API. But the decision now recomputes from engine_stats — the source of
+    truth — so the weights are always as fresh as the feature, even if a fold was
+    skipped or ran late (the F0-1 downtime case). Byte-identical to reading the
+    cache while the two agree, which the L1 invariant locks and 1225/1225 live
+    (cell × regime) combinations confirmed. Returns None below the sample gate or
+    when no engine has crossed MIN_ENGINE_SAMPLES.
+    """
+    if memory is None or memory.total_signals < MIN_SAMPLES_FOR_ADAPTIVE:
+        return None
+    return _recompute_adaptive_weights(getattr(memory, "engine_stats", None) or {})
+
+
 def get_effective_weights(
     regime: Optional[str],
     memory: Optional[CoinMemory],
 ) -> Dict[str, float]:
     """Final engine weights = base → regime tilt → coin-learned tilt → normalise.
 
-    The learned layer is applied only when `memory` has enough resolved samples
-    and stored adaptive_weights; otherwise just the regime-tilted base is used.
+    The learned layer is applied only when `memory` has enough resolved samples and
+    a computable adaptive model; otherwise just the regime-tilted base is used. F0-L2:
+    the model is recomputed from the feature here, not read from the stored cache.
     """
     weights = regime_weights(regime)
 
-    if (
-        memory is not None
-        and memory.total_signals >= MIN_SAMPLES_FOR_ADAPTIVE
-        and memory.adaptive_weights
-    ):
-        # adaptive_weights are stored as a multiplier-vs-base ratio per engine;
-        # combine multiplicatively with the regime-tilted weights.
-        learned = memory.adaptive_weights
+    learned = _decision_adaptive_weights(memory)
+    if learned:
+        # multipliers-vs-base per engine; combine multiplicatively with the
+        # regime-tilted weights.
         combined = {
             k: weights[k] * float(learned.get(k, 1.0))
             for k in weights
@@ -400,12 +414,10 @@ async def load_effective_weights(
 def adaptive_is_active(memory: Optional[CoinMemory]) -> bool:
     """True when the coin-learned (adaptive) weight layer is applied for this cell —
     the EXACT gate get_effective_weights uses. Pure, read-only; A8-1 telemetry only
-    (never influences weights/decision)."""
-    return bool(
-        memory is not None
-        and memory.total_signals >= MIN_SAMPLES_FOR_ADAPTIVE
-        and memory.adaptive_weights
-    )
+    (never influences weights/decision). F0-L2: keyed off the SAME recompute the
+    decision uses, so the telemetry flag can never disagree with what actually
+    happened (reading the cache here could, if the cache were stale)."""
+    return _decision_adaptive_weights(memory) is not None
 
 
 async def load_effective_weights_meta(

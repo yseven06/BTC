@@ -189,57 +189,97 @@ def test_birth_telemetry_flows_out_of_the_decision_never_into_it():
     assert 'birth_telemetry["' not in src and "birth_telemetry.get(" not in src
 
 
-# ── 4 · Characterisation: the model runs inside the fold TODAY ──────────────
-def test_the_fold_currently_runs_the_model_itself():
-    """Pinned, not endorsed — this IS the debt.
-
-    fold_signal_into does log->feature AND feature->model in one pass, writing the
-    model's output into the same row as the facts. That is why swapping the model
-    would mean re-folding history, and why two models cannot run side by side.
-    CP-F0-L2 would move this call to the actuator; when that lands, THIS test is the
-    one that must be updated — deliberately, not silently.
-    """
+# ── 4 · After F0-L2: the fold still caches, the decision derives ────────────
+def test_the_fold_still_writes_the_model_as_a_cache():
+    """F0-L2 kept the cache write. The fold still runs the model and stores it —
+    telemetry and the API read that column — so this half is unchanged from L1."""
     src = inspect.getsource(fold_signal_into)
-    assert "_recompute_adaptive_weights(" in src, "the model call left the fold — is this L2?"
-    assert "mem.adaptive_weights = " in src, "the fold no longer stores the model output"
+    assert "_recompute_adaptive_weights(" in src
+    assert "mem.adaptive_weights = " in src, "the fold stopped caching the model"
 
 
-def test_the_actuator_reads_the_stored_model_rather_than_deriving_it():
-    """The other half of the same coupling: get_effective_weights consumes the
-    column instead of the feature. L2 would invert this."""
+def test_the_decision_derives_the_model_from_the_feature_not_the_cache():
+    """F0-L2's core inversion. get_effective_weights no longer reads the stored
+    column; it recomputes from engine_stats via the shared decision helper, so the
+    decision is as fresh as the feature even if a fold was skipped or ran late."""
     src = inspect.getsource(get_effective_weights)
-    assert "memory.adaptive_weights" in src
-    assert "_recompute_adaptive_weights(" not in src
+    assert "_decision_adaptive_weights(" in src, "the decision stopped deriving the model"
+    assert "memory.adaptive_weights" not in src, "the decision still reads the cache column"
+
+    from app.services.coin_memory import _decision_adaptive_weights
+    helper = inspect.getsource(_decision_adaptive_weights)
+    code = "\n".join(ln.split("#")[0] for ln in helper.splitlines())
+    # strip the docstring so prose mentioning the cache column is not read as code
+    body = code.split('"""')[-1] if '"""' in code else code
+    assert "_recompute_adaptive_weights(" in body
+    assert "engine_stats" in body                         # derives from the feature
+    assert "memory.adaptive_weights" not in body, "the helper read the cache column"
 
 
-def test_a_fold_that_teaches_no_engine_lesson_leaves_the_model_untouched():
-    """BREAKEVEN carries no directional lesson -> engine_stats and the model both
-    stand still, so the invariant holds trivially. Locks that the fold does not
-    republish a model on folds that did not move its input."""
+def test_the_decision_and_the_telemetry_flag_share_one_source():
+    """adaptive_is_active must key off the SAME recompute the decision uses, so the
+    A8-1 flag can never claim the adaptive layer was applied when it was not (which
+    a stale cache column could)."""
+    src = inspect.getsource(adaptive_is_active)
+    assert "_decision_adaptive_weights(" in src
+    assert "memory.adaptive_weights" not in src
+
+
+def test_a_stale_cache_cannot_change_the_decision():
+    """The payoff. Corrupt the cache column to nonsense; because the decision
+    recomputes from engine_stats, its weights and the active flag do not move.
+    Under L1 this test would have failed — the decision read the column."""
+    from app.services.coin_memory import _decision_adaptive_weights
+
+    mem = _cell()
+    for sig, perf, snap in _book(24):
+        fold_signal_into(mem, sig, perf, snap)
+    good_weights = get_effective_weights("trend", mem)
+    good_active = adaptive_is_active(mem)
+    good_derived = _decision_adaptive_weights(mem)
+
+    mem.adaptive_weights = {"technical_analysis": 99.0, "garbage": -5.0}  # cache poisoned
+
+    assert get_effective_weights("trend", mem) == good_weights      # decision unmoved
+    assert adaptive_is_active(mem) == good_active
+    assert _decision_adaptive_weights(mem) == good_derived
+    # …and the poison really was in the column the API/telemetry still read
+    assert mem.adaptive_weights == {"technical_analysis": 99.0, "garbage": -5.0}
+
+
+def test_a_fold_that_teaches_no_engine_lesson_leaves_the_cache_untouched():
+    """BREAKEVEN carries no directional lesson -> engine_stats and the cached model
+    both stand still. The cache invariant (column == fresh recompute) still holds."""
     mem = _cell()
     for sig, perf, snap in _book(20):
         fold_signal_into(mem, sig, perf, snap)
-    before_stats, before_model = dict(mem.engine_stats), dict(mem.adaptive_weights)
+    before_stats, before_cache = dict(mem.engine_stats), dict(mem.adaptive_weights)
 
     fold_signal_into(mem, _sig(), _perf(SignalOutcome.BREAKEVEN), _snap())
 
     assert mem.total_signals == 21                       # the counter moved…
     assert mem.engine_stats == before_stats              # …the feature did not
-    assert mem.adaptive_weights == before_model          # …nor the model
+    assert mem.adaptive_weights == before_cache          # …nor the cached model
     assert mem.adaptive_weights == _recompute_adaptive_weights(mem.engine_stats)
 
 
 # ── 6 · Actuator gate: characterised, not changed ──────────────────────────
+# The learned layer is driven by engine_stats now (F0-L2), so these build the gate
+# with a real feature rather than by planting a cache column the decision no longer
+# reads. _feat() produces engine_stats past MIN_ENGINE_SAMPLES.
+def _feat():
+    return {"technical_analysis": {"correct": 10, "total": MIN_ENGINE_SAMPLES},
+            "market_structure": {"correct": 4, "total": MIN_ENGINE_SAMPLES}}
+
+
 def test_the_actuator_ignores_the_model_below_the_sample_gate():
-    mem = _cell(total_signals=MIN_SAMPLES_FOR_ADAPTIVE - 1,
-                adaptive_weights={"technical_analysis": 1.3})
+    mem = _cell(total_signals=MIN_SAMPLES_FOR_ADAPTIVE - 1, engine_stats=_feat())
     assert get_effective_weights("trend", mem) == regime_weights("trend")
     assert adaptive_is_active(mem) is False
 
 
 def test_the_actuator_applies_the_model_at_and_above_the_gate():
-    mem = _cell(total_signals=MIN_SAMPLES_FOR_ADAPTIVE,
-                adaptive_weights={"technical_analysis": 1.3})
+    mem = _cell(total_signals=MIN_SAMPLES_FOR_ADAPTIVE, engine_stats=_feat())
     weights = get_effective_weights("trend", mem)
     assert weights != regime_weights("trend")
     assert adaptive_is_active(mem) is True
@@ -249,24 +289,29 @@ def test_the_actuator_applies_the_model_at_and_above_the_gate():
 def test_two_independent_gates_can_disagree():
     """R-2, pinned as a fact rather than fixed.
 
-    MIN_ENGINE_SAMPLES gates whether a model exists; MIN_SAMPLES_FOR_ADAPTIVE gates
-    whether the actuator uses one. They are separate numbers, so a cell can hold a
-    model nobody applies, or clear the gate with no model to apply. Live counts when
-    this was written: 4 of the former, 5 of the latter. Changing either threshold is
-    a behaviour change and out of scope here.
+    MIN_ENGINE_SAMPLES gates whether a model can be computed; MIN_SAMPLES_FOR_ADAPTIVE
+    gates whether the actuator uses one. Separate numbers, so a cell can hold a
+    computable model nobody applies, or clear the actuator gate with no engine over
+    its floor. Changing either threshold is a behaviour change and out of scope here.
     """
     assert MIN_ENGINE_SAMPLES < MIN_SAMPLES_FOR_ADAPTIVE
 
-    # a model exists, but the actuator will not touch it
-    has_model = _cell(total_signals=MIN_ENGINE_SAMPLES,
-                      adaptive_weights={"technical_analysis": 1.3})
-    assert has_model.adaptive_weights is not None
+    # a model is computable, but the actuator gate is not cleared
+    has_model = _cell(total_signals=MIN_ENGINE_SAMPLES, engine_stats=_feat())
+    assert _recompute_adaptive_weights(has_model.engine_stats) is not None
     assert adaptive_is_active(has_model) is False
 
-    # past the actuator gate, but nothing was ever learned
-    no_model = _cell(total_signals=MIN_SAMPLES_FOR_ADAPTIVE, adaptive_weights=None)
+    # past the actuator gate, but no engine crossed its floor -> nothing to apply
+    thin = {"technical_analysis": {"correct": 3, "total": 3}}
+    no_model = _cell(total_signals=MIN_SAMPLES_FOR_ADAPTIVE, engine_stats=thin)
+    assert _recompute_adaptive_weights(no_model.engine_stats) is None
     assert adaptive_is_active(no_model) is False
     assert get_effective_weights("trend", no_model) == regime_weights("trend")
+
+
+def test_no_memory_at_all_falls_back_to_the_regime_tilted_base():
+    assert get_effective_weights("trend", None) == regime_weights("trend")
+    assert adaptive_is_active(None) is False
 
 
 def test_no_memory_at_all_falls_back_to_the_regime_tilted_base():

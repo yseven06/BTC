@@ -20,23 +20,35 @@ def _db_returning(mem):
     return db
 
 
+def _learned_stats():
+    """engine_stats that recompute to a non-None adaptive model. F0-L2: the decision
+    derives the model from THIS, not from a stored adaptive_weights column, so the
+    fixtures below carry engine_stats instead of planting weights."""
+    return {"technical_analysis": {"correct": 10, "total": 14},
+            "market_structure": {"correct": 5, "total": 14}}
+
+
 def test_adaptive_is_active_gate():
+    # F0-L2: the flag is keyed off engine_stats (recomputed) like the decision, not
+    # off the cached adaptive_weights column.
     assert adaptive_is_active(None) is False
-    assert adaptive_is_active(NS(total_signals=25, adaptive_weights={"a": 1.2})) is True
-    assert adaptive_is_active(NS(total_signals=10, adaptive_weights={"a": 1.2})) is False  # < 20
-    assert adaptive_is_active(NS(total_signals=25, adaptive_weights=None)) is False         # no weights
-    assert adaptive_is_active(NS(total_signals=25, adaptive_weights={})) is False           # empty
+    assert adaptive_is_active(NS(total_signals=25, engine_stats=_learned_stats())) is True
+    assert adaptive_is_active(NS(total_signals=10, engine_stats=_learned_stats())) is False  # < 20
+    assert adaptive_is_active(NS(total_signals=25, engine_stats={})) is False           # no feature
+    assert adaptive_is_active(  # feature present but no engine over MIN_ENGINE_SAMPLES
+        NS(total_signals=25, engine_stats={"technical_analysis": {"correct": 2, "total": 3}})
+    ) is False
 
 
 def test_meta_weights_byte_identical():
     """load_effective_weights_meta must return weights byte-identical to
     load_effective_weights (same get_effective_weights call) + the correct flag."""
-    mem = NS(total_signals=25, adaptive_weights={"technical_analysis": 1.2})
+    mem = NS(total_signals=25, engine_stats=_learned_stats())
     w1 = asyncio.run(load_effective_weights(_db_returning(mem), "BTC", "4h", "ranging"))
     w2, active = asyncio.run(load_effective_weights_meta(_db_returning(mem), "BTC", "4h", "ranging"))
     assert w1 == w2 and active is True
 
-    mem2 = NS(total_signals=5, adaptive_weights=None)
+    mem2 = NS(total_signals=5, engine_stats={})
     w3, active3 = asyncio.run(load_effective_weights_meta(_db_returning(mem2), "BTC", "4h", "ranging"))
     w3b = asyncio.run(load_effective_weights(_db_returning(mem2), "BTC", "4h", "ranging"))
     assert w3 == w3b and active3 is False
