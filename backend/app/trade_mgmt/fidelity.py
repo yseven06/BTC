@@ -34,6 +34,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+from app.backtesting import labels
 from app.trade_mgmt.policies.base import Policy
 from app.trade_mgmt.policies.catalog import FixedCurrent
 from app.trade_mgmt.replay import replay
@@ -44,9 +45,13 @@ LOSS_THR = -0.5
 REALIZED_TOL_R = 0.02          # R-space tolerance (compounded rounding)
 PRECISION_TOL_PCT = 0.05       # |derived_sl_dist - stored_sl_dist_pct| absolute %
 
-_EXPIRY_LABELS = {"expired_profit", "expired_loss", "expired_flat"}
-_TP1_EXPIRY_LABELS = {"tp1_hit"}          # TP1 then expiry-in-profit (close not stored)
-_LIVE_LABELS = {"live_sl_hit"}
+# F1-d hygiene: derived from the canonical vocabulary, not literal copies —
+# a labels.py rename can no longer silently strand these sets. NOTE: a label
+# NEW to labels.py still falls through exclude_reason() as reconstructable;
+# new labels must ship with an explicit exclusion decision here.
+_EXPIRY_LABELS = {labels.EXPIRED_PROFIT, labels.EXPIRED_LOSS, labels.EXPIRED_FLAT}
+_TP1_EXPIRY_LABELS = {labels.TP1_HIT}     # TP1 then expiry-in-profit (close not stored)
+_LIVE_LABELS = {labels.LIVE_SL_HIT}
 
 
 @dataclass(frozen=True)

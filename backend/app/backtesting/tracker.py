@@ -595,6 +595,9 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                                  if _bw_live and _bw_live["resolved_by_sl"] else None)
                 perf.detected_at = perf.closed_at
                 perf.detail_label = labels.LIVE_SL_HIT
+                # F1-d: who resolved it, under which semantics. Telemetry only.
+                perf.resolution_source = labels.RES_SRC_LIVE_SL
+                perf.resolution_version = labels.RESOLUTION_SEMANTICS_VERSION
                 try:
                     await update_coin_memory(db, signal, perf, symbol.upper())
                 except Exception as mem_exc:
@@ -651,6 +654,11 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                         # F0-1A: a HOLD has no trade plan, so there is no level to
                         # hit — hit_time stays NULL by definition, not by omission.
                         perf.detected_at = now_utc
+                        # F1-d: who resolved it, under which semantics. Telemetry
+                        # only — the EXPIRED-enum-with-NULL-label shape this path
+                        # shares with the admin paths is now distinguishable.
+                        perf.resolution_source = labels.RES_SRC_HOLD_EXPIRY
+                        perf.resolution_version = labels.RESOLUTION_SEMANTICS_VERSION
                     resolved_count += 1
                 continue
 
@@ -838,6 +846,12 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                     pnl_pct=pnl_pct, mfe_pct=max(0.0, max_favorable),
                     entry=entry, tp1=tp1,
                 )
+                # F1-d: who resolved it, under which semantics. Telemetry only —
+                # the same expiry-vs-walk split the trade-path row records, but
+                # on the source of truth (trade-path writes are fail-open).
+                perf.resolution_source = (labels.RES_SRC_EXPIRY if is_expired_flag
+                                          else labels.RES_SRC_BAR_WALK)
+                perf.resolution_version = labels.RESOLUTION_SEMANTICS_VERSION
                 # Fold this resolution into the coin's learned memory.
                 try:
                     await update_coin_memory(db, signal, perf, symbol.upper())

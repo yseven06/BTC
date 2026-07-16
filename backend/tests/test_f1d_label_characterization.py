@@ -145,9 +145,8 @@ def test_fallback_never_none():
 # ── C. cross-module drift locks ──────────────────────────────────────────────
 
 def test_fidelity_duplicate_sets_match_canonical_vocabulary():
-    # fidelity.py re-declares these as raw literals (labels.py not imported).
-    # Until a hygiene commit derives them from the constants, THIS is the only
-    # tie keeping the two copies of the vocabulary in sync.
+    # CP-F1D-3 hygiene derived these sets from the labels.py constants; this
+    # equality stays as regression insurance against a literal copy returning.
     assert F._EXPIRY_LABELS == {L.EXPIRED_PROFIT, L.EXPIRED_LOSS, L.EXPIRED_FLAT}
     assert F._TP1_EXPIRY_LABELS == {L.TP1_HIT}
     assert F._LIVE_LABELS == {L.LIVE_SL_HIT}
@@ -202,15 +201,17 @@ def test_expired_enum_topology_is_disjoint_from_expired_labels():
     assert _enum_assigns(admin, "INVALIDATED") == 0
 
 
-def test_scheduler_reversal_literals_match_labels_module():
-    """The scheduler writes the reversal label AND its Turkish narration as raw
-    literals (labels.py is not imported there). Until the hygiene commit routes
-    them through the constants, this test keeps the copies in sync."""
+def test_scheduler_reversal_routes_through_the_labels_module():
+    """CP-F1D-3 hygiene, locked: the reversal label and its Turkish narration
+    now route through labels.py — no raw literal copy remains in the scheduler
+    to drift. The stored string itself stays pinned (history compatibility)."""
     sched = _src(SCHEDULER)
-    assert L.INVALIDATED_REVERSAL == "invalidated_reversal"
-    assert 'detail_label = "invalidated_reversal"' in sched
+    assert L.INVALIDATED_REVERSAL == "invalidated_reversal"      # stored rows keep this
     assert L.LABEL_TR[L.INVALIDATED_REVERSAL] == "Ters sinyalle geçersiz oldu"
-    assert 'reason="Ters sinyalle geçersiz oldu"' in sched
+    assert "detail_label = labels.INVALIDATED_REVERSAL" in sched
+    assert "labels.label_tr(old_perf.detail_label)" in sched
+    assert '"invalidated_reversal"' not in sched                 # no literal left behind
+    assert '"Ters sinyalle geçersiz oldu"' not in sched
 
 
 def test_outcome_threshold_copies():

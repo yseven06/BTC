@@ -1,13 +1,14 @@
 """CP-F1D-2 — resolution-provenance schema locks (migration 0009 + model).
 
-Columns only; stamping starts in CP-F1D-3. Pins three facts:
+Pins three facts:
   - SignalPerformance carries resolution_version / resolution_source with the
     right shape (nullable, SMALLINT / TEXT — matching migration 0009 exactly);
   - migration 0009 honors the runner's contract (IF NOT EXISTS idempotency,
     one statement per line for the line-based splitter, no DO/$$ blocks,
     additive-only, signal_performances only);
-  - NOTHING in production writes or reads the new columns yet. CP-F1D-3 must
-    consciously retire the no-WRITER half of that lock when the stamps land.
+  - the stamp WRITERS are exactly the three whitelisted files (CP-F1D-3's
+    seven paths) and NOTHING in production READS the columns — telemetry only,
+    any read access is a new CP.
 
 Note: `resolution_source` as a NAME already exists in the codebase — it is the
 trade_path.extra JSON key (trade_path.py / tracker.py / tpsl_analytics.py).
@@ -61,21 +62,38 @@ def test_migration_file_honors_runner_contract():
 
 # ── no writer, no reader yet ─────────────────────────────────────────────────
 
-def test_no_production_writer_or_reader_yet():
-    """The columns are write-opened but untouched: no `<x>.resolution_version`
-    or `<x>.resolution_source` attribute access anywhere under app/ (the
+# CP-F1D-3 retired the no-WRITER half of the original lock, as planned: the
+# seven stamps live in exactly these three files (per-path stamp tests in
+# test_f1d3_resolution_stamps.py). The no-READER half stands unchanged.
+STAMP_WRITERS = {
+    "backtesting/tracker.py",     # bar_walk / expiry / live_sl / hold_expiry
+    "services/scheduler.py",      # reversal
+    "api/routes/admin.py",        # admin_invalidate / admin_bulk_clean
+}
+
+_WRITE = re.compile(r"\.resolution_(version|source)\s*=(?!=)")
+_TOUCH = re.compile(r"\.resolution_(version|source)\b")
+
+
+def test_stamp_writers_whitelisted_and_still_no_reader():
+    """Writers: exactly the three files above — a stamp appearing anywhere else
+    (or a whitelisted file losing all its stamps) fails here. Readers: still
+    ZERO — the columns stay telemetry-only; any read access is a new CP. The
     trade_path extra KEY of the same name is dict access, not attribute
-    access, and stays out of scope by construction). CP-F1D-3 retires the
-    writer half of this lock on purpose — with per-path stamp tests."""
-    offenders = []
+    access, and stays out of scope by construction."""
+    writers, readers = set(), []
     for py in APP_DIR.rglob("*.py"):
         rel = py.relative_to(APP_DIR).as_posix()
         if rel == "models/signal.py":               # the definition itself
             continue
-        src = py.read_text(encoding="utf-8")
-        if re.search(r"\.resolution_(version|source)\b", src):
-            offenders.append(rel)
-    assert offenders == [], f"yeni kolonlara erken dokunan dosyalar: {offenders}"
+        for i, line in enumerate(py.read_text(encoding="utf-8").splitlines(), 1):
+            code = line.split("#")[0]
+            if _WRITE.search(code):
+                writers.add(rel)
+            elif _TOUCH.search(code):
+                readers.append(f"{rel}:{i}: {line.strip()[:70]}")
+    assert writers == STAMP_WRITERS, f"damga yazan dosyalar beklenenden farkli: {writers}"
+    assert readers == [], "kolonlar OKUYUCU kazandi (yeni CP gerekir):\n" + "\n".join(readers)
 
 
 if __name__ == "__main__":

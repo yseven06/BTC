@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.auth.admin import require_admin, require_super_admin
+from app.backtesting import labels
 from app.database import get_db
 from app.models.admin_audit import AdminAuditLog
 from app.models.asset import Asset, AssetType
@@ -359,6 +360,10 @@ async def invalidate_signal(
         perf.outcome = SignalOutcome.EXPIRED
         perf.is_expired = True
         perf.closed_at = datetime.now(timezone.utc)
+        # F1-d: who resolved it, under which semantics. Telemetry only — until
+        # now this row was indistinguishable from a HOLD expiry on its own.
+        perf.resolution_source = labels.RES_SRC_ADMIN_INVALIDATE
+        perf.resolution_version = labels.RESOLUTION_SEMANTICS_VERSION
 
     await _log_audit(db, admin, "signal.invalidate", "signal", str(signal_id),
                       {"symbol": signal.asset.symbol if signal.asset else None})
@@ -418,6 +423,9 @@ async def bulk_clean_signals(
             s.performance.outcome = SignalOutcome.EXPIRED
             s.performance.is_expired = True
             s.performance.closed_at = now
+            # F1-d: who resolved it, under which semantics. Telemetry only.
+            s.performance.resolution_source = labels.RES_SRC_ADMIN_BULK_CLEAN
+            s.performance.resolution_version = labels.RESOLUTION_SEMANTICS_VERSION
 
     await _log_audit(db, admin, "signal.bulk_clean", "signal", None,
                       {"count": len(signals), "min_confidence": payload.min_confidence, "market": payload.market})

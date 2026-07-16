@@ -53,6 +53,36 @@ def label_tr(detail: str | None) -> str:
     return LABEL_TR.get(detail, detail)
 
 
+# ── Resolution provenance (F1-d) ────────────────────────────────────────────
+# Stamped on SignalPerformance.resolution_version by every writer path that
+# closes a performance row. ONE monotonic integer for the RESOLUTION semantics
+# as a whole: the classifier's branches and thresholds below, the ±0.5%
+# WIN/LOSS outcome cut in the tracker, and the booking math (bar-walk ladder,
+# live-SL scale-out). BUMP when any of those changes meaning; adding a new
+# writer path or a new label is NOT a bump — rows already say which path wrote
+# them via resolution_source. NULL on a row = written before stamping existed;
+# never backfilled, never guessed. Known pre-stamp sub-eras, documented for
+# analysts but NEVER stamped: <06-22 unlabeled, <06-30 pre-KEY1-d scale-out,
+# <07-16 pre-F0-1H fresh-flag re-read.
+#
+# v1 = the post-F0-1H / F0-1A era: KEY1-d ladder honored, live-SL flags re-read
+#      from this pass's bars, hit_time/detected_at split recorded.
+RESOLUTION_SEMANTICS_VERSION = 1
+
+# Writer-path identities for SignalPerformance.resolution_source — WHICH of
+# the seven paths closed the row. Deliberately the same name and value family
+# as trade_path.extra["resolution_source"] (bar_walk | live_sl | expiry), but
+# stamped on the source of truth: trade-path rows are fail-open and cover only
+# the three tracker paths.
+RES_SRC_BAR_WALK = "bar_walk"
+RES_SRC_LIVE_SL = "live_sl"
+RES_SRC_EXPIRY = "expiry"
+RES_SRC_HOLD_EXPIRY = "hold_expiry"
+RES_SRC_REVERSAL = "reversal"
+RES_SRC_ADMIN_INVALIDATE = "admin_invalidate"
+RES_SRC_ADMIN_BULK_CLEAN = "admin_bulk_clean"
+
+
 # Fraction of the entry→TP1 distance price must travel in our favour for a
 # stop-out to count as "right direction, stop too tight" rather than a plain
 # wrong call. 0.5 = price got at least halfway to the first target first.

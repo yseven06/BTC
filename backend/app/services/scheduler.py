@@ -29,6 +29,7 @@ from app.models.price_data import Timeframe as DBTimeframe
 from app.collectors.binance_collector import BinanceCollector
 from app.collectors.yahoo_collector import YahooCollector
 from app.engines.ai_decision.engine import AIDecisionEngine
+from app.backtesting import labels
 from app.backtesting.tracker import track_and_resolve_active_signals
 from app.notifications.service import notify_signal
 from app.engines.market_regime import detect_regime
@@ -374,7 +375,11 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                     old.is_active = False
                     old_perf.outcome = SignalOutcome.INVALIDATED
                     old_perf.closed_at = now
-                    old_perf.detail_label = "invalidated_reversal"
+                    # F1-d hygiene: the constant, not a drifting literal copy.
+                    old_perf.detail_label = labels.INVALIDATED_REVERSAL
+                    # F1-d: who resolved it, under which semantics. Telemetry only.
+                    old_perf.resolution_source = labels.RES_SRC_REVERSAL
+                    old_perf.resolution_version = labels.RESOLUTION_SEMANTICS_VERSION
                     just_reversed = True
                     if last_close is not None and old.entry_zone_low and old.entry_zone_high:
                         entry = float(old.entry_zone_high + old.entry_zone_low) / 2.0
@@ -398,7 +403,8 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                     db.add(make_event(
                         signal_id=old.id, from_status=old.live_status,
                         to_status="closed", kind="resolution",
-                        reason="Ters sinyalle geçersiz oldu", outcome=old_perf.outcome.value,
+                        reason=labels.label_tr(old_perf.detail_label),
+                        outcome=old_perf.outcome.value,
                         price=last_close,
                     ))
                 else:
