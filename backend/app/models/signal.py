@@ -17,6 +17,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Numeric,
+    SmallInteger,
     Text,
     func,
 )
@@ -252,6 +253,28 @@ class SignalPerformance(Base):
     # the detection lag. Telemetry only: read by NOTHING, no decision sees them.
     hit_time = Column(DateTime(timezone=True), nullable=True)
     detected_at = Column(DateTime(timezone=True), nullable=True)
+    # F1-d: WHO resolved this row, under WHICH semantics. Seven writer paths
+    # close a performance row (tracker bar-walk / live-SL / organic expiry /
+    # HOLD-expiry, scheduler reversal, admin invalidate / bulk-clean), each
+    # stamping a different subset of the fields above — with no on-row marker
+    # of the path or of the resolution-logic era (the semantics changed at
+    # KEY1-d and F0-1H with no trace). These record both, at write time:
+    #
+    # resolution_source: writer identity — bar_walk | live_sl | expiry |
+    #   hold_expiry | reversal | admin_invalidate | admin_bulk_clean. Same name
+    #   and value family as trade_path.extra['resolution_source'], but on the
+    #   source of truth: trade-path rows are fail-open and cover only 3 of the
+    #   7 paths. Free-form text (not a DB enum) for the same reason as
+    #   detail_label above.
+    # resolution_version: the resolution-semantics version in force when the
+    #   row was written (RESOLUTION_SEMANTICS_VERSION, introduced with the
+    #   writer stamps in CP-F1D-3).
+    #
+    # Stamped from CP-F1D-3 on; NULL = written before stamping existed — never
+    # backfilled, never guessed. Telemetry only: read by NOTHING, no decision
+    # sees them (the CP-OBS-1A pattern).
+    resolution_version = Column(SmallInteger, nullable=True)
+    resolution_source = Column(Text, nullable=True)
     is_expired = Column(Boolean, nullable=False, default=False)
 
     # Relationships

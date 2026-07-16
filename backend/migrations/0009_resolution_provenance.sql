@@ -1,0 +1,38 @@
+-- 0009: WHO resolved the row, under WHICH semantics — on signal_performances.
+--
+-- Seven writer paths close a performance row, and each stamps a different
+-- subset of outcome / detail_label / timestamps: the tracker bar-walk labels
+-- via classify_resolution; the live-SL shortcut always writes live_sl_hit;
+-- organic expiry books WIN/LOSS/BREAKEVEN (+ is_expired + an expired_* label)
+-- while HOLD-expiry and both admin paths book the EXPIRED enum with a NULL
+-- label; the scheduler reversal writes a raw literal. None of them leaves a
+-- marker saying which path wrote the row or which era of resolution logic was
+-- in force — and the semantics have already changed at least twice (KEY1-d
+-- live-SL scale-out on 06-30, F0-1H fresh-bar flag re-read on 07-16) with no
+-- on-row trace, so rows written under old rules are indistinguishable from
+-- new ones. Both boundaries are visible in the data but only by inference.
+--
+--   resolution_source  — writer identity: bar_walk | live_sl | expiry |
+--                        hold_expiry | reversal | admin_invalidate |
+--                        admin_bulk_clean. Deliberately the same name and
+--                        value family as trade_path.extra['resolution_source'],
+--                        but on the source of truth and queryable: trade-path
+--                        rows are fail-open and cover only 3 of the 7 writers
+--                        (~23% of resolved rows have no trade-path row at all).
+--   resolution_version — the resolution-semantics version in force at write
+--                        time (RESOLUTION_SEMANTICS_VERSION, introduced with
+--                        the writer stamps in CP-F1D-3); bumped when the
+--                        classifier's branches/thresholds, the ±0.5% outcome
+--                        cut, or the booking math changes.
+--
+-- Stamping starts in CP-F1D-3 — this migration only opens the columns.
+-- Pure telemetry — read by NOTHING, decisions stay byte-identical (the
+-- CP-OBS-1A pattern). NOT backfilled: NULL means "written before stamping
+-- existed"; inferring a source or version for old rows would invent
+-- provenance we do not have.
+--
+-- Idempotent + non-destructive: nullable columns, safe on re-run and a no-op
+-- on a fresh DB where create_all already added them from the model. ADD COLUMN
+-- with no default does not rewrite the table.
+ALTER TABLE signal_performances ADD COLUMN IF NOT EXISTS resolution_version SMALLINT;
+ALTER TABLE signal_performances ADD COLUMN IF NOT EXISTS resolution_source TEXT;
