@@ -310,9 +310,13 @@ def _window_reaches_generation(signal, df) -> bool:
     return first <= _sig_time_aware(signal)
 
 
-def _live_ladder_flags(signal, df):
-    """CP-F0-1H: (hit_tp1, hit_tp2) as THIS pass's bars show them, or None when the
-    bars cannot answer — the caller then falls back to the stored flags.
+def _live_ladder_walk(signal, df):
+    """CP-F0-1H/1A: what THIS pass's bars say about the live-SL shortcut's trade —
+    the bar-walk result, or None when the bars cannot answer, in which case the
+    caller falls back to the stored flags (the pre-CP behaviour).
+
+    F0-1H used only hit_tp1/hit_tp2 from this; F0-1A also reads closed_at off it for
+    hit_time, so it returns the whole walk rather than replaying the bars twice.
 
     The live-SL shortcut books against perf.hit_tp1, which is only as fresh as the
     last pass that ran. Across a gap (the machine was off) nothing updated it, so a
@@ -353,7 +357,7 @@ def _live_ladder_flags(signal, df):
         logger.warning("[Tracker] ladder replay failed for %s (using stored flags): %s",
                        getattr(signal, "id", "?"), exc)
         return None
-    return bool(bw["hit_tp1"]), bool(bw["hit_tp2"])
+    return bw
 
 
 # Timeframe → seconds, for scaling the lifecycle min-state-duration.
@@ -560,10 +564,11 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                 # loss). Single source: live_sl_realized mirrors step_bar's 0.50/0.30 + BE.
                 # CP-F0-1H: read the scale-out from THIS pass's bars, not from perf —
                 # perf is only as fresh as the last pass that ran, so a TP1 banked
-                # during a gap reads False and books a full loss (see _live_ladder_flags).
+                # during a gap reads False and books a full loss (see _live_ladder_walk).
                 # No bars to answer with → stored flags, i.e. the pre-CP behaviour.
-                _flags = _live_ladder_flags(signal, dfs_by_signal_id.get(signal.id))
-                _hit1, _hit2 = _flags if _flags else (bool(perf.hit_tp1), bool(perf.hit_tp2))
+                _bw_live = _live_ladder_walk(signal, dfs_by_signal_id.get(signal.id))
+                _hit1, _hit2 = ((bool(_bw_live["hit_tp1"]), bool(_bw_live["hit_tp2"]))
+                                if _bw_live else (bool(perf.hit_tp1), bool(perf.hit_tp2)))
                 realized_frac, effective_sl, gave_back = live_sl_realized(
                     signal.direction.value, entry, float(signal.stop_loss),
                     float(signal.tp1) if signal.tp1 is not None else entry,
@@ -580,6 +585,15 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                     perf.outcome = SignalOutcome.BREAKEVEN
                 perf.actual_return = pnl_pct
                 perf.closed_at = datetime.now(timezone.utc)
+                # F0-1A: closed_at above is the WALL CLOCK on this path — the ticker
+                # says the stop is broken now, and after a gap "now" can be hours
+                # after the break. Record the split beside it: hit_time is the bar
+                # the walk points at, but only when the walk agrees this was a stop.
+                # A mid-candle break no bar shows yet leaves it NULL — there is no
+                # bar to name, and NULL means "not recorded", never a guess.
+                perf.hit_time = (_bw_live["closed_at"]
+                                 if _bw_live and _bw_live["resolved_by_sl"] else None)
+                perf.detected_at = perf.closed_at
                 perf.detail_label = labels.LIVE_SL_HIT
                 try:
                     await update_coin_memory(db, signal, perf, symbol.upper())
@@ -634,6 +648,9 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                         perf.outcome = SignalOutcome.EXPIRED
                         perf.is_expired = True
                         perf.closed_at = now_utc
+                        # F0-1A: a HOLD has no trade plan, so there is no level to
+                        # hit — hit_time stays NULL by definition, not by omission.
+                        perf.detected_at = now_utc
                     resolved_count += 1
                 continue
 
@@ -805,6 +822,15 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                 perf.tp2_hit_at = tp2_hit_at
                 perf.tp3_hit_at = tp3_hit_at
                 perf.closed_at = closed_at
+                # F0-1A: closed_at above is the hit bar when the walk resolved, but
+                # the LAST bar when the wall-clock expiry claimed the signal — two
+                # meanings in one column. Split them: _bw["closed_at"] is non-None
+                # exactly when the walk resolved, so it is the hit, and NULL reads
+                # as "expired, there was no hit". detected_at is when we wrote it —
+                # on a live system that trails the bar by up to one pass, after
+                # downtime by the whole outage.
+                perf.hit_time = _bw["closed_at"]
+                perf.detected_at = datetime.now(timezone.utc)
                 perf.is_expired = is_expired_flag
                 perf.detail_label = labels.classify_resolution(
                     hit_tp1=hit_tp1, hit_tp2=hit_tp2, hit_tp3=hit_tp3,

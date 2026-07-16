@@ -15,7 +15,7 @@ from types import SimpleNamespace as NS
 import pandas as pd
 
 from app.backtesting.tracker import (
-    _live_ladder_flags, _post_signal_bars, live_sl_realized,
+    _live_ladder_walk, _post_signal_bars, live_sl_realized,
 )
 
 GEN = datetime(2026, 7, 16, 0, 0, tzinfo=timezone.utc)
@@ -28,6 +28,13 @@ def _signal(**over):
                 stop_loss=SL, tp1=TP1, tp2=TP2, tp3=TP3)
     base.update(over)
     return NS(**base)
+
+
+def _flags(signal, df):
+    """(hit_tp1, hit_tp2) from the walk — F0-1A widened _live_ladder_walk to
+    return the whole result so hit_time can come off the same replay."""
+    bw = _live_ladder_walk(signal, df)
+    return None if bw is None else (bool(bw["hit_tp1"]), bool(bw["hit_tp2"]))
 
 
 def _bars(rows, start_offset_min=15, freq="15min"):
@@ -46,7 +53,7 @@ def test_tp1_banked_in_the_gap_is_recovered_from_the_bars():
         (101.8, 101.9, 99.9, 100.0),   # drifts back to entry
         (100.0, 100.1, 96.0, 96.2),    # blows through the ORIGINAL stop
     ])
-    flags = _live_ladder_flags(_signal(), df)
+    flags = _flags(_signal(), df)
     assert flags == (True, False)              # the walk saw TP1; perf said False
 
     stale = live_sl_realized("bullish", ENTRY, SL, TP1, TP2, False, False)[0]
@@ -62,7 +69,7 @@ def test_tp2_is_recovered_too():
         (100.0, 103.5, 99.8, 103.2),   # TP1 and TP2 in one candle
         (103.2, 103.3, 96.0, 96.1),    # then collapses
     ])
-    assert _live_ladder_flags(_signal(), df) == (True, True)
+    assert _flags(_signal(), df) == (True, True)
 
 
 # ── 2/3 · The paths that must NOT move ──────────────────────────────────────
@@ -72,7 +79,7 @@ def test_no_tp1_still_books_the_full_original_stop_loss():
         (100.0, 100.4, 99.5, 99.8),
         (99.8, 99.9, 96.0, 96.1),      # straight to the stop, TP1 never touched
     ])
-    flags = _live_ladder_flags(_signal(), df)
+    flags = _flags(_signal(), df)
     assert flags == (False, False)
     assert live_sl_realized("bullish", ENTRY, SL, TP1, TP2, *flags)[0] == (SL - ENTRY) / ENTRY
 
@@ -80,7 +87,7 @@ def test_no_tp1_still_books_the_full_original_stop_loss():
 def test_agreeing_flags_change_nothing():
     """260 live-SL rows already had hit_tp1=True stored — same answer either way."""
     df = _bars([(100.0, 102.0, 99.8, 101.8), (101.8, 101.9, 96.0, 96.1)])
-    flags = _live_ladder_flags(_signal(), df)
+    flags = _flags(_signal(), df)
     assert flags == (True, False)
     from_walk = live_sl_realized("bullish", ENTRY, SL, TP1, TP2, *flags)
     from_perf = live_sl_realized("bullish", ENTRY, SL, TP1, TP2, True, False)
@@ -89,18 +96,18 @@ def test_agreeing_flags_change_nothing():
 
 # ── 4 · Fallback: no bars → the stored flags, i.e. pre-CP behaviour ─────────
 def test_returns_none_when_the_bars_cannot_answer():
-    assert _live_ladder_flags(_signal(), None) is None
-    assert _live_ladder_flags(_signal(), pd.DataFrame()) is None
+    assert _flags(_signal(), None) is None
+    assert _flags(_signal(), pd.DataFrame()) is None
     # levels missing → cannot walk
-    assert _live_ladder_flags(_signal(tp1=None), _bars([(100.0, 102.0, 99.0, 101.8)])) is None
-    assert _live_ladder_flags(_signal(entry_zone_low=None),
+    assert _flags(_signal(tp1=None), _bars([(100.0, 102.0, 99.0, 101.8)])) is None
+    assert _flags(_signal(entry_zone_low=None),
                               _bars([(100.0, 102.0, 99.0, 101.8)])) is None
 
 
 def test_a_broken_frame_falls_back_instead_of_raising():
     """The probe must never take a resolution down with it."""
     bad = pd.DataFrame({"open": [1.0]}, index=[GEN + timedelta(minutes=15)])  # no high/low
-    assert _live_ladder_flags(_signal(), bad) is None
+    assert _flags(_signal(), bad) is None
 
 
 # ── 5 · The walk still resolves on its own ──────────────────────────────────
@@ -149,7 +156,7 @@ def test_birth_candle_is_still_collapsed_to_its_close():
     assert out["high"].iloc[0] != 105.0                           # the wick is NOT trusted
 
     # …so a TP1 that only the birth wick touched is still not credited.
-    assert _live_ladder_flags(_signal(), birth) == (False, False)
+    assert _flags(_signal(), birth) == (False, False)
 
 
 def test_birth_candle_drops_out_once_a_newer_bar_exists():
