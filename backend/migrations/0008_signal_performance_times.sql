@@ -1,0 +1,28 @@
+-- 0008: separate WHEN IT HAPPENED from WHEN WE NOTICED, on signal_performances.
+--
+-- closed_at means two different things depending on which path resolved the
+-- signal. The bar-walk stamps the hit bar's time; the live-SL shortcut, expiry,
+-- the reversal path and the admin paths all stamp the wall clock. Six of the
+-- seven writers only know the latter, and by volume ~76% of resolutions take one
+-- of those paths — so "closed_at - generated_at" is a trade duration inflated by
+-- however long detection lagged. After downtime that inflation is the outage.
+--
+-- closed_at is NOT touched: sixteen readers depend on its current meaning
+-- (ordering, the equity curve, the landing proof card, the closed-signal chart
+-- anchor, the CP-OBS-1A exposure probe). These two columns record the split
+-- alongside it instead:
+--   hit_time    — the bar the walk says the level was actually reached, when a
+--                 bar can say. NULL where there is no hit to speak of (expiry,
+--                 HOLD, reversal, admin) or where no walk ran.
+--   detected_at — the wall clock at the moment the row was written.
+-- Their difference is the detection lag, measurable for the first time.
+--
+-- Pure telemetry — read by NOTHING, decisions stay byte-identical (the CP-OBS-1A
+-- pattern). NOT backfilled: NULL means "not recorded at the time". Copying an old
+-- closed_at into hit_time would invent provenance we do not have.
+--
+-- Idempotent + non-destructive: nullable timestamps, safe on re-run and a no-op
+-- on a fresh DB where create_all already added them from the model. ADD COLUMN
+-- with no default does not rewrite the table.
+ALTER TABLE signal_performances ADD COLUMN IF NOT EXISTS hit_time TIMESTAMPTZ;
+ALTER TABLE signal_performances ADD COLUMN IF NOT EXISTS detected_at TIMESTAMPTZ;

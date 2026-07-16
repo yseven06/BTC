@@ -188,7 +188,11 @@ class SignalPerformance(Base):
         actual_return: Realised percentage return.
         max_drawdown: Maximum drawdown during the trade.
         hit_tp1 / hit_tp2 / hit_tp3: Whether each target was reached.
-        closed_at: When the signal was resolved.
+        closed_at: When the signal was resolved — bar time on the bar-walk path,
+            wall clock on every other one. Kept as-is; sixteen readers rely on it.
+        hit_time: When the level was actually reached, when a bar can say so.
+        detected_at: When the tracker wrote the row. detected_at - hit_time is the
+            detection lag that closed_at alone cannot distinguish.
         is_expired: Whether the signal reached its expiration time before hit.
     """
 
@@ -233,6 +237,21 @@ class SignalPerformance(Base):
     tp2_hit_at = Column(DateTime(timezone=True), nullable=True)
     tp3_hit_at = Column(DateTime(timezone=True), nullable=True)
     closed_at = Column(DateTime(timezone=True), nullable=True)
+    # F0-1A: closed_at above means two different things depending on which path
+    # resolved the signal — the bar-walk stamps the hit bar, while the live-SL
+    # shortcut, expiry, the reversal path and the admin paths stamp the wall
+    # clock. Six of the seven writers only know the latter, so closed_at minus
+    # generated_at is a duration inflated by however long detection lagged (after
+    # downtime, by the outage itself). closed_at keeps that meaning — sixteen
+    # readers depend on it — and these record the split alongside it.
+    #
+    # hit_time: the bar the walk says the level was actually reached, when a bar
+    # can say so. NULL where there is no hit to speak of (expiry, HOLD, reversal,
+    # admin) or where no walk ran — NULL means "not recorded", never a guess.
+    # detected_at: the wall clock when the row was written. Their difference is
+    # the detection lag. Telemetry only: read by NOTHING, no decision sees them.
+    hit_time = Column(DateTime(timezone=True), nullable=True)
+    detected_at = Column(DateTime(timezone=True), nullable=True)
     is_expired = Column(Boolean, nullable=False, default=False)
 
     # Relationships
