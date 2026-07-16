@@ -36,6 +36,7 @@ from app.backtesting.trade_path import is_legacy_contradictory_live_sl
 from app.services.trade_geometry import planned_rr
 from app.engines.ai_decision.signal_generator import BASE_ENGINE_WEIGHTS
 from app.engines.base import SignalBias
+from app.models.asset import Asset
 from app.models.intelligence import CoinMemory, SignalSnapshot, SignalTradePath
 from app.models.signal import Signal, SignalOutcome, SignalPerformance
 
@@ -172,43 +173,28 @@ def _recompute_adaptive_weights(engine_stats: Dict[str, Any]) -> Optional[Dict[s
     return multipliers if any_ready else None
 
 
-async def update_coin_memory(
-    db: AsyncSession,
-    signal: Signal,
-    perf: SignalPerformance,
-    symbol: str,
-) -> None:
-    """Fold a just-resolved signal into its (symbol, timeframe) memory cell.
+# Outcomes that carry a lesson. Anything else (ACTIVE) teaches nothing.
+FOLDABLE_OUTCOMES = (SignalOutcome.WIN, SignalOutcome.LOSS, SignalOutcome.BREAKEVEN,
+                     SignalOutcome.EXPIRED, SignalOutcome.INVALIDATED)
 
-    Safe to call inside the resolving transaction; wrapped by the caller so a
-    memory-update failure never blocks the resolution itself.
+
+def fold_signal_into(mem: CoinMemory, signal: Signal, perf: SignalPerformance,
+                     snap: Optional[SignalSnapshot]) -> bool:
+    """Fold ONE resolved signal into a cell. PURE: mutates `mem`, no DB, no clock.
+
+    F0-K: the single derivation of the v1 base facets. Both callers go through it —
+    `update_coin_memory` online, `rebuild_coin_memory` from the SoT — so the two can
+    never drift apart. Modelled on tm_stats, where `rebuild_tm_stats` already shares
+    its logic with the online rollup; the base facets had no such rebuild, which is
+    why a fold lost to the caller's fail-open envelope was lost for good.
+
+    Returns True when the signal was folded, False when its outcome carries no
+    lesson. Does NOT touch tm_stats/tm_sample_count — those are the trade-path
+    rollup's facet and have their own derivation.
     """
-    timeframe = signal.timeframe.value if hasattr(signal.timeframe, "value") else str(signal.timeframe)
     outcome = perf.outcome
-
-    # Only learn from genuinely resolved directional outcomes.
-    if outcome not in (SignalOutcome.WIN, SignalOutcome.LOSS, SignalOutcome.BREAKEVEN,
-                       SignalOutcome.EXPIRED, SignalOutcome.INVALIDATED):
-        return
-
-    # Fetch (or create) the memory cell.
-    res = await db.execute(
-        select(CoinMemory).where(CoinMemory.symbol == symbol, CoinMemory.timeframe == timeframe)
-    )
-    mem = res.scalar_one_or_none()
-    if mem is None:
-        mem = CoinMemory(
-            symbol=symbol, timeframe=timeframe,
-            total_signals=0, wins=0, losses=0,
-            engine_stats={}, regime_stats={}, outcome_label_stats={},
-        )
-        db.add(mem)
-
-    # Pull the birth-snapshot for engine biases + regime context.
-    snap_res = await db.execute(
-        select(SignalSnapshot).where(SignalSnapshot.signal_id == signal.id)
-    )
-    snap = snap_res.scalar_one_or_none()
+    if outcome not in FOLDABLE_OUTCOMES:
+        return False
 
     is_win = outcome == SignalOutcome.WIN
     is_loss = outcome in (SignalOutcome.LOSS, SignalOutcome.INVALIDATED)
@@ -272,10 +258,129 @@ async def update_coin_memory(
         n = mem.total_signals
         mem.avg_bars_to_outcome = round((prev_avg * (n - 1) + perf.bars_to_outcome) / n, 2)
 
+    return True
+
+
+async def update_coin_memory(
+    db: AsyncSession,
+    signal: Signal,
+    perf: SignalPerformance,
+    symbol: str,
+) -> None:
+    """Fold a just-resolved signal into its (symbol, timeframe) memory cell.
+
+    Safe to call inside the resolving transaction; wrapped by the caller so a
+    memory-update failure never blocks the resolution itself. F0-K: the arithmetic
+    moved verbatim into fold_signal_into, which rebuild_coin_memory shares — this is
+    now only the I/O around it (find-or-create the cell, read the snapshot).
+    """
+    timeframe = signal.timeframe.value if hasattr(signal.timeframe, "value") else str(signal.timeframe)
+
+    # Only learn from genuinely resolved outcomes. Checked BEFORE the cell is
+    # touched, so an unresolved signal still creates nothing (unchanged).
+    if perf.outcome not in FOLDABLE_OUTCOMES:
+        return
+
+    # Fetch (or create) the memory cell.
+    res = await db.execute(
+        select(CoinMemory).where(CoinMemory.symbol == symbol, CoinMemory.timeframe == timeframe)
+    )
+    mem = res.scalar_one_or_none()
+    if mem is None:
+        mem = CoinMemory(
+            symbol=symbol, timeframe=timeframe,
+            total_signals=0, wins=0, losses=0,
+            engine_stats={}, regime_stats={}, outcome_label_stats={},
+        )
+        db.add(mem)
+
+    # Pull the birth-snapshot for engine biases + regime context.
+    snap_res = await db.execute(
+        select(SignalSnapshot).where(SignalSnapshot.signal_id == signal.id)
+    )
+    snap = snap_res.scalar_one_or_none()
+
+    fold_signal_into(mem, signal, perf, snap)
+
     logger.info(
         "[CoinMemory] %s %s updated: total=%d wins=%d losses=%d label=%s",
-        symbol, timeframe, mem.total_signals, mem.wins, mem.losses, label,
+        symbol, timeframe, mem.total_signals, mem.wins, mem.losses,
+        perf.detail_label or perf.outcome.value,
     )
+
+
+async def rebuild_coin_memory(db: AsyncSession) -> Dict[str, int]:
+    """Drop & rebuild every coin_memory BASE facet from signal_performances (the SoT).
+
+    F0-K. update_coin_memory is an incremental online fold wrapped in the caller's
+    fail-open envelope: a fold that raises is logged and skipped, the resolution
+    commits anyway, and the count is short by one forever. tm_stats has had
+    rebuild_tm_stats to repair exactly that; the base facets had nothing, so drift
+    could only accumulate. This is that missing half.
+
+    Re-folds through fold_signal_into — the SAME function the online path uses — so
+    "rebuild == online" is true by construction rather than by two implementations
+    agreeing. Ordered by closed_at because avg_bars_to_outcome is a running mean.
+    Note the honest limit: this reproduces the arithmetic exactly, but the true
+    historical resolution ORDER is not recoverable, so a cell whose folds landed in
+    a different order can differ in that one rolling average.
+
+    Touches ONLY the v1 base facets. tm_stats / tm_sample_count belong to the
+    trade-path rollup and are left exactly as they are.
+
+    Read-and-write; MANUAL/admin use — nothing calls this automatically. Caller commits.
+    """
+    rows = (await db.execute(
+        select(SignalPerformance, Signal, Asset.symbol, SignalSnapshot)
+        .join(Signal, Signal.id == SignalPerformance.signal_id)
+        .join(Asset, Asset.id == Signal.asset_id)
+        .outerjoin(SignalSnapshot, SignalSnapshot.signal_id == Signal.id)
+        .where(SignalPerformance.outcome.in_(FOLDABLE_OUTCOMES))
+        .order_by(SignalPerformance.closed_at.asc().nulls_last())
+    )).all()
+
+    mems = (await db.execute(select(CoinMemory))).scalars().all()
+    cells = {(m.symbol, m.timeframe): m for m in mems}
+
+    # RESET the base facets on every existing cell — a rebuild that only added
+    # would inherit whatever the online path had already miscounted.
+    for mem in cells.values():
+        _reset_base_facets(mem)
+
+    folded = skipped = created = 0
+    for perf, signal, symbol, snap in rows:
+        timeframe = signal.timeframe.value if hasattr(signal.timeframe, "value") else str(signal.timeframe)
+        key = (symbol, timeframe)
+        mem = cells.get(key)
+        if mem is None:
+            mem = CoinMemory(symbol=symbol, timeframe=timeframe,
+                             total_signals=0, wins=0, losses=0,
+                             engine_stats={}, regime_stats={}, outcome_label_stats={})
+            db.add(mem)
+            cells[key] = mem
+            created += 1
+        if fold_signal_into(mem, signal, perf, snap):
+            folded += 1
+        else:
+            skipped += 1
+
+    logger.info("[CoinMemory] rebuild: %d resolutions -> %d cells (%d new, %d skipped)",
+                len(rows), len(cells), created, skipped)
+    return {"resolutions": len(rows), "folded": folded, "skipped": skipped,
+            "cells": len(cells), "cells_created": created}
+
+
+def _reset_base_facets(mem: CoinMemory) -> None:
+    """Zero the v1 base facets so a rebuild starts from nothing. tm_stats and
+    tm_sample_count are deliberately untouched — a different derivation owns them."""
+    mem.total_signals = 0
+    mem.wins = 0
+    mem.losses = 0
+    mem.engine_stats = {}
+    mem.regime_stats = {}
+    mem.outcome_label_stats = {}
+    mem.adaptive_weights = None
+    mem.avg_bars_to_outcome = None
 
 
 async def load_effective_weights(
