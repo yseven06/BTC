@@ -106,7 +106,6 @@ def loop_env(monkeypatch):
 
     def run(signals, binance):
         monkeypatch.setattr(tracker, "BinanceCollector", lambda: binance)
-        monkeypatch.setattr(tracker, "YahooCollector", lambda: FakeCollector())
         db = AsyncMock()
         db.execute = AsyncMock(return_value=FakeResult(signals))
         db.add, db.commit = MagicMock(), AsyncMock()

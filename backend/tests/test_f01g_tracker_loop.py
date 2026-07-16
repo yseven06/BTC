@@ -116,10 +116,9 @@ def loop_env(monkeypatch):
     monkeypatch.setattr(tracker, "make_event", MagicMock(return_value=object()))
     tracker._tracking_in_flight = False
 
-    def run(signals, binance, yahoo=None):
-        yahoo = yahoo or FakeCollector()
+    def run(signals, binance):
+        # Crypto-only (CP-CO-1): Binance is the sole collector; no Yahoo stub.
         monkeypatch.setattr(tracker, "BinanceCollector", lambda: binance)
-        monkeypatch.setattr(tracker, "YahooCollector", lambda: yahoo)
         db = AsyncMock()
         db.execute = AsyncMock(return_value=FakeResult(signals))
         db.add, db.commit = MagicMock(), AsyncMock()
@@ -154,16 +153,18 @@ async def test_g1b_young_signal_still_asks_for_the_floor(loop_env):
     assert binance.ohlcv_calls[0]["limit"] == 100
 
 
-# ── G-2 · the Yahoo/BIST branch was deliberately left alone ────────────────
-@pytest.mark.asyncio
-async def test_g2_yahoo_branch_still_asks_for_a_fixed_100(loop_env):
-    sig = _signal(age_hours=30.0, symbol="THYAO.IS", asset_type="stock")
-    yahoo = FakeCollector(df=_bars([(100.0, 100.4, 99.6, 100.0)], signal=sig))
-    binance = FakeCollector()
-    await loop_env([sig], binance, yahoo)
-
-    assert yahoo.ohlcv_calls[0]["limit"] == 100      # untouched by 1B
-    assert binance.ohlcv_calls == []                 # crypto path not used
+# ── G-2 · CP-CO-1: the tracker is crypto-only — no Yahoo/BIST branch ───────
+def test_g2_tracker_is_crypto_only_no_yahoo_stock_branch():
+    """The crypto-only pivot removed the Yahoo/stock data-source branch from
+    the tracker (BIST is dormant). Source-level lock + sabotage guard:
+    reintroducing a Yahoo collector or a '.IS'/stock branch here fails this.
+    Binance is the sole live data feed."""
+    import pathlib
+    src = pathlib.Path(tracker.__file__).read_text(encoding="utf-8")
+    assert "YahooCollector" not in src
+    assert 'asset_type.value == "stock"' not in src
+    assert '.endswith(".IS")' not in src
+    assert "BinanceCollector" in src                 # crypto feed stays
 
 
 # ── G-3 · 1H wiring: the live shortcut must read the BARS ──────────────────

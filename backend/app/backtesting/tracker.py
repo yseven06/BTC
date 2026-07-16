@@ -1,8 +1,8 @@
 """
 TradeMinds AI – Signal Performance Tracker
 
-Fetches active signals, checks subsequent price action using live data feeds
-from Binance and Yahoo Finance collectors, and resolves trade outcomes in the DB.
+Fetches active signals, checks subsequent price action using live data from the
+Binance collector (crypto-only), and resolves trade outcomes in the DB.
 """
 
 from __future__ import annotations
@@ -418,7 +418,6 @@ def _recent_structure_event(df, max_age_bars: int = 15) -> str | None:
         return None
     return latest.event.value
 from app.collectors.binance_collector import BinanceCollector
-from app.collectors.yahoo_collector import YahooCollector
 
 logger = logging.getLogger(__name__)
 
@@ -499,9 +498,8 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
         logger.info("No active signals found in the database")
         return {"processed": 0, "resolved": 0, "details": []}
 
-    # Instantiate collectors
+    # Instantiate collectors (crypto-only: Binance is the sole data source).
     binance = BinanceCollector()
-    yahoo = YahooCollector()
 
     processed_count = 0
     resolved_count = 0
@@ -513,7 +511,7 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
         # kullanıcı saatlerce "AKTİF SL altında" görmek yerine birkaç saniye
         # içinde "PATLADI" durumunu görür.
         live_tasks = [
-            _check_live_sl_hit(signal, binance, yahoo)
+            _check_live_sl_hit(signal, binance)
             for signal in active_signals
         ]
         live_results = await asyncio.gather(*live_tasks, return_exceptions=True)
@@ -528,7 +526,7 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
         # that had already blown through their stop-loss) silently stopped
         # getting re-checked the moment any single task raised.
         tasks = [
-            _fetch_market_data_for_signal(signal, binance, yahoo)
+            _fetch_market_data_for_signal(signal, binance)
             for signal in active_signals
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -1021,7 +1019,6 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
 
     finally:
         await binance.close()
-        await yahoo.close()
 
     return {
         "processed": processed_count,
@@ -1045,7 +1042,7 @@ def _map_db_timeframe(db_tf: Timeframe) -> str:
 
 
 async def _check_live_sl_hit(
-    signal: Signal, binance: BinanceCollector, yahoo: YahooCollector,
+    signal: Signal, binance: BinanceCollector,
 ) -> Dict[str, Any] | None:
     """
     Fetch the current ticker price and immediately resolve the signal as LOSS
@@ -1060,10 +1057,7 @@ async def _check_live_sl_hit(
     asset: Asset = signal.asset
     symbol = asset.symbol
     try:
-        if asset.asset_type.value == "stock" or symbol.endswith(".IS"):
-            ticker = await yahoo.fetch_ticker(symbol)
-        else:
-            ticker = await binance.fetch_ticker(symbol)
+        ticker = await binance.fetch_ticker(symbol)
         live_price = float(ticker.get("current_price", 0))
     except Exception as exc:
         logger.debug("Live ticker fetch failed for %s: %s", symbol, exc)
@@ -1088,7 +1082,7 @@ async def _check_live_sl_hit(
 
 
 async def _fetch_market_data_for_signal(
-    signal: Signal, binance: BinanceCollector, yahoo: YahooCollector
+    signal: Signal, binance: BinanceCollector
 ) -> tuple[Any, pd.DataFrame | None]:
     # A HOLD signal has no real trade plan, so entry_zone_low/high are NULL
     # (see scheduler.py) — `None + None` raises TypeError, and this runs
@@ -1109,21 +1103,15 @@ async def _fetch_market_data_for_signal(
     timeframe_str = _map_db_timeframe(signal.timeframe)
     logger.info(f"Checking performance for signal {signal.id} - {symbol} ({signal.timeframe.value})")
     try:
-        if asset.asset_type.value == "stock" or symbol.endswith(".IS"):
-            # Yahoo path deliberately untouched: its limit interacts with the
-            # collector's cache/end_date handling, and the BIST branch is slated
-            # for removal by the crypto-only pivot — no reason to risk it.
-            df = await yahoo.fetch_ohlcv(symbol, timeframe_str, limit=100)
-        else:
-            limit = _recovery_fetch_limit(
-                timeframe_str, signal.generated_at, datetime.now(timezone.utc)
+        limit = _recovery_fetch_limit(
+            timeframe_str, signal.generated_at, datetime.now(timezone.utc)
+        )
+        if limit > _MIN_FETCH_BARS:
+            logger.info(
+                "[Tracker] %s (%s) is older than the default window — fetching %d bars "
+                "so the walk covers generated_at → now", symbol, timeframe_str, limit,
             )
-            if limit > _MIN_FETCH_BARS:
-                logger.info(
-                    "[Tracker] %s (%s) is older than the default window — fetching %d bars "
-                    "so the walk covers generated_at → now", symbol, timeframe_str, limit,
-                )
-            df = await binance.fetch_ohlcv(symbol, timeframe_str, limit=limit)
+        df = await binance.fetch_ohlcv(symbol, timeframe_str, limit=limit)
         return signal.id, df
     except Exception as e:
         logger.error(f"Failed to fetch market data for {symbol} during tracking: {str(e)}")

@@ -27,7 +27,6 @@ from app.engines.ai_decision.birth_telemetry import (
 )
 from app.models.price_data import Timeframe as DBTimeframe
 from app.collectors.binance_collector import BinanceCollector
-from app.collectors.yahoo_collector import YahooCollector
 from app.engines.ai_decision.engine import AIDecisionEngine
 from app.backtesting import labels
 from app.backtesting.tracker import track_and_resolve_active_signals
@@ -36,7 +35,6 @@ from app.engines.market_regime import detect_regime
 from app.services.intelligence import build_snapshot
 from app.services.coin_memory import load_effective_weights_meta, update_coin_memory
 from app.services.lifecycle_log import make_event
-from app.services.market_hours import is_bist_open
 
 logger = logging.getLogger(__name__)
 
@@ -235,18 +233,13 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
     """Fetch live data, run AI engines, persist new signal."""
     logger.info("[Scheduler] Generating signal: %s %s", symbol, timeframe)
     binance = BinanceCollector()
-    yahoo = YahooCollector()
     try:
-        if asset_type == "stock" or symbol.upper().endswith(".IS"):
-            df = await yahoo.fetch_ohlcv(symbol, timeframe, limit=100)
-        else:
-            df = await binance.fetch_ohlcv(symbol, timeframe, limit=100)
+        df = await binance.fetch_ohlcv(symbol, timeframe, limit=100)
     except Exception as exc:
         logger.error("[Scheduler] Data fetch failed for %s: %s", symbol, exc)
         return
     finally:
         await binance.close()
-        await yahoo.close()
 
     # Detect the market regime once from the same frame the engines see, so the
     # snapshot below records exactly the conditions this signal was scored under.
@@ -524,31 +517,21 @@ async def generate_signal_now(symbol: str, asset_type: str, timeframe: str = "1h
     await _generate_signal(symbol, asset_type, timeframe)
 
 
-# Stocks don't move fast/often enough for 15m and 1h candles to carry real
-# signal — a stock barely ticks within a single hour, so these short
-# timeframes mostly produced noise (HOLD spam) for that asset class. Crypto
-# still gets every timeframe; stocks are limited to 4h and 1d.
-_STOCK_EXCLUDED_TIMEFRAMES = {"15m", "1h"}
-
-
 async def _run_all_signals(timeframe: str = "1h") -> None:
     """Regenerate signals for all active assets, with rate-limit spacing."""
     async with async_session_factory() as db:
-        query = select(Asset).where(Asset.is_active == True)
-        if timeframe in _STOCK_EXCLUDED_TIMEFRAMES:
-            query = query.where(Asset.asset_type != AssetType.STOCK)
+        # Crypto-only (CP-CO-1): the product is crypto-only, so generation
+        # selects only crypto assets. Dormant BIST/stock assets are never
+        # generated — this query is the single source of that guard, which
+        # also makes the old is_bist_open gate and stock-timeframe exclusion
+        # moot (crypto is 24/7 and gets every timeframe).
+        query = (
+            select(Asset)
+            .where(Asset.is_active == True)  # noqa: E712
+            .where(Asset.asset_type == AssetType.CRYPTO)
+        )
         res = await db.execute(query)
         assets = res.scalars().all()
-
-    # Market-hours gate: skip BIST stocks while the exchange is closed, EXCEPT
-    # the daily timeframe (its candle finalizes at close, so the once-daily 1d
-    # run after hours is legitimate). Avoids wasted upstream calls / egress
-    # off-hours; crypto is 24/7 and unaffected.
-    if timeframe != "1d" and not is_bist_open():
-        before = len(assets)
-        assets = [a for a in assets if a.asset_type != AssetType.STOCK]
-        if before != len(assets):
-            logger.info("[Scheduler] BIST kapalı — %s turunda %d hisse atlandı", timeframe, before - len(assets))
 
     logger.info("[Scheduler] Generating %s signals for %d assets", timeframe, len(assets))
     for i, asset in enumerate(assets):
@@ -557,7 +540,7 @@ async def _run_all_signals(timeframe: str = "1h") -> None:
         except Exception as exc:
             # _generate_signal already logs and absorbs exceptions, but belt-and-braces:
             logger.error("[Scheduler] _generate_signal raised for %s: %s", asset.symbol, exc)
-        # Brief spacing so a multi-asset sweep doesn't hammer Binance/Yahoo
+        # Brief spacing so a multi-asset sweep doesn't hammer Binance
         if i < len(assets) - 1:
             await asyncio.sleep(1.0)
     logger.info("[Scheduler] %s sweep complete", timeframe)
@@ -591,7 +574,6 @@ async def _check_price_alerts() -> Dict[str, Any]:
     checked = 0
     triggered = 0
     binance = BinanceCollector()
-    yahoo = YahooCollector()
     try:
         async with async_session_factory() as db:
             res = await db.execute(
@@ -618,10 +600,7 @@ async def _check_price_alerts() -> Dict[str, Any]:
                 symbol = asset.symbol
                 if symbol not in price_cache:
                     try:
-                        if asset.asset_type.value == "stock" or symbol.upper().endswith(".IS"):
-                            ticker = await yahoo.fetch_ticker(symbol)
-                        else:
-                            ticker = await binance.fetch_ticker(symbol)
+                        ticker = await binance.fetch_ticker(symbol)
                         price_cache[symbol] = float(ticker.get("current_price", 0) or 0)
                     except Exception as exc:
                         logger.warning("[Alerts] Ticker fetch failed for %s: %s", symbol, exc)
@@ -665,7 +644,6 @@ async def _check_price_alerts() -> Dict[str, Any]:
             await db.commit()
     finally:
         await binance.close()
-        await yahoo.close()
 
     logger.info("[Scheduler] Price alerts: checked=%d triggered=%d", checked, triggered)
     return {"checked": checked, "triggered": triggered}
