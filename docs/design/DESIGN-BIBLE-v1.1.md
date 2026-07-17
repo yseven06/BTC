@@ -1,6 +1,6 @@
 # TradeMinds Design Bible
 
-**Version:** v1.4 (KANONIK) · **Tarih:** 2026-07-09 · *(v1.4: Karot geometri revizyonu — "K17 görünüm + K02 matematik" + Geometry Freeze; bkz. §05 karot-02/15 + CHANGELOG)*
+**Version:** v1.5 (KANONIK) · **Tarih:** 2026-07-17 · *(v1.5 CP-PIA: Premium Interface Redesign bilgi-mimarisi kilidi — Dashboard=Durum Odası · Signal Center=AI İstihbarat Merkezi · widget-taşıma haritası · ekran-sorumluluk tablosu · IA-guardrail'ler; bkz. §02/§03/§04 + CHANGELOG. v1.4: Karot geometri revizyonu — "K17 görünüm + K02 matematik" + Geometry Freeze; bkz. §05 karot-02/15)*
 **Statü:** Ürünün resmî ve tek tasarım standardı (normatif). Kanonik kaynak = bu dosya (`docs/design/`).
 **Kanoniklik & sürümleme:** Dosya adı sabittir; güncel sürüm bu başlıkta + [CHANGELOG](./CHANGELOG.md)'da izlenir. Artifact yalnızca görsel aynadır; çelişkide bu markdown kazanır. Revizyon = commit + sürüm artışı + CHANGELOG satırı (C1/C2, §08).
 **Eki:** [VISUAL-LANGUAGE](./VISUAL-LANGUAGE-v1.1.md) (Annex A — atmosfer/Art Direction/motion-bütçesi).
@@ -538,6 +538,11 @@ Semantik `<table>` (div-grid değil). `md` altında satır → **kart**'a dönü
 
 İlk 10 saniyede tek his: **ürünün AI'sini canlı hissettirmek.** Yaşayan AI sistemi (tanıtım filmi değil); tüm görsel ögeler gerçek sinyal verisinden türer. Hero YAŞAR — sahte sinema tamamen yasak; her motion bilgi taşır, her ışık gerçek bir olayı temsil eder.
 
+### hero-app-içi-sınır · App-içi hero = yalnız Dashboard Nabız bandı · *(v1.5 CP-PIA)*
+- **Direktif:** §02 yaşayan-Hero **landing'in** işidir. App içinde ayrı bir pazarlama-hero'su YOKTUR; yaşayan-Hero'nun app-içi tek meşru formu Dashboard üst **Nabız bandı**'dır (bkz. §03 dash-nabız-bandı). Sinematik/scroll-tetikli hero-motion yalnız landing'de değerlendirilir; app'te scroll-jacking/parallax/scroll-scrub yasağı (hero-scroll-canlı-muhakeme + §06) istisnasız geçerlidir.
+- **Token/değer:** app-içi hero formu = Nabız bandı (≤~120px, canlı); app pazarlama-hero = 0; sinematik-scroll = yalnız landing.
+- **DoD/Ölçüm:** app rotalarında ≥240px statik pazarlama-hero bloğu = fail; app'te scroll-tetikli hero-koreografi = 0; landing-hero bu maddeden muaf (kendi §02 kuralları).
+
 ### hero-yaşayan-sistem · Hero = yaşayan AI sistemi (film değil)
 - **Direktif:** Landing açılışı tanıtım filmi/sinematik değil, gerçek-zamanlı gerçek-veriyle beslenen yaşayan AI sistemi; amaç "wow" değil ilk 10 sn'de AI'yı hissettirmek. Önceden-pişmiş beat/sahne YOK.
 - **Token/değer:** hedef ilk 10 sn AI algısı; içerik kaynağı = canlı backend telemetrisi (`SignalSnapshot` / lifecycle-event).
@@ -616,6 +621,53 @@ Hero anahtar+dolgu ışığı owned-blue/cyan ufuk (kanonik plan VL§07). Her ı
 
 Kullanıcı **3 saniyede** anlamalı: Bugün ne oldu? · Aktif sinyal var mı? · Portföy nasıl? · AI ne düşünüyor? · Risk ne? Yoğun veri + sakin chrome.
 
+### dash-görev-durum-odası · Dashboard = Durum Odası (Executive Overview) · *(v1.5 CP-PIA)*
+- **Direktif:** Dashboard'ın TEK görevi "3 saniyede: sistem ne durumda, kitap sağlıklı mı, dikkat gereken ne?". **Trading cockpit DEĞİLDİR** — icra/emir-benzeri hiçbir kontrol eklenmez (icrası olmayan kokpit sahte-premium'dur; hukuki ilke: auto-trade yok). 3-kuşak (dash-ia-üç-kuşak) korunur, keskinleşir: Üst=**Nabız** (yaşayan başlık) · Orta=**Şu-an** (aktif sinyaller top-N + Signal Center köprüsü) · Alt=**Sicil** (kahraman-rakam + dönem özeti). Derin sinyal analizi Signal Center'a, piyasa-tarama Markets'e, backtest Performance'a, arşiv History'ye aittir.
+- **Token/değer:** görev = durum-özeti; cockpit = yasak; ekran başına kahraman-rakam = 1.
+- **DoD/Ölçüm:** dashboard'da icra/emir kontrolü = 0; her viewport'ta ≤2 vurgu (dash-vurgu-bütçesi); tek kahraman-rakam + kanıt-makbuzu (n · dönem · win-rate) render.
+
+### dash-nabız-bandı · App-içi yaşayan-Hero'nun tek formu · *(v1.5 CP-PIA)*
+- **Direktif:** App içinde pazarlama-hero'su YOK. Yaşayan-Hero'nun (§02) app-içi tek meşru formu = Dashboard üst **Nabız bandı**: ≤~120px, canlı, olay-sürümlü (AI sistem-sesi tek TR cümle + bugünün çözüm-fotonları + rejim + aktif-sayı). Atmosfer ışığı (`--light-key`/`--light-fill`) app'te YALNIZ burada referanslanabilir (dash-ambient-yasak carve-out'u: band olay-bağlı + statik-ışık + scroll'suz; ambient-animasyon eklemez). Uygulama = CP-DASH.
+- **Token/değer:** band-yükseklik ≤~120px; içerik = canlı-veri (mock=0); atmosfer app-referansı = yalnız Nabız.
+- **Not:** AI Görüşü kart-formundan çıkar → Nabız'ın "sistem sesi" cümlesine döner (per-sinyal AI anlatısı Signal Center/IntelligencePanel'de kalır).
+- **DoD/Ölçüm:** band canlı-veri taşır (sabit/mock=fail); band-dışı app yüzeyinde atmosfer-ışık = 0; scroll-tetikli band-motion = 0; band ≤~120px.
+
+### dash-widget-taşıma-kilidi · CP-PIA widget-taşıma haritası (bağlayıcı) · *(v1.5 CP-PIA)*
+Her taşıma **additive-first**; taşınan modülün analytics-event'i birlikte taşınır; **backend/API/DB değişmez**. Bilgi KAYBOLMAZ — sahibi olan ekrana gider.
+
+| Modül (bugün Dashboard) | Karar | Hedef |
+|---|---|---|
+| Durum Bandı (DE-1) | terfi | Nabız bandı çekirdeği |
+| AI Görüşü kartı (DE-3) | terfi + form değişimi | Nabız "sistem sesi" cümlesi |
+| Risk Dağılımı (DE-3) | taşı + enstrümanlaş | **Signal Center**: dilime-tık → tablo o risk dilimine filtrelenir |
+| 5 eşit stat-kart | kır | 1 kahraman (Dönem Net Getiri + makbuz) + 3 ikincil (Aktif · Kapanan · Win-Rate) |
+| Fear & Greed | in | Piyasa-bağlamı satırı (stat-kart olmaktan çıkar) |
+| BTC canlı grafik (TradingView) | kaldır | /markets/BTCUSDT köprüsü |
+| Varlık Dağılımı (pie) | kaldır | Signal Center filtre-sayaçları (yön/TF/risk mini-dağılım) |
+| En Çok Kazananlar | kaldır | /markets |
+| Piyasa Genel Bakış (4-hücre) | in | tek kompakt piyasa-bağlamı satırı (mktcapΔ · BTC-dom · F&G) |
+
+### dash-ekran-sorumluluk-sınırı · Ekran sorumluluk tablosu (cross-screen IA) · *(v1.5 CP-PIA)*
+| Yüzey | Tek-cümle görev | Sahip OLMADIĞI (sınır) |
+|---|---|---|
+| **Dashboard** | 3-saniyede durum (Nabız · Şu-an · Sicil) | derin sinyal analizi · piyasa tarama · backtest · arşiv |
+| **Signal Center** | sinyalle çalışma: tablo + Dock (Karot/konsensus/lifecycle/benzer/risk-enstrüman) | kitap-düzeyi özet · arşiv-döküm |
+| **Landing** | ikna + dürüstlük (C/A hero) | ürün-içi veri derinliği · Karot-marka kullanımı |
+| **Signal Detail / Dock** | tek sinyalin tam kanıtı | kitap-metrik · sayfa-olma iddiası |
+| **Markets / Symbol** | piyasa tarama + tek-sembol analiz | sinyal-kitabı anlatısı |
+| **Performance** | derin sicil + backtest | "şu an" durumu |
+| **Signal History** | arşiv / döküm | aktif-durum anlatısı |
+
+### dash-ia-guardrail · CP-PIA yasakları (test-edilebilir) · *(v1.5 CP-PIA)*
+1. Dashboard'a icra/emir-benzeri kontrol yasak (cockpit yasağı).
+2. App'te ≥240px statik pazarlama-hero bloğu yasak; Nabız ≤~120px + canlı-veri şart (§02 hero-app-içi-sınır).
+3. App'te scroll-tetikli/parallax/scroll-scrub yasak (landing hariç; §02 hero-scroll + §06).
+4. Eşit-ağırlık kart-grid yasak: bir viewport'ta aynı boyut/vurguda >3 eşdeğer kart = red (dash-vurgu-bütçesi ile uyumlu).
+5. Risk Dağılımı hiçbir yüzeyde tık-etkisiz dekor olarak var olamaz (enstrüman-şartı).
+6. Signal Center desktop'ta dock'suz (drawer-only) kalamaz; mobilde drawer meşru.
+7. Dashboard'a üçüncü-taraf gömülü enstrüman (TradingView vb.) konmaz (evi Markets/Symbol).
+8. Karot marka-yüzeyinde yasak (mevcut kilit, [[brand-identity-sprint-decision]]); ürün-içi Dock sahnelemesi serbest/teşvikli.
+
 ### dash-ia-üç-kuşak · Bilgi mimarisi — 3 kuşak (Şu an / Neden / Sicil)
 - **Direktif:** Dashboard'u üç dikey kuşağa ayır: (1) ÜST "Şu an" = aktif sinyaller (Karot'larıyla) + TP'ye yaklaşanlar + bugün doğan/kapanan. (2) ORTA "Neden" = seçili sinyalin kanıt katmanı (9 motor dökümü + uzlaşmazlık + provenance). (3) ALT "Sicil" = kümülatif isabet + PF + drawdown, közleşmiş (kapanmış zarar) kayıplar DAHİL. Şiirsel adlar UI'a çıkmaz.
 - **Token/değer:** 3 kuşak · Üst=Şu an · Orta=Neden · Alt=Sicil · her AI değeri 1 hover uzaklıkta provenance.
@@ -679,6 +731,10 @@ Amaç netlik + premium his; terminal derinliği değil.
 - **Tablo görünümü:** semantik `<table>` · sıralanabilir başlık · `md` altı → kart; satır hover +1 lümen, transform 0 (satır zıplamaz). 200 kart canlı-fiyatta batch-render; güncelleme yalnız foton flaşı (`--dur-photon` 150ms, konum sabit).
 - **Heatmap (ops. · P2):** kategori/coin ısı haritası.
 - **Loading:** kart-skeleton grid (grace-window <300ms; spinner yok). **Mobil:** grid tek kolon; filtre chip'leri yatay-scroll; tablo → kart; touch 44px.
+
+### markets-widget-devir · Dashboard'dan devrolan piyasa-modülleri · *(v1.5 CP-PIA)*
+- **Direktif:** Dashboard'dan CP-PIA ile devrolan piyasa-modülleri bu ekranın (ve /symbol-analysis'in) sorumluluğundadır: **BTC canlı grafik → /markets/BTCUSDT (symbol analiz)** · **En Çok Kazananlar → market grid** · **Varlık-Dağılımı bağlamı → Signal Center filtre-sayaçları**. Dashboard gömülü üçüncü-taraf enstrüman veya piyasa-tarama modülü taşımaz (§03 dash-ekran-sorumluluk-sınırı + guardrail-7).
+- **Kapsam notu:** Bu revizyon yalnız widget-sahipliğini kilitler; **§04 filtre-bar'ının crypto-only sadeleştirmesi (Tümü/Kripto/Hisse segment + BIST-rozeti) AYRI track — CP-CO-3 — kapsamındadır ve bu doc-revizyonda değiştirilmedi.**
 
 ---
 

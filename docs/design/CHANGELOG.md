@@ -5,6 +5,24 @@ Kural: **her revizyon = commit + sürüm artışı + bu dosyada bir satır.** St
 
 ---
 
+## Bible v1.5 — CP-PIA: Premium Interface Redesign bilgi-mimarisi kilidi · 2026-07-17
+
+> **Kapsam:** Premium Interface Redesign track'inin ilk CP'si (CP-PIA). `DESIGN-BIBLE` v1.4 → **v1.5** (yalnız Bible; VL/Motion-Doctrine dokunulmadı). **Doc-only karar-kaydı** — kod/CSS/component/UI/backend/DB/API değişmedi; ürün ve görsel davranış BYTE-IDENTICAL. Uygulama ayrı CP'lerde (PV1 → SIGNAL → DASH → HERO → MOTION), her biri ayrı onay + görsel-QA kapısı.
+
+### Eklenen maddeler
+- **§02 hero-app-içi-sınır** — app-içi hero'nun tek meşru formu = Dashboard Nabız bandı; app'te pazarlama-hero ve scroll-tetikli hero-motion yasak (landing muaf).
+- **§03 dash-görev-durum-odası** — Dashboard = Durum Odası / Executive Overview; trading-cockpit yasağı; 3-kuşak keskinleştirmesi (Nabız/Şu-an/Sicil).
+- **§03 dash-nabız-bandı** — app-içi yaşayan-Hero formu; atmosfer ışığı app'te yalnız burada; AI Görüşü → "sistem sesi" cümlesine terfi.
+- **§03 dash-widget-taşıma-kilidi** — 9-satır bağlayıcı taşıma haritası (Risk Dağılımı → Signal Center enstrümanı; BTC-grafik/Varlık-Dağılımı/Kazananlar kaldırılır; 5-kart → 1 kahraman + 3 ikincil; additive-first, backend/API/DB değişmez).
+- **§03 dash-ekran-sorumluluk-sınırı** — 7-yüzey cross-screen sorumluluk tablosu (Dashboard/Signal Center/Landing/Detail-Dock/Markets/Performance/History).
+- **§03 dash-ia-guardrail** — 8 test-edilebilir IA yasağı (cockpit · pazarlama-hero · scroll-jack · eşit-kart-grid · risk-dekor · drawer-only · gömülü-enstrüman · Karot-marka).
+- **§04 markets-widget-devir** — Dashboard'dan devrolan piyasa-modüllerinin sahipliği; §04 filtre-bar'ın crypto-only sadeleştirmesi açıkça kapsam-DIŞI (CP-CO-3'e bırakıldı).
+
+### Sınırlar (bu revizyonda dokunulmayan)
+- VL / Motion-Doctrine değerleri aynen (scroll-motion sınırı Bible §02/§03 guardrail'i olarak girdi; VL v2 işi CP-HERO'da).
+- §04 crypto-only filtre-bar / BIST içeriği (CP-CO-3 kapsamı) · §05 Karot spec · tüm token'lar · kod/component/backend/DB.
+- **Not:** CHANGELOG'daki ayrı `## v1.5 — K-J motion-paketi (VL revizyonu)` kaydı VL sürüm izidir; bu kayıt Bible sürüm izidir (iki belge ayrı sürümlenir).
+
 ## v1.5 — K-J motion-paketi: veri-foton + T3 carve-out (VL revizyonu) · 2026-07-12
 
 > **Kapsam:** K-J karar seansı — Motion Doctrine v1'deki `[GATED: K-J]` maddelerin tamamı (7/7) kullanıcı onayıyla yasalaştı; etiketler `[ONAYLI: VL v1.5]` oldu (`[GATED: K-C2]` ayrı kapıdır, kapalı kalır). Değişen belgeler: VL (başlık+§Ölçüm+süre-tablosu+Lint satırı), Bible §01 tek-rejim parantezi (v1.5 eki), Motion Doctrine (etiket-geçişi + §9). **Bu CP yalnız belge+enforcement-altyapısıdır — ürün davranışı değişmedi** (uygulama ayrı CP'ler: M-L1 → M-P1).
