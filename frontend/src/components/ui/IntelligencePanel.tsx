@@ -7,6 +7,7 @@ import { fetchSignalIntelligence, type SignalIntelligence } from '@/lib/api';
 import { Brain, History, Gauge } from 'lucide-react';
 import { LIVE_STATUS_META } from './LiveStatusBadge';
 import { LifecycleJourney } from './LifecycleJourney';
+import { ProvenanceReceipt } from './Tooltip';
 
 const REGIME_TR: Record<string, string> = {
   trending_bull: 'Yükseliş Trendi',
@@ -191,10 +192,13 @@ export function IntelligencePanel({ signalId, compact }: Props) {
         )}
       </div>
 
-      {/* Historical similarity — "bu setup'a benzeyen geçmiş işlemler" */}
+      {/* Historical similarity — "bu setup'a benzeyen geçmiş işlemler".
+          CP-PV1-B2 pilotu: G/K dökümü serbest-parantez yerine tek-biçim
+          kanıt-makbuzuna (ProvenanceReceipt, Bible §01-K craft-makbuz-grameri)
+          geçti — örneklem+döküm aynı gramerde. */}
       {data.similar_setups?.has_data && data.similar_setups.win_rate != null && (
         <div className="mt-4 pt-3 border-t border-border-subtle">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <History className="w-4 h-4 text-accent-primary flex-shrink-0" />
             <span className="text-micro text-text-secondary">
               Benzer <b className="text-text-primary">{data.similar_setups.match_count}</b> geçmiş setup'ta
@@ -202,10 +206,15 @@ export function IntelligencePanel({ signalId, compact }: Props) {
               <b className={data.similar_setups.win_rate >= 55 ? 'text-bullish' : data.similar_setups.win_rate <= 45 ? 'text-bearish' : 'text-text-primary'}>
                 {formatPercentage(data.similar_setups.win_rate, 0, false)}
               </b>{' '}başarı
-              {data.similar_setups.wins != null && (
-                <span className="text-text-muted"> ({data.similar_setups.wins}G/{data.similar_setups.losses}K)</span>
-              )}
             </span>
+            <ProvenanceReceipt
+              segments={[
+                `n=${data.similar_setups.match_count}`,
+                data.similar_setups.wins != null
+                  ? `${data.similar_setups.wins}G/${data.similar_setups.losses}K`
+                  : null,
+              ]}
+            />
           </div>
         </div>
       )}

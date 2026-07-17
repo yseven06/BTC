@@ -38,3 +38,38 @@ export const Tooltip: React.FC<TooltipProps> = ({
   );
 };
 export default Tooltip;
+
+// ── ProvenanceReceipt (Bible §01-K craft-makbuz-grameri, v1.6 CP-PV1-B2) ──────
+// Kanıt-makbuzu tek-biçimi: örneklem → dönem → era/sürüm, orta-nokta (·) ayraçlı,
+// ikincil ton (tx2), mono/tabular sayı. "Fark efektte değil dürüstlük duruşunda"
+// mikro-tipografisi. Saf presentational — Radix'e bağımlı DEĞİL → hem inline hem
+// bir Tooltip içeriği olarak kullanılabilir. Mevcut Tooltip export'una dokunmaz.
+// Yalnızca dolu segment'ler basılır (eksik alan uydurulmaz — no-backfill ruhu).
+interface ProvenanceReceiptProps {
+  /** Sırayla basılacak makbuz segment'leri, ör. ["n=5", "3G/2K", "v1"].
+   *  null/undefined/boş segment atlanır. */
+  segments: Array<React.ReactNode>;
+  className?: string;
+}
+export const ProvenanceReceipt: React.FC<ProvenanceReceiptProps> = ({
+  segments,
+  className,
+}) => {
+  const parts = segments.filter((s) => s !== null && s !== undefined && s !== "");
+  if (parts.length === 0) return null;
+  return (
+    <span
+      className={clsx(
+        "inline-flex items-center gap-1 text-micro text-text-secondary tabular-nums",
+        className
+      )}
+    >
+      {parts.map((p, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <span aria-hidden className="text-text-muted">·</span>}
+          <span>{p}</span>
+        </React.Fragment>
+      ))}
+    </span>
+  );
+};
