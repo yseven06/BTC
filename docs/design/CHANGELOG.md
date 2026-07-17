@@ -5,6 +5,30 @@ Kural: **her revizyon = commit + sürüm artışı + bu dosyada bir satır.** St
 
 ---
 
+## Bible v1.7 — CP-KAROT-DOC: Karot ürün-UI deprecation · 2026-07-18
+
+> **Kapsam:** Karot full-removal serisinin doc-aşaması (CP-KAROT-DOC). `DESIGN-BIBLE` v1.6 → **v1.7** (yalnız Bible + bu CHANGELOG). **Doc-only politika-uyum adımı** — VL / Motion-Doctrine / kod / CSS / component / UI / backend / DB / AI-core / migration = **SIFIR dokunuş**; ürün ve görsel davranış BYTE-IDENTICAL. Hiçbir Karot render'ı bu CP'de kaldırılmadı (UI = sonraki CP'ler).
+
+### Bağlayıcı karar (kullanıcı, 2026-07-18)
+Karot artık TradeMinds ürün arayüzünde **KULLANILMAZ**: satır-içi glyph · kalite/confidence/risk yanı sembolü · Dock hero-objesi · consensus/lifecycle/proof objesi · marka motifi — hiçbiri. Önceki "ürün-içi Karot enstrümanı (tablo/detay) KALIR" kararı (brand-identity-sprint-decision, 2026-07-11) bu kararla **SUPERSEDED**.
+
+### Deprecated / superseded (ürün-UI için — tarihsel kayıt korundu)
+- **§05 baş-banner eklendi** — karot-01…karot-15 + karot-sahne-ölçekleri ürün-UI için SUPERSEDED; geometri/matematik/hal maddeleri normatif değil, tarihsel kayıt.
+- **Inline işaretlendi:** **karot-01** (zorunlu merkez enstrüman) · **karot-09** (kanonik silüet = marka-işareti/favicon/loader/logo) · **karot-15** (Geometry Freeze) · **karot-sahne-ölçekleri** (satır/detay/kahraman).
+- **§03 Table** — satır-içi 16px Karot render notu superseded (CP-KAROT-UI1; satır dili = bar/sayı/badge/metin).
+- **§1124 logo-kapalı tanınırlık (G-08-05)** — taşıyıcılardan "Karot silüeti" ÇIKARILDI → kabin-imzası + instrument-well + proof-receipt + owned-palet + tabular-numeral.
+
+### Yeni kimlik tezi (glyph/ikon/sembol İKAMESİ YOK)
+Premium kimlik artık işaret değil **kompozisyon + veri-hiyerarşisi:** typography · owned numerical hierarchy (kahraman-rakam) · instrument well · proof receipt · data hierarchy + spacing · restrained dark terminal composition. Karot'un konsensüs bilgisi makbuz-metnine iner (`9 motor · 7 LONG · 2 nötr`). **Karot'un yerine yeni şekil KONMAZ.**
+
+### Kaldırma sırası (her biri AYRI CP + onay + görsel-QA)
+CP-KAROT-DOC (bu) → CP-KAROT-UI1 (SignalTable satır+loading; **Dashboard "Şu an" bandını da etkiler** — shared bileşen) → CP-KAROT-UI2 (Dock consensus, `signals/page.tsx`) → CP-KAROT-UI3 (SignalDetailSection hero+motor; **AT-1 çapraz-vurgu + AT-2 tooltip dahil**) → CP-KAROT-CLEAN (`Karot.tsx` / `karot-geometry.ts` / `karot-adapter.ts` / `karot-selftest.mjs` + globals.css `--radius-karot`/`.karot` + gate/selftest referansları). **favicon/icon.png/apple-icon.png = bu seride DEĞİL** (statik asset; ayrı CP-KAROT-ASSET / Brand Identity Sprint).
+
+### Sınırlar (bu revizyonda dokunulmayan)
+- Kod/CSS/component/UI/backend/DB/AI-core/migration = sıfır dokunuş; tüm Karot render'ları YERİNDE.
+- Karot geometri/matematik maddeleri (karot-02/03/04…14) silinmedi — tarihsel kayıt.
+- favicon/icon.png/apple-icon.png asset'ine dokunulmadı.
+
 ## Bible v1.6 — CP-PV1-A: Kompozisyon & Sahneleme katmanı · 2026-07-17
 
 > **Kapsam:** Premium Interface Redesign CP-PV1'in doc-aşaması (PV1-A). `DESIGN-BIBLE` v1.5 → **v1.6** (yalnız Bible; VL/Motion-Doctrine dokunulmadı). **Doc-only karar kilidi** — kod/CSS/component/UI/backend/DB değişmedi; ürün ve görsel davranış BYTE-IDENTICAL. **PV1 yeni tasarım icadı değildir:** kilitli token/yasak/primitif-craft'ın üzerine eksik KOMPOZİSYON katmanını tanımlar. Primitif-uygulama = **PV1-B** (ayrı kapsam-onayı, bu pakete dahil değil); ekran-recompose = CP-SIGNAL/CP-DASH. CP sırası korunur: PIA → PV1 → SIGNAL → DASH → HERO → MOTION.

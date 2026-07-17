@@ -1,6 +1,6 @@
 # TradeMinds Design Bible
 
-**Version:** v1.6 (KANONIK) · **Tarih:** 2026-07-17 · *(v1.6 CP-PV1-A: Kompozisyon & Sahneleme katmanı — kap-hiyerarşisi [chrome/panel/well] · veri-kuyusu · kahraman-rakam · makbuz-grameri · sessiz-buton · Karot sahne-ölçekleri · referans-politikası; bkz. §01 sonu + §05 karot-sahne-ölçekleri + CHANGELOG. v1.5 CP-PIA: bilgi-mimarisi kilidi [Durum Odası · İstihbarat Merkezi · widget-taşıma · sorumluluk-tablosu · IA-guardrail], bkz. §02/§03/§04. v1.4: Karot geometri revizyonu + Geometry Freeze, bkz. §05 karot-02/15)*
+**Version:** v1.7 (KANONIK) · **Tarih:** 2026-07-18 · *(v1.7 CP-KAROT-DOC: **Karot ürün-UI DEPRECATION** — Karot artık üründe zorunlu kimlik / merkez-enstrüman / marka-işareti DEĞİL; §05 [karot-01…15 + sahne-ölçekleri] ürün-UI için SUPERSEDED (tarihsel kayıt olarak korundu). Yeni kimlik = kompozisyon / typography / owned-numeral / instrument-well / proof-receipt / dark-terminal (glyph ikamesi YOK; §05 baş-banner + §1124). UI kaldırma CP-KAROT-UI1/2/3, ölü-kod CP-KAROT-CLEAN. bkz CHANGELOG.)* · *(v1.6 CP-PV1-A: Kompozisyon & Sahneleme katmanı — kap-hiyerarşisi [chrome/panel/well] · veri-kuyusu · kahraman-rakam · makbuz-grameri · sessiz-buton · Karot sahne-ölçekleri · referans-politikası; bkz. §01 sonu + §05 karot-sahne-ölçekleri + CHANGELOG. v1.5 CP-PIA: bilgi-mimarisi kilidi [Durum Odası · İstihbarat Merkezi · widget-taşıma · sorumluluk-tablosu · IA-guardrail], bkz. §02/§03/§04. v1.4: Karot geometri revizyonu + Geometry Freeze, bkz. §05 karot-02/15)*
 **Statü:** Ürünün resmî ve tek tasarım standardı (normatif). Kanonik kaynak = bu dosya (`docs/design/`).
 **Kanoniklik & sürümleme:** Dosya adı sabittir; güncel sürüm bu başlıkta + [CHANGELOG](./CHANGELOG.md)'da izlenir. Artifact yalnızca görsel aynadır; çelişkide bu markdown kazanır. Revizyon = commit + sürüm artışı + CHANGELOG satırı (C1/C2, §08).
 **Eki:** [VISUAL-LANGUAGE](./VISUAL-LANGUAGE-v1.1.md) (Annex A — atmosfer/Art Direction/motion-bütçesi).
@@ -463,7 +463,7 @@ Tek locale: **tr-TR**. Elle string kurma yasak; her sayı/tarih `Intl` üzerinde
 14 native `<select>` tamamı TEK `<Dropdown>` primitifine göç eder: E3 cam panel + backdrop-blur 8–10px + hairline; açılış `--dur-overlay` (360ms); klavye gezinme (ok) + ESC + focus yönetimi; z-dropdown 40. Native select bırakılmaz (`grep '<select'`=0).
 
 ### Table
-Semantik `<table>` (div-grid değil). `md` altında satır → **kart**'a dönüşür. Tablo-satırı hover: yalnız +1 lümen, transform 0 (satır zıplamaz). Karot 16px silüet ölçeğinde satır içinde render (§05). Sayısal hücreler `.num-cell` reçetesine uyar (sağ-hiza, ondalık-slot, tabular). *(Mobil-kart deseni P1.5'te yazılır.)*
+Semantik `<table>` (div-grid değil). `md` altında satır → **kart**'a dönüşür. Tablo-satırı hover: yalnız +1 lümen, transform 0 (satır zıplamaz). ~~Karot 16px silüet ölçeğinde satır içinde render (§05).~~ *(SUPERSEDED v1.7 · CP-KAROT-UI1 — satır-içi Karot kaldırılıyor; satır dili = bar / sayı / badge / metin hiyerarşisi.)* Sayısal hücreler `.num-cell` reçetesine uyar (sağ-hiza, ondalık-slot, tabular). *(Mobil-kart deseni P1.5'te yazılır.)*
 
 ### Chart Tokens (karot-12)
 - **Direktif:** Grafikleri dürüstlük kurallarıyla render et: yaşayan seviye çizgileri (TP/SL telemetriyle canlanır), ışık-maskeli grid, tabular eksen etiketi, KIRPILMAMIŞ baseline (Lie Factor=1), grid hairline, mum bull-teal/bear. Kırpılmış eksen ebedî YASAK. Yaşayan seviye canlanması §00-18 lifecycle-event enum'una (`approaching_tp`/`invalidation`) bağlıdır.
@@ -782,9 +782,28 @@ Amaç netlik + premium his; terminal derinliği değil.
 
 ## 05 · Signals — Karot Konsensüs Enstrümanı
 
+> ## ⚠️ DEPRECATED — Karot ürün-UI'dan kaldırılıyor · *(v1.7 · CP-KAROT-DOC · 2026-07-18)*
+>
+> **Bağlayıcı kullanıcı kararı (2026-07-18):** Karot artık TradeMinds **ürün arayüzünde KULLANILMAZ** — satır-içi glyph, kalite/confidence/risk yanı sembolü, Dock hero-objesi, consensus/lifecycle/proof objesi veya marka motifi olarak. Bu bölümdeki **tüm karot-* maddeleri (karot-01…karot-15) + karot-sahne-ölçekleri ürün-UI için SUPERSEDED'dir.** "Zorunlu merkez enstrüman" (karot-01), "kanonik silüet = marka-işareti / favicon-loader-logo" (karot-09), "Geometry Freeze" (karot-15) ve "sahne-ölçekleri" (satır/detay/kahraman) dahil hiçbiri artık ürün kimliğini bağlamaz. Aşağıdaki geometri/matematik/hal maddeleri **tarihsel kayıt** olarak bırakıldı — normatif değil.
+>
+> **Yeni kimlik tezi — Karot yerine (glyph/ikon/sembol İKAMESİ YOK):** TradeMinds premium kimliği artık bir işaret üzerine değil, **kompozisyon ve veri-hiyerarşisi** üzerine kurulur:
+> - **typography** — sahipli tabular numeral + eyebrow→display grameri
+> - **owned numerical hierarchy** — ekran-başına kahraman-rakam (§01-K craft-kahraman-rakam)
+> - **instrument well** — E0-inset enstrüman-kuyusu (§01-K craft-veri-kuyusu)
+> - **proof receipt** — kanıt-makbuzu (§01-K craft-makbuz-grameri); per-motor konsensüs artık METİNLE taşınır: `9 motor · 7 LONG · 2 nötr`
+> - **data hierarchy + spacing** — kabin-imzası (yüzey-merdiveni / hairline / köşe-dili) + iki-ritim boşluk
+> - **restrained dark terminal composition** — owned E0–E3 + terminal paleti (bull/bear/cyan yalnız çizgi/iz)
+>
+> Premium his **süs ile değil** kompozisyon / typography / spacing / veri-hiyerarşisi / makbuz ile kurulur. **Karot'un yerine yeni bir şekil KONMAZ** (konsensüs bilgisi makbuz-metnine iner). Logo-kapalı kimlik taşıyıcısı artık = kabin-imzası + tabular-numeral + owned-palet (§1124 güncellendi; §1131 zaten Karot-maskeli okumayı tanımlıyordu).
+>
+> **Kaldırma sırası (her biri AYRI CP + onay + görsel-QA):** CP-KAROT-DOC (bu) → CP-KAROT-UI1 (SignalTable satır+loading Karot; **Dashboard "Şu an" bandını da etkiler** — shared bileşen) → CP-KAROT-UI2 (Dock consensus sahnesi, `signals/page.tsx`) → CP-KAROT-UI3 (SignalDetailSection hero+motor; **AT-1 çapraz-vurgu + AT-2 tooltip dahil**) → CP-KAROT-CLEAN (`Karot.tsx` / `karot-geometry.ts` / `karot-adapter.ts` / `karot-selftest.mjs` ölü-kod). **favicon/icon.png/apple-icon.png = bu seride DEĞİL** — statik asset; Karot silüeti içeriyorsa ayrı CP-KAROT-ASSET / Brand Identity Sprint.
+>
+> *Aşağıdaki orijinal §05 içeriği tarihsel kayıt olarak korunur; ürün-UI için normatif DEĞİLdir.*
+
 Sinyal kartı ürünün kalbi; merkez enstrüman = **Karot** (moat, Consensus Instrument). Karot 9 motorun yön×güven konsensusunu **dikey omurga + slot'a mıhlı açısal kanıt-fitilleri** ile görselleştirir (K17 görünüm + K02 matematik). AI-kimliği renkten forma taşınır; Karot yeniden-tasarlanmaz — geometri **karot-15 · Geometry Freeze** ile dondurulmuştur.
 
 ### karot-sahne-ölçekleri · Üç sahne boyu: satır / detay / kahraman · *(v1.6 CP-PV1-A)*
+> **SUPERSEDED (v1.7 · CP-KAROT-DOC)** — ürün-UI için bağlayıcı DEĞİL; satır/detay/kahraman Karot sahneleri kaldırılıyor (CP-KAROT-UI1/2/3). Bkz §05 baş-banner.
 - **Direktif:** Karot ürün-içi zekâ-objesi olarak ÜÇ sahne boyunda yaşar: **16–24px satır-silüeti** (SignalTable/dashboard-Şu-an; yön+uzlaşma iki-hal okuması; bu yüzeyde glow KAPALI — mevcut kural) · **32px detay-skoru** (SignalDetail/Dock skor-bloğu; etkileşimli, AT-1/AT-2) · **96–120px Dock kahraman-sahnesi (YENİ)** — kimliğin "ölçekte-okunduğu" an: seçili sinyalin Karot'u Signal-Center Dock'unda kuyu (craft-veri-kuyusu) içinde sahnelenir. Geometri değişmez (karot-15 Freeze); yalnız render ölçeği.
 - **Token/değer:** satır 16–24 · detay 32 · kahraman 96–120; **<16px YASAK** (okunmaz); sahne-Karot'u well içinde.
 - **Teknik:** Kahraman-sahne = aynı `<Karot>` primitifi (karot-01: tek render fonksiyonu, yalnız ölçek değişir). **Marka-yüzeyi yasağı AYNEN:** logo/favicon/navbar/landing-hero/splash'ta Karot KULLANILMAZ (bağlayıcı kullanıcı kararı, v1.4.1 carve-out). Dekoratif arka-plan deseni olarak Karot tekrarı = veri-dışı süs-render = yasak (G-00-07).
@@ -792,6 +811,7 @@ Sinyal kartı ürünün kalbi; merkez enstrüman = **Karot** (moat, Consensus In
 - **Ölçüm:** sahne-boyu ∈ {16–24, 32, 96–120} dışı kullanım=fail; Dock kahraman-Karot'u + kahraman-rakam aynı viewport'ta vurgu-bütçesini (≤2) aşmaz (squint).
 
 ### karot-01 · Zorunlu konsensüs primitifi (merkez enstrüman)
+> **SUPERSEDED (v1.7 · CP-KAROT-DOC)** — "zorunlu primitif / merkez enstrüman" ürün-UI için GEÇERSİZ; sinyal yüzeyleri artık Karot taşımaz (bilgi = bar/sayı/makbuz). Bkz §05 baş-banner.
 - **Direktif:** Sinyal taşıyan HER kart Karot enstrümanını taşır (zorunlu primitif). Radar/örümcek, donut, bar gösterge tipleri sinyal-konsensüsü için ASLA kullanılmaz (kalıcı yasak).
 - **Token/değer:** primitif `<Karot>` · gösterge tipi dikey-omurga fitil-demeti (radar/donut/bar DEĞİL).
 - **Teknik:** SignalCard, tablo satırı, detay drawer, hero'daki her sinyal yüzeyi aynı Karot primitifini render eder (yalnız ölçek değişir). Radar/donut/bar "AI dashboard ortalaması" olduğu için reddedilir.
@@ -846,6 +866,7 @@ Sinyal kartı ürünün kalbi; merkez enstrüman = **Karot** (moat, Consensus In
 - **Ölçüm:** hero Karot'ta three/R3F/webgl import=0; üç ölçek snapshot tek fonksiyondan; 16px silüet tablo satırında render.
 
 ### karot-09 · Kanonik rest-state silüet = marka-işareti (Consensus Instrument MILESTONE)
+> **SUPERSEDED (v1.7 · CP-KAROT-DOC)** — Karot silüeti artık marka-işareti / favicon / loader / logo DEĞİL. Logo-kapalı kimlik = kabin-imzası + tabular-numeral + owned-palet (§1124). favicon/icon.png Karot içeriyorsa ayrı CP-KAROT-ASSET. Bkz §05 baş-banner.
 - **Direktif:** Sabit kanonik rest-state Karot silüeti tanımla ve favicon/loader/logo olarak kullan; canlı render bu silüetin türevidir. AI-kimliği renkten forma taşınır. Kanonik rest-state = tek deterministik 9-motor yön×güven CONFS dizisi (hafif-bull-uzlaşma imzası); bu diziden tek parametrik render fonksiyonu → kanonik SVG (favicon/loader/logo). Bu bir MILESTONE'dur (K1b).
 - **Token/değer — kanonik rest-state confs dizisi (i=0→8, Teknik→Makro), c∈[−1,1]:**
   `[ +0.42, +0.55, +0.38, +0.10, +0.48, +0.22, +0.60, +0.35, +0.18 ]`
@@ -893,6 +914,7 @@ Sinyal kartı ürünün kalbi; merkez enstrüman = **Karot** (moat, Consensus In
 - **Ölçüm:** lifecycle handler'ları omurga confs dizisine yazmaz; settle sonrası omurga statik (idle 0 animasyon).
 
 ### karot-15 · Geometry Freeze Rule (geometri dondurma)
+> **SUPERSEDED (v1.7 · CP-KAROT-DOC)** — Geometry Freeze konusuz kaldı: Karot ürün-UI'dan kaldırılıyor. Dondurulacak yaşayan-varlık yok; geometri tarihsel kayıt. Bkz §05 baş-banner.
 - **Direktif:** Bu revizyondan (v1.4) sonra Karot'un **geometrisi · slot sistemi · omurga · davranış kuralları DEĞİŞMEZ.** Geliştirme YALNIZ şu katmanlarda yapılır: Motion · Material · Rendering · Lighting · Interaction · Premium-Identity. Yeni geometri/davranış önerisi çıkarsa bu checkpoint kapsamında değil, gelecekte AYRI bir tasarım revizyonu olarak ele alınır.
 - **Token/değer:** dondurulan = {fitil konum matematiği (karot-02) · 9-slot sıra (karot-04) · omurga+karar-ucu formu · classify eşikleri (karot-03) · hal imzaları (karot-05) · davranış yasaları}. Serbest katman = {motion · material · rendering · lighting · interaction · premium-identity}.
 - **Teknik:** Y2 davranış yasası kilitli: **imleç kanıtı asla döndürmez** — hover yalnız lüminans (+1), fitil açısını değiştiremez (kanıt yalnız telemetriyle döner). Freeze, kimlik-kararlılığının (20-yıl) zorlayıcı fonksiyonudur; "daha iyi bir şekil buldum" gerekçesi bu checkpoint'te otomatik ertelenir.
@@ -1122,7 +1144,7 @@ Kimliği kod düzeyinde koruyan **beş fonksiyonel lint kuralı**; `stylelint` +
 Tam Migration Map AYRI belgede tutulur (tek kaynak: `docs/design/MIGRATION-MAP-v1.3.md`); burada yalnız tek-satır işaret. **Kapanış kriteri (özet):** `grep '#020817|#0A101C|#000000|#10B981|#F4556E|#F0564B|#3B82F6|#2563EB|indigo|#22D3EE|#FBBF24|#f97316'` (src+public) → **0**; `en-US` yalnız `lib/utils.ts`'te tr-TR'ye döner; focus-ring/nav/input-focus → `--accent-ui`; TradingView widget'ının tam tema eşlemesi (zemin dışı) bu haritanın dışıdır (Rev-2/M16).
 
 ### Logo-kapalı tanınırlık testi (G-08-05 · P2 zorlayıcı fonksiyon) · *açık uç: baseline "geçmez"*
-- **Direktif:** Kimliği logo kapalıyken yalnız ekran görüntüsünden "bu TradeMinds" dedirtecek şekilde kur; taşıyıcılar: Karot silüeti + `--e0 #070B14` near-black + terminal-renk paleti (bull `#2FBE9A` / bear `#E14640` / cyan `#25E0D4`) + sahipli tabular numeral. Testin bugün geçmediğini dürüstçe kabul et (sahipli-font + konsensus-enstrüman formu yerleşene dek geçmez).
+- **Direktif:** Kimliği logo kapalıyken yalnız ekran görüntüsünden "bu TradeMinds" dedirtecek şekilde kur; taşıyıcılar **(v1.7 · CP-KAROT-DOC — Karot silüeti ÇIKARILDI):** kabin-imzası (yüzey-merdiveni / hairline / köşe-dili) + instrument-well + proof-receipt kompozisyonu + `--e0 #070B14` near-black + terminal-renk paleti (bull `#2FBE9A` / bear `#E14640` / cyan `#25E0D4`) + sahipli tabular numeral. Kimlik artık bir glyph/işaret'e değil **kompozisyon + veri-hiyerarşisine** dayanır; logo-kapalı tanınma sahipli-font + kabin-imzası yerleşene dek açık kimlik-borcu (release-blokaj değil).
 - **DoD:** Çeyreklik denetimde logo maskelenmiş 3+ ekran dış gözlemciye "TradeMinds" olarak tanınabiliyor; tanınmıyorsa açık borç (release-blokaj değil, kimlik-borcu).
 - **Ölçüm:** N gözlemciden doğru marka-atfı oranı; **şuanki baseline = "geçmez" (kayıtlı borç)**; ilk kilometre-taşı (font+silüet üretimi) sonrası hedef ≥%40, çeyreklik artan.
 
