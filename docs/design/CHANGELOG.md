@@ -5,6 +5,25 @@ Kural: **her revizyon = commit + sürüm artışı + bu dosyada bir satır.** St
 
 ---
 
+## Bible v1.6 — CP-PV1-A: Kompozisyon & Sahneleme katmanı · 2026-07-17
+
+> **Kapsam:** Premium Interface Redesign CP-PV1'in doc-aşaması (PV1-A). `DESIGN-BIBLE` v1.5 → **v1.6** (yalnız Bible; VL/Motion-Doctrine dokunulmadı). **Doc-only karar kilidi** — kod/CSS/component/UI/backend/DB değişmedi; ürün ve görsel davranış BYTE-IDENTICAL. **PV1 yeni tasarım icadı değildir:** kilitli token/yasak/primitif-craft'ın üzerine eksik KOMPOZİSYON katmanını tanımlar. Primitif-uygulama = **PV1-B** (ayrı kapsam-onayı, bu pakete dahil değil); ekran-recompose = CP-SIGNAL/CP-DASH. CP sırası korunur: PIA → PV1 → SIGNAL → DASH → HERO → MOTION.
+
+### Eklenen bölüm/maddeler
+- **§01-K (yeni ara-bölüm) · Kompozisyon & Sahneleme Katmanı** — teşhis (tek-kap tiranlığı · ölçek-cesareti yokluğu · kuyu-dilinin ve makbuz-gramerinin eksikliği) + 6 madde:
+  - **craft-kap-hiyerarşisi** — chrome/panel/well üç yüzey sınıfı; "kap yalnız veri taşıyanda"; GlassCard tiranlığı **additive varyantla** kırılır (mevcut kullanım/default bozulmaz).
+  - **craft-veri-kuyusu** — enstrüman (chart/tablo/Karot-sahnesi) E1-panel içinde E0-inset kuyuda; iç-hairline + kuyu-grid = bütçeye eklenen YEGÂNE iki yeni sanktioned kullanım (başka glow/blur/gölge bütçesi açılmadı).
+  - **craft-kahraman-rakam** — ekran başına 1 (Dashboard=Dönem Net Getiri · Dock=konsensus-skoru), 40–56px tabular, makbuz zorunlu, count-up yasak, vurgu-bütçesine dahil.
+  - **craft-makbuz-grameri** — provenance tek-biçimi `n=142 · 30g · v1` (kahraman-rakam altı · tooltip gövdesi · AI-cümle ucu · Sicil).
+  - **craft-sessiz-buton** — görünür-primary sayfa başına ≤1; veri-satırı içinde buton yasak (link/ghost/metin-hairline).
+  - **craft-referans-politikası** — dış referanslar kopyalanmaz: yalnız prensip-çıkarımı (tek-kahraman-nesne · eyebrow→display→CTA grameri · sahne-değişimli pacing · karanlık-boşluk) + negatif-katalog (template-galeri estetiği = yabancı-kör fail örnekleri); three.js/3D/orbit/scrub yolu zaten kalıcı-kapalı.
+- **§05 karot-sahne-ölçekleri** — üç sahne boyu: 16–24 satır · 32 detay · **96–120 Dock kahraman-sahnesi (yeni)**; <16px yasak; marka-yüzeyi yasağı aynen; süs-render yasak.
+
+### Sınırlar (bu revizyonda dokunulmayan)
+- Motion EKLENMEDİ (polish = CP-MOTION; yeni primitiflerin giriş-durumları mevcut token'lara bağlanacak).
+- VL / Motion-Doctrine / token değerleri / §02-§04 v1.5 maddeleri / Karot geometrisi (karot-15 Freeze) aynen.
+- Kod/CSS/component/backend/DB/AI-core = sıfır dokunuş.
+
 ## Bible v1.5 — CP-PIA: Premium Interface Redesign bilgi-mimarisi kilidi · 2026-07-17
 
 > **Kapsam:** Premium Interface Redesign track'inin ilk CP'si (CP-PIA). `DESIGN-BIBLE` v1.4 → **v1.5** (yalnız Bible; VL/Motion-Doctrine dokunulmadı). **Doc-only karar-kaydı** — kod/CSS/component/UI/backend/DB/API değişmedi; ürün ve görsel davranış BYTE-IDENTICAL. Uygulama ayrı CP'lerde (PV1 → SIGNAL → DASH → HERO → MOTION), her biri ayrı onay + görsel-QA kapısı.

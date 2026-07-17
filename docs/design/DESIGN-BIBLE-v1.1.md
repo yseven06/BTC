@@ -1,6 +1,6 @@
 # TradeMinds Design Bible
 
-**Version:** v1.5 (KANONIK) · **Tarih:** 2026-07-17 · *(v1.5 CP-PIA: Premium Interface Redesign bilgi-mimarisi kilidi — Dashboard=Durum Odası · Signal Center=AI İstihbarat Merkezi · widget-taşıma haritası · ekran-sorumluluk tablosu · IA-guardrail'ler; bkz. §02/§03/§04 + CHANGELOG. v1.4: Karot geometri revizyonu — "K17 görünüm + K02 matematik" + Geometry Freeze; bkz. §05 karot-02/15)*
+**Version:** v1.6 (KANONIK) · **Tarih:** 2026-07-17 · *(v1.6 CP-PV1-A: Kompozisyon & Sahneleme katmanı — kap-hiyerarşisi [chrome/panel/well] · veri-kuyusu · kahraman-rakam · makbuz-grameri · sessiz-buton · Karot sahne-ölçekleri · referans-politikası; bkz. §01 sonu + §05 karot-sahne-ölçekleri + CHANGELOG. v1.5 CP-PIA: bilgi-mimarisi kilidi [Durum Odası · İstihbarat Merkezi · widget-taşıma · sorumluluk-tablosu · IA-guardrail], bkz. §02/§03/§04. v1.4: Karot geometri revizyonu + Geometry Freeze, bkz. §05 karot-02/15)*
 **Statü:** Ürünün resmî ve tek tasarım standardı (normatif). Kanonik kaynak = bu dosya (`docs/design/`).
 **Kanoniklik & sürümleme:** Dosya adı sabittir; güncel sürüm bu başlıkta + [CHANGELOG](./CHANGELOG.md)'da izlenir. Artifact yalnızca görsel aynadır; çelişkide bu markdown kazanır. Revizyon = commit + sürüm artışı + CHANGELOG satırı (C1/C2, §08).
 **Eki:** [VISUAL-LANGUAGE](./VISUAL-LANGUAGE-v1.1.md) (Annex A — atmosfer/Art Direction/motion-bütçesi).
@@ -534,6 +534,48 @@ Semantik `<table>` (div-grid değil). `md` altında satır → **kart**'a dönü
 
 
 
+## 01-K · Kompozisyon & Sahneleme Katmanı · *(v1.6 CP-PV1-A)*
+
+> **Statü:** doc-only karar kilidi. Primitif-uygulama = **PV1-B** (ayrı onay); ekran-recompose = **CP-SIGNAL / CP-DASH** (ayrı onaylar). **CP-PV1 yeni tasarım İCADI DEĞİLDİR:** token/yasak/motion/primitif-craft (§01/§06) kilitli ve uygulanmış; bu katman o parçaların **ekranda nasıl sahneleneceğini** kilitler.
+> **Teşhis (kanıtlı):** template hissi primitiflerden değil şuradan gelir — (a) **tek-kap-tipi tiranlığı** (her içerik aynı GlassCard'da), (b) eşit-ağırlık iskeleti (v1.5 CP-PIA kırdı), (c) **ölçek cesareti yokluğu** (kahraman-rakam=0; Karot ≤32px), (d) veri-kuyusu dilinin yokluğu, (e) makbuz-gramerinin tek-biçim olmaması.
+
+### craft-kap-hiyerarşisi · Üç yüzey sınıfı: chrome / panel / well (bench doctrine)
+- **Direktif:** "Kap, yalnız veri taşıyan şeyde." Üç yüzey sınıfı: **chrome** (kapsız — hairline-ayrım + boşluk; başlık/filtre/metin-modül), **panel** (E1 kap = bugünkü GlassCard; yalnız gruplanmış veri), **well** (enstrüman-kuyusu, craft-veri-kuyusu). Sayfa silüeti kutu-grid'den TEZGÂHA döner: bir viewport'ta kap-sayısı düşer, ayrım hairline+boşlukla taşınır.
+- **Token/değer:** Surface varyantları `chrome | panel | well`; panel = mevcut GlassCard davranışı (default, byte-identical).
+- **Teknik:** GlassCard tek-kap tiranlığı **additive varyant API'siyle** kırılır — mevcut kullanım BOZULMAZ (default=panel aynı kalır; ekranlar opt-in göçer, recompose CP'lerinde). Chrome yüzeyde border/bg yok; ayrım `hl10/hl12` yatay-kural + spacing.
+- **DoD:** Aynı viewport'ta >3 eşdeğer-ağırlık panel = red (v1.5 dash-ia-guardrail-4 ile hizalı); chrome-içerik kapa alınmışsa gerekçe şart.
+- **Ölçüm:** ekran-başına panel sayısı (hedef: dashboard ≤4, signal-center ≤3 panel + 1 well-tablo + 1 dock); squint'te silüet "tezgâh" okur (kutu-grid=fail).
+
+### craft-veri-kuyusu · Enstrüman-kuyusu (instrument well)
+- **Direktif:** Chart / tablo / Karot-sahnesi kapları içeriğinden BİR BASAMAK KARANLIK oturur: E1-panel içinde **E0-inset kuyu**. "Derinlik = kabın içine bakmak" — Bloomberg-dürüstlüğünün kopyasız çevirisi. Veri, kuyudaki tek parlak ögedir.
+- **Token/değer:** kuyu bg = `--e0`; iç-hairline `inset 0 0 0 1px var(--hl10)`; kuyu-içi grid ≤ hl10 (tek özel değer, YALNIZ well içinde); kuyu radius = `--radius-card`.
+- **Teknik:** Bu iki kullanım (iç-hairline + kuyu-grid) §01 glow/hairline bütçesine eklenen YEGÂNE yeni sanktioned kullanımdır; başka yeni glow/blur/gölge/gradient bütçesi AÇILMAZ. TradingView/recharts temaları kuyu-içinde owned-palete tam eşlenir (uygulama CP-DASH/markets).
+- **DoD:** Enstrüman (chart/canlı-tablo/Karot-sahnesi) çıplak panel-yüzeyinde durmaz — kuyu içinde; kuyu içinde dekoratif öge=0.
+- **Ölçüm:** 6-önerme: "Derinlik=Kanıt"; kuyu-dışı inset-hairline kullanımı=0; kuyu-içi en yüksek luminans = veri (grid/chrome değil).
+
+### craft-kahraman-rakam · Ekran başına 1 kahraman-rakam
+- **Direktif:** Her ana ekranın TEK kahraman-rakam hakkı vardır (40–56px, `tabular-nums`, owned-numeral): Dashboard-Sicil = **Dönem Net Getiri** · Signal-Center-Dock = **konsensus-skoru**. Altında zorunlu makbuz-satırı (craft-makbuz-grameri). G-00-02 kimlik-taşıyıcı üçlüsünün (Karot · provenance · kahraman-rakam) üçüncüsü İLK KEZ sahnelenir.
+- **Token/değer:** boyut 40–56px; ekran-başına adet = 1; vurgu-bütçesine (≤2) DAHİL; **count-up ASLA** (§06 yasağı — dürüstlük: sayı olduğu değerde doğar).
+- **DoD/Ölçüm:** ana ekranda kahraman-rakam sayısı == 1; makbuzsuz kahraman-rakam = fail; count-up/odometer pattern = fail.
+
+### craft-makbuz-grameri · Provenance tek-biçimi
+- **Direktif:** Her AI/istatistik iddiasının makbuzu TEK gramerle yazılır: `n=142 · 30g · v1` (orta-nokta ayraç · `--tx2` · mono-numeral · 11-12px). Kullanım yerleri: kahraman-rakam altı · tooltip gövdesi · AI-cümle ucu · Sicil başlıkları. Ölçüm-kültürünün görsel imzası — "fark efektte değil dürüstlük duruşunda"nın mikro-tipografisi.
+- **Token/değer:** ayraç `·` · renk `--tx2` · numeral mono/tabular · sıra: örneklem → dönem → era/sürüm.
+- **Teknik:** Tooltip gövdesi makbuz-formuna döner (başlıksız, tek satır + kaynak); provenance-hover (AT-2) içerik-sözleşmesi değişmez, yalnız görsel gramer tekleşir.
+- **DoD/Ölçüm:** makbuz-taşıyan yüzeylerde serbest-biçim provenance metni = 0; gramer-dışı ayraç/sıra = fail.
+
+### craft-sessiz-buton · Buton nadirdir
+- **Direktif:** Ürün istihbarat-ürünüdür; buton NADİR ve KESİNDİR. Görünür-primary (dolgu+glow) **sayfa başına ≤1** (mevcut tek-CTA-glow bütçesiyle hizalı). Veri-satırı İÇİNDE buton YASAK — satır-içi eylem link/ghost/metin-hairline'dır. İkincil eylemler metin+hairline.
+- **Token/değer:** primary/sayfa ≤1; satır-içi `<Button variant="primary|secondary">` = 0.
+- **DoD/Ölçüm:** sayfa-tarama: primary-buton sayısı ≤1; SignalTable/veri-satırı içinde buton-elementi = 0.
+
+### craft-referans-politikası · Referans görseller = prensip + negatif-katalog (kopya değil)
+- **Direktif:** Dış referanslar (site/video/galeri) BİREBİR KOPYALANMAZ; yalnız iki kullanım meşrudur: (1) **prensip-çıkarımı** — tek-kahraman-nesne sahnesi · eyebrow→display→paragraf→tek-CTA grameri · sahne-değişimli pacing ("az ama kesin") · cesur karanlık-boşluk; (2) **negatif-katalog** — template-galeri estetiği (3D-maskot, aurora-bg, neon-kart, dev-gradient-tipo, "Copy full prompt" yakınsaması) yabancı-kör testin (G-00-04) başarısızlık örnekleridir; bu desenlere yakınsayan karar reddedilir.
+- **Teknik:** three.js/3D-model/kamera-orbit/scroll-scrub yolu zaten kalıcı-kapalı (§02 hero-sahte-sinematik-yasak). Prensip-çıkarımı her zaman Bible token/kural diline yeniden-ifade edilir; dış çıktı (kod/asset) repo'ya girmez.
+- **DoD/Ölçüm:** G-00-04 çeyreklik yabancı-kör line-up tek kapı; "referansta böyleydi" tek başına gerekçe DEĞİLDİR (6-önerme şartı aynen).
+
+---
+
 ## 02 · Hero
 
 İlk 10 saniyede tek his: **ürünün AI'sini canlı hissettirmek.** Yaşayan AI sistemi (tanıtım filmi değil); tüm görsel ögeler gerçek sinyal verisinden türer. Hero YAŞAR — sahte sinema tamamen yasak; her motion bilgi taşır, her ışık gerçek bir olayı temsil eder.
@@ -741,6 +783,13 @@ Amaç netlik + premium his; terminal derinliği değil.
 ## 05 · Signals — Karot Konsensüs Enstrümanı
 
 Sinyal kartı ürünün kalbi; merkez enstrüman = **Karot** (moat, Consensus Instrument). Karot 9 motorun yön×güven konsensusunu **dikey omurga + slot'a mıhlı açısal kanıt-fitilleri** ile görselleştirir (K17 görünüm + K02 matematik). AI-kimliği renkten forma taşınır; Karot yeniden-tasarlanmaz — geometri **karot-15 · Geometry Freeze** ile dondurulmuştur.
+
+### karot-sahne-ölçekleri · Üç sahne boyu: satır / detay / kahraman · *(v1.6 CP-PV1-A)*
+- **Direktif:** Karot ürün-içi zekâ-objesi olarak ÜÇ sahne boyunda yaşar: **16–24px satır-silüeti** (SignalTable/dashboard-Şu-an; yön+uzlaşma iki-hal okuması; bu yüzeyde glow KAPALI — mevcut kural) · **32px detay-skoru** (SignalDetail/Dock skor-bloğu; etkileşimli, AT-1/AT-2) · **96–120px Dock kahraman-sahnesi (YENİ)** — kimliğin "ölçekte-okunduğu" an: seçili sinyalin Karot'u Signal-Center Dock'unda kuyu (craft-veri-kuyusu) içinde sahnelenir. Geometri değişmez (karot-15 Freeze); yalnız render ölçeği.
+- **Token/değer:** satır 16–24 · detay 32 · kahraman 96–120; **<16px YASAK** (okunmaz); sahne-Karot'u well içinde.
+- **Teknik:** Kahraman-sahne = aynı `<Karot>` primitifi (karot-01: tek render fonksiyonu, yalnız ölçek değişir). **Marka-yüzeyi yasağı AYNEN:** logo/favicon/navbar/landing-hero/splash'ta Karot KULLANILMAZ (bağlayıcı kullanıcı kararı, v1.4.1 carve-out). Dekoratif arka-plan deseni olarak Karot tekrarı = veri-dışı süs-render = yasak (G-00-07).
+- **DoD:** Dock'ta seçili sinyalin ≥96px Karot'u well içinde; <16px render grep=0; marka-yüzeyi grep=0; süs-render=0.
+- **Ölçüm:** sahne-boyu ∈ {16–24, 32, 96–120} dışı kullanım=fail; Dock kahraman-Karot'u + kahraman-rakam aynı viewport'ta vurgu-bütçesini (≤2) aşmaz (squint).
 
 ### karot-01 · Zorunlu konsensüs primitifi (merkez enstrüman)
 - **Direktif:** Sinyal taşıyan HER kart Karot enstrümanını taşır (zorunlu primitif). Radar/örümcek, donut, bar gösterge tipleri sinyal-konsensüsü için ASLA kullanılmaz (kalıcı yasak).
