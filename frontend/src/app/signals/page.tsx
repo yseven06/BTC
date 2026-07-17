@@ -765,10 +765,83 @@ function LevelCard({ label, value, color }: { label: string; value: number | nul
   );
 }
 
+// ─── CP-SIGNAL-C: RiskFilterBar ───────────────────────────────────────────────
+// Risk dağılım-filtresi enstrümanı (buton-grubu değil): segment genişliği =
+// risk-ÖNCESİ evrendeki pay (flex-grow=count; min-w clamp 0-sayımlı segmenti
+// tıklanabilir tutar). Tık = toggle (aynı segmente ikinci tık temizler); ayrı
+// "Tümü" segmenti YOK — temiz hâl = hiçbiri seçili değil. Aktifken sağda sessiz
+// "Temizle" metin-linki. Renk semantiği RiskDagilimi ile birebir
+// (low=bullish / medium=amber / high=bearish); Karot/glyph/glow YOK.
+const RISK_SEGMENTS = [
+  { key: 'low'    as const, label: 'Düşük',  text: 'text-bullish', on: 'bg-bullish/15 ring-bullish/40' },
+  { key: 'medium' as const, label: 'Orta',   text: 'text-amber',   on: 'bg-amber/15 ring-amber/40' },
+  { key: 'high'   as const, label: 'Yüksek', text: 'text-bearish', on: 'bg-bearish/15 ring-bearish/40' },
+];
+type RiskKey = (typeof RISK_SEGMENTS)[number]['key'];
+
+function RiskFilterBar({ counts, active, onToggle, onClear }: {
+  counts: Record<RiskKey, number>;
+  active: 'all' | RiskKey;
+  onToggle: (k: RiskKey) => void;
+  onClear: () => void;
+}) {
+  return (
+    // max-w-full + flex-wrap: dar ekranda (375px) şeridi TAŞIRMAZ — kutu
+    // max-w-full ile daralır, sığmazsa Temizle alta sarar. "RİSK" etiketi
+    // kutunun İÇİNDE (MİN. KALİTE kutusuyla aynı sözlük) → ayrık-etiket
+    // sarma sorunu yok.
+    <div className="flex items-center gap-2 flex-wrap max-w-full">
+      <div className="flex items-center gap-1 p-1 pl-3 bg-bg-secondary border border-border-subtle rounded-xl w-[320px] max-w-full">
+        <span className="text-micro text-text-muted font-medium uppercase mr-1.5">RİSK</span>
+        {RISK_SEGMENTS.map((seg) => {
+          const isActive = active === seg.key;
+          const dimmed = active !== 'all' && !isActive;
+          return (
+            <button
+              key={seg.key}
+              type="button"
+              onClick={() => onToggle(seg.key)}
+              aria-pressed={isActive}
+              style={{ flexGrow: Math.max(counts[seg.key], 1) }}
+              className={cn(
+                'focus-ring flex basis-0 min-w-[72px] items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-display rounded-lg transition-colors',
+                seg.text,
+                isActive
+                  ? cn(seg.on, 'ring-1 ring-inset')
+                  : dimmed
+                    ? 'opacity-45 hover:opacity-100'
+                    : 'hover:bg-bg-tertiary/50'
+              )}
+            >
+              {seg.label}
+              <span className={cn(
+                'text-micro font-mono px-1.5 py-0.5 rounded',
+                isActive ? 'bg-bg-secondary/80' : 'bg-bg-tertiary/60'
+              )}>
+                {counts[seg.key]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {active !== 'all' && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="focus-ring text-micro font-medium text-text-muted hover:text-text-primary hover:underline"
+        >
+          Temizle
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 type TfFilter = 'all' | '15m' | '1h' | '4h' | '1d';
 type DirFilter = 'all' | 'long' | 'short';
+type RiskFilter = 'all' | RiskKey;
 
 export default function SignalsPage() {
   const [signals, setSignals]     = useState<ApiSignal[]>([]);
@@ -805,12 +878,16 @@ export default function SignalsPage() {
   // Aynı sembol için en kaliteli timeframe'i göster, diğerlerini gizle.
   // Kullanıcı her timeframe'i ayrı görmek istiyorsa bunu kapatabilir.
   const [dedupBySymbol, setDedupBySymbol] = useState(true);
+  // CP-SIGNAL-C: risk dağılım-filtresi — oturum-içi, persist YOK (TF/yön ile
+  // aynı davranış); default 'all' = eski çıktı birebir.
+  const [riskFilter, setRiskFilter] = useState<RiskFilter>('all');
 
   // Timeframe önceliği (büyük TF daha güvenilir): 1d > 4h > 1h > 15m
   const TF_PRIORITY: Record<string, number> = { '1d': 4, '4h': 3, '1h': 2, '15m': 1 };
 
-  // Apply filters → dedup → sort
-  const filtered = (() => {
+  // Apply filters → dedup → sort — CP-SIGNAL-C: bu zincir risk-ÖNCESİ evren
+  // (baseFiltered); risk sayımları ve segment payları bu evrenden türetilir.
+  const baseFiltered = (() => {
     // 1) TF + minQuality filtreleri
     let arr = signals
       .filter((s) => marketFilter === 'all' || s.asset?.asset_type === marketFilter)
@@ -846,6 +923,19 @@ export default function SignalsPage() {
 
     return arr;
   })();
+
+  // CP-SIGNAL-C: risk sayımları — evren = TF/kalite/yön/dedup/sort SONRASI,
+  // risk filtresi ÖNCESİ (kullanıcının o an baktığı filtrelenmiş evren;
+  // dashboard'un global evreni DEĞİL). Normalizasyon dashboard ile aynı.
+  const riskCounts: Record<RiskKey, number> = { low: 0, medium: 0, high: 0 };
+  for (const s of baseFiltered) {
+    const r = String(s.risk_level ?? '').toLowerCase();
+    if (r === 'low' || r === 'medium' || r === 'high') riskCounts[r] += 1;
+  }
+  // riskFilter='all' → baseFiltered referansı AYNEN döner (eski çıktıyla birebir).
+  const filtered = riskFilter === 'all'
+    ? baseFiltered
+    : baseFiltered.filter((s) => String(s.risk_level ?? '').toLowerCase() === riskFilter);
 
   // Same-symbol siblings (other TFs) — for showing "+2 TF" hint
   const tfSiblingsBySym = (() => {
@@ -1062,6 +1152,15 @@ export default function SignalsPage() {
         })()}
       </div>
 
+      {/* CP-SIGNAL-C: Risk dağılım-filtresi — sayım evreni risk-öncesi
+          baseFiltered; tık=toggle, aktifken sessiz Temizle metin-linki. */}
+      <RiskFilterBar
+        counts={riskCounts}
+        active={riskFilter}
+        onToggle={(k) => setRiskFilter((cur) => (cur === k ? 'all' : k))}
+        onClear={() => setRiskFilter('all')}
+      />
+
       {/* Min quality slider + row-density toggle */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border border-border-subtle rounded-xl">
@@ -1092,6 +1191,23 @@ export default function SignalsPage() {
           motion / filtre / HeroNumber YOK — yalnız çalışma-yüzeyi iskeleti. */}
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-5 lg:items-start">
         <div className="min-w-0">
+          {/* CP-SIGNAL-C: risk filtresi tabloyu boşalttıysa tek sessiz
+              mikro-satır. Yalnız risk-KAYNAKLI boşlukta görünür
+              (baseFiltered>0 garantisi); gerçek sıfır-sinyal davranışına
+              (showEmpty/EmptyState) DOKUNMAZ. */}
+          {riskFilter !== 'all' && filtered.length === 0 && baseFiltered.length > 0 && (
+            <div className="mb-2 px-1 flex items-center gap-1.5 text-micro text-text-muted">
+              <span>Bu filtrelerle eşleşen sinyal yok</span>
+              <span aria-hidden>·</span>
+              <button
+                type="button"
+                onClick={() => setRiskFilter('all')}
+                className="focus-ring font-medium text-text-secondary hover:text-text-primary hover:underline"
+              >
+                Temizle
+              </button>
+            </div>
+          )}
           {/* Table — shared SignalTable (the same component the Dashboard "Şu an" band mounts) */}
           <SignalTable
             rows={filtered}
