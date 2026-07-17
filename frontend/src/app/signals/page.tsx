@@ -1261,6 +1261,7 @@ export default function SignalsPage() {
             rows={filtered}
             livePrices={livePrices}
             onSelect={setSelected}
+            selectedId={selected?.id}
             loading={loading}
             density={density}
             showEmpty={signals.length === 0}
