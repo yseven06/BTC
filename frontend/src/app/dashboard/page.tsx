@@ -3,20 +3,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
-  TrendingUp, TrendingDown, Zap, CheckCircle, AlertTriangle,
+  Zap, CheckCircle, AlertTriangle,
   LineChart as ChartIcon, ArrowRight, RefreshCw, Activity, X,
 } from 'lucide-react';
-import {
-  ResponsiveContainer, PieChart, Pie, Cell,
-} from 'recharts';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SignalTable, DensityToggle, type Density } from '@/components/signals/SignalTable';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 import {
   fetchActiveSignals, fetchPerformanceSummary, fetchSignalHistoryStats,
-  fetchGlobalMarket, fetchFearGreed, fetchTopGainers,
+  fetchGlobalMarket, fetchFearGreed,
   type ApiSignal, type PerformanceSummary, type SignalHistoryStats,
-  type GlobalMarketData, type FearGreedData, type CoinMarket,
+  type GlobalMarketData, type FearGreedData,
 } from '@/lib/api';
 import { ACTIVE_SIGNAL_PARAMS } from '@/lib/active-signal';
 import { formatLargeNumber, formatPercentage, cn } from '@/lib/utils';
@@ -32,19 +29,13 @@ import CoachmarkTour from '@/components/dashboard/CoachmarkTour';
 import { DurumBandi } from '@/components/dashboard/DurumBandi';
 import { LifecycleHealth } from '@/components/dashboard/LifecycleHealth';
 import { AIGorusu } from '@/components/dashboard/AIGorusu';
-import { RiskDagilimi } from '@/components/dashboard/RiskDagilimi';
 import { Sicil } from '@/components/dashboard/Sicil';
 import { Crown, Lock } from 'lucide-react';
-import TradingViewChart from '@/components/charts/TradingViewChart';
 import { chartColor } from '@/lib/chartColors';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-// Renk migration (P9.7/D9-09): pie DOLGU — cyan-yüzey yasak (COL-07/D9-11) →
-// cyan'sız owned dizi: accent-ailesi + nötr metin-tonları (kategorik ayrım).
-const PIE_COLORS = [chartColor('accent'), chartColor('accentUi'), chartColor('tx2'), chartColor('tx3')];
 
 function fngLabel(v: number): string {
   if (v >= 75) return 'AŞIRI AÇGÖZLÜLÜK';
@@ -133,7 +124,6 @@ export default function DashboardPage() {
   const [perf, setPerf] = useState<PerformanceSummary | null>(null);
   const [global, setGlobal] = useState<GlobalMarketData | null>(null);
   const [fng, setFng] = useState<FearGreedData | null>(null);
-  const [gainers, setGainers] = useState<CoinMarket[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   // CoinGecko's free API rate-limits (503) under repeated calls — when that
@@ -141,7 +131,6 @@ export default function DashboardPage() {
   // instead of wiping them, and surface a clear message instead of leaving
   // the cards stuck on "—" / "Yükleniyor..." forever with no explanation.
   const [globalError, setGlobalError] = useState(false);
-  const [gainersError, setGainersError] = useState(false);
   // Core platform data (signals + performance) unreachable — surface an honest
   // error + retry instead of rendering misleading zeros as if they were real.
   const [dataError, setDataError] = useState(false);
@@ -168,13 +157,12 @@ export default function DashboardPage() {
     const periodHours = timeRange === '24s' ? 24 : timeRange === '7g' ? 24 * 7 : 24 * 30;
     const dateFrom = new Date(Date.now() - periodHours * 3600_000).toISOString();
 
-    const [signalsRes, perfRes, periodRes, globalRes, fngRes, gainersRes] = await Promise.allSettled([
+    const [signalsRes, perfRes, periodRes, globalRes, fngRes] = await Promise.allSettled([
       fetchActiveSignals({ ...ACTIVE_SIGNAL_PARAMS, page_size: 100 }),
       fetchPerformanceSummary(),
       fetchSignalHistoryStats({ date_from: dateFrom }),
       fetchGlobalMarket(),
       fetchFearGreed(),
-      fetchTopGainers(5),
     ]);
 
     // Tek response = tek evren: satırlar (items) + sayaç (total) aynı fetch'ten.
@@ -192,12 +180,6 @@ export default function DashboardPage() {
       setGlobalError(true);
     }
     if (fngRes.status === 'fulfilled') setFng(fngRes.value);
-    if (gainersRes.status === 'fulfilled') {
-      setGainers(gainersRes.value);
-      setGainersError(false);
-    } else {
-      setGainersError(true);
-    }
 
     // Both core platform fetches failing = backend unreachable, not "0 signals".
     setDataError(signalsRes.status === 'rejected' && perfRes.status === 'rejected');
@@ -255,28 +237,9 @@ export default function DashboardPage() {
   const avgConfidence = signals.length
     ? Math.round(signals.reduce((a, s) => a + (s.confidence_score || 0), 0) / signals.length)
     : 0;
-  const riskCounts = signals.reduce<Record<string, number>>((acc, s) => {
-    const r = String(s.risk_level ?? '').toLowerCase();
-    if (r) acc[r] = (acc[r] ?? 0) + 1;
-    return acc;
-  }, {});
-
   const winCount = perf?.win_count ?? 0;
   const lossCount = perf?.loss_count ?? 0;
   const breakevenCount = perf?.breakeven_count ?? 0;
-
-  const assetCounts: Record<string, number> = {};
-  signals.forEach((s) => {
-    const sym = s.asset?.symbol ?? 'Other';
-    assetCounts[sym] = (assetCounts[sym] ?? 0) + 1;
-  });
-  const pieData = Object.entries(assetCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
-    .map(([name, value]) => ({ name, value }));
-  if (pieData.length === 0) {
-    pieData.push({ name: 'Veri Yok', value: 1 });
-  }
 
   // Real compounded total return from the backend's resolved-trade equity
   // curve (10000 starting capital), instead of avgReturn * totalSignals —
@@ -485,12 +448,12 @@ export default function DashboardPage() {
       </div>
       )}
 
-      {/* ── AI Görüşü + Risk Dağılımı — aktif sinyallerden client-türetilir (DE-3) ── */}
+      {/* ── AI Görüşü — aktif sinyallerden client-türetilir (DE-3). CP-DASH-A:
+          Risk Dağılımı KALDIRILDI → Signal Center risk-enstrümanı (CP-SIGNAL-C;
+          §03 widget-taşıma-kilidi). AI Görüşü kart-formu DASH-C'de Nabız
+          sistem-sesine dönecek. ── */}
       {signals.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <AIGorusu longCount={longCount} shortCount={shortCount} avgConfidence={avgConfidence} />
-          <RiskDagilimi counts={riskCounts} />
-        </div>
+        <AIGorusu longCount={longCount} shortCount={shortCount} avgConfidence={avgConfidence} />
       )}
 
       {/* ── Şu an — aktif sinyaller tam-genişlik tablo (DE-5c) ── */}
@@ -553,146 +516,42 @@ export default function DashboardPage() {
         hasData={!!perf && !!periodStats && !dataError}
       />
 
-      {/* ── Main Grid ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Left 2/3 — Piyasa bağlamı (Performans Özeti → Sicil kuşağına taşındı, DE-5g) */}
-        <div className="lg:col-span-2 space-y-5">
-          {/* Market Overview */}
-          <GlassCard>
-            {/* Card header */}
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-display text-text-primary flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-accent-primary" />
-                Piyasa Genel Bakış
-              </h2>
-            </div>
-
-            {globalError && (
-              <p className="text-micro text-amber bg-amber/10 border border-amber/20 rounded-lg px-3 py-2 mb-3">
-                Piyasa verisi şu an alınamıyor (kaynak geçici olarak sınırlandırıyor — CoinGecko rate limit).
-                {global ? ' Aşağıda son bilinen değerler gösteriliyor.' : ' 30 saniye içinde otomatik tekrar denenecek.'}
-              </p>
-            )}
-            {/* Market stats row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
-              <div>
-                <p className="text-micro text-text-muted uppercase font-medium">Toplam Piyasa Değeri</p>
-                <p className="text-base num font-num-560 text-text-primary mt-0.5">
-                  {global ? formatLargeNumber(global.total_market_cap_usd) : '—'}
-                </p>
-                <p className={`text-micro font-medium ${(global?.market_cap_change_24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish'}`}>
-                  {global ? formatPercentage(global.market_cap_change_24h) : '—'}
-                </p>
-              </div>
-              <div>
-                <p className="text-micro text-text-muted uppercase font-medium">24s Hacim</p>
-                <p className="text-base num font-num-560 text-text-primary mt-0.5">
-                  {global ? formatLargeNumber(global.total_volume_usd) : '—'}
-                </p>
-              </div>
-              <div>
-                <p className="text-micro text-text-muted uppercase font-medium">BTC Dominance</p>
-                <p className="text-base num font-num-560 text-text-primary mt-0.5">
-                  {global ? formatPercentage(global.btc_dominance, 2, false) : '—'}
-                </p>
-              </div>
-              <div>
-                <p className="text-micro text-text-muted uppercase font-medium">ETH Dominance</p>
-                <p className="text-base num font-num-560 text-text-primary mt-0.5">
-                  {global ? formatPercentage(global.eth_dominance, 2, false) : '—'}
-                </p>
-              </div>
-            </div>
-
-          </GlassCard>
-
-          {/* Featured Live Chart */}
-          <GlassCard>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-display text-text-primary flex items-center gap-2">
-                <ChartIcon className="w-4 h-4 text-accent-primary" />
-                Canlı Grafik — BTC/USDT
-              </h2>
-              <Link href="/markets/BTCUSDT" className="text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
-                Detay <ArrowRight className="w-3 h-3" />
-              </Link>
-            </div>
-            <TradingViewChart symbol="BTCUSDT" timeframe="1h" height={360} compact />
-          </GlassCard>
-        </div>
-
-        {/* Right column */}
-        <div className="space-y-5">
-          {/* Asset Distribution Pie */}
-          <GlassCard>
-            <h2 className="text-base font-display text-text-primary mb-4 flex items-center gap-2">
-              <ChartIcon className="w-4 h-4 text-accent-primary" />
-              Varlık Dağılımı
-            </h2>
-            <div className="flex items-center gap-4">
-              <div className="w-28 h-28 flex-shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={28} outerRadius={52} dataKey="value" paddingAngle={3}>
-                      {pieData.map((_, i) => (
-                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex-1 space-y-1.5">
-                {pieData.map((entry, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                      <span className="text-xs text-text-secondary">{entry.name}</span>
-                    </div>
-                    <span className="text-xs font-display text-text-primary">
-                      {formatPercentage((entry.value / pieData.reduce((a, b) => a + b.value, 0)) * 100, 0, false)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </GlassCard>
-
-          {/* Top Gainers */}
-          <GlassCard>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-display text-text-primary flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-bullish" />
-                En Çok Kazananlar
-              </h2>
-              <span className="text-micro text-text-muted bg-bg-secondary px-2 py-0.5 rounded">24 Saat</span>
-            </div>
-            {gainers.length === 0 ? (
-              <p className="text-xs text-text-muted text-center py-4">
-                {gainersError ? 'Veri şu an alınamıyor (kaynak sınırlandı) — otomatik tekrar denenecek.' : 'Yükleniyor...'}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {gainers.map((coin) => (
-                  <div key={coin.id} className="flex items-center justify-between py-1.5 border-b border-border-subtle last:border-none">
-                    <div className="flex items-center gap-2">
-                      {coin.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={coin.image} alt={coin.symbol} className="w-5 h-5 rounded-full" />
-                      ) : (
-                        <div className="w-5 h-5 rounded-full bg-bg-tertiary border border-border-subtle" />
-                      )}
-                      <span className="text-xs font-display text-text-primary uppercase">{coin.symbol}/USDT</span>
-                    </div>
-                    <span className={`text-xs num font-num-520 ${(coin.price_change_percentage_24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish'}`}>
-                      {formatPercentage(coin.price_change_percentage_24h ?? 0)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </GlassCard>
-        </div>
-      </div>
+      {/* ── Piyasa Bağlamı — tek kompakt satır (CP-DASH-A · §03 widget-taşıma-kilidi).
+          BTC canlı grafik (TradingView) + Varlık Dağılımı (pie) + En Çok Kazananlar
+          KALDIRILDI: piyasa-tarama/enstrüman evi = /markets · Signal Center
+          filtre-sayaçları (guardrail-7). Global makro yalnız sade bağlam-satırında
+          kalır — pie/gauge/grafik/gömülü-enstrüman YOK. ── */}
+      {global ? (
+        <GlassCard dense className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <span className="text-micro text-text-muted uppercase font-medium">Piyasa Bağlamı</span>
+          <span className="flex items-baseline gap-1.5">
+            <span className="text-micro text-text-muted uppercase">Piyasa Değeri</span>
+            <span className="text-sm num font-num-520 text-text-primary">{formatLargeNumber(global.total_market_cap_usd)}</span>
+            <span className={cn('text-micro font-medium', (global.market_cap_change_24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
+              {formatPercentage(global.market_cap_change_24h)}
+            </span>
+          </span>
+          <span className="flex items-baseline gap-1.5">
+            <span className="text-micro text-text-muted uppercase">24s Hacim</span>
+            <span className="text-sm num font-num-520 text-text-primary">{formatLargeNumber(global.total_volume_usd)}</span>
+          </span>
+          <span className="flex items-baseline gap-1.5">
+            <span className="text-micro text-text-muted uppercase">BTC Dom</span>
+            <span className="text-sm num font-num-520 text-text-primary">{formatPercentage(global.btc_dominance, 2, false)}</span>
+          </span>
+          <span className="flex items-baseline gap-1.5">
+            <span className="text-micro text-text-muted uppercase">ETH Dom</span>
+            <span className="text-sm num font-num-520 text-text-primary">{formatPercentage(global.eth_dominance, 2, false)}</span>
+          </span>
+          <Link href="/markets" className="ml-auto text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
+            Piyasalar <ArrowRight className="w-3 h-3" />
+          </Link>
+        </GlassCard>
+      ) : globalError ? (
+        <p className="text-micro text-amber bg-amber/10 border border-amber/20 rounded-lg px-3 py-2">
+          Piyasa verisi şu an alınamıyor (kaynak geçici sınırladı) — otomatik tekrar denenecek.
+        </p>
+      ) : null}
     </div>
   );
 }
