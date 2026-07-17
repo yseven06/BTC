@@ -18,7 +18,9 @@
  *  consensus yön-doğruluğu %99.8. DEADZONE/GAIN ürün-hissine göre ayarlanabilir.
  */
 
-import { ENGINE_COUNT } from './karot-geometry';
+// ENGINE_COUNT (=9): CP-KAROT-CLEAN'de karot-geometry.ts silindiği için buraya
+// inline edildi — değer AYNI; signalToKarotConfs çıktısı byte/semantik özdeş.
+const ENGINE_COUNT = 9;
 
 /** Backend `engine_name` → Karot slot indeksi (karot-04 sabit sıra Teknik→Makro). */
 export const BACKEND_TO_SLOT: Readonly<Record<string, number>> = {

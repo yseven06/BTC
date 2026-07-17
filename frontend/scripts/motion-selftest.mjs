@@ -4,7 +4,7 @@
  *
  * Motion ALTYAPISINI makine-doğrulanabilir kilitler — davranış DEĞİŞTİRMEZ,
  * yalnız mevcut durumun Design Bible v1.4 / Visual Language v1.4'e uyumunu
- * assert eder (karot-selftest.mjs muadili). Drift olursa (token değeri değişir,
+ * assert eder. Drift olursa (token değeri değişir,
  * reduced-motion katmanı düşer, keyframe layout animasyonlar, gate seti token'dan
  * ayrışır) bu test kırar.
  *
