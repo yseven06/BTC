@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { ScoreRing } from './ScoreRing';
 import { GlassCard } from './GlassCard';
-import { Tooltip } from './Tooltip';
 import { cn, formatRelativeTime, formatAbsoluteTimeTR, formatPrice, formatNumber } from '@/lib/utils';
 import { ApiSignal } from '@/lib/api';
 import { track } from '@/lib/analytics';
@@ -16,8 +15,7 @@ import {
 import { EngineMiniChart } from '@/components/charts/EngineMiniChart';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { IntelligencePanel } from '@/components/ui/IntelligencePanel';
-import { Karot } from '@/components/signals/Karot';
-import { signalToKarotConfs, BACKEND_TO_SLOT } from '@/lib/karot-adapter';
+import { signalToKarotConfs } from '@/lib/karot-adapter';
 
 // Engines whose supporting_data carries real chart-able coordinates (S/R
 // levels, premium/discount zones, OB/FVG boxes, pattern indices). The rest
@@ -128,11 +126,9 @@ function engineBiasLabels(engineName: string): BiasLabelConfig {
 }
 
 /** Engine card — horizontal compact layout, score + bias, click for full detail */
-function EngineCard({ engine, onClick, onHighlightStart, onHighlightEnd, compact }: {
+function EngineCard({ engine, onClick, compact }: {
   engine: EngineRow;
   onClick: () => void;
-  onHighlightStart?: () => void;
-  onHighlightEnd?: () => void;
   compact?: boolean;
 }) {
   const biasConfig = (engineBiasLabels(engine.name))[engine.bias];
@@ -140,10 +136,6 @@ function EngineCard({ engine, onClick, onHighlightStart, onHighlightEnd, compact
   return (
     <button
       onClick={onClick}
-      onMouseEnter={onHighlightStart}
-      onMouseLeave={onHighlightEnd}
-      onFocus={onHighlightStart}
-      onBlur={onHighlightEnd}
       title={`${engine.label} — Detayları görmek için tıkla`}
       className={cn(
         'group relative bg-bg-secondary/40 rounded-card',
@@ -486,9 +478,6 @@ interface SignalDetailSectionProps {
 export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal, compact = false }) => {
   const [openEngine, setOpenEngine]   = useState<EngineRow | null>(null);
   const [activeTab, setActiveTab]     = useState<keyof ExplanationTabs>('summary');
-  // AITL-03 çapraz-vurgu: kullanıcının motor-grid'de gezindiği/odaklandığı motor
-  // slotu — Motor Skorları başlığındaki küçük Karot'ta eşleşen fitili vurgular.
-  const [highlightSlot, setHighlightSlot] = useState<number>(-1);
 
   const rrRatio  = calculateRR(signal);
   const engines  = parseEngines(signal.engines_data);
@@ -594,15 +583,6 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
                 <ScoreRing score={signal.probability_score} size={compact ? 50 : 76} strokeWidth={compact ? 4 : 6} />
                 <span className="text-micro text-text-muted mt-1 font-medium uppercase">Olasılık</span>
               </div>
-              {/* Konsensüs enstrümanı (Karot · additif · 1A-iii-c) — mevcut skorlar korunur */}
-              <div className="flex flex-col items-center">
-                <Karot
-                  confs={signalToKarotConfs(signal.engines_data)}
-                  size={compact ? 48 : 64}
-                  title="Motor konsensüsü — 9 motorun uzlaşma durumu"
-                />
-                <span className="text-micro text-text-muted mt-1 font-medium uppercase">Konsensüs</span>
-              </div>
             </div>
           </div>
         </div>
@@ -645,40 +625,20 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
                     Skorlar {formatRelativeTime(signal.generated_at)} hesaplandı · Detay için karta tıkla
                   </span>
                 )}
-                {/* AITL-03 provenance — EngineCard hover/focus → fitil vurgusu (AT-1);
-                    Karot hover/focus → konsensüs dökümü tooltip'i (AT-2). hero Karot ayrı: bakış-özeti */}
-                <Tooltip
-                  content={
-                    <div className="text-center leading-snug">
-                      <div className="font-medium text-text-primary">Motor konsensüsü · {karotConfs.length} motor</div>
-                      <div className="mt-1 flex items-center justify-center gap-1.5 text-micro">
-                        <span className="text-bullish">{consensusBull} LONG</span>
-                        <span className="text-text-muted">·</span>
-                        <span className="text-bearish">{consensusBear} SHORT</span>
-                        <span className="text-text-muted">·</span>
-                        <span className="text-text-muted">{consensusNeutral} nötr</span>
-                      </div>
-                    </div>
-                  }
-                >
-                  <span
-                    tabIndex={0}
-                    className="inline-flex flex-shrink-0 rounded focus-ring"
-                    aria-label={`Motor konsensüsü: ${consensusBull} LONG, ${consensusBear} SHORT, ${consensusNeutral} nötr — dökümü görmek için gelin`}
-                  >
-                    <Karot confs={karotConfs} size={32} highlight={highlightSlot} />
-                  </span>
-                </Tooltip>
               </span>
             </h3>
+            {/* CP-KAROT-UI3: konsensüs census — Karot+tooltip yerine kendi satırında
+                görünür sade metin (blok akış → dar viewport'ta doğal sarar, taşmaz).
+                AT-2 bilgisi korunur. Glyph/süs YOK. */}
+            <p className={cn('text-micro text-text-muted normal-case font-normal tabular-nums', compact ? 'mb-2' : 'mb-3')}>
+              {karotConfs.length} motor · <span className="text-bullish">{consensusBull} LONG</span> · <span className="text-bearish">{consensusBear} SHORT</span> · {consensusNeutral} nötr
+            </p>
             <div className={compact ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 gap-3'}>
               {engines.map((engine) => (
                 <EngineCard
                   key={engine.name}
                   engine={engine}
                   onClick={() => setOpenEngine(engine)}
-                  onHighlightStart={() => setHighlightSlot(BACKEND_TO_SLOT[engine.name] ?? -1)}
-                  onHighlightEnd={() => setHighlightSlot(-1)}
                   compact={compact}
                 />
               ))}
