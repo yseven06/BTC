@@ -15,13 +15,16 @@ import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CoinIcon } from '@/components/ui/CoinIcon';
+import { GlassCard } from '@/components/ui/GlassCard';
+import { ProvenanceReceipt } from '@/components/ui/Tooltip';
+import { Karot } from '@/components/signals/Karot';
+import { signalToKarotConfs } from '@/lib/karot-adapter';
 import {
   SignalTable,
   DensityToggle,
   type Density,
   qualityScore,
   directionLabel,
-  QualityBar,
   OutcomeBadge,
   DirectionBadge,
 } from '@/components/signals/SignalTable';
@@ -437,6 +440,13 @@ function SignalDetailBody({ sig, onClose }: { sig: ApiSignal; onClose?: () => vo
   const onchain = getOnchainInfo(sig.engines_data);
   const engines = parseEngines(sig.engines_data);
   const summary = summaryFrom(sig.explanation_tr);
+  // CP-SIGNAL-D: konsensüs sahnesi — Karot AYNI işaretli-güvenden sürülür
+  // (provenance-tutarlı, AT-2 deseni); döküm sayıları o diziden sayılır,
+  // YENİ metrik türetilmez (kullanıcı kararı: salt confidence_score + census).
+  const karotConfs = signalToKarotConfs(sig.engines_data);
+  const consensusBull = karotConfs.filter((c) => c > 0).length;
+  const consensusBear = karotConfs.filter((c) => c < 0).length;
+  const consensusNeutral = karotConfs.length - consensusBull - consensusBear;
 
   // Risk Yönetimi'nin skoru yön değil "bu kurulum ne kadar güvenli"
   // ölçüyor (yüksek=güvenli, düşük=riskli) — bullish/bearish filtresine
@@ -497,21 +507,59 @@ function SignalDetailBody({ sig, onClose }: { sig: ApiSignal; onClose?: () => vo
             </div>
           )}
 
-          {/* Scores row */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex-1">
-              <p className="text-micro text-text-muted uppercase font-medium mb-1">Kalite</p>
-              <QualityBar score={qScore} />
+          {/* ── Konsensüs sahnesi (Bible §01-K kimlik-üçlüsü + §05 ≥96px well-Karot) ──
+              Kimlik-taşıyıcı üçlü İLK KEZ sahnelenir: Karot (per-motor ŞEKİL) ·
+              confidence kahraman-rakamı (SKALER özet, count-up YOK) ·
+              ProvenanceReceipt (DÖKÜM). Eski düz Kalite/Olasılık/Risk satırı
+              buraya sessiz makbuz olarak absorbe edildi → vurgu-bütçesi ≤2
+              (yalnız Karot + rakam parlak). Karot TEK örnek, ≥96px, enstrüman-
+              kuyusu (well) içi — dekoratif/satır-içi glyph DEĞİL. */}
+          <GlassCard variant="well" dense className="flex items-center gap-4">
+            <Karot
+              confs={karotConfs}
+              size={104}
+              title={`Motor konsensüsü — ${consensusBull} LONG · ${consensusBear} SHORT · ${consensusNeutral} nötr`}
+              className="flex-shrink-0"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-micro text-text-muted uppercase font-medium">Konsensüs</p>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span className="num font-num-560 tabular-nums leading-none text-[44px] text-text-primary">
+                  {Math.round(sig.confidence_score)}
+                </span>
+                <span className="text-sm text-text-muted">/100</span>
+                <span className={cn(
+                  'ml-1 text-xs font-display uppercase tracking-wide self-center',
+                  dir.state === 'long' ? 'text-bullish' : dir.state === 'short' ? 'text-bearish' : 'text-text-muted'
+                )}>
+                  {dir.label}
+                </span>
+              </div>
+              {/* Makbuz — üst: konsensüs census (Karot dökümünün metin karşılığı);
+                  alt: absorbe edilen skalerler (eski skor satırı, sessizleşti).
+                  flex-col GARANTİ satır-satır (iki inline-flex makbuzun yan-yana
+                  akışını önler). */}
+              <div className="mt-2 flex flex-col items-start gap-1">
+                <ProvenanceReceipt
+                  className="flex-wrap"
+                  segments={[
+                    `${karotConfs.length} motor`,
+                    consensusBull > 0 ? `${consensusBull} LONG` : null,
+                    consensusBear > 0 ? `${consensusBear} SHORT` : null,
+                    consensusNeutral > 0 ? `${consensusNeutral} nötr` : null,
+                  ]}
+                />
+                <ProvenanceReceipt
+                  className="flex-wrap"
+                  segments={[
+                    `Kalite ${qScore}/10`,
+                    `Olasılık ${formatPercentage(Number(sig.probability_score ?? 0), 0, false)}`,
+                    `Risk ${(sig.risk_level ?? '—').toUpperCase()}`,
+                  ]}
+                />
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-micro text-text-muted uppercase font-medium">Olasılık</p>
-              <p className="text-sm num font-num-520 text-accent-primary">{formatPercentage(Number(sig.probability_score ?? 0), 0, false)}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-micro text-text-muted uppercase font-medium">Risk</p>
-              <p className="text-sm num font-num-520 text-text-primary uppercase">{sig.risk_level}</p>
-            </div>
-          </div>
+          </GlassCard>
         </div>
 
         {/* ── Tabs ── */}
