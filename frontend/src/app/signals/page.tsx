@@ -418,18 +418,17 @@ function parseExplanation(raw: string | null | undefined): ParsedExplanation {
 
 type DrawerTab = 'overview' | 'engines' | 'explanation';
 
-function SignalDrawer({ sig: sigProp, onClose }: { sig: ApiSignal | null; onClose: () => void }) {
+// CP-SIGNAL-B: drawer'ın İÇERİK gövdesi tek-kaynak komponente çıkarıldı — aynı
+// gövde lg-altında SignalDrawer (mevcut overlay, davranış aynen) ve lg+'da sayfa
+// içi kalıcı Dock tarafından mount edilir (CP-PIA IA-02). İçerik/veri/sekme
+// davranışı DEĞİŞMEDİ; yalnız sarmalayıcı ayrıştı. onClose opsiyonel: Dock'ta
+// ✕ = seçimi temizler (yeni UI yok, mevcut ✕ yeniden kullanılır).
+function SignalDetailBody({ sig, onClose }: { sig: ApiSignal; onClose?: () => void }) {
   const [tab, setTab] = useState<DrawerTab>('overview');
-  // PI-2c: overlay açılış/kapanış settle (fadeIn backdrop + scaleIn panel, PI-1a
-  // deterministik-timer mekanizması). Dış shell animasyonlanır; içerik değişmez.
-  const { rendered, closing, value, ref: backdropRef } = useExitPresence<ApiSignal>(sigProp);
-  // Yeni sinyal açılınca sekmeyi başa al (her-zaman-render + presence deseninde
-  // otomatik remount yok → sekme kalıcı olmasın diye açık-id değişince sıfırla).
-  const openId = sigProp?.id;
-  useEffect(() => { if (openId) setTab('overview'); }, [openId]);
-
-  if (!rendered || !value) return null;
-  const sig = value; // çıkış boyunca önbellekli non-null; aşağıdaki tüm `sig` referansları değişmez
+  // Yeni sinyal gelince sekmeyi başa al — drawer'daki eski openId-reset'in
+  // birebir karşılığı (mount kalıcıyken sig.id değişimi sekmeyi sıfırlar).
+  const sigId = sig.id;
+  useEffect(() => { setTab('overview'); }, [sigId]);
 
   const htf     = getHtfAlignment(sig.engines_data);
   const purge   = getPurgeType(sig.engines_data);
@@ -448,25 +447,7 @@ function SignalDrawer({ sig: sigProp, onClose }: { sig: ApiSignal | null; onClos
   const longestBearish = directionalEngines.filter((e) => e.score < 45).sort((a, b) => a.score - b.score).slice(0, 2);
 
   return (
-    <div
-      ref={backdropRef}
-      className={cn(
-        'fixed inset-0 z-50 flex items-end md:items-center justify-center p-4 bg-e-0/60 backdrop-blur-sm',
-        closing
-          ? 'pointer-events-none [animation:fadeIn_var(--dur-overlay)_ease-out_reverse_forwards]'
-          : 'animate-in'
-      )}
-      onClick={onClose}
-    >
-      <div
-        className={cn(
-          'w-full max-w-3xl glass-panel border border-border-medium rounded-2xl flex flex-col max-h-[90vh]',
-          closing
-            ? '[animation:scaleIn_var(--dur-state)_ease-out_reverse_forwards]'
-            : 'animate-scale-in'
-        )}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <>
         {/* ── Sticky Header ── */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
           <div className="flex items-center gap-3 min-w-0">
@@ -483,7 +464,9 @@ function SignalDrawer({ sig: sigProp, onClose }: { sig: ApiSignal | null; onClos
               <p className="text-xs text-text-secondary truncate">{sig.asset?.name}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-text-muted hover:text-text-primary text-xl leading-none flex-shrink-0">✕</button>
+          {onClose && (
+            <button onClick={onClose} className="text-text-muted hover:text-text-primary text-xl leading-none flex-shrink-0">✕</button>
+          )}
         </div>
 
         {/* ── Badges + Levels (fixed) ── */}
@@ -704,6 +687,40 @@ function SignalDrawer({ sig: sigProp, onClose }: { sig: ApiSignal | null; onClos
             <LineChart className="w-4 h-4" /> Grafiği Aç
           </Link>
         </div>
+    </>
+  );
+}
+
+function SignalDrawer({ sig: sigProp, onClose }: { sig: ApiSignal | null; onClose: () => void }) {
+  // PI-2c: overlay açılış/kapanış settle (fadeIn backdrop + scaleIn panel, PI-1a
+  // deterministik-timer mekanizması). Dış shell animasyonlanır; içerik değişmez —
+  // içerik CP-SIGNAL-B'de SignalDetailBody'ye taşındı (tek-kaynak; Dock ile ortak).
+  const { rendered, closing, value, ref: backdropRef } = useExitPresence<ApiSignal>(sigProp);
+
+  if (!rendered || !value) return null;
+  const sig = value; // çıkış boyunca önbellekli non-null
+
+  return (
+    <div
+      ref={backdropRef}
+      className={cn(
+        'fixed inset-0 z-50 flex items-end md:items-center justify-center p-4 bg-e-0/60 backdrop-blur-sm',
+        closing
+          ? 'pointer-events-none [animation:fadeIn_var(--dur-overlay)_ease-out_reverse_forwards]'
+          : 'animate-in'
+      )}
+      onClick={onClose}
+    >
+      <div
+        className={cn(
+          'w-full max-w-3xl glass-panel border border-border-medium rounded-2xl flex flex-col max-h-[90vh]',
+          closing
+            ? '[animation:scaleIn_var(--dur-state)_ease-out_reverse_forwards]'
+            : 'animate-scale-in'
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <SignalDetailBody sig={sig} onClose={onClose} />
       </div>
     </div>
   );
@@ -1068,46 +1085,75 @@ export default function SignalsPage() {
       </div>
       </div>
 
-      {/* Table — shared SignalTable (the same component the Dashboard "Şu an" band mounts) */}
-      <SignalTable
-        rows={filtered}
-        livePrices={livePrices}
-        onSelect={setSelected}
-        loading={loading}
-        density={density}
-        showEmpty={signals.length === 0}
-        emptyState={
-          <EmptyState
-            icon={<Zap className="w-6 h-6 text-accent-primary" />}
-            title="Şu an aktif sinyal yok"
-            description="AI motorları piyasayı 7/24 tarıyor. Bu sırada coinleri inceleyip canlı grafik ve AI sinyallerini görebilirsin."
-            action={
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                <Link
-                  href="/markets"
-                  className="focus-ring inline-flex items-center gap-1.5 text-xs font-display bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors"
-                >
-                  Piyasaları keşfet <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-                {canGenerate && (
-                  <button
-                    onClick={generateAll}
-                    disabled={generating}
-                    className="focus-ring inline-flex items-center text-xs font-display text-text-secondary hover:text-text-primary border border-border-medium hover:border-accent-primary/40 px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
-                  >
-                    {generating ? 'Üretiliyor...' : 'Şimdi üret'}
-                  </button>
-                )}
-              </div>
+      {/* CP-SIGNAL-B: lg+ istihbarat çalışma-yüzeyi — sol tablo + sağ KALICI Dock
+          (CP-PIA IA-02 / guardrail-6). Dock içeriği = drawer ile TEK-KAYNAK
+          (SignalDetailBody); lg-altı mevcut drawer AYNEN. Dock genişliği STATİK
+          400px (MO-01: layout animasyonlanmaz). B-sınırı: yeni görsel dil /
+          motion / filtre / HeroNumber YOK — yalnız çalışma-yüzeyi iskeleti. */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-5 lg:items-start">
+        <div className="min-w-0">
+          {/* Table — shared SignalTable (the same component the Dashboard "Şu an" band mounts) */}
+          <SignalTable
+            rows={filtered}
+            livePrices={livePrices}
+            onSelect={setSelected}
+            loading={loading}
+            density={density}
+            showEmpty={signals.length === 0}
+            emptyState={
+              <EmptyState
+                icon={<Zap className="w-6 h-6 text-accent-primary" />}
+                title="Şu an aktif sinyal yok"
+                description="AI motorları piyasayı 7/24 tarıyor. Bu sırada coinleri inceleyip canlı grafik ve AI sinyallerini görebilirsin."
+                action={
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <Link
+                      href="/markets"
+                      className="focus-ring inline-flex items-center gap-1.5 text-xs font-display bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors"
+                    >
+                      Piyasaları keşfet <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                    {canGenerate && (
+                      <button
+                        onClick={generateAll}
+                        disabled={generating}
+                        className="focus-ring inline-flex items-center text-xs font-display text-text-secondary hover:text-text-primary border border-border-medium hover:border-accent-primary/40 px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+                      >
+                        {generating ? 'Üretiliyor...' : 'Şimdi üret'}
+                      </button>
+                    )}
+                  </div>
+                }
+                className="my-2"
+              />
             }
-            className="my-2"
           />
-        }
-      />
+        </div>
 
-      {/* Detail Drawer */}
+        {/* Dock — seçili sinyalin kalıcı kanıt paneli (yalnız lg+). Boş halde
+            sessiz placeholder; otomatik ilk-satır seçimi BİLEREK yok (davranış
+            değişikliği sayılır — CP-SIGNAL-B kararı). */}
+        <aside className="hidden lg:block lg:sticky lg:top-20">
+          {selected ? (
+            <div className="glass-panel border border-border-medium rounded-2xl flex flex-col max-h-[calc(100vh-6rem)] overflow-hidden">
+              <SignalDetailBody sig={selected} onClose={() => setSelected(null)} />
+            </div>
+          ) : (
+            <div className="glass-panel border border-border-subtle rounded-2xl p-6 text-center">
+              <p className="text-sm text-text-secondary">Soldan bir sinyal seç.</p>
+              <p className="text-micro text-text-muted mt-1.5">
+                Seçtiğin sinyalin kanıtı — seviyeler, motor konsensüsü, AI açıklaması — bu panelde sahnelenir.
+              </p>
+            </div>
+          )}
+        </aside>
+      </div>
+
+      {/* Detail Drawer — yalnız lg-altı (mobil/tablet); davranış AYNEN. */}
       {/* PI-2c: hep-render + presence (useExitPresence) → çıkış animasyonu oynar, sonra unmount. */}
-      <SignalDrawer sig={selected} onClose={() => setSelected(null)} />
+      <div className="lg:hidden">
+        <SignalDrawer sig={selected} onClose={() => setSelected(null)} />
+      </div>
     </div>
   );
 }
