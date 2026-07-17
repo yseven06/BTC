@@ -6,8 +6,6 @@ import { type ApiSignal } from '@/lib/api';
 import { type LivePrice } from '@/hooks/useLivePrices';
 import { cn, formatAbsoluteTimeTR, formatPrice, formatPercentage } from '@/lib/utils';
 import { PriceSkeleton } from '@/components/ui/PriceSkeleton';
-import { Karot } from '@/components/signals/Karot';
-import { signalToKarotConfs } from '@/lib/karot-adapter';
 import { LiveStatusBadge } from '@/components/ui/LiveStatusBadge';
 
 // ─── Column template ──────────────────────────────────────────────────────────
@@ -262,14 +260,8 @@ export function SignalTableRow({
         <LivePriceCell live={live} invalid={invalid} layout="stack" />
       </div>
 
-      {/* Konsensüs (Karot · additif) + Kalite Skoru */}
-      <div className="flex items-center gap-2.5">
-        <Karot
-          confs={signalToKarotConfs(sig.engines_data)}
-          size={18}
-          title={`Motor konsensüsü — ${sym}`}
-          className="flex-shrink-0"
-        />
+      {/* Kalite Skoru (CP-KAROT-UI1: satır-içi Karot kaldırıldı — sade bar + sayı) */}
+      <div className="flex items-center">
         <QualityBar score={qScore} />
       </div>
 
@@ -362,13 +354,7 @@ export function SignalCardRow({
         <div>
           <LivePriceCell live={live} invalid={invalid} layout="inline" />
         </div>
-        <div className="flex items-center gap-2.5 flex-shrink-0">
-          <Karot
-            confs={signalToKarotConfs(sig.engines_data)}
-            size={18}
-            title={`Motor konsensüsü — ${sym}`}
-            className="flex-shrink-0"
-          />
+        <div className="flex items-center flex-shrink-0">
           <QualityBar score={qScore} />
         </div>
       </div>
@@ -470,12 +456,11 @@ export function SignalTable({
       </div>
 
       {loading && (
-        // Liste-fetch loading = statik bos-Karot skeleton (Bible §05 micro-loading).
-        // animate-pulse KALDIRILDI (sonsuz-pulse = MO-06 ihlali; shimmer/pulse=0).
-        // Fitil-stagger doguma aittir (gercek confs) — liste-fetch'e DEGIL; burada
-        // idle-sessiz statik (MO-04). Genislik sabit → layout kaymaz. Her iki viewport.
-        <div className="flex justify-center py-16">
-          <Karot confs={[0,0,0,0,0,0,0,0,0]} loading size={32} title="Sinyaller yükleniyor" />
+        // Liste-fetch loading (CP-KAROT-UI1: boş-Karot kaldırıldı). Nötr sade
+        // dark-terminal loading dili — glyph/spinner/süs YOK; sabit metin
+        // (idle-sessiz, MO-06 uyumlu; layout kaymaz). Her iki viewport.
+        <div className="py-16 text-center text-sm text-text-muted">
+          Sinyaller yükleniyor…
         </div>
       )}
 
