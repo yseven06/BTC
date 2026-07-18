@@ -28,7 +28,6 @@ import OnboardingChecklist from '@/components/dashboard/OnboardingChecklist';
 import CoachmarkTour from '@/components/dashboard/CoachmarkTour';
 import { DurumBandi } from '@/components/dashboard/DurumBandi';
 import { LifecycleHealth } from '@/components/dashboard/LifecycleHealth';
-import { AIGorusu } from '@/components/dashboard/AIGorusu';
 import { Sicil } from '@/components/dashboard/Sicil';
 import { Crown, Lock } from 'lucide-react';
 import { chartColor } from '@/lib/chartColors';
@@ -338,6 +337,9 @@ export default function DashboardPage() {
         winRate={winRate}
         avgReturn={avgReturn}
         activeCount={activeCount}
+        longCount={longCount}
+        shortCount={shortCount}
+        avgConfidence={avgConfidence}
         loading={loading}
         hasData={!!perf && !dataError}
       />
@@ -421,13 +423,10 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── AI Görüşü — aktif sinyallerden client-türetilir (DE-3). CP-DASH-A:
-          Risk Dağılımı KALDIRILDI → Signal Center risk-enstrümanı (CP-SIGNAL-C;
-          §03 widget-taşıma-kilidi). AI Görüşü kart-formu DASH-C'de Nabız
-          sistem-sesine dönecek. ── */}
-      {signals.length > 0 && (
-        <AIGorusu longCount={longCount} shortCount={shortCount} avgConfidence={avgConfidence} />
-      )}
+      {/* CP-DASH-C1: AI Görüşü kartı Nabız Bandı'nın "sistem sesi" cümlesine
+          FOLD edildi (Bible §03 dash-nabız-bandı + widget-taşıma-kilidi) →
+          ayrı kart kalktı; veri (long/short/avgConfidence) DurumBandi'ye geçti.
+          AIGorusu.tsx dosyası korunur (kullanım kaldırıldı, ölü). */}
 
       {/* ── Şu an — aktif sinyaller tam-genişlik tablo (DE-5c) ── */}
       <div className="space-y-3">
