@@ -5,6 +5,29 @@ Kural: **her revizyon = commit + sürüm artışı + bu dosyada bir satır.** St
 
 ---
 
+## Bible v1.8 + Visual-Language v2.0 — CP-HERO-DOC: landing-hero doktrini Karot'suz revize · 2026-07-18
+
+> **Kapsam:** CP-HERO'nun doc-aşaması (kod-öncesi doktrin uyumu). `DESIGN-BIBLE` v1.7 → **v1.8** + `VISUAL-LANGUAGE` v1.5 → **v2.0** (ikisi BİRLİKTE — VL §08/C1 kanoniklik: hero/atmosfer/motion çelişkisi iki belgede aynı revizyonla kapatılır). **Doc-only** — kod/CSS/component/UI/backend/DB/AI-core = SIFIR dokunuş; ürün ve görsel davranış BYTE-IDENTICAL. Landing/app/dashboard/signal-center UI'ına dokunulmadı (uygulama = CP-HERO-B/C/A).
+
+### Neden
+Mevcut hero doktrini (Bible §02 · VL §02/§07) **tamamen Karot üzerine kuruluydu** ("40 Karot canlı konsensüs masası" · "aynı Karot primitifi" · squint "en parlak = Karot omurgası"). Karot üründen kaldırıldı (CP-KAROT-DOC v1.7) + landing marka-yüzeyinde zaten yasaktı (v1.4.1 carve-out). Doktrin bayat/çelişik hale gelmişti; landing implementasyonu zaten Karot'suz "Canlı Masa"ya geçmişti → doktrin gerçekle uyumlandı.
+
+### SUPERSEDED (landing-hero için — tarihsel kayıt korundu, silinmedi)
+- **Bible §02** baş-banner + inline: `hero-canlı-konsensüs-masası` (40 Karot) · `hero-squint-testi-dod` (Karot omurgası) · `hero-yaşayan-sistem` (Karot-primitifi kısmı).
+- **VL §02** "Yaşayan Hero yüzeyi" (40-Karot) baş-banner + **§07** squint (Karot) inline.
+
+### Yeni Karot'suz landing-hero tezi (glyph/ikon/sembol/şekil İKAMESİ YOK)
+Hero = pazarlama render'ı değil **ürün zekâsının premium vitrini** (gerçek veri). Kimlik = typography + owned-numerical-hierarchy + proof-receipt + instrument-well + data-hierarchy + restrained dark-terminal composition. **Merkez öge:** Canlı Masa (live terminal proof-surface) + owned-number hero (count-up yok) + proof-receipt (`9 motor · 7 LONG · 2 nötr`) + instrument-well. **Atmosfer-çıpası:** gerçek sinyal satırı belirişi / owned-number settle / receipt reveal (Karot-doğumu yerine). **Squint:** H1 + birincil-CTA.
+
+### KORUNAN + Motion sınırı + Yasaklar
+Gerçek-veri tezi (film değil, mock/scripted yasak) · hero-copy ("9 motor. Tek yargı. Gizli değil." + tek CTA) · **reveal-only scroll** (transform/opacity · scrubber/scroll-jack/wheel-intercept/Lenis YOK · idempotent · reduce-static · motion proof'a hizmet eder) · tek-anahtar-ışık + 3-ışık bütçesi + bokeh ≤2 · signal-dust L4 (gerçek-sinyal-belirişine bağlanır). **§11 kalıcı-yasaklar AYNEN + güçlenir:** 3D/WebGL/R3F/Three/Spline · robot/globe/generic-AI-visual/template · neon/cyberpunk/Matrix/RGB · gradient-mesh · video-bg · **yeni glyph/şekil YOK** · mock/scripted-timeline.
+
+### CP-HERO alt-CP sırası (kilit)
+CP-HERO-DOC (bu) → CP-HERO-B (statik premium hero) → CP-HERO-C (gerçek-veri proof yüzeyi) → CP-HERO-A (sinematik scroll-reveal, yalnız **VL v2 onayından SONRA**).
+
+### Sınırlar (bu revizyonda dokunulmayan)
+Kod/CSS/component/UI/backend/DB/AI-core/migration = sıfır dokunuş; landing/app/dashboard/signal-center kodu değişmedi; Karot geri getirilmedi; yeni glyph/ikon/şekil/asset üretilmedi; tarihsel Karot-hero maddeleri silinmedi (yalnız SUPERSEDED işaretlendi).
+
 ## Bible v1.7 — CP-KAROT-DOC: Karot ürün-UI deprecation · 2026-07-18
 
 > **Kapsam:** Karot full-removal serisinin doc-aşaması (CP-KAROT-DOC). `DESIGN-BIBLE` v1.6 → **v1.7** (yalnız Bible + bu CHANGELOG). **Doc-only politika-uyum adımı** — VL / Motion-Doctrine / kod / CSS / component / UI / backend / DB / AI-core / migration = **SIFIR dokunuş**; ürün ve görsel davranış BYTE-IDENTICAL. Hiçbir Karot render'ı bu CP'de kaldırılmadı (UI = sonraki CP'ler).

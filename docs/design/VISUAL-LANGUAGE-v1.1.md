@@ -1,6 +1,6 @@
 # TradeMinds Visual Language — "Gece Seansı"
 
-**Sürüm:** v1.5 (KANONIK) · **Tarih:** 2026-07-12 · *(v1.5: K-J motion-paketi — `--dur-flash 300` + foton bg-tint dar-tanımı + T3 landing-reveal carve-out; v1.4: Karot geometri revizyonu; bkz. CHANGELOG)*
+**Sürüm:** v2.0 (KANONIK) · **Tarih:** 2026-07-18 · *(v2.0 CP-HERO-DOC: **hero atmosferi Karot'suz REVİZE** — 40-Karot hero-yüzeyi + Karot-squint SUPERSEDED (Karot üründen kaldırıldı, CP-KAROT-DOC). Yeni merkez = Canlı-Masa / live-terminal proof-surface + owned-number + receipt + instrument-well (glyph İKAMESİ YOK); atmosfer/motion bütçeleri + §11 kalıcı-yasaklar AYNEN; bkz §02 "Yaşayan Hero yüzeyi" baş-banner + Bible §02 + CHANGELOG)* · *(v1.5: K-J motion-paketi — `--dur-flash 300` + foton bg-tint dar-tanımı + T3 landing-reveal carve-out; v1.4: Karot geometri revizyonu; bkz. CHANGELOG)*
 **Statü:** Design Bible'ın **Ek A'sı (Annex A)** — Art Direction / atmosfer · ışık · motion-bütçesi katmanı. Yeni tasarım sistemi değildir.
 **Kanonik kaynak:** bu dosya (`docs/design/`). Dosya adı sabittir; güncel sürüm bu başlıkta ve CHANGELOG'da izlenir. Artifact yalnızca görsel aynadır.
 **Kanoniklik (bkz. Bible §08/C1):** atmosfer · ışık · motion-bütçesi konularında **bu belge kanoniktir**; token/komponent/layout konularında Bible kanoniktir; çelişkide **daha kısıtlayıcı kural kazanır** ve her iki belgede aynı revizyonla kapatılır.
@@ -68,6 +68,17 @@ Atmosfer kuralları sayfa sınıfına bağlıdır. Her route bir sınıfa girer:
 **Empty-state istisnası:** App sayfasındaki bir boş-durum için sayfa geneli yine L0+L1 kalır; **yalnız empty-state bileşeninin KART SINIRLARI içinde** L3 grid (ve gerekirse L2 noise) izinlidir ve **veri render edildiği an kalkar.**
 
 ### Yaşayan Hero yüzeyi = landing-hero örneği (app-dashboard ile AYRI motion bütçesi)
+
+> ## ⚠️ REVİZE / SUPERSEDED — Karot-hero atmosferi → Karot'suz canlı-kanıt · *(VL v2.0 · CP-HERO-DOC · 2026-07-18)*
+>
+> Bu bölümün ("Yaşayan Hero yüzeyi" 40-Karot · §07 Hero-lighting/squint · hero-üst-cümle "40 Karot açılış") **Karot-merkezli kısımları SUPERSEDED** — Karot üründen kaldırıldı (CP-KAROT-DOC v1.7). Tam yeni tez **Bible §02 baş-banner**'ında; VL tarafı (atmosfer/motion) özeti:
+> - **Merkez öge:** 40-Karot masası DEĞİL → **Canlı Masa / live terminal proof-surface** (gerçek sinyal masası/bandı) + owned-number hero + proof-receipt + instrument-well. Glyph/şekil YOK.
+> - **Atmosfer-çıpası:** "Karot doğdu" (L4 cyan-nabız) yerine → gerçek sinyal satırının **belirişi** · owned-number **settle** · receipt **reveal** (hepsi telemetri-bağlı).
+> - **Squint (yeniden):** en parlak 2 = **H1 + birincil-CTA** (Karot DEĞİL; v1.4.1 landing carve-out formalize).
+> - **KORUNAN:** tek-anahtar-ışık (§01) · 3-ışık bütçesi (§07) · bokeh ≤2 (§03) · noise/grid L2/L3 · **signal-dust L4** (artık gerçek-sinyal-belirişine bağlanır, Karot-doğumuna değil) · reveal-only motion · **§11 kalıcı-yasaklar (3D/WebGL/R3F/Three/Spline/video/scroll-jack/neon) AYNEN + güçlenir** (+ robot/globe/generic-AI/gradient-mesh + yeni-glyph-yok).
+> - **Motion:** `transform`/`opacity` reveal · scrubber / scroll-jack / wheel-intercept / Lenis YOK · idempotent · reduce-motion statik · motion proof görünürlüğüne hizmet eder.
+>
+> *Aşağıdaki orijinal içerik tarihsel; Karot-bağımlı kısımları normatif DEĞİL.*
 
 > **Açık-uç / bağlayıcı çözüm:** 40-Karot canlı-konsensüs yüzeyi hem landing-hero hem app-dashboard bağlamında geçer; iki bağlamın **motion doktrini AYRIDIR.**
 
@@ -217,6 +228,8 @@ Bible split-hero'suna ışık planı. Sahne üç ışıkla kurulur — fazlası 
 - Arkada L3 grid + L4 sinyal tozu.
 
 ### Squint testi (hero DoD · zorlayıcı fonksiyon)
+
+> **REVİZE (VL v2.0 · CP-HERO-DOC)** — landing-hero'da en parlak 2 = **H1 + birincil-CTA** (Karot DEĞİL; Karot kaldırıldı). Legal "parlaklık öneri itmez" AYNEN. Bkz "Yaşayan Hero yüzeyi" baş-banner + Bible §02.
 
 - **Direktif:** Açılış/hero'da gözler kısılınca **en parlak iki öge YALNIZ enstrüman (Karot) ve birincil CTA** olmalıdır; parlaklık hiçbir şekilde öneri/dikkat itmez (legal).
 - **Token/değer:** en parlak 2 öge = {Karot enstrümanı, birincil CTA}; dekoratif ışık daima loş/yönlü.

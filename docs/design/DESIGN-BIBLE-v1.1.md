@@ -1,6 +1,6 @@
 # TradeMinds Design Bible
 
-**Version:** v1.7 (KANONIK) · **Tarih:** 2026-07-18 · *(v1.7 CP-KAROT-DOC: **Karot ürün-UI DEPRECATION** — Karot artık üründe zorunlu kimlik / merkez-enstrüman / marka-işareti DEĞİL; §05 [karot-01…15 + sahne-ölçekleri] ürün-UI için SUPERSEDED (tarihsel kayıt olarak korundu). Yeni kimlik = kompozisyon / typography / owned-numeral / instrument-well / proof-receipt / dark-terminal (glyph ikamesi YOK; §05 baş-banner + §1124). UI kaldırma CP-KAROT-UI1/2/3, ölü-kod CP-KAROT-CLEAN. bkz CHANGELOG.)* · *(v1.6 CP-PV1-A: Kompozisyon & Sahneleme katmanı — kap-hiyerarşisi [chrome/panel/well] · veri-kuyusu · kahraman-rakam · makbuz-grameri · sessiz-buton · Karot sahne-ölçekleri · referans-politikası; bkz. §01 sonu + §05 karot-sahne-ölçekleri + CHANGELOG. v1.5 CP-PIA: bilgi-mimarisi kilidi [Durum Odası · İstihbarat Merkezi · widget-taşıma · sorumluluk-tablosu · IA-guardrail], bkz. §02/§03/§04. v1.4: Karot geometri revizyonu + Geometry Freeze, bkz. §05 karot-02/15)*
+**Version:** v1.8 (KANONIK) · **Tarih:** 2026-07-18 · *(v1.8 CP-HERO-DOC · VL v2: **landing-hero doktrini Karot'suz REVİZE** — §02 hero-merkezi "40 Karot canlı konsensüs masası" + Karot-squint SUPERSEDED (Karot kaldırıldı, [[karot-full-removal]] / CP-KAROT-DOC v1.7). Yeni tez = Canlı-Masa / live-terminal proof-surface + owned-number hero + proof-receipt + instrument-well (glyph/ikon/şekil İKAMESİ YOK); motion reveal-only; alt-CP DOC→B→C→A. bkz §02 baş-banner + VISUAL-LANGUAGE v2.0 + CHANGELOG.)* · *(v1.7 CP-KAROT-DOC: **Karot ürün-UI DEPRECATION** — Karot artık üründe zorunlu kimlik / merkez-enstrüman / marka-işareti DEĞİL; §05 [karot-01…15 + sahne-ölçekleri] ürün-UI için SUPERSEDED (tarihsel kayıt olarak korundu). Yeni kimlik = kompozisyon / typography / owned-numeral / instrument-well / proof-receipt / dark-terminal (glyph ikamesi YOK; §05 baş-banner + §1124). UI kaldırma CP-KAROT-UI1/2/3, ölü-kod CP-KAROT-CLEAN. bkz CHANGELOG.)* · *(v1.6 CP-PV1-A: Kompozisyon & Sahneleme katmanı — kap-hiyerarşisi [chrome/panel/well] · veri-kuyusu · kahraman-rakam · makbuz-grameri · sessiz-buton · Karot sahne-ölçekleri · referans-politikası; bkz. §01 sonu + §05 karot-sahne-ölçekleri + CHANGELOG. v1.5 CP-PIA: bilgi-mimarisi kilidi [Durum Odası · İstihbarat Merkezi · widget-taşıma · sorumluluk-tablosu · IA-guardrail], bkz. §02/§03/§04. v1.4: Karot geometri revizyonu + Geometry Freeze, bkz. §05 karot-02/15)*
 **Statü:** Ürünün resmî ve tek tasarım standardı (normatif). Kanonik kaynak = bu dosya (`docs/design/`).
 **Kanoniklik & sürümleme:** Dosya adı sabittir; güncel sürüm bu başlıkta + [CHANGELOG](./CHANGELOG.md)'da izlenir. Artifact yalnızca görsel aynadır; çelişkide bu markdown kazanır. Revizyon = commit + sürüm artışı + CHANGELOG satırı (C1/C2, §08).
 **Eki:** [VISUAL-LANGUAGE](./VISUAL-LANGUAGE-v1.1.md) (Annex A — atmosfer/Art Direction/motion-bütçesi).
@@ -580,6 +580,25 @@ Semantik `<table>` (div-grid değil). `md` altında satır → **kart**'a dönü
 
 İlk 10 saniyede tek his: **ürünün AI'sini canlı hissettirmek.** Yaşayan AI sistemi (tanıtım filmi değil); tüm görsel ögeler gerçek sinyal verisinden türer. Hero YAŞAR — sahte sinema tamamen yasak; her motion bilgi taşır, her ışık gerçek bir olayı temsil eder.
 
+> ## ⚠️ REVİZE / SUPERSEDED — Karot-merkezli hero → Karot'suz canlı-kanıt hero'su · *(v1.8 · CP-HERO-DOC · VL v2 · 2026-07-18)*
+>
+> **Neden:** Aşağıdaki hero doktrini (**hero-canlı-konsensüs-masası** "40 Karot" · **hero-yaşayan-sistem** "aynı Karot primitifi" · **hero-squint-testi-dod** "en parlak = Karot omurgası") tamamen **Karot üzerine kuruluydu.** Karot üründen tamamen kaldırıldı (CP-KAROT-DOC v1.7) ve landing marka-yüzeyinde zaten yasaktı (v1.4.1 carve-out). Bu maddelerin **Karot-bağımlı kısımları SUPERSEDED**'dir (tarihsel kayıt olarak bırakıldı; ürün-hero'su için normatif DEĞİL). Landing implementasyonu zaten Karot'suz "Canlı Masa"ya geçmişti → doktrin gerçekle uyumlanıyor.
+>
+> **Yeni landing-hero tezi — Karot'suz, glyph/ikon/sembol/şekil İKAMESİ YOK:** Hero pazarlama render'ı değil **ürün zekâsının premium vitrini** — ürünün kendi enstrüman-dili, landing ölçeğinde, GERÇEK veriyle. Kimlik (CP-KAROT-DOC tezi) = **typography + owned-numerical-hierarchy + proof-receipt + instrument-well + data-hierarchy + restrained dark-terminal composition.**
+> - **Merkez öge:** **Canlı Masa** (live terminal proof-surface — ürünün gerçek sinyal masası/bandı, read-only vitrin) + **kahraman owned-number** (konsensüs/confidence, count-up YOK) + **proof-receipt** (`9 motor · 7 LONG · 2 nötr`, metin) + **instrument-well** + kabin-imzası. Glyph/şekil YOK.
+> - **"Sinyal doğdu" atmosfer-çıpası (Karot-doğumu yerine):** gerçek sinyal satırının/kartının **BELİRİŞİ** · owned-number **settle** · receipt/proof **reveal** — hepsi gerçek telemetriye bağlı.
+> - **Squint testi (yeniden):** en parlak 2 = **H1 + birincil-CTA** (+ tek canlı-proof ögesi); dekoratif ışık daima loş; parlaklık öneri/dikkat itmez (legal). *(v1.4.1 landing carve-out zaten böyleydi → formalize.)*
+>
+> **KORUNAN (revize gerekmez):** gerçek-veri tezi (film değil, mock/scripted YASAK — hero-yaşayan-sistem + hero-gerçek-olay-havuzu çekirdeği) · hero-copy ("9 motor. Tek yargı. Gizli değil." + dürüstlük satırı + tek CTA "Kendi sinyalini izle") · reveal-only scroll sınırı (hero-scroll-canlı-muhakeme) · hero-ikinci-ziyaret · tek-anahtar-ışık + 3-ışık bütçesi (VL §07) · app-içi-hero-sınır (Nabız bandı).
+>
+> **Motion sınırı (aynen, güvenilirlik-korur):** yalnız `transform`/`opacity` reveal · **scrubber YOK** · scroll-jacking / wheel-intercept / zorunlu-snap / Lenis YOK · idempotent (yukarı-scroll olayı geri-sarmaz, olaylar bir kez) · reduce-motion statik · her motion gerçek telemetri/proof görünürlüğüne hizmet eder (dekoratif değil).
+>
+> **Yasaklar (tabu §00 + kullanıcı + Karot-sonrası):** 3D/WebGL/R3F/Three.js/Spline · robot/globe/generic-AI-visual/template-illüstrasyon · neon/cyberpunk/Matrix/RGB-kitsch · gradient-mesh · video-background · **Karot yerine yeni glyph/ikon/şekil YOK** · mock/scripted-timeline (gerçek-veri şart) · cyan-yüzey/dolgu · mor-pembe-gradient-text (landing-logo tek istisna).
+>
+> **CP-HERO alt-CP sırası (kilit):** **CP-HERO-DOC** (bu · VL v2 + §02) → **CP-HERO-B** (statik premium hero — Canlı Masa + H1 + dürüstlük + tek CTA, motion YOK) → **CP-HERO-C** (gerçek-veri proof yüzeyi — canlı sinyal bağlama, yalnız settle/reveal) → **CP-HERO-A** (sinematik scroll-reveal, yalnız **VL v2 onayından SONRA**).
+>
+> *Aşağıdaki orijinal §02 maddeleri tarihsel kayıt; Karot-bağımlı kısımları ürün-hero'su için normatif DEĞİL.*
+
 ### hero-app-içi-sınır · App-içi hero = yalnız Dashboard Nabız bandı · *(v1.5 CP-PIA)*
 - **Direktif:** §02 yaşayan-Hero **landing'in** işidir. App içinde ayrı bir pazarlama-hero'su YOKTUR; yaşayan-Hero'nun app-içi tek meşru formu Dashboard üst **Nabız bandı**'dır (bkz. §03 dash-nabız-bandı). Sinematik/scroll-tetikli hero-motion yalnız landing'de değerlendirilir; app'te scroll-jacking/parallax/scroll-scrub yasağı (hero-scroll-canlı-muhakeme + §06) istisnasız geçerlidir.
 - **Token/değer:** app-içi hero formu = Nabız bandı (≤~120px, canlı); app pazarlama-hero = 0; sinematik-scroll = yalnız landing.
@@ -604,6 +623,7 @@ Semantik `<table>` (div-grid değil). `md` altında satır → **kart**'a dönü
 - **Ölçüm:** hero ögelerinde snapshot-referansı %100 (referanssız öge=fail); canlı-olay enjekte edildiğinde ≤N-window içinde eski öge yerini bırakır; soğuk-başlangıç senaryosunda "arşiv" etiketi DOM'da; squint-testi (hero-squint-testi-dod) korunur.
 
 ### hero-canlı-konsensüs-masası · Açılış içeriği
+> **SUPERSEDED (v1.8 · CP-HERO-DOC)** — "40 Karot masası" merkez-öge GEÇERSİZ (Karot kaldırıldı). Yerine Canlı-Masa / live-terminal proof-surface + owned-number + receipt (glyph YOK). Bkz §02 baş-banner.
 - **Direktif:** Hero açılışı "canlı konsensüs masası": çok sayıda Karot aynı anda okunur; biri gözünün önünde doğar (settle), biri bölünmüş kalır (AI karar veremedi), biri dün fikir değiştirdi. Bu üç dürüst durum açılışta daima temsil edilir (garanti mekaniği hero-gerçek-olay-havuzu ile sağlanır).
 - **Token/değer:** ilk ekran = 40 Karot eş-zamanlı (30–40 bandı); daima ≥1 bölünmüş + ≥1 doğum + ≥1 fikir-değiştiren.
 - **Teknik:** Dashboard 40-Karot yoğunluk kanıtıyla (§03) aynı açılış mekaniğini paylaşır; **paylaşılan = Karot render fonksiyonu + veri-mekaniği, motion bütçesi DEĞİL.** Landing-hero (canlı settle + glow-drift) ile app-dashboard (idle-sessiz) AYRI motion bütçelidir.
@@ -631,6 +651,7 @@ Semantik `<table>` (div-grid değil). `md` altında satır → **kart**'a dönü
 - **DoD/Ölçüm:** ilk ziyaret tam açılış; ikinci localStorage ile kısa; Olay Defteri kayıt tutar; ikinci yüklemede uzun koreografi tetiklenmez.
 
 ### hero-squint-testi-dod · Squint testi (hero DoD zorlayıcı fonksiyon)
+> **REVİZE (v1.8 · CP-HERO-DOC)** — landing-hero'da en parlak 2 = **H1 + birincil-CTA** (Karot omurgası DEĞİL; Karot kaldırıldı). Legal "parlaklık öneri itmez" kuralı AYNEN. Bkz §02 baş-banner.
 - **Direktif:** Açılış/hero'da gözler kısılınca en parlak iki öge YALNIZ enstrüman (Karot) ve birincil CTA; parlaklık hiçbir şekilde öneri/dikkat itmez (legal). DoD zorlayıcı fonksiyonu.
 - **⚠ v1.4.1 landing carve-out (C2, CHANGELOG):** LANDING-hero'da Karot marka-yüzeyi yasağı (bağlayıcı kullanıcı kararı) üstün olduğundan bu test landing'de "en parlak 2 = **H1 + birincil CTA**" olarak okunur; landing "Canlı Masa" teaser'ı read-only vitrindir ve "her sinyal yüzeyinde Karot zorunlu" kuralındaki *sinyal yüzeyi* tanımının DIŞINDADIR. Ürün-içi (app) yüzeylerde bu maddenin aslı ve Karot-zorunluluğu aynen geçerlidir.
 - **Token/değer:** en parlak 2 öge = {Karot, birincil CTA}; dekoratif ışık daima loş/yönlü.
