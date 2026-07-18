@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Eye, TrendingUp, TrendingDown } from 'lucide-react';
 import { type ApiSignal } from '@/lib/api';
 import { type LivePrice } from '@/hooks/useLivePrices';
-import { cn, formatAbsoluteTimeTR, formatPrice, formatPercentage } from '@/lib/utils';
+import { cn, formatAbsoluteTimeTR, formatRelativeTime, formatPrice, formatPercentage } from '@/lib/utils';
 import { PriceSkeleton } from '@/components/ui/PriceSkeleton';
 import { LiveStatusBadge } from '@/components/ui/LiveStatusBadge';
 
@@ -256,8 +256,10 @@ export function SignalTableRow({
         <DirectionBadge {...dir} />
       </div>
 
-      {/* Live Price — M-P1: veri-foton hücresi (tek-kaynak LivePriceCell) */}
-      <div>
+      {/* Live Price — M-P1: veri-foton hücresi (tek-kaynak LivePriceCell).
+          PV-D3a: kolon sağ-hiza (text-right → ondalık-nokta satırlar arası hizalı;
+          tabular-nums global. Card layout="inline" + LivePriceCell değişmez). */}
+      <div className="text-right">
         <LivePriceCell live={live} invalid={invalid} layout="stack" />
       </div>
 
@@ -279,9 +281,10 @@ export function SignalTableRow({
         )}
       </div>
 
-      {/* Generation time (TR saati) */}
-      <div className="text-micro font-mono text-text-secondary">
-        {formatAbsoluteTimeTR(sig.generated_at)}
+      {/* Generation time — PV-D3a: kompakt göreli zaman (satır gürültüsü ↓);
+          tam damga title/hover'da (formatAbsoluteTimeTR yalnız title, utils değişmez). */}
+      <div className="text-micro font-mono text-text-secondary" title={formatAbsoluteTimeTR(sig.generated_at)}>
+        {formatRelativeTime(sig.generated_at)}
       </div>
 
       {/* Action */}
@@ -372,8 +375,8 @@ export function SignalCardRow({
           ) : (
             <OutcomeBadge outcome={outcome} />
           )}
-          <span className="text-micro font-mono text-text-secondary truncate">
-            {formatAbsoluteTimeTR(sig.generated_at)}
+          <span className="text-micro font-mono text-text-secondary truncate" title={formatAbsoluteTimeTR(sig.generated_at)}>
+            {formatRelativeTime(sig.generated_at)}
           </span>
         </div>
         <button
@@ -522,7 +525,7 @@ export function SignalTable({
           style={{ gridTemplateColumns: GRID_TEMPLATE }}
         >
           {COLUMNS.map((h) => (
-            <span key={h} className="label-micro">{h}</span>
+            <span key={h} className={cn('label-micro', h === 'ANLIK FİYAT' && 'text-right')}>{h}</span>
           ))}
         </div>
 
