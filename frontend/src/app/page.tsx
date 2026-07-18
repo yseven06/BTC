@@ -80,15 +80,19 @@ function CanliMasa({ proof }: { proof: LandingProof | null }) {
     ? new Date(proof.generatedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
     : null;
   return (
-    <div className="glass-panel border border-border-subtle rounded-card p-4 min-h-[380px]">
+    // CP-HERO-B (VL v2 · §01-K craft-veri-kuyusu): E1 glass-panel → E0-inset
+    // instrument-well (mevcut token: bg-e-0 + inset hl10 hairline; "derinlik =
+    // kabın içine bakmak"). Yeni glyph/svg/motion YOK; gerçek-veri + no-fake-data
+    // (K1) ve nötr-proof/dürüstlük dili AYNEN korunur.
+    <div className="relative bg-e-0 rounded-card shadow-[inset_0_0_0_1px_var(--hl10)] p-5 min-h-[380px]">
       <div className="flex items-center justify-between">
         <span className="text-micro font-medium uppercase tracking-wide text-text-secondary">Canlı — gerçek sinyallerden</span>
-        {time && <span className="text-micro font-mono text-text-muted">{time}</span>}
+        {time && <span className="text-micro font-mono text-text-muted tabular-nums">{time}</span>}
       </div>
 
       {lc && (
-        <div className="border-t border-border-subtle mt-3 pt-3">
-          <div className="flex items-center justify-between">
+        <div className="border-t border-border-subtle mt-4 pt-4">
+          <div className="flex items-center justify-between gap-3">
             <span className="text-sm font-display text-text-primary">
               {lc.symbol}
               {/* twMerge özel text-micro'yu renk sınıflarıyla çakıştırıp düşürüyor → düz birleştirme */}
@@ -100,21 +104,22 @@ function CanliMasa({ proof }: { proof: LandingProof | null }) {
               {OUTCOME_PILL[lc.outcome].label}
             </span>
           </div>
-          {/* R6: yüzde panelin en büyük rakamı (text-h3 = 18px, ölçek-içi).
-              NOT: cn/twMerge özel text-h3'ü renk sanıp text-bullish/bearish ile çakıştırıp
-              düşürüyor → düz string birleştirme (kazananlar kartıyla aynı desen). */}
-          <div className={'text-h3 num font-num-560 mt-1.5 ' + (lc.returnPct >= 0 ? 'text-bullish' : 'text-bearish')}>
+          {/* Owned-numeral proof-number (VL v2): büyütülmüş sahipli-numeral, NÖTR
+              renk — yeşil/kırmızı "başarı" framing YOK (işaret +/-'de + outcome-pill'de;
+              kayıp da aynı sadelikte gösterilir). count-up YOK, tabular. */}
+          <div className="num font-num-560 tabular-nums leading-none text-[32px] sm:text-[36px] text-text-primary mt-2">
             {formatPercentage(lc.returnPct)}
           </div>
-          <div className="text-micro font-mono text-text-muted mt-1">
-            Giriş: {formatPrice(lc.entryLow)} · {relTime(lc.closedAt)}
-          </div>
-          <div className="text-micro text-text-muted mt-2">Son kapanan sinyal — sonuca göre seçilmedi.</div>
+          {/* Proof-receipt grameri (§01-K craft-makbuz-grameri): ·-ayraç, muted, tabular */}
+          <p className="text-micro text-text-muted tabular-nums mt-2">
+            Giriş {formatPrice(lc.entryLow)} · {relTime(lc.closedAt)}
+          </p>
+          <p className="text-micro text-text-muted mt-1.5">Son kapanan sinyal · sonuca göre seçilmedi</p>
         </div>
       )}
 
       {proof && proof.teaser.length > 0 && (
-        <div className="border-t border-border-subtle mt-3 divide-y divide-border-subtle">
+        <div className="border-t border-border-subtle mt-4 divide-y divide-border-subtle">
           {proof.teaser.map((t) => (
             <div key={t.symbol} className="flex items-center gap-3 py-2 text-xs">
               <span className="flex-1 font-display text-text-primary">{t.symbol}</span>
@@ -130,7 +135,7 @@ function CanliMasa({ proof }: { proof: LandingProof | null }) {
       )}
 
       {proof && proof.activeTotal > 0 && (
-        <div className="border-t border-border-subtle mt-3 pt-3">
+        <div className="border-t border-border-subtle mt-4 pt-3">
           <Link href="/register" className="text-xs font-display text-accent-primary hover:text-accent-ui transition-colors">
             {proof.activeTotal} aktif sinyalin tamamı ürün içinde →
           </Link>
