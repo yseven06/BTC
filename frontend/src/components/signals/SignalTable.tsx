@@ -100,7 +100,7 @@ export function LivePriceCell({
   if (!live) return <PriceSkeleton />;
 
   const up = (live.changePct24h ?? 0) >= 0;
-  const priceCls = cn('text-sm num font-num-520', invalid ? 'text-text-muted line-through' : 'text-text-primary');
+  const priceCls = cn('text-data num font-num-520', invalid ? 'text-text-muted line-through' : 'text-text-primary');
   const pctCls = cn('text-micro font-mono font-medium', up ? 'text-bullish' : 'text-bearish');
   const flashCls = flash.seq > 0 ? (flash.dir === 'up' ? 'price-flash-up' : 'price-flash-down') : '';
 
@@ -127,7 +127,7 @@ export function QualityBar({ score }: { score: number }) {
           style={{ width: `${score * 10}%` }}
         />
       </div>
-      <span className={cn('text-xs num font-num-520', qualityTextColor(score))}>
+      <span className={cn('text-data num font-num-520', qualityTextColor(score))}>
         {score}/10
       </span>
     </div>
@@ -237,17 +237,17 @@ export function SignalTableRow({
     >
       {/* Symbol + Timeframe */}
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-8 h-8 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center num font-num-520 text-xs text-accent-primary flex-shrink-0">
+        <div className="w-8 h-8 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center text-micro font-medium text-text-secondary flex-shrink-0">
           {sym.slice(0, 2)}
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-display text-text-primary truncate flex items-center gap-1.5">
+          <p className="text-data font-display text-text-primary truncate flex items-center gap-1.5">
             {sym}
-            <span className="text-micro font-medium text-accent-primary bg-accent-primary/10 border border-accent-primary/30 px-1.5 py-0.5 rounded uppercase">
+            <span className="text-micro font-medium text-text-secondary bg-bg-tertiary/60 px-1.5 py-0.5 rounded uppercase">
               {sig.timeframe}
             </span>
           </p>
-          <p className="text-micro text-text-muted truncate">{sig.asset?.name}</p>
+          <p className="text-micro text-text-secondary truncate">{sig.asset?.name}</p>
         </div>
       </div>
 
@@ -280,7 +280,7 @@ export function SignalTableRow({
       </div>
 
       {/* Generation time (TR saati) */}
-      <div className="text-micro font-mono text-text-muted">
+      <div className="text-micro font-mono text-text-secondary">
         {formatAbsoluteTimeTR(sig.generated_at)}
       </div>
 
@@ -288,7 +288,7 @@ export function SignalTableRow({
       <div>
         <button
           onClick={() => onSelect(sig)}
-          className="flex items-center gap-1 text-micro font-medium text-text-muted hover:text-accent-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1 rounded-lg transition-all"
+          className="flex items-center gap-1 text-micro font-medium text-text-secondary hover:text-accent-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1 rounded-lg transition-all"
         >
           <Eye className="w-3 h-3" /> Analiz
         </button>
@@ -332,17 +332,17 @@ export function SignalCardRow({
       {/* Ust: sembol·TF + yon */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center num font-num-520 text-xs text-accent-primary flex-shrink-0">
+          <div className="w-9 h-9 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center text-micro font-medium text-text-secondary flex-shrink-0">
             {sym.slice(0, 2)}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-display text-text-primary truncate flex items-center gap-1.5">
+            <p className="text-data font-display text-text-primary truncate flex items-center gap-1.5">
               {sym}
-              <span className="text-micro font-medium text-accent-primary bg-accent-primary/10 border border-accent-primary/30 px-1.5 py-0.5 rounded uppercase">
+              <span className="text-micro font-medium text-text-secondary bg-bg-tertiary/60 px-1.5 py-0.5 rounded uppercase">
                 {sig.timeframe}
               </span>
             </p>
-            <p className="text-micro text-text-muted truncate">{sig.asset?.name}</p>
+            <p className="text-micro text-text-secondary truncate">{sig.asset?.name}</p>
           </div>
         </div>
         <div className={cn('flex-shrink-0', invalid && 'line-through opacity-60')}>
@@ -372,13 +372,13 @@ export function SignalCardRow({
           ) : (
             <OutcomeBadge outcome={outcome} />
           )}
-          <span className="text-micro font-mono text-text-muted truncate">
+          <span className="text-micro font-mono text-text-secondary truncate">
             {formatAbsoluteTimeTR(sig.generated_at)}
           </span>
         </div>
         <button
           onClick={() => onSelect(sig)}
-          className="flex items-center justify-center gap-1 min-h-[44px] px-3 text-micro font-medium text-text-muted hover:text-accent-primary border border-border-subtle hover:border-accent-primary/40 rounded-lg transition-all flex-shrink-0"
+          className="flex items-center justify-center gap-1 min-h-[44px] px-3 text-micro font-medium text-text-secondary hover:text-accent-primary border border-border-subtle hover:border-accent-primary/40 rounded-lg transition-all flex-shrink-0"
         >
           <Eye className="w-3 h-3" /> Analiz
         </button>
@@ -522,7 +522,7 @@ export function SignalTable({
           style={{ gridTemplateColumns: GRID_TEMPLATE }}
         >
           {COLUMNS.map((h) => (
-            <span key={h} className="text-micro font-medium text-text-muted uppercase">{h}</span>
+            <span key={h} className="label-micro">{h}</span>
           ))}
         </div>
 
