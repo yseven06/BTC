@@ -5,6 +5,31 @@ Kural: **her revizyon = commit + sürüm artışı + bu dosyada bir satır.** St
 
 ---
 
+## Bible v2.0 + Visual-Language v2.2 + Motion-Doctrine — CP-PREMIUM-VISUAL-A: Premium Yüzey Sahneleme (§03-K) + bayat-Karot re-anchor · 2026-07-18
+
+> **Kapsam:** Premium visual sprint'in doc-aşaması. `DESIGN-BIBLE` v1.9 → **v2.0** + `VISUAL-LANGUAGE` v2.1 → **v2.2** + `MOTION-DOCTRINE-v1` (revizyon-notu; ÜÇÜ BİRLİKTE — C1: çelişki aynı revizyonla kapanır). **Doc-only** — kod / CSS / component / UI / backend / DB / scheduler / signal davranışı = **SIFIR dokunuş**; ürün BYTE-IDENTICAL. Higgsfield/asset promptu yok; 3D/landing-motion üretimi yok; logo/favicon kararı yok.
+
+### Neden
+IA kilitlendi (CP-DASH-IA-A bridge-glance) ama iki boşluk vardı: (a) kilitli kompozisyon dilinin (§01-K owned-numeral · instrument-well · makbuz · dark-terminal) **yüzey-başı uygulama reçetesi yoktu** (Dashboard/Signal Center'da somut olarak nasıl görünecek); (b) Karot kaldırıldıktan sonra **bayat-normatif maddeler** kaldı — en kritiği: app'in kanonik loading reçetesi hâlâ "boş-Karot skeleton" diyordu (Karot yok → geçerli loading dili YOKTU) + VL DoD-2 "her sinyal yüzeyinde Karot" (imkânsız release-kapısı) + DoD-4 app-squint "{Karot, CTA}".
+
+### Eklenen — Bible **§03-K Premium Yüzey Sahneleme (Dashboard + Signal Center)**
+- **pv-kapsam:** UYGULANACAK/UYGULANMAYACAK tablosu (yeni token/glyph/IA-değişikliği/app-3D = UYGULANMAYACAK).
+- **pv-kap-ataması:** chrome/panel/**well** blok-bazında atama; **well ≤2/ekran**; **blur yalnız E3** → GlassCard = lüminans-kartı netleştirmesi (KARAR; uygulama PV-B).
+- **pv-dashboard-reçete** (Durum Odası): Nabız ≤120px · kahraman **Dönem Net Getiri well'de** + zorunlu makbuz · 3 sessiz ikincil · bridge-glance kilidi (top-4, toggle'sız) · Sicil makbuz-dili · squint = {kahraman-rakam, birincil-CTA}.
+- **pv-signal-center-reçete** (Cockpit): 13px tabular tablo + satır-ısınma transform-0 · RiskFilterBar enstrüman · **Dock kahraman-rakamı = konsensus-skoru well'de** + makbuz `9 motor · 7 LONG · 2 nötr` (glyph=0 — kimlik SAYI+makbuz) · squint = {Dock-kahraman, CTA}.
+- **pv-yükleme-hairline-iskelet (KANONİK, Karot'suz):** loading = sabit-boyut STATİK hairline placeholder (pulse/shimmer YOK); spinner-yasağı + <300ms grace + sahte-progress-yasağı + gerçek-pipeline-etiketi micro-loading-boş-karot'tan AYNEN devralındı; CLS=0; yeni token AÇILMADI (`--hl10` bandı hedef).
+- **pv-motion-sınırı:** app yalnız T0–T2 mikro (140/180/150/300/180/360); 3D/bokeh/ambient/cinematic app'te YOK (landing-gated).
+- **pv-cp-sırası (kilit):** **PV-B** (Dashboard impl) → **PV-C** (Signal Center impl) → **PV-D** (table/row/receipt) → **CP-MOTION-A** (app micro-motion denetimi) → **CP-LANDING-3D-A** (gated).
+- **pv-dod:** test-edilebilir kapılar (squint ≤2 · well ≤2 · kahraman=1+makbuz · `<Karot`=0 · blur-E3-only · statik-iskelet CLS=0).
+
+### Bayat-Karot re-anchor (tarihsel metin korundu; banner/inline)
+- **Bible:** G-00-14 imza-listesi banner (taşıyıcılar → §1124 seti; kapı → VL DoD-2) · Button-loading satırı → hairline-iskelet · **micro-loading-boş-karot SUPERSEDED** → §03-K · §01-K kimlik-üçlüsü → (provenance-makbuz · kahraman-rakam · instrument-well).
+- **VL:** **DoD-2** → kompozisyon-zorunluluğu (taşıyıcı ≥1 + glyph=0 + `<Karot`=0) · **DoD-4** app-squint → {kahraman-rakam, birincil-CTA} (landing {H1, CTA} zaten v2.0) · §09 App-satırı/`--dur-state`/`--dur-settle`/stagger Karot-notları → hairline-iskelet/emekli-işaret.
+- **Motion-Doctrine:** §3 Yükleme "Boş-Karot statik" → **Hairline-iskelet statik**; §4 Karot-motion cümlesi tarihsel-işaretlendi; başlığa revizyon-notu.
+
+### Sınırlar (bu revizyonda dokunulmayan)
+Kod/CSS/component/UI/backend/DB/scheduler/sinyal-davranışı = sıfır dokunuş; IA/sorumluluk-tablosu değişmedi; Karot geri getirilmedi; yeni token/renk/süre/glyph icat edilmedi; app↔landing motion sınırı aynen; 3D/asset/Higgsfield/logo işi yok. Uygulama = PV-B/C/D (ayrı onaylar).
+
 ## Bible v1.9 + Visual-Language v2.1 — VL-MOTION-v3: native-motion taksonomisi + gated 3D/video politikası · 2026-07-18
 
 > **Kapsam:** CP-1 (motion/3D/video politikasının doc-aşaması). `DESIGN-BIBLE` v1.8 → **v1.9** + `VISUAL-LANGUAGE` v2.0 → **v2.1** (ikisi BİRLİKTE — VL §08/C1 kanoniklik: motion/atmosfer çelişkisi iki belgede aynı revizyonla kapatılır). **Doc-only** — kod / CSS / component / UI / backend / DB / AI-core / migration / package.json / dependency = **SIFIR dokunuş**; ürün ve görsel davranış BYTE-IDENTICAL. Landing/app/dashboard/signal-center UI'ına dokunulmadı; asset üretilmedi; Karot geri getirilmedi; yeni glyph/ikon/sembol icat edilmedi.

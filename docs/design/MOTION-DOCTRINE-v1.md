@@ -2,6 +2,7 @@
 **Tarih:** 2026-07-12 · **Statü:** Landing + Dashboard + Signal Center + tüm uygulama için TEK motion referansı (kanonik kaynak: bu dosya).
 **Hiyerarşi:** Design Constitution v1'in altında, VL v1.5 kanonik değerlerine tabidir. K-J paketi 2026-07-12'de 7/7 ONAYLANDI (VL v1.5; bkz. CHANGELOG) — K-J-gated maddeler artık `[ONAYLI: VL v1.5]` etiketiyle YÜRÜRLÜKTEDİR (`[GATED: K-C2]` ayrı kapıdır, kapalı kalır). Bu doküman statik mimariyi (CP-5/6 sahnesi, Rezerv A/B/C) BOZMAZ — motion her zaman statik halin ÜZERİNE giydirilen, kaldırılabilir bir katmandır.
 **Uygulama önkoşulu:** §8 M-0 borçları kapanmıştır (commit `e848674`).
+**Revizyon (2026-07-18 · CP-PREMIUM-VISUAL-A, doc-only):** Yükleme reçetesi Karot'suz re-anchor edildi — §3 "Yükleme" satırı **Boş-Karot → hairline-iskelet** (kanonik reçete: Bible §03-K pv-yükleme-hairline-iskelet); §4 Global'deki Karot-motion cümlesi tarihsel işaretlendi (Karot ürün-UI'dan kaldırıldı, Bible v1.7). Davranış/süre-seti/yasaklar DEĞİŞMEDİ.
 
 ---
 
@@ -45,7 +46,7 @@
 | Overlay aç/kapa | Spring giriş + reverse çıkış | Deterministik timer; focus-trap/ESC |
 | Toast istifi | Yeni girerken eskiler 8px translate (spring) | Hangisi yeni — hareketten okunur |
 | Landing ilk-görünüm | T3 reveal koreografisi: mikro-etiket→H1→alt-metin→dürüst-satır→CTA→panel; fold-altı bölümler fade+≤8px | `[ONAYLI: VL v1.5]`; bir kez; reduced'da tamamen atlanır; veri-fallback dalında CLS=0 sözleşmesi |
-| Yükleme | **Boş-Karot statik** (app) / hairline-çerçeve rezervi (landing paneli) | Spinner/skeleton/shimmer yasak; grace <300ms'te hiçbir şey gösterme; buton-içi işlem göstergesi yalnız yazılı istisna |
+| Yükleme | **Hairline-iskelet statik** (app; Bible §03-K — Karot'suz) / hairline-çerçeve rezervi (landing paneli) | Spinner/shimmer/animasyonlu-skeleton/sahte-progress yasak; grace <300ms'te hiçbir şey gösterme; buton-içi işlem göstergesi yalnız yazılı istisna |
 | Focus | **Anında görünür** — animasyonsuz | Klavye geri bildirimi geciktirilemez (a11y; INT-12) |
 
 ## 4. YÜZEY-ÖZEL KURALLAR
@@ -56,7 +57,7 @@
 
 **Signal Center:** Tablo olay-sözlüğüne tabi (doğuş/foton/crossfade); Drawer = T2 spring kanonik; sekme-içerik crossfade 150ms + indikatör 180ms, panel kaymaz. Shared-element (tablo→Drawer, sembol+fiyat bloğu) yalnız `[GATED: K-C2]` ve TEK geçişe sınırlı. Filtre-pill'leri set-içi (180ms).
 
-**Global:** cmdK ve tüm yüksek-frekans menüler ANIMASYONSUZ açılır. `count-up` app'te yasak (landing'de de kullanılmaz — sayının kendisi değerli). `transition-all` yasak → property-explicit (lint adayı). Karot motion'ı (spring-settle, doğum-stagger) yalnız ürün-içi enstrüman bağlamında — marka/landing yüzeyinde asla.
+**Global:** cmdK ve tüm yüksek-frekans menüler ANIMASYONSUZ açılır. `count-up` app'te yasak (landing'de de kullanılmaz — sayının kendisi değerli). `transition-all` yasak → property-explicit (lint adayı). *(Tarihsel — 2026-07-18: Karot ürün-UI'dan kaldırıldı; Karot-motion'ı artık YOKTUR.)* ~~Karot motion'ı (spring-settle, doğum-stagger) yalnız ürün-içi enstrüman bağlamında — marka/landing yüzeyinde asla.~~
 
 ## 5. YASAKLAR (konsolide — değişmez)
 Scroll-jacking/scrubbing/Lenis · cursor-follow/magnetic/custom-cursor · ambient/idle motion (app HER YERDE; landing'de drift v1 kapalı) · sonsuz loop/pulse/radar/cyan-tarama · shimmer/skeleton/sahte-progress · marquee · konfeti/kazanç-kutlaması · count-up · rakam-tween · layout-property animasyonu (width/height/margin/padding/blur) · `transition-all` · `ease-in-out` · girişli-çıkışsız asimetrik motion · yüksek-frekans yüzeye giriş-animasyonu · focus-geciktirme · Three/R3F/Spline/WebGL-kimlik/video-bg · her-tick'te flash (coalesce'siz) · Karot'un landing/marka yüzeyinde animasyonu · hover'da abartı (tavan: +1 lümen/−2px).
