@@ -8,7 +8,7 @@ import {
   ArrowRight, RefreshCw,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { SignalTable, DensityToggle, type Density } from '@/components/signals/SignalTable';
+import { ActiveSignalGlance } from '@/components/dashboard/ActiveSignalGlance';
 import {
   fetchActiveSignals, fetchPerformanceSummary, fetchSignalHistoryStats,
   fetchGlobalMarket, fetchFearGreed,
@@ -77,7 +77,6 @@ function LiveClock() {
 
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState<'24s' | '7g' | '30g'>('24s');
-  const [density, setDensity] = useState<Density>('compact');
   const router = useRouter();
 
   const [signals, setSignals] = useState<ApiSignal[]>([]);
@@ -156,16 +155,6 @@ export default function DashboardPage() {
     const id = setInterval(() => load(true), 30_000);
     return () => clearInterval(id);
   }, [load]);
-
-  useEffect(() => {
-    const saved = window.localStorage.getItem('tm.dashboard.density');
-    if (saved === 'compact' || saved === 'comfortable') setDensity(saved);
-  }, []);
-
-  const changeDensity = (d: Density) => {
-    setDensity(d);
-    try { window.localStorage.setItem('tm.dashboard.density', d); } catch {}
-  };
 
   // CP-DASH-C2: Dashboard = executive overview → sinyal detayı inline AÇILMAZ
   // (sorumluluk-sınırı: derin analiz Signal Center/Symbol'ün). Satır seçimi ilgili
@@ -390,47 +379,48 @@ export default function DashboardPage() {
           ayrı kart kalktı; veri (long/short/avgConfidence) DurumBandi'ye geçti.
           AIGorusu.tsx dosyası korunur (kullanım kaldırıldı, ölü). */}
 
-      {/* ── Şu an — aktif sinyaller tam-genişlik tablo (DE-5c) ── */}
+      {/* ── Şu an — aktif sinyaller BRIDGE-GLANCE (CP-DASH-IA-A) ──
+          Executive overview: top-N salt-okur teaser + toplam sayı + Signal Center
+          köprüsü. Tam tablo/density/filtre/detay Signal Center'ın sorumluluğu.
+          Satır seçimi inline açmaz, /markets/{symbol} route'una gider. */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-display text-text-primary flex items-center gap-2">
             <Zap className="w-4 h-4 text-accent-primary" />
             Aktif Sinyaller
+            {activeCount > 0 && (
+              <span className="text-micro font-medium text-text-muted tabular-nums">({activeCount})</span>
+            )}
           </h2>
-          <div className="flex items-center gap-3">
-            <DensityToggle value={density} onChange={changeDensity} />
-            <Link href="/signals" className="text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
-              Tümünü Gör <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
+          <Link href="/signals" className="text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
+            Tümünü Gör <ArrowRight className="w-3 h-3" />
+          </Link>
         </div>
         <LifecycleHealth counts={lifecycleCounts} />
-        {/* CP-DASH-C2: top-N glance (ilk 6) — tam liste Signal Center'da ("Tümünü
-            Gör" köprüsü). Satır seçimi inline açmaz, /markets/{symbol} route'una gider. */}
-        <SignalTable
-          rows={signals.slice(0, 6)}
-          livePrices={livePrices}
-          onSelect={handleSignalSelect}
-          loading={loading}
-          showEmpty={!loading && signals.length === 0}
-          emptyState={
-            <EmptyState
-              icon={<Zap className="w-6 h-6 text-accent-primary" />}
-              title="Henüz sinyal yok"
-              description="AI motorları piyasayı 7/24 tarıyor. Tüm aktif AL/SAT sinyallerini Sinyal Merkezi'nde incele."
-              action={
-                <Link
-                  href="/signals"
-                  className="focus-ring inline-flex items-center gap-1.5 text-xs font-display bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors"
-                >
-                  Sinyal Merkezi&apos;ne git <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              }
-              className="my-2"
-            />
-          }
-          density={density}
-        />
+        {!loading && signals.length === 0 ? (
+          <EmptyState
+            icon={<Zap className="w-6 h-6 text-accent-primary" />}
+            title="Henüz sinyal yok"
+            description="AI motorları piyasayı 7/24 tarıyor. Tüm aktif AL/SAT sinyallerini Sinyal Merkezi'nde incele."
+            action={
+              <Link
+                href="/signals"
+                className="focus-ring inline-flex items-center gap-1.5 text-xs font-display bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors"
+              >
+                Sinyal Merkezi&apos;ne git <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            }
+            className="my-2"
+          />
+        ) : (
+          <ActiveSignalGlance
+            signals={signals}
+            livePrices={livePrices}
+            onSelect={handleSignalSelect}
+            loading={loading}
+            limit={4}
+          />
+        )}
       </div>
 
       {/* ── Sicil — dönem performansı + gerçekleşmiş sonuçlar (DE-5f) ── */}
