@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
-  Zap, CheckCircle, AlertTriangle,
-  LineChart as ChartIcon, ArrowRight, RefreshCw, Activity, X,
+  Zap, AlertTriangle,
+  ArrowRight, RefreshCw, Activity, X,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SignalTable, DensityToggle, type Density } from '@/components/signals/SignalTable';
@@ -237,10 +237,6 @@ export default function DashboardPage() {
   const avgConfidence = signals.length
     ? Math.round(signals.reduce((a, s) => a + (s.confidence_score || 0), 0) / signals.length)
     : 0;
-  const winCount = perf?.win_count ?? 0;
-  const lossCount = perf?.loss_count ?? 0;
-  const breakevenCount = perf?.breakeven_count ?? 0;
-
   // Real compounded total return from the backend's resolved-trade equity
   // curve (10000 starting capital), instead of avgReturn * totalSignals —
   // that multiplication produces a meaningless number once totalSignals is
@@ -249,6 +245,23 @@ export default function DashboardPage() {
   const totalReturnPct = equityCurve.length > 1
     ? ((equityCurve[equityCurve.length - 1].capital - equityCurve[0].capital) / equityCurve[0].capital) * 100
     : 0;
+
+  // CP-DASH-B: Dönem Net Getiri (Seçenek B) — equity-curve'ü seçili dönem/dateFrom
+  // penceresiyle dilimle → gerçek dönem bileşik net getiri. Anchor = pencere
+  // başındaki (windowStart'a ≤ son) sermaye; kapanışsız dönemde end==anchor →
+  // dürüst %0 (veri uydurma YOK; avgReturn×count anlamsız-çarpımı KULLANILMAZ).
+  // totalReturnPct (tüm-zaman) yalnız Sicil'de; hero dönem-bazlıdır.
+  const periodHoursB = timeRange === '24s' ? 24 : timeRange === '7g' ? 24 * 7 : 24 * 30;
+  const windowStartMs = Date.now() - periodHoursB * 3600_000;
+  const periodReturnPct = (() => {
+    if (equityCurve.length < 1) return 0;
+    const t = (p: { time: string }) => new Date(p.time).getTime();
+    let anchor = equityCurve[0].capital;
+    for (const p of equityCurve) { if (t(p) <= windowStartMs) anchor = p.capital; else break; }
+    const end = equityCurve[equityCurve.length - 1].capital;
+    return anchor > 0 ? ((end - anchor) / anchor) * 100 : 0;
+  })();
+  const periodWinRate = periodStats?.win_rate ?? 0;
 
   return (
     <div className="space-y-5">
@@ -329,16 +342,27 @@ export default function DashboardPage() {
         hasData={!!perf && !dataError}
       />
 
-      {/* ── 5 Stat Cards ── */}
+      {/* ── Kahraman metrik + 3 ikincil (CP-DASH-B · §03 dash-widget-taşıma-kilidi:
+          "5 eşit stat-kart → 1 kahraman [Dönem Net Getiri + makbuz] + 3 ikincil
+          [Aktif · Kapanan · Win-Rate]"). Fear&Greed stat-kartı KALKTI → kompakt
+          Piyasa Bağlamı satırına indi (gauge SVG yok). Ortalama Getiri kartı KALKTI
+          (avgReturn DurumBandı'nda kalır). Vurgu-bütçesi ≤2: tek parlak kahraman-
+          rakam; 3 ikincil sessiz. İkon/gauge/pie/svg EKLENMEDİ (number-led). ── */}
       {loading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <GlassCard key={i} dense>
-              <div className="h-2.5 w-24 rounded bg-white/[0.06]" />
-              <div className="h-8 w-20 mt-2 rounded bg-white/[0.06]" />
-              <div className="h-2 w-28 mt-2 rounded bg-white/[0.04]" />
-            </GlassCard>
-          ))}
+        <div className="space-y-3">
+          <GlassCard>
+            <div className="h-2.5 w-32 rounded bg-white/[0.06]" />
+            <div className="h-11 w-40 mt-2 rounded bg-white/[0.06]" />
+            <div className="h-2 w-52 mt-2 rounded bg-white/[0.04]" />
+          </GlassCard>
+          <div className="grid grid-cols-3 gap-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <GlassCard key={i} dense>
+                <div className="h-2.5 w-16 rounded bg-white/[0.06]" />
+                <div className="h-7 w-14 mt-2 rounded bg-white/[0.06]" />
+              </GlassCard>
+            ))}
+          </div>
         </div>
       ) : dataError && !perf ? (
         <GlassCard className="flex flex-col items-center justify-center text-center gap-3 py-8">
@@ -356,96 +380,45 @@ export default function DashboardPage() {
           </button>
         </GlassCard>
       ) : (
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        {/* Closed trades within selected period */}
-        <GlassCard dense className="flex items-center justify-between group">
-          <div>
-            <span className="text-micro font-medium text-text-muted uppercase">Bu Dönemde Kapanan İşlem</span>
-            <h3 className="text-h1 num font-num-560 mt-1 text-text-primary">{periodClosedCount}</h3>
-            <span className="text-micro text-text-muted font-medium mt-1 block">
-              {timeRange === '24s' ? 'son 24 saat' : timeRange === '7g' ? 'son 7 gün' : 'son 30 gün'}
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-amber/10 border border-amber/20 flex items-center justify-center">
-            <Activity className="w-5 h-5 text-amber" />
-          </div>
-        </GlassCard>
+        <div className="space-y-3">
+          {/* Kahraman-rakam — Dönem Net Getiri (40–56px owned-numeral, count-up YOK,
+              vanity-counter YOK). §01-K craft-kahraman-rakam + zorunlu makbuz. */}
+          <GlassCard>
+            <span className="text-micro font-medium text-text-muted uppercase">Dönem Net Getiri</span>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className={cn(
+                'num font-num-560 tabular-nums leading-none text-[44px]',
+                periodReturnPct >= 0 ? 'text-bullish' : 'text-bearish'
+              )}>
+                {formatPercentage(periodReturnPct)}
+              </span>
+              <span className="text-sm text-text-muted">{periodLabel}</span>
+            </div>
+            {/* Makbuz (craft-makbuz-grameri): n işlem · dönem · win-rate — dönem-tutarlı */}
+            <p className="text-micro text-text-muted tabular-nums mt-1.5">
+              {periodClosedCount} işlem · {periodLabel} · {formatPercentage(periodWinRate, 0, false)} başarı
+            </p>
+          </GlassCard>
 
-        {/* Active Signals */}
-        <GlassCard dense className="flex items-center justify-between group">
-          <div>
-            <span className="text-micro font-medium text-text-muted uppercase">Aktif Sinyaller</span>
-            <h3 className="text-h1 num font-num-560 mt-1 text-text-primary">{activeCount}</h3>
-            <span className="text-micro text-text-muted font-medium mt-1 block">
-              şu an işlem fırsatı (LONG/SHORT)
-            </span>
+          {/* 3 ikincil — sessiz, eşit; kahraman-rakamla vurgu yarıştırmaz. */}
+          <div className="grid grid-cols-3 gap-3">
+            <GlassCard dense>
+              <span className="text-micro font-medium text-text-muted uppercase">Aktif</span>
+              <p className="text-h2 num font-num-560 mt-1 text-text-primary">{activeCount}</p>
+              <span className="text-micro text-text-muted font-medium mt-0.5 block">işlem fırsatı</span>
+            </GlassCard>
+            <GlassCard dense>
+              <span className="text-micro font-medium text-text-muted uppercase">Kapanan</span>
+              <p className="text-h2 num font-num-560 mt-1 text-text-primary">{periodClosedCount}</p>
+              <span className="text-micro text-text-muted font-medium mt-0.5 block">{periodLabel}</span>
+            </GlassCard>
+            <GlassCard dense>
+              <span className="text-micro font-medium text-text-muted uppercase">Başarı</span>
+              <p className="text-h2 num font-num-560 mt-1 text-text-primary">{formatPercentage(periodWinRate, 0, false)}</p>
+              <span className="text-micro text-text-muted font-medium mt-0.5 block">{periodLabel}</span>
+            </GlassCard>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-accent-primary/10 border border-accent-primary/20 flex items-center justify-center">
-            <Zap className="w-5 h-5 text-accent-primary" />
-          </div>
-        </GlassCard>
-
-        {/* Win Rate */}
-        <GlassCard dense className="flex items-center justify-between group">
-          <div>
-            <span className="text-micro font-medium text-text-muted uppercase">Başarı Oranı</span>
-            <h3 className="text-h1 num font-num-560 mt-1 text-bullish">{formatPercentage(winRate, 0, false)}</h3>
-            <span className="text-micro text-text-muted font-medium mt-1 block">
-              {/* Win rate = win / (win + loss + breakeven) — the canonical
-                  platform definition (breakeven dilutes it, which is why this
-                  is below 50% even though wins outnumber losses). Show the full
-                  resolved breakdown so the percentage is self-consistent. */}
-              tüm zamanlar · {winCount}G / {lossCount}K / {breakevenCount}BE
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-bullish/10 border border-bullish/20 flex items-center justify-center">
-            <CheckCircle className="w-5 h-5 text-bullish" />
-          </div>
-        </GlassCard>
-
-        {/* Avg Return */}
-        <GlassCard dense className="flex items-center justify-between group">
-          <div>
-            <span className="text-micro font-medium text-text-muted uppercase">Ortalama Getiri</span>
-            <h3 className={cn("text-h1 num font-num-560 mt-1", avgReturn >= 0 ? "text-bullish" : "text-bearish")}>{formatPercentage(avgReturn)}</h3>
-            <span className="text-micro text-text-muted font-medium mt-1 block">
-              tüm zamanlar · işlem başına
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center">
-            <ChartIcon className="w-5 h-5 text-accent-ui" />
-          </div>
-        </GlassCard>
-
-        {/* Fear & Greed */}
-        <GlassCard dense className="flex items-center justify-between group">
-          <div>
-            <span className="text-micro font-medium text-text-muted uppercase">Piyasa Greed Index</span>
-            <h3 className="text-h1 num font-num-560 mt-1" style={{ color: fngColor(fngValue) }}>
-              {fngValue}
-            </h3>
-            <span className="text-micro font-medium mt-1 block" style={{ color: fngColor(fngValue) }}>
-              {fngLabel(fngValue)}
-            </span>
-          </div>
-          {/* Mini gauge */}
-          {/* M-0b: hover'daki JS-inline renkli-glow KALDIRILDI (Doctrine: glow yalnız CTA +
-              data-lifecycle-event; gölge animate edilmez; gate-2 renkli-glow — JS'te olduğu
-              için lint göremiyordu). 300ms süre borcu da bununla düştü. */}
-          <div className="relative w-12 h-12 flex-shrink-0 rounded-full">
-            <svg viewBox="0 0 44 44" className="w-full h-full -rotate-90">
-              {/* white-alpha .05 → hl10 (D9-12); SVG attr var() çözmez → CSS stroke property */}
-              <circle cx="22" cy="22" r="18" fill="none" style={{ stroke: 'var(--hl10)' }} strokeWidth="4" />
-              <circle
-                cx="22" cy="22" r="18" fill="none"
-                stroke={fngColor(fngValue)} strokeWidth="4"
-                strokeDasharray={`${(fngValue / 100) * 113} 113`}
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-        </GlassCard>
-      </div>
+        </div>
       )}
 
       {/* ── AI Görüşü — aktif sinyallerden client-türetilir (DE-3). CP-DASH-A:
@@ -521,28 +494,41 @@ export default function DashboardPage() {
           KALDIRILDI: piyasa-tarama/enstrüman evi = /markets · Signal Center
           filtre-sayaçları (guardrail-7). Global makro yalnız sade bağlam-satırında
           kalır — pie/gauge/grafik/gömülü-enstrüman YOK. ── */}
-      {global ? (
+      {(global || fng) ? (
         <GlassCard dense className="flex flex-wrap items-center gap-x-6 gap-y-2">
           <span className="text-micro text-text-muted uppercase font-medium">Piyasa Bağlamı</span>
-          <span className="flex items-baseline gap-1.5">
-            <span className="text-micro text-text-muted uppercase">Piyasa Değeri</span>
-            <span className="text-sm num font-num-520 text-text-primary">{formatLargeNumber(global.total_market_cap_usd)}</span>
-            <span className={cn('text-micro font-medium', (global.market_cap_change_24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
-              {formatPercentage(global.market_cap_change_24h)}
+          {global && (
+            <>
+              <span className="flex items-baseline gap-1.5">
+                <span className="text-micro text-text-muted uppercase">Piyasa Değeri</span>
+                <span className="text-sm num font-num-520 text-text-primary">{formatLargeNumber(global.total_market_cap_usd)}</span>
+                <span className={cn('text-micro font-medium', (global.market_cap_change_24h ?? 0) >= 0 ? 'text-bullish' : 'text-bearish')}>
+                  {formatPercentage(global.market_cap_change_24h)}
+                </span>
+              </span>
+              <span className="flex items-baseline gap-1.5">
+                <span className="text-micro text-text-muted uppercase">24s Hacim</span>
+                <span className="text-sm num font-num-520 text-text-primary">{formatLargeNumber(global.total_volume_usd)}</span>
+              </span>
+              <span className="flex items-baseline gap-1.5">
+                <span className="text-micro text-text-muted uppercase">BTC Dom</span>
+                <span className="text-sm num font-num-520 text-text-primary">{formatPercentage(global.btc_dominance, 2, false)}</span>
+              </span>
+              <span className="flex items-baseline gap-1.5">
+                <span className="text-micro text-text-muted uppercase">ETH Dom</span>
+                <span className="text-sm num font-num-520 text-text-primary">{formatPercentage(global.eth_dominance, 2, false)}</span>
+              </span>
+            </>
+          )}
+          {/* CP-DASH-B: Fear&Greed stat-kartından indi → sade renkli sayı+etiket
+              (gauge SVG YOK). fng bağımsız fetch → global fail olsa da görünür. */}
+          {fng && (
+            <span className="flex items-baseline gap-1.5">
+              <span className="text-micro text-text-muted uppercase">Greed</span>
+              <span className="text-sm num font-num-520" style={{ color: fngColor(fngValue) }}>{fngValue}</span>
+              <span className="text-micro font-medium" style={{ color: fngColor(fngValue) }}>{fngLabel(fngValue)}</span>
             </span>
-          </span>
-          <span className="flex items-baseline gap-1.5">
-            <span className="text-micro text-text-muted uppercase">24s Hacim</span>
-            <span className="text-sm num font-num-520 text-text-primary">{formatLargeNumber(global.total_volume_usd)}</span>
-          </span>
-          <span className="flex items-baseline gap-1.5">
-            <span className="text-micro text-text-muted uppercase">BTC Dom</span>
-            <span className="text-sm num font-num-520 text-text-primary">{formatPercentage(global.btc_dominance, 2, false)}</span>
-          </span>
-          <span className="flex items-baseline gap-1.5">
-            <span className="text-micro text-text-muted uppercase">ETH Dom</span>
-            <span className="text-sm num font-num-520 text-text-primary">{formatPercentage(global.eth_dominance, 2, false)}</span>
-          </span>
+          )}
           <Link href="/markets" className="ml-auto text-xs text-accent-primary hover:text-accent-ui flex items-center gap-1">
             Piyasalar <ArrowRight className="w-3 h-3" />
           </Link>
