@@ -21,3 +21,37 @@ Checker izlediği şeyden **AYRI-PROSES** olmalı — app'in APScheduler'ına jo
 
 ## Kesin kırmızı çizgiler (B)
 Read-only (SELECT + rollback, yazma yok) · scheduler/signal-generation/model/gate/scoring/frontend/migration/runtime davranışına dokunma · app scheduler'ına job yok · OS-task/cron/supervisor yok · Telegram/webhook/email/dış-servis yok · yeni tablo/migration yok · yeni dependency yok · private staging yok. Yalnız sessiz-durmayı GÖRÜNÜR kılar; sinyal kararını etkilemez.
+
+---
+
+## CP-OBS-ALARM-C — dead-man's-switch ping (UYGULANDI, script içine)
+
+**Tasarım:** `scripts/cp_obs_alarm_check.py` verdict **OK** olduğunda `CP_OBS_ALARM_PING_URL`'e (env'den) **stdlib `urllib` GET pingi** atar. WARNING/CRITICAL/ERROR → **ping atmaz.** Ping DURUNCA (app-down · **makine-kapalı** · checker hiç koşmuyor) dış cron-monitor **grace penceresi sonrası alarm verir** → HEARTBEAT'te kanıtlanan makine-kapalı/gece kesinti modunu, yerel push'un asla yakalayamayacağı bu modu, **kapatır.**
+
+**Sözleşme:**
+- **Secret yalnız env** (`CP_OBS_ALARM_PING_URL`); kodda URL yok; loglarda **maskeli** (`scheme://host/xxxx***`).
+- **PING_URL yoksa:** crash YOK → console-only, verdict üretmeye devam, `ping=disabled_no_env` basar.
+- **Ping başarısızsa:** DB/verdict bozulmaz; `ping=failed(<Reason>)` basar; **liveness exit-code DEĞİŞMEZ** (başarısız ping = kaçan ping = monitor zaten alarm verir). Timeout kısa (5 sn).
+- **Yeni dependency yok** (stdlib); yeni tablo/migration yok; app/scheduler/signal'e sıfır dokunuş; outbound-only (açık port yok).
+- **Exit-code:** OK=0 · WARNING=1 · CRITICAL=2 · ERROR=3 (B'den korunur).
+
+**OS-level scheduling (yalnız MANUEL kurulum — bu repo KURMAZ):**
+Bu repo yalnız checker + ping desteği sağlar; OS-seviyesi zamanlama **kullanıcı/ops tarafından** ayrıca kurulur. Önerilen aralık **15 dk**. Cron-monitor **grace > 15 dk** (ör. 30-45 dk) olmalı ki tek kaçan ping/kısa WARNING false-alarm yapmasın.
+
+- **Windows Task Scheduler (yerel), tek seferlik:**
+  ```
+  schtasks /Create /SC MINUTE /MO 15 /TN "CP-OBS-ALARM" /TR ^
+    "C:\Users\Wolrider\Desktop\BTC\backend\venv\Scripts\python.exe C:\Users\Wolrider\Desktop\BTC\backend\scripts\cp_obs_alarm_check.py" ^
+    /ST 00:00
+  ```
+  (Task'ın "Start in" / çalışma dizini `...\BTC\backend` olmalı — PYTHONPATH ve `.env` için.)
+- **cron (gelecekteki private staging), tek seferlik:**
+  ```
+  */15 * * * * cd /path/BTC/backend && ./venv/bin/python scripts/cp_obs_alarm_check.py
+  ```
+
+**Notlar:**
+- App down olsa bile OS-task çalışıyorsa ping devam eder → dış servis sessiz kalır (sistem OK). Makine kapanırsa ping kesilir → dead-man's-switch alarm verir.
+- Dış servis seçimi (healthchecks.io / cronitor / betterstack) ve PING_URL **env üzerinden**; repo bağımsızdır.
+- **Private staging** gelince aynı checker cron ile taşınır (değişiklik yok).
+- **C'de YAPILMAYAN (bilinçli):** Telegram/webhook/email kodu · OS-task otomatik kurulumu · frontend/panel · WARNING-bildirimi (yalnız OK-ping / not-OK-sessizlik).
