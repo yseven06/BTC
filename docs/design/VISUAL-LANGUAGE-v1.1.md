@@ -1,6 +1,6 @@
 # TradeMinds Visual Language — "Gece Seansı"
 
-**Sürüm:** v2.0 (KANONIK) · **Tarih:** 2026-07-18 · *(v2.0 CP-HERO-DOC: **hero atmosferi Karot'suz REVİZE** — 40-Karot hero-yüzeyi + Karot-squint SUPERSEDED (Karot üründen kaldırıldı, CP-KAROT-DOC). Yeni merkez = Canlı-Masa / live-terminal proof-surface + owned-number + receipt + instrument-well (glyph İKAMESİ YOK); atmosfer/motion bütçeleri + §11 kalıcı-yasaklar AYNEN; bkz §02 "Yaşayan Hero yüzeyi" baş-banner + Bible §02 + CHANGELOG)* · *(v1.5: K-J motion-paketi — `--dur-flash 300` + foton bg-tint dar-tanımı + T3 landing-reveal carve-out; v1.4: Karot geometri revizyonu; bkz. CHANGELOG)*
+**Sürüm:** v2.1 (KANONIK) · **Tarih:** 2026-07-18 · *(v2.1 CP-1 VL-MOTION-v3: **native-motion taksonomisi + gated 3D/video/Spline politikası** — generic/stok/template/sahte/perf-riskli kullanım yasak AYNEN; TradeMinds-native × bilgi-taşıyan 3D/video/motion = **koşullu-serbest gated-future-CP** (8-kabul-kapısı, ayrı onay); video-bg + Spline düz-yasağı → gated-conditional; native-3D DEFERRED → gated-conditional; app-yüzeyi (Dashboard/Signal-Center) ağır-motion yasağı korunur; Karot geri gelmez, yeni glyph yok; bkz "VL-MOTION-v3" bölümü + Bible §00 G-00-15 + CHANGELOG)* · *(v2.0 CP-HERO-DOC: **hero atmosferi Karot'suz REVİZE** — 40-Karot hero-yüzeyi + Karot-squint SUPERSEDED (Karot üründen kaldırıldı, CP-KAROT-DOC). Yeni merkez = Canlı-Masa / live-terminal proof-surface + owned-number + receipt + instrument-well (glyph İKAMESİ YOK); atmosfer/motion bütçeleri + §11 kalıcı-yasaklar AYNEN; bkz §02 "Yaşayan Hero yüzeyi" baş-banner + Bible §02 + CHANGELOG)* · *(v1.5: K-J motion-paketi — `--dur-flash 300` + foton bg-tint dar-tanımı + T3 landing-reveal carve-out; v1.4: Karot geometri revizyonu; bkz. CHANGELOG)*
 **Statü:** Design Bible'ın **Ek A'sı (Annex A)** — Art Direction / atmosfer · ışık · motion-bütçesi katmanı. Yeni tasarım sistemi değildir.
 **Kanonik kaynak:** bu dosya (`docs/design/`). Dosya adı sabittir; güncel sürüm bu başlıkta ve CHANGELOG'da izlenir. Artifact yalnızca görsel aynadır.
 **Kanoniklik (bkz. Bible §08/C1):** atmosfer · ışık · motion-bütçesi konularında **bu belge kanoniktir**; token/komponent/layout konularında Bible kanoniktir; çelişkide **daha kısıtlayıcı kural kazanır** ve her iki belgede aynı revizyonla kapatılır.
@@ -8,6 +8,7 @@
 
 > **Konsept:** Piyasa uyumaz; karanlık bir izleme odasında AI nöbettedir. İlke tek cümle: **ışık = bilgi.**
 > **Performans-öncelikli.** Araçlar: CSS · SVG · Canvas 2D · Motion (reveal-only). Three.js/Spline/R3F/WebGL **kimlik-merkezi olarak kalıcı yasak** (§11 · Kalıcı Yasaklar). Karot ve tüm ölçekleri (16/48/200 hero) 2D SVG.
+> **(VL-MOTION-v3 · v2.1):** generic/kimlik-merkezi 3D/WebGL/video/Spline yasağı AYNEN; **TradeMinds-native × bilgi-taşıyan** (ürün proof-surface / instrument-well derinliği) kullanım *mutlak-yasak değil* → **gated-conditional future CP** (8-kabul-kapısı + ayrı onay). Tek kanonik ayrım: "VL-MOTION-v3" bölümü.
 
 > **Amaç (v1.3):** v1.1'in atmosfer omurgasını **korumak** ve üzerine (a) yaşayan-Hero doktrinini, (b) motion/perf bütçelerinin ölçülebilir kilitlerini, (c) governance zorlayıcı-fonksiyonlarını ve (d) tek-kaynak renk/hairline/glow migration'larını eklemek. Değişen her değer **Migration (v1.1→v1.3)** satırıyla işaretlidir; hiçbir bölüm numarası/başlığı yeniden adlandırılmadı.
 
@@ -96,6 +97,8 @@ Atmosfer kuralları sayfa sınıfına bağlıdır. Her route bir sınıfa girer:
 - Şiirsel iç-dil (Karot/közleşme/omurga) UI'da yasak (§10 · iç-dil kuralı).
 
 ### 3D/WebGL statüsü (hero)
+
+> **⚠ VL-MOTION-v3 REVİZE (v2.1):** "ŞU AN 0 / DEFERRED" statüsü → **gated-conditional future CP** olarak yeniden-sınıflandı. Generic/dekoratif 3D yasak AYNEN; yalnız **TradeMinds-native × bilgi-taşıyan** proof / instrument-well derinliği, 8-kabul-kapısı + mobil-fallback + reduced-motion-statik + LCP/CLS-koruması + ayrı onayla açılabilir (CP-HERO-NATIVE-3D). Tek kanonik ayrım: "VL-MOTION-v3" bölümü.
 
 - **Direktif:** Karot **ENSTRÜMANI** her ölçekte (16/48/200 hero dahil) istisnasız **2D SVG.** 3D/WebGL yalnızca bilgi taşırsa ve tam perf/erişilebilirlik bütçesini karşılarsa hero'da düşünülebilir; dekoratif 3D **asla.** Koşullu-3D yalnız Karot-DIŞI atmosfer/derinlik katmanına ait olabilir ve **ŞU AN DEFERRED** (VL §11).
 - **Token/değer:** 3D/WebGL statüsü = **ŞU AN 0** (DEFERRED, VL §11). Koşullar (açılırsa): bilgi-taşıyan-3D · DPR-cap ≤2 · poster/statik fallback · reduced-motion statik · mobil 2D fallback · lazy/code-split.
@@ -400,7 +403,9 @@ Kopya değil, imza. Sahiplenilebilir unsurlar:
 | **Canvas 2D** | sinyal tozu + Karot (yalnız landing hero canlı) | ≤40 nokta · 30fps cap · DPR≤2 · tab-gizli/viewport-dışı durur | **Tek ambient** |
 | **Motion** (reveal-only) | reveal · overlay spring · route ışık-devri | dinamik import; layout-animation app'te yok; **≤~35KB gz initial** | **App-motion tek kütüphane** |
 | **GSAP / R3F / Three / postprocessing** | — | initial-bundle DIŞI (yalnız gerekliyse lazy/code-split); **kimlik-merkezi kalıcı yasak** | **Initial-bundle-dışı / kimlik-yasak** |
-| **Video bg / Spline** | — | ağırlık + CSP + kontrol kaybı | **Kalıcı yasak** |
+| **Video bg / Spline** | — | ağırlık + CSP + kontrol kaybı | **Kalıcı yasak** (generic); native = gated-future ↓ |
+
+> **⚠ VL-MOTION-v3 REVİZE (v2.1):** Yukarıdaki "GSAP/R3F/Three" ve "Video bg / Spline" satırlarının yasağı **generic/kimlik-merkezi** kullanım için AYNEN geçerli; **TradeMinds-native × bilgi-taşıyan** (ürün proof-surface / instrument-well) kullanım *mutlak-yasak değil* → **gated-conditional future CP** (8-kabul-kapısı + ayrı onay). Tek kanonik ayrım: "VL-MOTION-v3" bölümü.
 
 ### Gerçek-Olay Havuzu — WebGL-siz, koşullu-3D DEFERRED
 
@@ -439,6 +444,8 @@ Kopya değil, imza. Sahiplenilebilir unsurlar:
 
 Aşağıdaki teknikler kimlik/ambient/dekor amacıyla **asla** kullanılmaz; ihlal = **release-blokaj** (CI-lint + review-gate).
 
+> **⚠ VL-MOTION-v3 REVİZE (v2.1):** Aşağıdaki liste **generic/kimlik-merkezi/dekoratif/sahte** kullanım için tam olarak geçerlidir (release-blokaj). **Tek istisna:** *TradeMinds-native × bilgi-taşıyan* 3D/WebGL/video/Spline = **gated-conditional future CP** (8-kabul-kapısı + ayrı onay; "VL-MOTION-v3" bölümü). Native istisna generic yasakları GENİŞLETMEZ — robot/globe/orb/avatar · neon/cyberpunk/Matrix/RGB · template · sahte-sinema · scroll-jack/wheel-intercept/Lenis · yeni-glyph icadı AYNEN yasak.
+
 - **Kimlik-merkezi Three.js / R3F / @react-three/postprocessing (Bloom)** · **video-background** · **Spline** · **gradient-mesh-satüre** · **scroll-scrubbed WebGL sinematik hero.**
 - **Sahte/dekoratif sinematik hero (sahte-sinema TAMAMEN YASAK):** önceden-pişmiş 5-beat film · dekoratif kamera dolly/orbit/pull-back · dekoratif **cyan-tarama beat'i** · veri temsil etmeyen her hero efekti · canlı-değil veriyi canlı gibi sunma (dürüst "arşiv" etiketi zorunlu). *(Yaşayan Hero / Gerçek-Olay Havuzu korunur — atılan yalnız sahte katmandır; ~190KB kimlik-chunk emekli.)*
 - **scroll-jacking · wheel-intercept · zorunlu-snap (>1 pin) · Lenis** (§08).
@@ -451,6 +458,54 @@ Aşağıdaki teknikler kimlik/ambient/dekor amacıyla **asla** kullanılmaz; ihl
 - **`ease-in-out`** (giren ease-out / çıkan ease-in) · **layout-animation** (CLS=0) · **süre-token seti dışı `transition-duration`** (140/150/180/360/520 + stagger 50 dışı = red; 600ms sert-tavan aşımı).
 
 **Ölçüm:** CI-lint + bağımlılık taraması: three/@react-three/spline import (kimlik amaçlı) = 0; ham renkli glow-rgba = 0; kırpılmış-eksen chart config = 0; Lenis/smooth-scroll-hijack importu = 0; `--accent` iz/border eşleşmesi = 0; süre-token-dışı transition = 0.
+
+---
+
+## VL-MOTION-v3 · Native-Motion Taksonomisi (generic-yasak / TradeMinds-native-koşullu) · *(v2.1 · CP-1 · 2026-07-18)*
+
+> **Kanoniklik:** Bu bölüm, motion/3D/video için **"mutlak-yasak vs koşullu-serbest"** ayrımının **tek kanonik kaynağıdır**; §11 tablosu · Kalıcı Yasaklar · Bible §00 G-00-15 · Bible §02 hero-3d-koşullu buraya atıf yapar. **Doc-only** — hiçbir davranış değişmez; uygulama ayrı CP'ler (aşağıda sıra kilidi). **Karot geri gelmez; yeni glyph/ikon/sembol icat edilmez.**
+
+### Neden bu revizyon
+Önceki doktrin bazı teknikleri (video-bg · Spline · native-3D) **düz/koşulsuz** yasakladı. Bağlayıcı yeni yön (kullanıcı, 2026-07-18): yasak asıl olarak **generic/stok/template/sahte/perf-riskli** kullanımadır; **ürünün kendi gerçek veri/proof/instrument-well dilinden türeyen** motion/3D/video ise mutlak-yasak değil **koşullu-serbest** olmalıdır. Bu bölüm o ayrımı test-edilebilir kapılarla kurar; generic yasaklar aynen kalır.
+
+### İki-eksen taksonomi
+Her motion/derinlik/efekt önerisi **iki ekseni birlikte** geçmeli:
+- **Köken ekseni:** *TradeMinds-native* (ürünün gerçek verisi / proof-surface / instrument-well / receipt / owned-number / live-terminal dilinden doğar) ↔ *generic* (stok asset, template galeri estetiği, ürün-dışı gösteri).
+- **Kanıt ekseni:** *bilgi-taşıyan* (gerçek telemetri/proof görünürlüğüne hizmet eder) ↔ *dekoratif* (yalnız "wow").
+
+**Yalnız `native × bilgi-taşıyan` bölgesi koşullu-serbesttir.** Diğer üç bölge (`native × dekoratif` · `generic × bilgi-taşıyan` · `generic × dekoratif`) **yasak.** Native olmak dekoratif efekti; bilgi-taşımak generic estetiği meşrulaştırmaz — iki kapı da açık olmalı.
+
+### Mutlak-yasak KALAN (generic — release-blokaj, değişmedi)
+generic 3D globe · robot / AI-avatar · random Spline orb · cyberpunk / neon / Matrix / RGB-kitsch · gradient-mesh-satüre · mor-pembe-gradient-text · template galeri estetiği (aurora-bg / neon-kart / dev-gradient-tipo) · **sahte-sinema** (önceden-pişmiş beat · dekoratif kamera dolly/orbit/pull-back · dekoratif cyan-tarama · veri temsil etmeyen efekt · canlı-değil veriyi canlı gibi sunma) · scroll-jacking · wheel-intercept · zorunlu-snap (>1 pin) · Lenis · sonsuz-pulse · dönen-radar · idle-tarama · sahte-progress · konfeti · casino / coin-hype · **Karot ikamesi / yeni glyph icadı** · kimlik-merkezi Three / R3F / Bloom initial-bundle chunk'ı · kırpılmış-eksen.
+
+### Koşullu-serbest OLAN (yalnız `native × bilgi-taşıyan` × 8-kapı geçerse · GATED FUTURE CP)
+| Teknik | Eski statü | Yeni statü |
+|---|---|---|
+| Native-3D / WebGL (Karot-DIŞI, proof / instrument-well derinliği) | DEFERRED | **Gated-conditional future CP** (CP-HERO-NATIVE-3D) |
+| Video (ürün proof-surface capture / motion-capture) | düz Kalıcı yasak | **Gated-conditional future CP** — stok/generic video-bg yasak KALIR |
+| Spline (native proof-surface / instrument-well) | düz Kalıcı yasak | **Gated-conditional future CP** — generic orb/globe/avatar yasak KALIR |
+| Canvas-2D / CSS derinlik (transform/opacity/mask/gradient) | izinli (§11) | **Dep-siz · şimdi açık** (CP-HERO-PROOF-SURFACE) |
+
+> "Serbest" DEĞİL: yukarıdaki üç gated satır ancak ilgili CP'de **8-kabul-kapısı** denetimi + **ayrı kapsam-onayı** ile açılabilir. Onay öncesi implementasyon = yasak.
+
+### 8 kabul kapısı (koşullu-serbest için · HEPSİ geçilmeli; biri fail → red)
+1. **Gerçek-veri / proof:** her hareketli/derin/ışıklı öge bir gerçek veri/telemetri alanına iz-sürülebilir (mock / scripted-timeline = fail).
+2. **Native, stok-değil:** köken ürün proof-surface / instrument-well; stok / generic / template asset = fail.
+3. **LCP korunur:** H1 LCP-statik kalır; 3D-canvas / video LCP elemanı OLAMAZ; boyut-rezervli lazy yükleme.
+4. **CLS 0:** alan rezervi (min-h) ile; layout-animation yok.
+5. **Mobil fallback:** WebGL / video → mobil 2D veya statik fallback zorunlu (mevcut DOM proof-surface = fallback).
+6. **Reduced-motion statik:** `prefers-reduced-motion: reduce` → poster / statik; bilgi kaybı 0.
+7. **App'e taşmaz:** 3D / video / parallax **YALNIZ landing / marketing**; Dashboard / Signal Center / SignalTable ağır-motion yasağı (Bible dash-ambient-yasak · §11) korunur; app-motion yalnız mikro-geçiş / luminance / receipt-hover / route-light.
+8. **Fallback/poster + perf-bütçe + legal:** poster planı · initial motion-lib ≤35KB gz · GSAP / R3F / three initial-chunk = 0 (lazy / code-split) · DPR-cap ≤2 · 60fps (frame ≤16.67ms, per-frame 0-allocation, viewport/tab-dışı durur) · **no-fake-data + "TradeMinds yatırım danışmanı değildir" dürüstlük çizgisi** korunur.
+
+### App-yüzeyi sınırı (yeniden-doğrulanır, değişmedi)
+Dashboard · Signal Center · SignalTable · tüm app veri-yüzeyleri: ağır-3D / WebGL · scroll-jack · autoplay · ambient-parallax **YASAK** (Bible dash-ambient-yasak · §11). App-içi tek yaşayan-hero formu = Dashboard **Nabız bandı** (≤~120px, olay-bağlı, statik-ışık, scroll'suz). 3D / video / parallax değerlendirmesi **yalnız landing** kapsamındadır.
+
+### CP sırası (KİLİT)
+1. **VL-MOTION-v3** (bu · doc-only).
+2. **CP-HERO-PROOF-SURFACE** — dependency'siz derinlik / reveal polish (CSS / transform / opacity / Canvas-2D / instrument-well; gerçek veriyle bağlı; yeni dep / asset / 3D / video YOK).
+3. **Reference Research Sprint** — Dribbble · motionsites.ai · ödüllü siteler (yalnız **prensip-çıkarımı + negatif-katalog**; birebir asset repo'ya girmez — §01-K referans-politikası · Bible G-00-04 yabancı-kör).
+4. **CP-HERO-NATIVE-3D _veya_ CP-HERO-PROOF-VIDEO** — gated future; önce referans-research + asset / perf / fallback planı; 8-kabul-kapısı denetimi; ayrı kapsam-onayı.
 
 ---
 

@@ -5,6 +5,28 @@ Kural: **her revizyon = commit + sürüm artışı + bu dosyada bir satır.** St
 
 ---
 
+## Bible v1.9 + Visual-Language v2.1 — VL-MOTION-v3: native-motion taksonomisi + gated 3D/video politikası · 2026-07-18
+
+> **Kapsam:** CP-1 (motion/3D/video politikasının doc-aşaması). `DESIGN-BIBLE` v1.8 → **v1.9** + `VISUAL-LANGUAGE` v2.0 → **v2.1** (ikisi BİRLİKTE — VL §08/C1 kanoniklik: motion/atmosfer çelişkisi iki belgede aynı revizyonla kapatılır). **Doc-only** — kod / CSS / component / UI / backend / DB / AI-core / migration / package.json / dependency = **SIFIR dokunuş**; ürün ve görsel davranış BYTE-IDENTICAL. Landing/app/dashboard/signal-center UI'ına dokunulmadı; asset üretilmedi; Karot geri getirilmedi; yeni glyph/ikon/sembol icat edilmedi.
+
+### Neden
+Önceki doktrin bazı teknikleri (video-background · Spline · native-3D/WebGL) **düz/koşulsuz** yasakladı. Bağlayıcı yeni yön (kullanıcı, 2026-07-18): yasak asıl olarak **generic/stok/template/sahte/perf-riskli** kullanımadır; **ürünün kendi gerçek veri/proof/instrument-well dilinden türeyen** motion/3D/video ise mutlak-yasak değil **koşullu-serbest** olmalıdır. Bu revizyon o ayrımı test-edilebilir 8 kabul kapısıyla kurar; generic yasaklar aynen kalır.
+
+### Eklenen — VL "VL-MOTION-v3" bölümü (yeni; Kalıcı Yasaklar sonrası)
+- **İki-eksen taksonomi:** köken (native vs generic) × kanıt (bilgi-taşıyan vs dekoratif); **yalnız native × bilgi-taşıyan** koşullu-serbest, diğer üç bölge yasak.
+- **Mutlak-yasak KALAN (generic):** globe/robot/orb/avatar · neon/cyberpunk/Matrix/RGB · gradient-mesh · template galeri estetiği · sahte-sinema · scroll-jack/wheel-intercept/Lenis/zorunlu-snap · sonsuz-pulse/radar/idle-tarama/fake-progress/konfeti/casino-hype · Karot-ikamesi/yeni-glyph · kimlik-merkezi Three/R3F/Bloom initial-chunk · kırpılmış-eksen.
+- **Koşullu-serbest OLAN (gated future CP):** native-3D/WebGL · ürün proof-surface video/motion-capture · native Spline (generic orb/globe/avatar + stok video-bg yasak KALIR) · dep-siz Canvas-2D/CSS derinlik (şimdi açık).
+- **8 kabul kapısı:** (1) gerçek-veri/proof · (2) native/stok-değil · (3) LCP korunur (H1 statik) · (4) CLS 0 · (5) mobil fallback · (6) reduced-motion statik · (7) app'e taşmaz (yalnız landing) · (8) fallback/poster + perf-bütçe (≤35KB gz initial · R3F/three initial=0 · DPR≤2 · 60fps) + no-fake-data/legal.
+- **App-yüzeyi sınırı yeniden-doğrulandı:** Dashboard/Signal Center/SignalTable ağır-3D/scroll-jack/autoplay/ambient-parallax YASAK (dash-ambient-yasak); app-motion yalnız mikro-geçiş/luminance/receipt-hover/route-light; 3D/video/parallax yalnız landing.
+- **CP sırası KİLİT:** (1) VL-MOTION-v3 doc → (2) CP-HERO-PROOF-SURFACE (dep-siz depth/reveal) → (3) Reference Research Sprint (Dribbble · motionsites.ai · ödüllü siteler; prensip-çıkarımı + negatif-katalog, birebir asset girmez) → (4) CP-HERO-NATIVE-3D / CP-HERO-PROOF-VIDEO (gated; önce asset/perf/fallback planı + 8-kapı + ayrı onay).
+
+### REVİZE / senkron (tarihsel metin korundu; pointer eklendi)
+- **VL §11 tablosu** ("GSAP/R3F/Three" + "Video bg/Spline" satırları) + **VL Kalıcı Yasaklar** + **VL §02 "3D/WebGL statüsü"** → VL-MOTION-v3'e pointer (generic yasak AYNEN, native koşullu).
+- **Bible §00 G-00-15** tabu-listesi + **§02 hero-3d-webgl-koşullu** (DEFERRED → gated-conditional) + **§02 Hero-Kalıcı-Yasaklar** → VL-MOTION-v3 senkronu.
+
+### Sınırlar (bu revizyonda dokunulmayan)
+Kod/CSS/component/UI/backend/DB/AI-core/migration/package.json/dependency = sıfır dokunuş; hiçbir motion/3D/video implementasyonu yapılmadı; Karot geri getirilmedi; yeni glyph/ikon/sembol/asset üretilmedi; generic yasaklar korundu; native alanlar "serbest" değil **gated-conditional future CP** olarak yazıldı; H1/CTA/legal/no-fake-data/dürüstlük prensipleri değişmedi.
+
 ## Bible v1.8 + Visual-Language v2.0 — CP-HERO-DOC: landing-hero doktrini Karot'suz revize · 2026-07-18
 
 > **Kapsam:** CP-HERO'nun doc-aşaması (kod-öncesi doktrin uyumu). `DESIGN-BIBLE` v1.7 → **v1.8** + `VISUAL-LANGUAGE` v1.5 → **v2.0** (ikisi BİRLİKTE — VL §08/C1 kanoniklik: hero/atmosfer/motion çelişkisi iki belgede aynı revizyonla kapatılır). **Doc-only** — kod/CSS/component/UI/backend/DB/AI-core = SIFIR dokunuş; ürün ve görsel davranış BYTE-IDENTICAL. Landing/app/dashboard/signal-center UI'ına dokunulmadı (uygulama = CP-HERO-B/C/A).
