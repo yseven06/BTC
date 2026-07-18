@@ -30,7 +30,7 @@ import {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 // qualityScore / qualityColor / qualityTextColor + directionLabel now live in
-// components/signals/SignalTable.tsx (shared with the Dashboard table).
+// components/signals/SignalTable.tsx (Signal Center's table).
 
 /** Derive HTF Alignment label from engine_results JSON */
 function getHtfAlignment(enginesData: any): { label: string; type: 'ob' | 'fvg' | 'neutral'; bullish: boolean } {
@@ -763,34 +763,6 @@ function SignalDrawer({ sig: sigProp, onClose }: { sig: ApiSignal | null; onClos
   );
 }
 
-function InfoCell({ label, value, accent }: { label: string; value: string; accent: string }) {
-  const isMono = accent.includes('mono');
-  const cleanAccent = accent.replace(' mono', '');
-  return (
-    <div className="bg-bg-tertiary/40 rounded-lg p-2">
-      <p className="text-micro text-text-muted uppercase font-medium mb-0.5">{label}</p>
-      <p className={cn('text-micro font-medium', cleanAccent, isMono && 'font-mono')}>{value}</p>
-    </div>
-  );
-}
-
-function LevelRow({ label, value, color, textColor, bold }: {
-  label: string; value: string; color: string; textColor: string; bold?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className={cn(
-        'w-12 text-center text-micro font-medium uppercase py-0.5 rounded text-white',
-        color
-      )}>
-        {label}
-      </span>
-      <div className="flex-1 h-px bg-border-subtle/40" />
-      <span className={cn('text-xs font-mono', textColor, bold && 'font-display')}>{value}</span>
-    </div>
-  );
-}
-
 function LevelCard({ label, value, color }: { label: string; value: number | null | undefined; color: string }) {
   return (
     <div className="bg-bg-secondary/60 rounded-lg p-2 border border-border-subtle">
@@ -1050,7 +1022,7 @@ export default function SignalsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-mono text-text-muted">{total} sinyal</span>
+          <span className="text-xs tabular-nums text-text-muted">{total} sinyal</span>
           {canGenerate && (
             <button
               onClick={generateAll}
@@ -1245,7 +1217,7 @@ export default function SignalsPage() {
               </button>
             </div>
           )}
-          {/* Table — shared SignalTable (the same component the Dashboard "Şu an" band mounts) */}
+          {/* Table — SignalTable (Signal Center's table; Dashboard uses ActiveSignalGlance) */}
           <SignalTable
             rows={filtered}
             livePrices={livePrices}

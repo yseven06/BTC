@@ -10,7 +10,8 @@ import { LiveStatusBadge } from '@/components/ui/LiveStatusBadge';
 
 // ─── Column template ──────────────────────────────────────────────────────────
 // Single source for the 7-column grid so the header and every row stay aligned.
-// Both Dashboard ("Şu an") and Sinyal Merkezi mount this ONE table — no duplication.
+// Mounted by Sinyal Merkezi (Signal Center) — the sole consumer since the Dashboard
+// moved to the lighter ActiveSignalGlance bridge (CP-DASH-IA-A). No duplication.
 // PI-2a: her track `minmax(<taban>, <fr>)` — <taban> kolonun okunakli-alti cokmesini
 // engeller. fr davranisi GENIS ekranda AYNEN korunur (taban baglamaz → byte-ozdes);
 // taban yalniz dar viewport'ta baglar → govdedeki overflow-x guard yatay-scroll'a
@@ -179,7 +180,7 @@ const DENSITY_OPTS: { id: Density; label: string }[] = [
 
 /**
  * Segmented Rahat/Sıkışık control. Purely a user preference — flips row density
- * instantly (no fetch, no motion). Shared so the Dashboard "Şu an" band reuses it.
+ * instantly (no fetch, no motion). Used by Signal Center's filter bar.
  */
 export function DensityToggle({ value, onChange }: { value: Density; onChange: (d: Density) => void }) {
   return (
@@ -392,7 +393,7 @@ interface SignalTableProps {
   rows: ApiSignal[];
   /** Live price map keyed by symbol (from useLivePrices). */
   livePrices: Record<string, LivePrice>;
-  /** Opens the analysis view for a signal (drawer on Sinyal Merkezi, detail on Dashboard). */
+  /** Opens the analysis view for a signal (Signal Center: drawer on mobile, Dock on lg+). */
   onSelect: (sig: ApiSignal) => void;
   /** Show the loading spinner instead of rows. */
   loading?: boolean;
@@ -402,13 +403,13 @@ interface SignalTableProps {
   emptyState?: React.ReactNode;
   /** Row density; default 'comfortable' renders byte-identically to the legacy table. */
   density?: Density;
-  /** Highlight the row whose signal id matches (master-detail on Dashboard). */
+  /** Highlight the row whose signal id matches (Signal Center master-detail Dock). */
   selectedId?: string;
 }
 
 /**
- * Shared dense signal table — the ONE table component used by both the Dashboard
- * "Şu an" band and Sinyal Merkezi. Header + rows share a single column template
+ * Dense signal table — Signal Center's table (the Dashboard moved to the lighter
+ * ActiveSignalGlance bridge in CP-DASH-IA-A). Header + rows share a single column template
  * so they always stay aligned. Presentational only (no motion/glow — Premium).
  */
 export function SignalTable({
