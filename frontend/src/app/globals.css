@@ -50,7 +50,7 @@
 
     /* — Glow / gölge (Bible §01 craft-glow-budget) — tek CTA glow, kart gölgesiz */
     --glow-cta:  0 8px 24px -12px var(--accent);        /* opaklık ≤.14, blur ASLA animasyonlanmaz */
-    --shadow-e3: 0 16px 40px -20px rgba(0, 0, 0, 0.7);  /* YALNIZ E3 overlay */
+    --shadow-e3: 0 2px 8px -4px rgba(0, 0, 0, 0.5), 0 16px 40px -20px rgba(0, 0, 0, 0.7);  /* YALNIZ E3 overlay — restrained iki-katman: dar temas + geniş ambient (S1a) */
     --cut-lip:   inset 0 1px 0 rgba(255, 255, 255, 0.07); /* üst-kenar highlight */
     /* Kabin imzasi (P10/D05, Bible §01 craft-cabin-signature): dikey kenar NET
        accent-ui-tint (~%8) + yatay .06 soluk + ust cut-lip; golge=0. */
@@ -278,15 +278,18 @@
    ============================================ */
 @layer components {
 
-  /* E3-overlay yuzey recetesi (P10/D11+D12, Bible §01 craft-glass-single-exception-e3):
-     cam YALNIZ burada — E3 %92 + blur 10px (band 8-10); golge yalniz burada (--shadow-e3);
-     border hl22. reduced-transparency modunda opak E3 fallback. Radius kullanan belirler (panel=16). */
+  /* E3-overlay yuzey recetesi (P10/D11+D12, Bible §01 craft-glass-single-exception-e3;
+     S1a e3-materyal-v2 · VL §05): cam YALNIZ burada — E3 %92 + blur 10px (band 8-10);
+     golge yalniz burada (--shadow-e3, restrained iki-katman); ust-kenar cut-lip isigi
+     (premium instrument material, specular ≤1px); border hl22. reduced-transparency
+     modunda opak E3 fallback (golge+cut-lip transparency-bagimsiz korunur). Radius
+     kullanan belirler (panel=16). Blur/border/radius/scrim DEGISMEDI. */
   .glass-e3-overlay {
     background: color-mix(in oklab, var(--e3) 92%, transparent);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border: 1px solid var(--hl22);
-    box-shadow: var(--shadow-e3);
+    box-shadow: var(--shadow-e3), var(--cut-lip);
   }
 
   @media (prefers-reduced-transparency: reduce) {
