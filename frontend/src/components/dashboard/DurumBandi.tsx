@@ -48,10 +48,11 @@ export function DurumBandi({
   hasData = true,
 }: DurumBandiProps) {
   if (loading) {
+    // Hairline-iskelet (§03-K pv-yükleme): statik, sabit-boyut, --hl10 tek-aile.
     return (
       <GlassCard dense>
-        <div className="h-4 w-2/3 rounded bg-white/[0.06]" />
-        <div className="h-3.5 w-1/2 mt-2 rounded bg-white/[0.04]" />
+        <div className="h-4 w-2/3 rounded bg-[var(--hl10)]" />
+        <div className="h-3.5 w-1/2 mt-2 rounded bg-[var(--hl10)]" />
       </GlassCard>
     );
   }

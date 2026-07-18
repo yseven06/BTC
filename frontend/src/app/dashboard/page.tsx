@@ -303,16 +303,19 @@ export default function DashboardPage() {
           rakam; 3 ikincil sessiz. İkon/gauge/pie/svg EKLENMEDİ (number-led). ── */}
       {loading ? (
         <div className="space-y-3">
-          <GlassCard>
-            <div className="h-2.5 w-32 rounded bg-white/[0.06]" />
-            <div className="h-11 w-40 mt-2 rounded bg-white/[0.06]" />
-            <div className="h-2 w-52 mt-2 rounded bg-white/[0.04]" />
+          {/* Hairline-iskelet (§03-K pv-yükleme): kahraman-iskeleti yüklü haliyle
+              yüzey-tutarlı olsun diye well; bloklar SABİT-BOYUT + STATİK (pulse yok,
+              CLS=0), zemin --hl10 tek-aile hairline (yeni token yok). */}
+          <GlassCard variant="well">
+            <div className="h-2.5 w-32 rounded bg-[var(--hl10)]" />
+            <div className="h-11 w-40 mt-2 rounded bg-[var(--hl10)]" />
+            <div className="h-2 w-52 mt-2 rounded bg-[var(--hl10)]" />
           </GlassCard>
           <div className="grid grid-cols-3 gap-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <GlassCard key={i} dense>
-                <div className="h-2.5 w-16 rounded bg-white/[0.06]" />
-                <div className="h-7 w-14 mt-2 rounded bg-white/[0.06]" />
+                <div className="h-2.5 w-16 rounded bg-[var(--hl10)]" />
+                <div className="h-7 w-14 mt-2 rounded bg-[var(--hl10)]" />
               </GlassCard>
             ))}
           </div>
@@ -335,8 +338,10 @@ export default function DashboardPage() {
       ) : (
         <div className="space-y-3">
           {/* Kahraman-rakam — Dönem Net Getiri (40–56px owned-numeral, count-up YOK,
-              vanity-counter YOK). §01-K craft-kahraman-rakam + zorunlu makbuz. */}
-          <GlassCard>
+              vanity-counter YOK). §01-K craft-kahraman-rakam + zorunlu makbuz.
+              §03-K pv-dashboard-reçete: kahraman = enstrüman-kuyusu (well) içinde,
+              ekranın EN PARLAK ögesi (koyu E0 sahne → owned-numeral öne çıkar). */}
+          <GlassCard variant="well">
             <span className="text-micro font-medium text-text-muted uppercase">Dönem Net Getiri</span>
             <div className="flex items-baseline gap-2 mt-1">
               <span className={cn(

@@ -46,11 +46,11 @@ export function Sicil({
           )}>
             {formatPercentage(totalReturn)}
           </p>
-          <p className="text-micro text-text-muted mt-0.5">tum zamanlar</p>
+          <p className="text-micro text-text-muted mt-0.5">tüm zamanlar</p>
         </div>
 
         <div className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
-          <p className="text-micro text-text-muted uppercase font-medium">Kar Faktoru</p>
+          <p className="text-micro text-text-muted uppercase font-medium">Kâr Faktörü</p>
           <p className={cn(
             'text-xl num font-num-560 mt-1',
             profitFactor != null && profitFactor >= 1 ? 'text-bullish'
@@ -63,15 +63,15 @@ export function Sicil({
         </div>
 
         <div className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
-          <p className="text-micro text-text-muted uppercase font-medium">Maks. Dusus</p>
+          <p className="text-micro text-text-muted uppercase font-medium">Maks. Düşüş</p>
           <p className="text-xl num font-num-560 mt-1 text-bearish">
             -{formatPercentage(maxDrawdown, 2, false)}
           </p>
-          <p className="text-micro text-text-muted mt-0.5">tum zamanlar</p>
+          <p className="text-micro text-text-muted mt-0.5">tüm zamanlar</p>
         </div>
 
         <div className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
-          <p className="text-micro text-text-muted uppercase font-medium">TP Vurma Orani</p>
+          <p className="text-micro text-text-muted uppercase font-medium">TP Vurma Oranı</p>
           <p className="text-xl num font-num-560 mt-1 text-bullish">
             {formatPercentage(tpHitRate, 0, false)}
           </p>
@@ -79,7 +79,7 @@ export function Sicil({
         </div>
 
         <div className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
-          <p className="text-micro text-text-muted uppercase font-medium">SL Orani</p>
+          <p className="text-micro text-text-muted uppercase font-medium">SL Oranı</p>
           <p className="text-xl num font-num-560 mt-1 text-bearish">
             {formatPercentage(slRate, 0, false)}
           </p>
@@ -93,7 +93,7 @@ export function Sicil({
             <div className="flex items-center gap-3 p-3 bg-bullish/[0.04] border border-bullish/20 rounded-xl">
               <TrendingUp className="w-4 h-4 text-bullish flex-shrink-0" />
               <div className="min-w-0">
-                <p className="text-micro text-text-muted uppercase font-medium">En Iyi Sinyal</p>
+                <p className="text-micro text-text-muted uppercase font-medium">En İyi Sinyal</p>
                 <p className="text-sm font-display text-text-primary mt-0.5 truncate">
                   {bestSignal.symbol}
                   <span className="ml-2 num font-num-520 text-bullish">
@@ -107,7 +107,7 @@ export function Sicil({
             <div className="flex items-center gap-3 p-3 bg-bearish/[0.04] border border-bearish/20 rounded-xl">
               <TrendingDown className="w-4 h-4 text-bearish flex-shrink-0" />
               <div className="min-w-0">
-                <p className="text-micro text-text-muted uppercase font-medium">En Kotu Sinyal</p>
+                <p className="text-micro text-text-muted uppercase font-medium">En Kötü Sinyal</p>
                 <p className="text-sm font-display text-text-primary mt-0.5 truncate">
                   {worstSignal.symbol}
                   <span className="ml-2 num font-num-520 text-bearish">
