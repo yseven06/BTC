@@ -1,6 +1,6 @@
 # TradeMinds Visual Language — "Gece Seansı"
 
-**Sürüm:** v2.2 (KANONIK) · **Tarih:** 2026-07-18 · *(v2.2 CP-PREMIUM-VISUAL-A: **bayat-Karot re-anchor** — DoD-2 "Karot zorunluluğu" → **kompozisyon-zorunluluğu** (taşıyıcı ≥1: owned-numeral kahraman · makbuz · instrument-well; glyph=0) · DoD-4 app-squint {Karot, CTA} → **{kahraman-rakam, birincil-CTA}** · §09 skeleton/stagger/settle Karot-notları → **hairline-iskelet** (kanonik reçete: Bible §03-K pv-yükleme). Yeni dekoratif sembol İCAT EDİLMEDİ; atmosfer/motion bütçeleri ve app/landing sınırı AYNEN; Bible v2.0 + MOTION-DOCTRINE senkron. bkz CHANGELOG.)* · *(v2.1 CP-1 VL-MOTION-v3: **native-motion taksonomisi + gated 3D/video/Spline politikası** — generic/stok/template/sahte/perf-riskli kullanım yasak AYNEN; TradeMinds-native × bilgi-taşıyan 3D/video/motion = **koşullu-serbest gated-future-CP** (8-kabul-kapısı, ayrı onay); video-bg + Spline düz-yasağı → gated-conditional; native-3D DEFERRED → gated-conditional; app-yüzeyi (Dashboard/Signal-Center) ağır-motion yasağı korunur; Karot geri gelmez, yeni glyph yok; bkz "VL-MOTION-v3" bölümü + Bible §00 G-00-15 + CHANGELOG)* · *(v2.0 CP-HERO-DOC: **hero atmosferi Karot'suz REVİZE** — 40-Karot hero-yüzeyi + Karot-squint SUPERSEDED (Karot üründen kaldırıldı, CP-KAROT-DOC). Yeni merkez = Canlı-Masa / live-terminal proof-surface + owned-number + receipt + instrument-well (glyph İKAMESİ YOK); atmosfer/motion bütçeleri + §11 kalıcı-yasaklar AYNEN; bkz §02 "Yaşayan Hero yüzeyi" baş-banner + Bible §02 + CHANGELOG)* · *(v1.5: K-J motion-paketi — `--dur-flash 300` + foton bg-tint dar-tanımı + T3 landing-reveal carve-out; v1.4: Karot geometri revizyonu; bkz. CHANGELOG)*
+**Sürüm:** v3.0 (KANONIK) · **Tarih:** 2026-07-18 · *(v3.0 S0 REDESIGN-DOC: **«Enstrüman Odası» v3** — **VL-MOTION-v3 gated native-3D/video/Spline şeridi KAPATILDI** (kullanıcı kararı; landing derinliği yalnız CSS/Canvas-2D; 3D=gelecekte sıfırdan ayrı karar/sprint) · §05 **e3-materyal-v2** (cut-lip + iki-katman gölge + standart scrim + bottom-sheet + kanonik-Modal zorunluluğu) · §03 **efekt-bütçesi-v3** + **BOKEH EMEKLİ** · §09 bayat-satır temizliği (landing count-up "izinli" ibaresi KALDIRILDI — Doctrine yasağıyla tek-kaynak; glow-drift/parallax kapalı-notları) · §01/§02 Karot-emekli + Nabız carve-out düzeltmeleri. Bible v3.0 + Doctrine v2 senkron. Doc-only. bkz CHANGELOG.)* · *(v2.2 CP-PREMIUM-VISUAL-A: **bayat-Karot re-anchor** — DoD-2 "Karot zorunluluğu" → **kompozisyon-zorunluluğu** (taşıyıcı ≥1: owned-numeral kahraman · makbuz · instrument-well; glyph=0) · DoD-4 app-squint {Karot, CTA} → **{kahraman-rakam, birincil-CTA}** · §09 skeleton/stagger/settle Karot-notları → **hairline-iskelet** (kanonik reçete: Bible §03-K pv-yükleme). Yeni dekoratif sembol İCAT EDİLMEDİ; atmosfer/motion bütçeleri ve app/landing sınırı AYNEN; Bible v2.0 + MOTION-DOCTRINE senkron. bkz CHANGELOG.)* · *(v2.1 CP-1 VL-MOTION-v3: **native-motion taksonomisi + gated 3D/video/Spline politikası** — generic/stok/template/sahte/perf-riskli kullanım yasak AYNEN; TradeMinds-native × bilgi-taşıyan 3D/video/motion = **koşullu-serbest gated-future-CP** (8-kabul-kapısı, ayrı onay); video-bg + Spline düz-yasağı → gated-conditional; native-3D DEFERRED → gated-conditional; app-yüzeyi (Dashboard/Signal-Center) ağır-motion yasağı korunur; Karot geri gelmez, yeni glyph yok; bkz "VL-MOTION-v3" bölümü + Bible §00 G-00-15 + CHANGELOG)* · *(v2.0 CP-HERO-DOC: **hero atmosferi Karot'suz REVİZE** — 40-Karot hero-yüzeyi + Karot-squint SUPERSEDED (Karot üründen kaldırıldı, CP-KAROT-DOC). Yeni merkez = Canlı-Masa / live-terminal proof-surface + owned-number + receipt + instrument-well (glyph İKAMESİ YOK); atmosfer/motion bütçeleri + §11 kalıcı-yasaklar AYNEN; bkz §02 "Yaşayan Hero yüzeyi" baş-banner + Bible §02 + CHANGELOG)* · *(v1.5: K-J motion-paketi — `--dur-flash 300` + foton bg-tint dar-tanımı + T3 landing-reveal carve-out; v1.4: Karot geometri revizyonu; bkz. CHANGELOG)*
 **Statü:** Design Bible'ın **Ek A'sı (Annex A)** — Art Direction / atmosfer · ışık · motion-bütçesi katmanı. Yeni tasarım sistemi değildir.
 **Kanonik kaynak:** bu dosya (`docs/design/`). Dosya adı sabittir; güncel sürüm bu başlıkta ve CHANGELOG'da izlenir. Artifact yalnızca görsel aynadır.
 **Kanoniklik (bkz. Bible §08/C1):** atmosfer · ışık · motion-bütçesi konularında **bu belge kanoniktir**; token/komponent/layout konularında Bible kanoniktir; çelişkide **daha kısıtlayıcı kural kazanır** ve her iki belgede aynı revizyonla kapatılır.
@@ -8,7 +8,7 @@
 
 > **Konsept:** Piyasa uyumaz; karanlık bir izleme odasında AI nöbettedir. İlke tek cümle: **ışık = bilgi.**
 > **Performans-öncelikli.** Araçlar: CSS · SVG · Canvas 2D · Motion (reveal-only). Three.js/Spline/R3F/WebGL **kimlik-merkezi olarak kalıcı yasak** (§11 · Kalıcı Yasaklar). Karot ve tüm ölçekleri (16/48/200 hero) 2D SVG.
-> **(VL-MOTION-v3 · v2.1):** generic/kimlik-merkezi 3D/WebGL/video/Spline yasağı AYNEN; **TradeMinds-native × bilgi-taşıyan** (ürün proof-surface / instrument-well derinliği) kullanım *mutlak-yasak değil* → **gated-conditional future CP** (8-kabul-kapısı + ayrı onay). Tek kanonik ayrım: "VL-MOTION-v3" bölümü.
+> **(VL-MOTION-v3 · v2.1):** generic/kimlik-merkezi 3D/WebGL/video/Spline yasağı AYNEN; **TradeMinds-native × bilgi-taşıyan** (ürün proof-surface / instrument-well derinliği) kullanım *mutlak-yasak değil* → **gated-conditional future CP** (8-kabul-kapısı + ayrı onay). Tek kanonik ayrım: "VL-MOTION-v3" bölümü. **(S0 v3.0: bu gated şerit KAPATILDI — bkz. bölüm S0-banner'ı; landing derinliği yalnız CSS/Canvas-2D.)**
 
 > **Amaç (v1.3):** v1.1'in atmosfer omurgasını **korumak** ve üzerine (a) yaşayan-Hero doktrinini, (b) motion/perf bütçelerinin ölçülebilir kilitlerini, (c) governance zorlayıcı-fonksiyonlarını ve (d) tek-kaynak renk/hairline/glow migration'larını eklemek. Değişen her değer **Migration (v1.1→v1.3)** satırıyla işaretlidir; hiçbir bölüm numarası/başlığı yeniden adlandırılmadı.
 
@@ -20,7 +20,7 @@
 
 Atmosferin anayasası. Üç kural her sayfada geçerlidir.
 
-1. **Işık = bilgi.** Parlayan her şey anlam taşır. Sayfanın en parlak pikselleri **veri** (fiyat, seviye, skor — enstrüman/Karot) ve **birincil CTA**'dır. Dekoratif ışık daima loş ve yönlü — asla içerikle yarışmaz. **Squint testi:** gözünü kıstığında yalnız **enstrüman (Karot) + CTA** seçilmeli.
+1. **Işık = bilgi.** Parlayan her şey anlam taşır. Sayfanın en parlak pikselleri **veri** (fiyat, seviye, skor — enstrüman/Karot) ve **birincil CTA**'dır. Dekoratif ışık daima loş ve yönlü — asla içerikle yarışmaz. **Squint testi:** gözünü kıstığında yalnız **enstrüman (kahraman-rakam/veri) + CTA** seçilmeli *(v3.0: Karot emekli — taşıyıcı = owned-numeral/veri).*
 2. **Tek anahtar ışık.** Her sayfada **bir** anahtar ışık kaynağı: sağ-üstten süzülen mavi "ufuk" ışığı; sol-alttan çok zayıf cyan dolgu. İki *yönlü* kaynaktan fazlası yasak. *(Köşe-demirli bokeh diskleri yönsüzdür, ışık kaynağı sayılmaz — §03; yine de ≤2.)*
 3. **Cyan = AI'nın parmak izi.** `--cyan #25E0D4` asla dekor değildir. Yalnız AI'nın dokunduğu yerde: güven izi, AI özeti, sinyal-anı vurgusu, Karot omurgası. Kullanıcı öğrenir: *cyan gördüysem, AI konuştu.* Cyan yalnız **çizgi/nokta/iz/omurga**; yüzey/dolgu/buton/başlık **yasak.**
    **Migration (v1.1→v1.3):** cyan literali `#22D3EE` → `--cyan #25E0D4` (owned electric-teal). `--accent-2/--cy` aliasları buraya bağlanır; `#22D3EE` grep = 0.
@@ -44,7 +44,7 @@ Beş katman, aşağıdan yukarı. Hepsi CSS/SVG — L4 hariç hiçbiri animasyon
 | Katman | İçerik | Nerede | Teknik |
 |---|---|---|---|
 | **L0 · Zemin** | Düz `--e0 #070B14`; section almaşığı `--e0`↔E1 bandı | Her yerde | CSS |
-| **L1 · Anahtar ışık** | `--light-key` mavi radial sağ-üst + `--light-fill` cyan sol-alt | Her sayfa (app'te statik; landing'de §08 glow-drift) | CSS radial-gradient |
+| **L1 · Anahtar ışık** | `--light-key` mavi radial sağ-üst + `--light-fill` cyan sol-alt | *(v3.0 düzeltme)* landing (+ app'te YALNIZ Dashboard **Nabız carve-out'u** — Bible dash-nabız-v3, statik; `--light-fill` app'te KULLANILMAZ; glow-drift kapalı) | CSS radial-gradient |
 | **L2 · Noise** | Mono grain %2–3, soft-light blend — banding-katili | landing · auth · **tam-yüzey empty-state** | SVG feTurbulence data-URI, 128px tile |
 | **L3 · Grid kâğıdı** | 1px çizgi ızgara %5, radial-maskeyle eriyen | landing hero · **empty-state kart sınırları** | CSS gradient + mask |
 | **L4 · Sinyal tozu** | 20–40 loş nokta = taranan varlıklar; ara sıra biri cyan/mavi nabız = "sinyal doğdu" | **yalnız landing hero** | Canvas 2D (≤40 nokta, 30fps cap) |
@@ -110,6 +110,8 @@ Atmosfer kuralları sayfa sınıfına bağlıdır. Her route bir sınıfa girer:
 
 ## 03 · Ambient glow & Bokeh
 
+> **⚠ S0 v3.0 — BOKEH EMEKLİ:** bokeh diskleri (landing + auth) v3'te KULLANILMAZ; premium etki key-light + depth + proof-surface + hairline + controlled-glow + materyal sistemiyle kurulur. Aşağıdaki bokeh satırları tarihsel kayıt; yeniden açılması ayrı karar ister. Glow kuralları AYNEN yürürlükte.
+
 Glow bir ödüldür, hak edilir. Bokeh bir mekân hissidir, dekor değil.
 
 - **HOVER-glow sahibi:** yalnız **birincil CTA.** Kart/panel/başlık/ikon/satır/nav hover'da **asla** glow almaz.
@@ -122,6 +124,21 @@ Glow bir ödüldür, hak edilir. Bokeh bir mekân hissidir, dekor değil.
 - **semantik ışık:** bull/bear renkleri **asla** atmosfer olmaz — yalnız veri durumu anlatır.
 
 **Kalıcı temizlik (KALICI YASAK):** SignalBadge/RiskGauge/Button'daki ham renkli glow-rgba (`rgba(0,230,118,·)` · `rgba(255,82,82,·)` vb.) temizlenir; parlaklık yalnız token ailesinden gelir. Ham box-shadow / renkli glow-rgba **CI-red.** Neon/RGB kalıcı yasak. Grep `rgba(0,230,118|rgba(255,82,82` (src+public) = 0.
+
+### efekt-bütçesi-v3 *(S0 KANONU — her efekt anlam taşır)*
+
+| Efekt | Statü | Sınır |
+|---|---|---|
+| Grain (L2) | VAR | yalnız landing/auth/empty zemini · **statik** · ≤%3 · veri-yüzeyinde YASAK ("atmosfer dışarıda, hassasiyet içeride") |
+| Key-light (L1) | VAR | landing + app'te YALNIZ Nabız carve-out (statik; Bible dash-nabız-v3) |
+| Diegetik glow | VAR | yalnız CTA + lifecycle-event; **"makbuzda karşılığı olan olay" kuralı** — nedensiz ambient hale yasak |
+| Foton-ailesi | VAR | olay-bağlı tek-atım; dar-tanım (§09) |
+| Cut-lip | VAR | kart/panel/buton + **E3-cam reçetesine eklenir (S1; e3-materyal-v2)** |
+| İki-katman gölge | YENİ (S1) | YALNIZ E3-overlay; tek `--shadow-e3` token-revizyonu |
+| Hairline-grid (L3) | VAR/eksik | boş-sahne/empty-state statik craft (S2/S7) |
+| **Bokeh** | **EMEKLİ** | kullanılmaz; yeniden-açılış ayrı karar |
+| Light-sweep/glint | ELENDİ | kalıcı |
+| **Random-particle · orb · kristal · soyut-3D obje · Karot** | **YASAK** | v3-karot-kapanış (Bible §00-V3); landing sinyal-tozu YALNIZ diegetik istisna (L4) |
 
 ---
 
@@ -198,6 +215,16 @@ Koyu arayüzde gölge görünmez; derinliği **ışık** anlatır. Yüzey yükse
 - **DoD:** cut-lip yalnız kart/panel/overlay/buton; Karot SVG'de cut-lip = 0.
 - **Migration (v1.1→v1.3):** v1.1'deki "rim cyan'a döner (AI dokunuşu)" ifadesi **kaldırıldı** (cyan-yalnız-çizgi tekeli; AI dokunuşu Karot omurga/iz üzerinden verilir).
 
+### e3-materyal-v2 *(S0 KANONU · uygulama S1)*
+
+Overlay'in TEK premium reçetesi — "jenerik glassmorphism" DEĞİLDİR: near-black'te katmanlamayı E-merdiveni yapar; E3-cam **dar-işlevsel** istisnadır.
+- **Panel:** `.glass-e3-overlay` (E3 ~%92 + blur 8-10px + `--hl22` hairline) + **`--cut-lip` üst-kenar ışığı** + **iki-katman `--shadow-e3`** (dar-keskin temas + geniş-yumuşak ambient; tek token revizyonu; gölge YALNIZ E3).
+- **Scrim (standart):** `bg-e-0/70` + `backdrop-blur-sm`; panel motion'uyla **senkron** fade; alfa/blur sapması = fail (LockedOverlay blur-md → banda çekilir).
+- **Motion:** giriş + **reverse-exit zorunlu** (Yasa-4; **PI-1b**: Dropdown/Tooltip dahil); deterministik-timer; **kesintiye-açık** (kullanıcı aksiyonu animasyonu anında keser).
+- **Mobil:** bottom-sheet = `align="bottom"` + slideUp + edge-to-edge + statik drag-handle; touch ≥44px.
+- **Kural:** tüm modal/drawer kabukları kanonik `ui/Modal`'dan türer (focus-trap/aria/ESC/scroll-lock tek-kaynak); ad-hoc overlay kabuğu = fail; z-index yalnız token (dropdown 40 / modal 50 / toast 60 / tour 100).
+- **DoD (S1):** ad-hoc modal kabuğu = 0 · exit'siz overlay primitifi = 0 · scrim-sapması = 0 · hardcoded z = 0 · 6-mikro-durum tamlığı (default/hover/focus/active/disabled/loading).
+
 ---
 
 ## 06 · Section geçişleri
@@ -268,13 +295,13 @@ Anlatı: *AI taradı, sinyal doğdu.* **Reduced-motion:** koreografi atlanır, s
 
 ### Scroll — yalnız landing (Gerçek-Olay Havuzu · yaşayan muhakeme)
 
-- **glow-drift:** L1 ışık katmanı **0.92× hızda** kayar (transform-only) — landing'in tek **animasyonlu ambient** istisnası budur (§02 dipnotu). Noise **statiktir**, ambient-sayıma girmez.
-- **reveal:** section girişinde fade + 8px yükselme, stagger 50ms (`stagger-liste`), **bir kez** (transform/opacity), süre `--dur-settle 520`.
-- **count-up:** istatistik şeridi viewport'a girince `--dur-settle 520` sayar — tek "vay" anı (yalnız landing).
+- **glow-drift:** L1 ışık katmanı **0.92× hızda** kayar (transform-only) — landing'in tek **animasyonlu ambient** istisnası budur (§02 dipnotu). Noise **statiktir**, ambient-sayıma girmez. *(v3.0 not: glow-drift Doctrine §9'da KAPALI-beklemededir — bu satır tavan-tanımıdır, izin değildir; geçerli hal = statik key-light.)*
+- **reveal:** section girişinde fade + 8px yükselme, stagger 50ms (`stagger-liste`), **bir kez** (transform/opacity), süre `--dur-settle 520`. *(v3.0/S6: + CSS `animation-timeline: scroll()/view()` scroll-driven tek-atım mikro-koreografi — IO-fallback; yalnız landing; Doctrine v2 sözlüğü.)*
+- ~~**count-up:** istatistik şeridi viewport'a girince `--dur-settle 520` sayar — tek "vay" anı (yalnız landing).~~ *(v3.0 KALDIRILDI: count-up HER YERDE yasak — Motion Doctrine Yasa-1/§5; sayının kendisi değerlidir, ara değer yalan söyler.)*
 - **Direktif (scroll = canlı AI muhakemesi, scrubber DEĞİL):** Scroll ilerledikçe kanıt AÇILIR (AI düşünür → motorlar uzlaşır → konsensüs → karar doğar); ancak scroll bir video-scrubber gibi kullanılamaz — scroll geri alınınca muhakeme **geri sarılmaz**, olaylar birer kez olur (idempotent, tek-yön). Her ışık gerçek bir olayı temsil eder; canlı-değilse dürüst "arşiv" etiketi taşır (§07 Gerçek-Olay Havuzu).
 - **Teknik:** Scroll-progress yalnızca kanıt katmanlarının görünürlüğünü/derinliğini açar (transform/opacity), zaman-eksenini ileri-geri sürmez; scroll-progress **gerçek telemetriye** bağlıdır. Birincil araç: native CSS `animation-timeline: scroll()/view()` (`@supports` guard) + IntersectionObserver fallback (bir kez, unobserve).
 - **app sayfaları:** scroll efekti **yasak.**
-- **Parallax:** yalnız landing (analiz-katmanı temsili); **maks 3 strata, hız farkı ≤0.06, transform-only**; app'te paralaks 0. L1 glow-drift (0.92×) landing'in tek animasyonlu L1 istisnası.
+- **Parallax:** yalnız landing (analiz-katmanı temsili); **maks 3 strata, hız farkı ≤0.06, transform-only**; app'te paralaks 0. L1 glow-drift (0.92×) landing'in tek animasyonlu L1 istisnası. *(v3.0 not: parallax + drift Doctrine §9'da KAPALI-beklemededir; bu satır tavan-tanımıdır, izin değildir — açılış ayrı kullanıcı-onayı ister.)*
   **Migration (v1.1→v1.3):** eski dekoratif hero-parallax taşıyıcısı **atıldı**; yaşayan-Hero için paralaksın rolü ≤3 strata analiz-katmanı temsili olarak sınırlandı (§11 · Gerçek-Olay Havuzu).
 
 ### Sticky header — kanonik reçete
@@ -321,10 +348,10 @@ Kural: **viewport başına aynı anda en çok 1 ambient animasyon.** Hareket enf
 
 | Bölge | İzinli | Yasak |
 |---|---|---|
-| **Landing** | 1 ambient (**glow-drift**; noise statik, sayıma girmez) · reveal (bir kez) · count-up · hover ısınması · parallax ≤3 strata | çoklu ambient · sonsuz döngü dekor · marquee |
+| **Landing** | reveal (bir kez, T3) · scroll-driven tek-atım mikro-koreografi *(v3.0/S6)* · hover ısınması *(v3.0: glow-drift/parallax KAPALI-beklemede; **count-up YASAK** — bayat "izinli" ibareleri kaldırıldı)* | çoklu ambient · sonsuz döngü dekor · marquee · count-up |
 | **App** (dashboard/signals/markets…) | micro: hover `--dur-warm 140` · state geçişi `--dur-state 180` · **hairline-iskelet** *(v2.2: "sinyal-Karot skeleton" emekli — Bible §03-K pv-yükleme)* · foton-tick `--dur-photon 150` · **route geçişi `--dur-route 180` ışık-devri, layout-anim yok** | ambient · paralaks · scroll-reveal · **count-up** · sayfa-içi dekoratif döngü |
 | **Overlay** (modal/drawer/toast) | spring (stiffness ~300, damping ~30, settle `--dur-overlay 360`) · backdrop fade `--dur-photon 150` | bounce abartısı · süre-tavan aşımı |
-| **Auth** | statik atmosfer (L1+L2+bokeh) + micro-etkileşim (hover/focus/state) | ambient · reveal · koreografi |
+| **Auth** | statik atmosfer (L1+L2; *bokeh v3.0 EMEKLİ — §03*) + micro-etkileşim (hover/focus/state) | ambient · reveal · koreografi |
 
 ### Frekans / sükûnet bütçesi — motion nadir olaya saklı
 
@@ -464,6 +491,8 @@ Aşağıdaki teknikler kimlik/ambient/dekor amacıyla **asla** kullanılmaz; ihl
 ## VL-MOTION-v3 · Native-Motion Taksonomisi (generic-yasak / TradeMinds-native-koşullu) · *(v2.1 · CP-1 · 2026-07-18)*
 
 > **Kanoniklik:** Bu bölüm, motion/3D/video için **"mutlak-yasak vs koşullu-serbest"** ayrımının **tek kanonik kaynağıdır**; §11 tablosu · Kalıcı Yasaklar · Bible §00 G-00-15 · Bible §02 hero-3d-koşullu buraya atıf yapar. **Doc-only** — hiçbir davranış değişmez; uygulama ayrı CP'ler (aşağıda sıra kilidi). **Karot geri gelmez; yeni glyph/ikon/sembol icat edilmez.**
+
+> **⚠ S0 v3.0 KAPANIŞ (kullanıcı kararı · 2026-07-18):** Bu bölümün **gated-conditional şeridi** (CP-HERO-NATIVE-3D · CP-HERO-PROOF-VIDEO · native-Spline) **KAPATILDI** — redesign-v3 planında tutulmaz; 8-kapı çerçevesi ve aşağıdaki gated tablo **tarihsel kayıttır**. Landing derinliği = yalnız **CSS/Canvas-2D** (CP-HERO-PROOF-SURFACE satırı "şimdi açık" olarak GEÇERLİ kalır — tablodaki tek yaşayan satır budur). 3D gelecekte ancak **SIFIRDAN, ayrı karar + ayrı sprint** ile açılabilir. Karot/soyut-obje/kristal/orb zaten şerit-dışıydı; **v3-karot-kapanış** (Bible §00-V3) ile her formu kalıcı-yasak. CP-sırası maddeleri 3-4 (Reference-Research + NATIVE-3D/VIDEO) bu kapanışla birlikte **iptal**; madde 2 (PROOF-SURFACE) v3-sprint-sırası S5'e devredildi.
 
 ### Neden bu revizyon
 Önceki doktrin bazı teknikleri (video-bg · Spline · native-3D) **düz/koşulsuz** yasakladı. Bağlayıcı yeni yön (kullanıcı, 2026-07-18): yasak asıl olarak **generic/stok/template/sahte/perf-riskli** kullanımadır; **ürünün kendi gerçek veri/proof/instrument-well dilinden türeyen** motion/3D/video ise mutlak-yasak değil **koşullu-serbest** olmalıdır. Bu bölüm o ayrımı test-edilebilir kapılarla kurar; generic yasaklar aynen kalır.
