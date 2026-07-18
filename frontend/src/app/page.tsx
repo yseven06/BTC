@@ -79,6 +79,13 @@ function CanliMasa({ proof }: { proof: LandingProof | null }) {
   const time = proof
     ? new Date(proof.generatedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
     : null;
+  // CP-HERO-C — "kaydedilmiş yargı" (record): önceden ilan edilen giriş BÖLGESİ.
+  // entryHigh > entryLow ise aralık, eşitse tek fiyat (var-olan alan; kontrat değişmez).
+  const entryText = lc
+    ? (lc.entryHigh > lc.entryLow
+        ? `${formatPrice(lc.entryLow)} – ${formatPrice(lc.entryHigh)}`
+        : formatPrice(lc.entryLow))
+    : null;
   return (
     // CP-HERO-B (VL v2 · §01-K craft-veri-kuyusu): E1 glass-panel → E0-inset
     // instrument-well (mevcut token: bg-e-0 + inset hl10 hairline; "derinlik =
@@ -90,9 +97,13 @@ function CanliMasa({ proof }: { proof: LandingProof | null }) {
         {time && <span className="text-micro font-mono text-text-muted tabular-nums">{time}</span>}
       </div>
 
+      {/* CP-HERO-C — "SON KAPANAN" (çözülmüş proof): eyebrow + record→result dikey akışı.
+          Sıra: kimlik+outcome → kaydedilmiş giriş bölgesi (record) → nötr sonuç-numeralı
+          (result) → zaman + "sonuca göre seçilmedi". Nötr-proof kilidi korunur. */}
       {lc && (
         <div className="border-t border-border-subtle mt-4 pt-4">
-          <div className="flex items-center justify-between gap-3">
+          <p className="text-micro font-medium uppercase tracking-wide text-text-muted">Son kapanan</p>
+          <div className="flex items-center justify-between gap-3 mt-2">
             <span className="text-sm font-display text-text-primary">
               {lc.symbol}
               {/* twMerge özel text-micro'yu renk sınıflarıyla çakıştırıp düşürüyor → düz birleştirme */}
@@ -104,33 +115,36 @@ function CanliMasa({ proof }: { proof: LandingProof | null }) {
               {OUTCOME_PILL[lc.outcome].label}
             </span>
           </div>
-          {/* Owned-numeral proof-number (VL v2): büyütülmüş sahipli-numeral, NÖTR
-              renk — yeşil/kırmızı "başarı" framing YOK (işaret +/-'de + outcome-pill'de;
-              kayıp da aynı sadelikte gösterilir). count-up YOK, tabular. */}
-          <div className="num font-num-560 tabular-nums leading-none text-[32px] sm:text-[36px] text-text-primary mt-2">
+          {/* Kaydedilmiş yargı (record): önceden ilan edilen giriş bölgesi — makbuz grameri */}
+          <p className="text-micro text-text-muted tabular-nums mt-2">Giriş {entryText}</p>
+          {/* Gerçekleşen sonuç (result): büyütülmüş nötr sahipli-numeral. Yeşil/kırmızı
+              "başarı" framing YOK (işaret +/-'de + outcome-pill'de); kayıp da aynı sadelikte.
+              count-up YOK, tabular. */}
+          <div className="num font-num-560 tabular-nums leading-none text-[32px] sm:text-[36px] text-text-primary mt-1">
             {formatPercentage(lc.returnPct)}
           </div>
-          {/* Proof-receipt grameri (§01-K craft-makbuz-grameri): ·-ayraç, muted, tabular */}
-          <p className="text-micro text-text-muted tabular-nums mt-2">
-            Giriş {formatPrice(lc.entryLow)} · {relTime(lc.closedAt)}
-          </p>
-          <p className="text-micro text-text-muted mt-1.5">Son kapanan sinyal · sonuca göre seçilmedi</p>
+          <p className="text-micro text-text-muted tabular-nums mt-2">{relTime(lc.closedAt)} · sonuca göre seçilmedi</p>
         </div>
       )}
 
+      {/* CP-HERO-C — "ŞU AN AÇIK" (canlı-defter): eyebrow + hairline-bölünmüş satırlar.
+          Yeni animasyon/glyph YOK; liveStatus muted tabular kolon olarak sağa hizalı. */}
       {proof && proof.teaser.length > 0 && (
-        <div className="border-t border-border-subtle mt-4 divide-y divide-border-subtle">
-          {proof.teaser.map((t) => (
-            <div key={t.symbol} className="flex items-center gap-3 py-2 text-xs">
-              <span className="flex-1 font-display text-text-primary">{t.symbol}</span>
-              <span className={'text-micro font-medium uppercase ' + (t.direction === 'bullish' ? 'text-bullish' : 'text-bearish')}>
-                {t.direction === 'bullish' ? 'LONG' : 'SHORT'}
-              </span>
-              <span className="text-text-secondary">
-                {(t.liveStatus && LIVE_STATUS_META[t.liveStatus as keyof typeof LIVE_STATUS_META]?.label) || 'Aktif'}
-              </span>
-            </div>
-          ))}
+        <div className="border-t border-border-subtle mt-4 pt-4">
+          <p className="text-micro font-medium uppercase tracking-wide text-text-muted">Şu an açık</p>
+          <div className="mt-1 divide-y divide-border-subtle">
+            {proof.teaser.map((t) => (
+              <div key={t.symbol} className="flex items-center gap-3 py-2">
+                <span className="flex-1 text-xs font-display text-text-primary">{t.symbol}</span>
+                <span className={'text-micro font-medium uppercase ' + (t.direction === 'bullish' ? 'text-bullish' : 'text-bearish')}>
+                  {t.direction === 'bullish' ? 'LONG' : 'SHORT'}
+                </span>
+                <span className="text-micro text-text-muted tabular-nums">
+                  {(t.liveStatus && LIVE_STATUS_META[t.liveStatus as keyof typeof LIVE_STATUS_META]?.label) || 'Aktif'}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
