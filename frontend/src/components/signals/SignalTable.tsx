@@ -387,6 +387,77 @@ export function SignalCardRow({
   );
 }
 
+// ─── Hairline-iskelet (§03-K pv-yükleme · CP-PREMIUM-VISUAL-D/PV-D1) ──────────
+// Liste-fetch loading için STATİK, sabit-boyut placeholder — gerçek tablo
+// GRID_TEMPLATE + --row-h ile birebir hizalı (CLS=0). Pulse/shimmer/spinner YOK
+// ("emin enstrüman titremez", Doctrine Yasa-3); zemin --hl10 tek-aile hairline
+// (yeni token yok). Ölçüler nihai içerik-hücreleriyle boyutsal eşleşir.
+function SkelBar({ className }: { className: string }) {
+  return <span className={cn('block rounded bg-[var(--hl10)]', className)} />;
+}
+
+function SignalTableRowSkeleton() {
+  return (
+    <div
+      className="grid gap-4 items-center px-5"
+      style={{ gridTemplateColumns: GRID_TEMPLATE, paddingTop: 'var(--row-h, 0.875rem)', paddingBottom: 'var(--row-h, 0.875rem)' }}
+      aria-hidden
+    >
+      {/* Sembol · TF */}
+      <div className="flex items-center gap-3 min-w-0">
+        <SkelBar className="w-8 h-8 rounded-lg flex-shrink-0" />
+        <div className="min-w-0 space-y-1.5">
+          <SkelBar className="h-3 w-16" />
+          <SkelBar className="h-2.5 w-24" />
+        </div>
+      </div>
+      {/* Yön */}
+      <SkelBar className="h-4 w-14" />
+      {/* Anlık fiyat (stack) */}
+      <div className="space-y-1.5">
+        <SkelBar className="h-3 w-16" />
+        <SkelBar className="h-2.5 w-10" />
+      </div>
+      {/* Kalite skoru (bar + sayı) */}
+      <div className="flex items-center gap-2">
+        <SkelBar className="h-1.5 w-20 rounded-full" />
+        <SkelBar className="h-3 w-8" />
+      </div>
+      {/* Durum */}
+      <SkelBar className="h-4 w-20" />
+      {/* Üretildi */}
+      <SkelBar className="h-3 w-24" />
+      {/* Analiz */}
+      <SkelBar className="h-6 w-16 rounded-lg" />
+    </div>
+  );
+}
+
+function SignalCardRowSkeleton() {
+  return (
+    <div className="flex flex-col gap-3 p-4" aria-hidden>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <SkelBar className="w-9 h-9 rounded-lg flex-shrink-0" />
+          <div className="space-y-1.5">
+            <SkelBar className="h-3 w-20" />
+            <SkelBar className="h-2.5 w-24" />
+          </div>
+        </div>
+        <SkelBar className="h-4 w-14" />
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <SkelBar className="h-4 w-20" />
+        <SkelBar className="h-1.5 w-20 rounded-full" />
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <SkelBar className="h-4 w-24" />
+        <SkelBar className="h-8 w-16 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
 // ─── Table ────────────────────────────────────────────────────────────────────
 interface SignalTableProps {
   /** Rows to render (already filtered/sorted by the caller). */
@@ -422,12 +493,26 @@ export function SignalTable({
   density = 'comfortable',
   selectedId,
 }: SignalTableProps) {
+  // Hairline-iskelet grace (§03-K pv-yükleme DoD: "<300ms işte iskelet yanmaz").
+  // <300ms süren yüklemede placeholder HİÇ görünmez → hızlı-yüklemede flaş yok;
+  // grace bileşen-içi tutulur (çağıran sayfaya dokunulmaz). Statik, CLS=0.
+  const [graceElapsed, setGraceElapsed] = useState(false);
+  useEffect(() => {
+    if (!loading) { setGraceElapsed(false); return; }
+    const t = setTimeout(() => setGraceElapsed(true), 300);
+    return () => clearTimeout(t);
+  }, [loading]);
+  const showSkeleton = loading && graceElapsed;
+
   return (
     <div
       className="glass-panel border border-border-subtle rounded-2xl overflow-hidden"
       // --row-h cascades to every row's vertical padding (see SignalTableRow).
       style={{ ['--row-h' as string]: ROW_H[density] } as React.CSSProperties}
     >
+      {/* Yüklenirken sessiz canlı-bölge duyurusu (iskelet aria-hidden dekoratif). */}
+      {showSkeleton && <span role="status" className="sr-only">Sinyaller yükleniyor</span>}
+
       {/* Masaustu (md+): grid tablo + overflow-x guard — dar viewport'ta kolonlar
           minmax-tabana carpinca squeeze/taşma yerine yatay-scroll (kart-sinirinda). */}
       <div className="hidden md:block overflow-x-auto">
@@ -440,6 +525,17 @@ export function SignalTable({
             <span key={h} className="text-micro font-medium text-text-muted uppercase">{h}</span>
           ))}
         </div>
+
+        {/* Liste-fetch loading → hairline-iskelet (CP-PREMIUM-VISUAL-D/PV-D1 · §03-K
+            pv-yükleme): boş-Karot + "yükleniyor" düz-metni EMEKLİ. GRID_TEMPLATE +
+            --row-h ile hizalı statik satır-silüeti; spinner/pulse/shimmer YOK, CLS=0. */}
+        {showSkeleton && (
+          <div className="divide-y divide-border-subtle">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SignalTableRowSkeleton key={i} />
+            ))}
+          </div>
+        )}
 
         {!loading && !showEmpty && (
           <div className="divide-y divide-border-subtle">
@@ -456,18 +552,17 @@ export function SignalTable({
         )}
       </div>
 
-      {loading && (
-        // Liste-fetch loading (CP-KAROT-UI1: boş-Karot kaldırıldı). Nötr sade
-        // dark-terminal loading dili — glyph/spinner/süs YOK; sabit metin
-        // (idle-sessiz, MO-06 uyumlu; layout kaymaz). Her iki viewport.
-        <div className="py-16 text-center text-sm text-text-muted">
-          Sinyaller yükleniyor…
-        </div>
-      )}
-
       {!loading && showEmpty && emptyState}
 
-      {/* Mobil (md-alti): kart-liste — ayni veri/primitifler, CSS-only, animasyonsuz. */}
+      {/* Mobil (md-alti): kart-iskelet (yüklenirken) → kart-liste. Ayni primitifler,
+          CSS-only, animasyonsuz. */}
+      {showSkeleton && (
+        <div className="md:hidden divide-y divide-border-subtle">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SignalCardRowSkeleton key={i} />
+          ))}
+        </div>
+      )}
       {!loading && !showEmpty && (
         <div className="md:hidden divide-y divide-border-subtle">
           {rows.map((sig) => (
