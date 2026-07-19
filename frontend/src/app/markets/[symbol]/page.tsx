@@ -392,7 +392,7 @@ export default function AssetDetailPage() {
       <div
         className={cn(
           'w-full lg:flex-1 lg:min-w-0 lg:h-full',
-          manualFullscreen && 'fixed inset-0 z-50 bg-bg-primary p-4 overflow-y-auto'
+          manualFullscreen && 'fixed inset-0 z-modal bg-bg-primary p-4 overflow-y-auto'
         )}
       >
       <GlassCard className="p-0 overflow-hidden lg:h-full flex flex-col">
@@ -490,7 +490,7 @@ export default function AssetDetailPage() {
                   <HelpCircle className="w-3.5 h-3.5" />
                 </button>
                 {showPineHint && (
-                  <div className="absolute right-0 top-full mt-2 w-64 glass-e3-overlay rounded-panel p-3 text-micro leading-relaxed text-text-secondary z-50">
+                  <div className="absolute right-0 top-full mt-2 w-64 glass-e3-overlay rounded-panel p-3 text-micro leading-relaxed text-text-secondary z-dropdown">
                     <p className="font-display text-text-primary mb-1.5">Nasıl kullanılır?</p>
                     <ol className="list-decimal list-inside space-y-1">
                       <li>Pine Script Kopyala'ya bas</li>

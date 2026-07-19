@@ -68,7 +68,7 @@ export default function CoachmarkTour() {
   const tipLeft = rect ? rect.left + rect.width + 14 : 96;
 
   return (
-    <div className="fixed inset-0 z-[100]">
+    <div className="fixed inset-0 z-tour">
       {/* Click blocker — clicking the dimmed area does nothing (no accidental skip) */}
       <div className="absolute inset-0" />
 

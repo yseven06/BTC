@@ -105,7 +105,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
 
           {/* Search results dropdown */}
           {searchFocused && searchResults.length > 0 && (
-            <div className="absolute top-full mt-1 left-0 right-0 glass-e3-overlay rounded-panel z-50 overflow-hidden">
+            <div className="absolute top-full mt-1 left-0 right-0 glass-e3-overlay rounded-panel z-dropdown overflow-hidden">
               {searchResults.map((asset) => (
                 <div
                   key={asset.id}
