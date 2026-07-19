@@ -226,7 +226,7 @@ export default function ProfilePage() {
                 <p className="text-micro text-text-muted mt-0.5">PNG, JPG, WEBP veya GIF formatında dosya seçin.</p>
               </div>
               <div className="flex items-center gap-2">
-                <label className="cursor-pointer px-3 py-1.5 rounded-lg bg-bg-tertiary border border-border-subtle hover:border-accent-primary/50 text-xs font-display text-text-primary transition-all flex items-center gap-1.5">
+                <label className="cursor-pointer px-3 py-1.5 rounded-lg bg-bg-tertiary border border-border-subtle hover:border-accent-primary/50 text-xs font-display text-text-primary transition-colors flex items-center gap-1.5">
                   Dosya Seç
                   <input
                     type="file"

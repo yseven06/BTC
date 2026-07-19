@@ -214,7 +214,7 @@ export default function PortfolioPage() {
                 key={p.id}
                 onClick={() => setActiveId(p.id)}
                 className={cn(
-                  'px-3.5 py-2 rounded-xl text-sm font-display transition-all border',
+                  'px-3.5 py-2 rounded-xl text-sm font-display transition-colors border',
                   activeId === p.id
                     ? 'bg-accent-primary text-white border-accent-primary'
                     : 'bg-bg-secondary text-text-secondary border-border-subtle hover:text-text-primary'
@@ -276,7 +276,7 @@ export default function PortfolioPage() {
                 <h2 className="text-base font-display text-text-primary">Açık Pozisyonlar</h2>
                 <div className="flex items-center gap-3">
                   <button onClick={() => setShowAddForm(!showAddForm)}
-                    className="flex items-center gap-1.5 text-xs font-display text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-all">
+                    className="flex items-center gap-1.5 text-xs font-display text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-colors">
                     <Plus className="w-3.5 h-3.5" /> Pozisyon Ekle
                   </button>
                   <button onClick={() => removePortfolio(active.id, active.name)}

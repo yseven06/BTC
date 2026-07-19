@@ -132,14 +132,14 @@ export default function PerformancePage() {
           <button
             onClick={() => downloadPerformancePdf().catch(() =>
               toast.error('PDF indirilemedi. Pro/Premium aboneliği gerekir.'))}
-            className="flex items-center gap-1.5 text-xs font-display text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-3 py-2 rounded-lg transition-all"
+            className="flex items-center gap-1.5 text-xs font-display text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-3 py-2 rounded-lg transition-colors"
           >
             <FileDown className="w-3.5 h-3.5" /> PDF
           </button>
         <div className="flex bg-bg-secondary border border-border-subtle p-1 rounded-xl">
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`px-4 py-2 text-xs font-display rounded-lg transition-all ${
+            className={`px-4 py-2 text-xs font-display rounded-lg transition-colors ${
               activeTab === 'analytics' ? 'bg-bg-tertiary text-text-primary ' : 'text-text-secondary hover:text-text-primary'
             }`}
           >
@@ -148,7 +148,7 @@ export default function PerformancePage() {
           </button>
           <button
             onClick={() => setActiveTab('backtest')}
-            className={`px-4 py-2 text-xs font-display rounded-lg transition-all ${
+            className={`px-4 py-2 text-xs font-display rounded-lg transition-colors ${
               activeTab === 'backtest' ? 'bg-bg-tertiary text-text-primary ' : 'text-text-secondary hover:text-text-primary'
             }`}
           >
