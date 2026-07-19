@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ScoreRing } from './ScoreRing';
 import { GlassCard } from './GlassCard';
+import { Modal } from '@/components/ui/Modal';
 import { cn, formatRelativeTime, formatAbsoluteTimeTR, formatPrice, formatNumber } from '@/lib/utils';
 import { ApiSignal } from '@/lib/api';
 import { track } from '@/lib/analytics';
@@ -182,38 +183,50 @@ function EngineCard({ engine, onClick, compact }: {
 function EngineDetailModal({ engine, symbol, timeframe, onClose }: {
   engine: EngineRow; symbol: string; timeframe: string; onClose: () => void;
 }) {
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [onClose]);
-
   const biasColor = engine.bias === 'bullish' ? 'text-bullish'
                   : engine.bias === 'bearish' ? 'text-bearish'
                   : 'text-text-muted';
   const [showFindings, setShowFindings] = useState(false);
 
+  // S1c3 — ad-hoc kabuk (fixed inset-0 + ham z-[60] + elle scrim + onClick/
+  // stopPropagation backdrop + glass-panel kutu + window-seviyesi ESC dinleyicisi)
+  // kanonik <Modal>'a devredildi: portal, role=dialog + aria-modal + ariaLabel,
+  // panel-kapsamlı focus-trap ve odak-iadesi, drag-safe backdrop, gövde
+  // scroll-kilidi, E3 materyal (S1a) tek-kaynaktan gelir.
+  // z-[60] KALDIRILDI → varsayılan z-modal (50). Kanon: toast (60) > modal (50);
+  // eski değer modal'ı toast seviyesine çıkarıp bu sırayı bozuyordu. Mobilde
+  // drawer'ın (inline z-50) ÜSTÜNDE kalması portal'ın body'ye sonradan eklenmesi
+  // (DOM sırası) ile sağlanır — yeni z-token gerekmez.
+  // ESC artık yalnız panel kapsamında (Modal'ın onKeyDown'ı): yığın modallarda
+  // yalnız odaklı panel kapanır, drawer açık kalır (global dinleyici bunu bozardı).
+  // padded={false}: iki-satırlı başlık (eyebrow + motor adı) ve mevcut ✕ AYNEN
+  // korunur; bu modda Modal kendi şeridini/✕'ini render etmez → çift ✕ yok.
+  // Not (CP-MODAL-PRESENCE): çağrı yeri koşullu mount ettiği için çıkış animasyonu
+  // oynamaz — bilinen ortak borç; bu CP'de çözülmez.
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-e-0/70 backdrop-blur-sm"
-      onClick={onClose}
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabel="Motor analizi"
+      size="max-w-5xl"
+      padded={false}
+      className="max-h-[92vh]"
     >
-      <div
-        className="w-full max-w-5xl max-h-[92vh] overflow-y-auto glass-panel border border-border-medium rounded-2xl p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-micro text-text-muted uppercase font-medium mb-1">
-              Motor Analizi
-            </p>
-            <h3 className="text-lg font-display text-text-primary">{engine.label}</h3>
-          </div>
-          <button onClick={onClose} className="text-text-muted hover:text-text-primary p-1">
-            <X className="w-5 h-5" />
-          </button>
+      {/* Başlık şeridi — shrink-0: gövde kayarken motor kimliği sabit kalır */}
+      <div className="flex items-start justify-between gap-3 px-6 pt-6 pb-4 shrink-0">
+        <div>
+          <p className="text-micro text-text-muted uppercase font-medium mb-1">
+            Motor Analizi
+          </p>
+          <h3 className="text-lg font-display text-text-primary">{engine.label}</h3>
         </div>
+        <button onClick={onClose} aria-label="Kapat" className="text-text-muted hover:text-text-primary p-1">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
 
+      {/* Gövde — kısa viewport'ta iç scroll (min-h-0: flex-col içinde küçülebilsin) */}
+      <div className="grow min-h-0 overflow-y-auto px-6 pb-6 space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-bg-secondary/60 rounded-xl p-3 border border-border-subtle text-center">
             <p className="text-micro text-text-muted uppercase font-medium mb-1">Skor</p>
@@ -272,7 +285,7 @@ function EngineDetailModal({ engine, symbol, timeframe, onClose }: {
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
