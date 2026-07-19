@@ -562,7 +562,7 @@ function SignalDetailBody({ sig, onClose }: { sig: ApiSignal; onClose?: () => vo
               key={t.id}
               onClick={() => setTab(t.id)}
               className={cn(
-                'px-3 py-1.5 text-xs font-display rounded-lg transition-all',
+                'px-3 py-1.5 text-xs font-display rounded-lg transition-colors',
                 tab === t.id
                   ? 'bg-accent-primary text-white'
                   : 'text-text-muted hover:text-text-primary'
@@ -1027,7 +1027,7 @@ export default function SignalsPage() {
             <button
               onClick={generateAll}
               disabled={generating || refreshing}
-              className="flex items-center gap-1.5 text-xs font-display text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs font-display text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-1.5 rounded-lg transition-[color,border-color,opacity] disabled:opacity-50"
             >
               <Zap className="w-3.5 h-3.5" />
               {generating ? 'Üretiliyor...' : 'Sinyal Üret'}
@@ -1091,7 +1091,7 @@ export default function SignalsPage() {
               key={tf}
               onClick={() => setTfFilter(tf)}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 text-xs font-display rounded-lg transition-all',
+                'flex items-center gap-1.5 px-3 py-1.5 text-xs font-display rounded-lg transition-colors',
                 tfFilter === tf
                   ? 'bg-accent-primary text-white'
                   : 'text-text-muted hover:text-text-primary'
