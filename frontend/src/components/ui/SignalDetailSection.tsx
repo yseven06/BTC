@@ -140,7 +140,7 @@ function EngineCard({ engine, onClick, compact }: {
       title={`${engine.label} — Detayları görmek için tıkla`}
       className={cn(
         'group relative bg-bg-secondary/40 rounded-card',
-        'border transition-all duration-[var(--dur-state)]',
+        'border transition-[background-color,border-color,translate] duration-[var(--dur-state)]',
         'hover:bg-bg-secondary/60 hover:-translate-y-0.5',
         biasConfig.border,
         'text-left w-full',
@@ -673,7 +673,7 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  'font-display whitespace-nowrap transition-all',
+                  'font-display whitespace-nowrap transition-[background-color,color,border-radius]',
                   compact ? 'px-2.5 py-2 text-micro' : 'px-4 py-2.5 text-xs',
                   activeTab === tab.key
                     ? 'bg-accent-primary text-white rounded-t-lg'
