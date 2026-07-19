@@ -45,14 +45,23 @@ export default function MainLayout({ children, fullWidth = false }: MainLayoutPr
         onMobileClose={() => setMobileOpen(false)}
       />
 
-      {/* Mobile drawer backdrop */}
-      {mobileOpen && (
-        <div
-          className="lg:hidden fixed inset-0 z-30 bg-e-0/60 backdrop-blur-sm"
-          onClick={() => setMobileOpen(false)}
-          aria-hidden
-        />
-      )}
+      {/* Mobile drawer backdrop — S1d2: koşullu mount KALDIRILDI. Panel (Sidebar)
+          transform ile 180ms kayarken scrim eskiden anında belirip anında yok
+          oluyordu (iki yönde de desenkron, Doctrine §simetri ihlali). Artık scrim
+          sürekli render edilir ve panelin BİREBİR aynı süre/easing'iyle
+          (--dur-state + ease-signal) opaklık geçişi yapar → ikisi aynı anda
+          başlar, aynı anda biter. Kapalıyken pointer-events-none (görünmez ama
+          tıklanabilir yüzey BIRAKILMAZ); lg+ da display:none (lg:hidden).
+          Scrim yoğunluğu kanonik Modal reçetesine hizalandı (/60 → /70). */}
+      <div
+        className={cn(
+          "lg:hidden fixed inset-0 z-30 bg-e-0/70 backdrop-blur-sm",
+          "transition-opacity duration-[var(--dur-state)] ease-signal",
+          mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        )}
+        onClick={() => setMobileOpen(false)}
+        aria-hidden
+      />
 
       {/* Main Right Area — no left padding on mobile (drawer overlays), padded for
           the fixed rail on desktop. */}
