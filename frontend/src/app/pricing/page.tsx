@@ -308,7 +308,7 @@ export default function PricingPage() {
                   onClick={() => subscribe(plan.tier)}
                   disabled={isCurrent || plan.tier === 'free' || processing !== null || !PAYMENTS_ENABLED}
                   className={cn(
-                    'w-full py-2.5 rounded-xl text-sm font-display transition-all disabled:opacity-50',
+                    'w-full py-2.5 rounded-xl text-sm font-display transition-[color,background-color,border-color,opacity] disabled:opacity-50',
                     isCurrent
                       ? 'bg-bg-tertiary text-text-muted cursor-default'
                       : plan.tier === 'free' || !PAYMENTS_ENABLED
