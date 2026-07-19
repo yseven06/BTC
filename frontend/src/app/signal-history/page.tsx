@@ -11,6 +11,7 @@ import {
   BarChart, Bar, XAxis, YAxis, AreaChart, Area,
 } from 'recharts';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import { ClosedSignalChartModal } from '@/components/ui/ClosedSignalChartModal';
 import { cn, formatAbsoluteTimeTR, formatPercentage, formatNumber } from '@/lib/utils';
@@ -239,9 +240,73 @@ export default function SignalHistoryPage() {
       <InvestmentDisclaimer variant="backtest" />
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center p-20 space-y-4">
-          <div className="w-10 h-10 border-4 border-accent-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-text-secondary">Yükleniyor...</p>
+        <div role="status" aria-busy="true">
+          <span className="sr-only">Yükleniyor</span>
+          <div className="space-y-6" aria-hidden="true">
+            {/* Summary stat cards — mirrors loaded grid-cols-2/md:4/lg:7 (7 GlassCard shells) */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <GlassCard key={i}>
+                  <div>
+                    <Skeleton className="h-3 w-4/5" />
+                    <Skeleton className="h-8 w-1/2 mt-1" />
+                  </div>
+                </GlassCard>
+              ))}
+              {/* 7th "En İyi / En Kötü" — label + two short value bars */}
+              <GlassCard>
+                <div>
+                  <Skeleton className="h-3 w-4/5" />
+                  <div className="mt-1 space-y-1">
+                    <Skeleton className="h-3 w-3/5" />
+                    <Skeleton className="h-3 w-2/5" />
+                  </div>
+                </div>
+              </GlassCard>
+            </div>
+
+            {/* Filters toolbar — single GlassCard shell + inner flex-wrap group (~2 rows on mobile) */}
+            <GlassCard>
+              <div className="flex flex-wrap items-center gap-3">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-8 w-36" />
+                <Skeleton className="h-8 w-52" />
+                <div className="flex items-center gap-2 ml-auto">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-1.5 w-24" />
+                  <Skeleton className="h-4 w-9" />
+                </div>
+              </div>
+            </GlassCard>
+
+            {/* Charts — 3 flat area reservations (NO fake chart marks); h-56 == loaded Recharts host */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <GlassCard key={i}>
+                  <div>
+                    <Skeleton className="h-4 w-40 mb-3" />
+                    <Skeleton className="h-56 w-full" />
+                  </div>
+                </GlassCard>
+              ))}
+            </div>
+
+            {/* Closed signals table — NON-table area reservation: header bar + 6 generic full-width rows */}
+            <GlassCard className="overflow-hidden">
+              <div className="px-5 py-3 border-b border-border-subtle bg-bg-secondary/30">
+                <Skeleton className="h-4 w-48" />
+              </div>
+              <div className="divide-y divide-border-subtle/60">
+                {['w-full', 'w-11/12', 'w-full', 'w-5/6', 'w-full', 'w-11/12'].map((w, i) => (
+                  <div key={i} className="px-4 py-3">
+                    <Skeleton className={cn('h-4', w)} />
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+          </div>
         </div>
       ) : loadError ? (
         <GlassCard className="flex flex-col items-center justify-center p-20 text-center">
