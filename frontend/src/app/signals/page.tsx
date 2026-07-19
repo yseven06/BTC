@@ -686,7 +686,7 @@ function SignalDetailBody({ sig, onClose }: { sig: ApiSignal; onClose?: () => vo
                     </div>
                     {/* Score bar */}
                     <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden mb-2">
-                      <div className={cn('h-full transition-all', scoreColor(e.score))} style={{ width: `${e.score}%` }} />
+                      <div className={cn('h-full transition-[width,background-color]', scoreColor(e.score))} style={{ width: `${e.score}%` }} />
                     </div>
                     {e.findings.length > 0 && (
                       <ul className="space-y-0.5">
