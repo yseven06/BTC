@@ -159,7 +159,7 @@ export default function SymbolAnalysisPage() {
               key={s}
               onClick={() => setSort(s)}
               className={cn(
-                'px-3 py-1 text-xs font-display rounded-lg transition-all',
+                'px-3 py-1 text-xs font-display rounded-lg transition-colors',
                 sort === s ? 'bg-accent-primary text-white' : 'text-text-muted hover:text-text-primary'
               )}
             >

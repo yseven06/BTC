@@ -224,7 +224,7 @@ export default function PricingPage() {
               key={c}
               onClick={() => setCycle(c)}
               className={cn(
-                'px-4 py-2 text-sm font-display rounded-lg transition-all',
+                'px-4 py-2 text-sm font-display rounded-lg transition-colors',
                 cycle === c ? 'bg-accent-primary text-white' : 'text-text-muted hover:text-text-primary'
               )}
             >

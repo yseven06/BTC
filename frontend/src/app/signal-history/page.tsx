@@ -340,7 +340,7 @@ export default function SignalHistoryPage() {
             <div className="flex bg-bg-secondary border border-border-subtle rounded-lg p-0.5">
               {TIME_PERIODS.map((p) => (
                 <button key={p.id} onClick={() => { setPeriod(p.id); setPage(1); }}
-                  className={cn('px-3 py-1 text-xs font-display rounded-md transition-all',
+                  className={cn('px-3 py-1 text-xs font-display rounded-md transition-colors',
                     period === p.id ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary')}>
                   {p.label}
                 </button>
