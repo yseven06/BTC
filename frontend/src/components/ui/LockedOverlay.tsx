@@ -17,7 +17,7 @@ export function LockedOverlay({
   className,
 }: LockedOverlayProps) {
   return (
-    <div className={`absolute inset-0 flex flex-col items-center justify-center bg-bg-primary/85 backdrop-blur-md rounded-2xl z-20 p-6 text-center ${className ?? ''}`}>
+    <div className={`absolute inset-0 flex flex-col items-center justify-center bg-bg-primary/85 backdrop-blur-md rounded-panel z-20 p-6 text-center ${className ?? ''}`}>
       <div className="w-12 h-12 rounded-full bg-amber/15 border border-amber/30 flex items-center justify-center mb-3">
         <Lock className="w-5 h-5 text-amber" />
       </div>
