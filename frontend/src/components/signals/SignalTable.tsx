@@ -291,7 +291,7 @@ export function SignalTableRow({
       <div>
         <button
           onClick={() => onSelect(sig)}
-          className="flex items-center gap-1 text-micro font-medium text-text-secondary hover:text-accent-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1 rounded-lg transition-all"
+          className="flex items-center gap-1 text-micro font-medium text-text-secondary hover:text-accent-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1 rounded-lg transition-colors"
         >
           <Eye className="w-3 h-3" /> Analiz
         </button>
@@ -381,7 +381,7 @@ export function SignalCardRow({
         </div>
         <button
           onClick={() => onSelect(sig)}
-          className="flex items-center justify-center gap-1 min-h-[44px] px-3 text-micro font-medium text-text-secondary hover:text-accent-primary border border-border-subtle hover:border-accent-primary/40 rounded-lg transition-all flex-shrink-0"
+          className="flex items-center justify-center gap-1 min-h-[44px] px-3 text-micro font-medium text-text-secondary hover:text-accent-primary border border-border-subtle hover:border-accent-primary/40 rounded-lg transition-colors flex-shrink-0"
         >
           <Eye className="w-3 h-3" /> Analiz
         </button>

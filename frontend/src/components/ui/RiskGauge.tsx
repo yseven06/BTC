@@ -57,7 +57,7 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
             <div
               key={idx}
               className={clsx(
-                "w-full rounded-sm transition-all duration-[var(--dur-settle)]",
+                "w-full rounded-sm transition-colors duration-[var(--dur-settle)]",
                 idx === 0 && "h-2",
                 idx === 1 && "h-3",
                 idx === 2 && "h-4",
