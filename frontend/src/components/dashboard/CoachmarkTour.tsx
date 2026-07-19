@@ -75,7 +75,7 @@ export default function CoachmarkTour() {
       {/* Spotlight (also dims everything else via large box-shadow) */}
       {rect && (
         <div
-          className="absolute rounded-xl pointer-events-none transition-all duration-[var(--dur-state)]"
+          className="absolute rounded-xl pointer-events-none transition-[top,left,width,height] duration-[var(--dur-state)]"
           style={{
             top: rect.top - pad,
             left: rect.left - pad,
