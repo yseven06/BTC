@@ -223,7 +223,7 @@ export default function DashboardPage() {
       {isFreeTier && PAYMENTS_ENABLED && (
         <Link
           href="/pricing"
-          className="block bg-gradient-to-r from-amber/15 via-accent-primary/15 to-amber/15 border border-amber/30 rounded-2xl p-4 hover:border-amber/50 transition-all"
+          className="block bg-gradient-to-r from-amber/15 via-accent-primary/15 to-amber/15 border border-amber/30 rounded-2xl p-4 hover:border-amber/50 transition-colors"
         >
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -261,7 +261,7 @@ export default function DashboardPage() {
               <button
                 key={r}
                 onClick={() => setTimeRange(r)}
-                className={`px-3 py-1 text-xs font-display rounded-md transition-all ${
+                className={`px-3 py-1 text-xs font-display rounded-md transition-colors ${
                   timeRange === r ? 'bg-bg-tertiary text-text-primary' : 'text-text-muted hover:text-text-primary'
                 }`}
               >

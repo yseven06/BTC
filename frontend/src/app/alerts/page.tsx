@@ -141,7 +141,7 @@ export default function AlertsPage() {
           <p className="text-sm text-text-secondary mt-1">Fiyat, sinyal ve özel koşul alarmları</p>
         </div>
         <button onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-1.5 text-xs font-display text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-2 rounded-lg transition-all">
+          className="flex items-center gap-1.5 text-xs font-display text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-3 py-2 rounded-lg transition-colors">
           <Plus className="w-3.5 h-3.5" /> Yeni Alarm
         </button>
       </div>
@@ -180,7 +180,7 @@ export default function AlertsPage() {
                   { id: 'custom', label: 'Özel (İndikatör)' },
                 ] as { id: AlertType; label: string }[]).map((t) => (
                   <button key={t.id} onClick={() => setAlertType(t.id)}
-                    className={cn('px-3 py-1.5 text-xs font-display rounded-lg transition-all',
+                    className={cn('px-3 py-1.5 text-xs font-display rounded-lg transition-colors',
                       alertType === t.id ? 'bg-accent-primary text-white' : 'text-text-muted hover:text-text-primary')}>
                     {t.label}
                   </button>
@@ -210,7 +210,7 @@ export default function AlertsPage() {
                     {SIGNAL_TYPE_OPTIONS.map((st) => (
                       <button key={st}
                         onClick={() => setSignalTypes((prev) => prev.includes(st) ? prev.filter((x) => x !== st) : [...prev, st])}
-                        className={cn('px-2.5 py-1.5 text-micro font-medium uppercase rounded-lg border transition-all',
+                        className={cn('px-2.5 py-1.5 text-micro font-medium uppercase rounded-lg border transition-colors',
                           signalTypes.includes(st) ? 'bg-accent-primary/15 text-accent-primary border-accent-primary/40' : 'bg-bg-secondary text-text-muted border-border-subtle')}>
                         {st.replace('_', ' ')}
                       </button>
