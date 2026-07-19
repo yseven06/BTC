@@ -190,7 +190,7 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => setAvatarUrl(preset.url)}
-                    className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
+                    className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-[border-color,scale] ${
                       avatarUrl === preset.url
                         ? 'border-accent-primary scale-95'
                         : 'border-border-subtle hover:border-border-medium'
