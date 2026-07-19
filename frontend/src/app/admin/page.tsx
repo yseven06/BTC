@@ -104,7 +104,7 @@ export default function AdminPage() {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={cn(
-              'flex items-center gap-1.5 px-3.5 py-2 text-xs font-display rounded-lg transition-all whitespace-nowrap',
+              'flex items-center gap-1.5 px-3.5 py-2 text-xs font-display rounded-lg transition-colors whitespace-nowrap',
               tab === t.id ? 'bg-accent-primary text-white' : 'text-text-muted hover:text-text-primary'
             )}
           >
@@ -545,7 +545,7 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             className="w-full pl-9 pr-4 py-2 text-sm bg-bg-secondary border border-border-subtle rounded-xl text-text-primary outline-none focus:border-accent-primary/40" />
         </div>
         <button onClick={() => setOnlyActive(!onlyActive)}
-          className={cn('px-3 py-2 text-xs font-display rounded-xl border transition-all',
+          className={cn('px-3 py-2 text-xs font-display rounded-xl border transition-colors',
             onlyActive ? 'bg-bullish/15 text-bullish border-bullish/30' : 'bg-bg-secondary text-text-muted border-border-subtle')}>
           {onlyActive ? '✓ SADECE AKTİF' : 'TÜMÜ'}
         </button>
@@ -810,7 +810,7 @@ function SystemTab() {
               <span className="font-mono text-text-muted">{j.last_run_at ? formatAbsoluteTimeTR(j.last_run_at) : '—'}</span>
               <span className="text-bearish truncate" title={j.last_error ?? ''}>{j.last_error ?? '—'}</span>
               <button onClick={() => trigger(jobId)} disabled={triggering === jobId || j.running}
-                className="flex items-center gap-1 text-micro font-medium text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-2.5 py-1 rounded-lg transition-all disabled:opacity-50">
+                className="flex items-center gap-1 text-micro font-medium text-accent-primary hover:text-accent-ui border border-accent-primary/30 hover:border-accent-primary/60 px-2.5 py-1 rounded-lg transition-[color,border-color,opacity] disabled:opacity-50">
                 <Play className="w-3 h-3" /> {triggering === jobId ? 'Tetiklendi' : 'Şimdi Çalıştır'}
               </button>
             </div>
