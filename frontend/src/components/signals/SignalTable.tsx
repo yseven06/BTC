@@ -123,7 +123,7 @@ export function QualityBar({ score }: { score: number }) {
     <div className="flex items-center gap-2">
       <div className="w-20 h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
         <div
-          className={cn('h-full rounded-full transition-all', qualityColor(score))}
+          className={cn('h-full rounded-full transition-[width,background-color]', qualityColor(score))}
           style={{ width: `${score * 10}%` }}
         />
       </div>
