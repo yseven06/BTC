@@ -141,7 +141,7 @@ function DirectionBreakdown({ data }: { data: DirectionData[] }) {
           </div>
           <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
             <div
-              className={cn('h-full rounded-full transition-all', colors[d.direction])}
+              className={cn('h-full rounded-full transition-[width]', colors[d.direction])}
               style={{ width: total > 0 ? `${d.total / total * 100}%` : '0%', opacity: 0.7 }}
             />
           </div>
