@@ -65,11 +65,13 @@ const config: Config = {
         display: '650',
         'num-480': '480', 'num-520': '520', 'num-560': '560',
       },
+      // S2a: giriş easing'i owned --ease-signal'a hizalandı (ham `ease-out` →
+      // var(--ease-signal)). Süre/keyframe/fill-mode DEĞİŞMEDİ; yalnız timing-function.
       animation: {
-        'slide-up': 'slideUp var(--dur-overlay) ease-out',
-        'slide-down': 'slideDown var(--dur-overlay) ease-out',
-        'fade-in': 'fadeIn var(--dur-overlay) ease-out',
-        'scale-in': 'scaleIn var(--dur-state) ease-out',
+        'slide-up': 'slideUp var(--dur-overlay) var(--ease-signal)',
+        'slide-down': 'slideDown var(--dur-overlay) var(--ease-signal)',
+        'fade-in': 'fadeIn var(--dur-overlay) var(--ease-signal)',
+        'scale-in': 'scaleIn var(--dur-state) var(--ease-signal)',
       },
       keyframes: {
         slideUp: {

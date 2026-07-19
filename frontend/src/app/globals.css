@@ -373,20 +373,25 @@
    Animation Utilities
    ============================================ */
 @layer components {
+  /* S2a: giriş easing'i owned --ease-signal'a hizalandı (ham `ease-out` →
+     var(--ease-signal)). Süre, keyframe geometrisi ve `forwards` fill-mode
+     DEĞİŞMEDİ — yalnız timing-function. Kaynak-sahipliği (bu sınıfların bir
+     kısmı tailwind, bir kısmı buradan çözülüyor) bilinçli olarak S2d'ye
+     bırakıldı; bu yüzden easing İKİ dosyada da hizalandı. */
   .animate-in {
-    animation: fadeIn var(--dur-overlay) ease-out forwards;
+    animation: fadeIn var(--dur-overlay) var(--ease-signal) forwards;
   }
 
   .animate-slide-up {
-    animation: slideUp var(--dur-overlay) ease-out forwards;
+    animation: slideUp var(--dur-overlay) var(--ease-signal) forwards;
   }
 
   .animate-slide-down {
-    animation: slideDown var(--dur-overlay) ease-out forwards;
+    animation: slideDown var(--dur-overlay) var(--ease-signal) forwards;
   }
 
   .animate-scale-in {
-    animation: scaleIn var(--dur-state) ease-out forwards;
+    animation: scaleIn var(--dur-state) var(--ease-signal) forwards;
   }
 
   /* Route ışık-devri (P6/M12, Bible §06 MO-08): navigasyonda gelen app-route
