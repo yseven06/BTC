@@ -81,7 +81,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
           <div
             className={cn(
               'relative flex items-center gap-2 rounded-xl px-4 py-2',
-              'bg-bg-primary/60 border transition-all duration-[var(--dur-state)]',
+              'bg-bg-primary/60 border transition-[border-color] duration-[var(--dur-state)]',
               searchFocused
                 ? 'border-accent-primary/40'
                 : 'border-border-subtle hover:border-border-medium'
@@ -141,7 +141,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
                 className={cn(
                   'relative p-2 rounded-lg',
                   'text-text-secondary hover:text-text-primary',
-                  'hover:bg-e-2 transition-all duration-[var(--dur-state)] focus-ring',
+                  'hover:bg-e-2 transition-[background-color,color] duration-[var(--dur-state)] focus-ring',
                   showNotifications && 'bg-white/[0.04] text-text-primary'
                 )}
               >
@@ -219,7 +219,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu?: () => void }) 
               }}
               className={cn(
                 'flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl',
-                'hover:bg-e-2 transition-all duration-[var(--dur-state)] focus-ring',
+                'hover:bg-e-2 transition-[background-color] duration-[var(--dur-state)] focus-ring',
                 showUserMenu && 'bg-white/[0.04]'
               )}
             >
