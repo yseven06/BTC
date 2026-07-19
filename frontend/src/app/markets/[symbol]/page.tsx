@@ -401,7 +401,7 @@ export default function AssetDetailPage() {
             <button
               onClick={() => setChartMode('overlay')}
               className={cn(
-                'px-3 py-1 text-xs font-display rounded-md transition-all',
+                'px-3 py-1 text-xs font-display rounded-md transition-colors',
                 chartMode === 'overlay'
                   ? 'bg-accent-primary text-white'
                   : 'text-text-muted hover:text-text-primary'
@@ -412,7 +412,7 @@ export default function AssetDetailPage() {
             <button
               onClick={() => setChartMode('tradingview')}
               className={cn(
-                'px-3 py-1 text-xs font-display rounded-md transition-all',
+                'px-3 py-1 text-xs font-display rounded-md transition-colors',
                 chartMode === 'tradingview'
                   ? 'bg-accent-primary text-white'
                   : 'text-text-muted hover:text-text-primary'
@@ -430,7 +430,7 @@ export default function AssetDetailPage() {
                   key={tf}
                   onClick={() => setManualTf(tf)}
                   className={cn(
-                    'px-2.5 py-1 text-micro font-medium uppercase rounded-md transition-all',
+                    'px-2.5 py-1 text-micro font-medium uppercase rounded-md transition-colors',
                     chartTimeframe === tf
                       ? 'bg-accent-primary text-white'
                       : 'text-text-muted hover:text-text-primary'
@@ -458,14 +458,14 @@ export default function AssetDetailPage() {
             <button
               onClick={toggleFullscreen}
               title={manualFullscreen ? 'Tam ekrandan çık (Esc)' : 'Grafiği tam ekran göster'}
-              className="flex items-center gap-1.5 text-micro font-medium text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-all"
+              className="flex items-center gap-1.5 text-micro font-medium text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-colors"
             >
               {manualFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
             </button>
             <button
               onClick={openInTradingView}
               title="Gerçek TradingView'da bu sembolü aç"
-              className="flex items-center gap-1.5 text-micro font-medium text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-all"
+              className="flex items-center gap-1.5 text-micro font-medium text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" /> TradingView'da Aç
             </button>
@@ -473,7 +473,7 @@ export default function AssetDetailPage() {
               <button
                 onClick={copyPineScript}
                 title="Giriş/SL/TP seviyelerini TradingView'a yapıştırmak için Pine Script kopyala"
-                className="flex items-center gap-1.5 text-micro font-medium text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-all"
+                className="flex items-center gap-1.5 text-micro font-medium text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-colors"
               >
                 {pineCopied ? <Check className="w-3.5 h-3.5 text-bullish" /> : <Code2 className="w-3.5 h-3.5" />}
                 {pineCopied ? 'Kopyalandı!' : 'Pine Script Kopyala'}
@@ -485,7 +485,7 @@ export default function AssetDetailPage() {
                   type="button"
                   onClick={() => setShowPineHint((v) => !v)}
                   onBlur={() => setTimeout(() => setShowPineHint(false), 150)}
-                  className="flex items-center justify-center w-6 h-6 rounded-full text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 transition-all"
+                  className="flex items-center justify-center w-6 h-6 rounded-full text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 transition-colors"
                 >
                   <HelpCircle className="w-3.5 h-3.5" />
                 </button>

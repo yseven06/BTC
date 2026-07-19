@@ -72,7 +72,7 @@ export default function MarketsPage() {
                 key={c.id}
                 onClick={() => setCategory(c.id)}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 text-xs font-display rounded-lg transition-all',
+                  'flex items-center gap-1.5 px-3 py-1.5 text-xs font-display rounded-lg transition-colors',
                   category === c.id
                     ? 'bg-accent-primary text-white'
                     : 'text-text-muted hover:text-text-primary'
