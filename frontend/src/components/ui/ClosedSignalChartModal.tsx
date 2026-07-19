@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
 import { TradingChart, type ChartCandle } from '@/components/charts/TradingChart';
 import { fetchOhlcv, type ApiSignal } from '@/lib/api';
 import { formatAbsoluteTimeTR, cn, formatPercentage } from '@/lib/utils';
@@ -60,35 +61,43 @@ export function ClosedSignalChartModal({ signal, onClose }: Props) {
   const generatedAtSec = Math.floor(new Date(signal.generated_at).getTime() / 1000);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-e-0/70 backdrop-blur-sm p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-4xl max-h-[90vh] overflow-y-auto glass-panel border border-border-medium rounded-2xl p-5 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center overflow-hidden flex-shrink-0">
-              <CoinIcon symbol={signal.asset?.symbol ?? ''} assetType={signal.asset?.asset_type} />
-            </div>
-            <div>
-              <p className="text-sm font-display text-text-primary">
-                {signal.asset?.symbol} · {signal.timeframe.toUpperCase()}
-              </p>
-              <p className={cn('text-xs font-display', OUTCOME_COLOR[signal.outcome ?? ''] ?? 'text-text-muted')}>
-                {OUTCOME_LABEL[signal.outcome ?? ''] ?? signal.outcome}
-                {signal.actual_return != null && ` · ${formatPercentage(signal.actual_return)}`}
-                {signal.closed_at && ` · ${formatAbsoluteTimeTR(signal.closed_at)}`}
-              </p>
-            </div>
+    // S1c2 — ad-hoc kabuk (fixed inset-0 + ham z-50 + elle scrim + onClick/
+    // stopPropagation backdrop + glass-panel kutu) kanonik <Modal>'a devredildi:
+    // portal, role=dialog + aria-modal + ariaLabel, panel-kapsamlı focus-trap ve
+    // odak-iadesi, ESC, gövde scroll-kilidi, E3 materyal (S1a) ve z-modal artık
+    // tek-kaynaktan gelir. KRİTİK KAZANIM: kanonik backdrop DRAG-SAFE (mousedown
+    // izlemeli) — grafik üzerinde sürükleyip imleci backdrop'ta bırakınca modal
+    // ARTIK KAPANMIYOR (eski kabuğun gerçek bug'ıydı).
+    // padded={false}: zengin iki-satırlı başlık (ikon + sembol·TF + outcome) ve
+    // mevcut ✕ AYNEN korunur. Bu modda Modal kendi başlık şeridini/✕'ini hiç
+    // render etmez → çift ✕ oluşmaz (showClose'a gerek yok).
+    // Not (CP-MODAL-PRESENCE): çağrı yeri koşullu mount ettiği için çıkış
+    // animasyonu oynamaz — bilinen ortak borç; bu CP'de çözülmez.
+    <Modal open onClose={onClose} ariaLabel="Kapanmış sinyal grafiği" size="max-w-4xl" padded={false}>
+      {/* Başlık şeridi — shrink-0: gövde kayarken kimlik/outcome sabit kalır */}
+      <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center overflow-hidden flex-shrink-0">
+            <CoinIcon symbol={signal.asset?.symbol ?? ''} assetType={signal.asset?.asset_type} />
           </div>
-          <button onClick={onClose} className="text-text-muted hover:text-text-primary flex-shrink-0">
-            <X className="w-5 h-5" />
-          </button>
+          <div>
+            <p className="text-sm font-display text-text-primary">
+              {signal.asset?.symbol} · {signal.timeframe.toUpperCase()}
+            </p>
+            <p className={cn('text-xs font-display', OUTCOME_COLOR[signal.outcome ?? ''] ?? 'text-text-muted')}>
+              {OUTCOME_LABEL[signal.outcome ?? ''] ?? signal.outcome}
+              {signal.actual_return != null && ` · ${formatPercentage(signal.actual_return)}`}
+              {signal.closed_at && ` · ${formatAbsoluteTimeTR(signal.closed_at)}`}
+            </p>
+          </div>
         </div>
+        <button onClick={onClose} aria-label="Kapat" className="text-text-muted hover:text-text-primary flex-shrink-0">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
 
+      {/* Gövde — kısa viewport'ta iç scroll (min-h-0: flex-col içinde küçülebilsin) */}
+      <div className="grow min-h-0 overflow-y-auto px-5 pb-5 space-y-4">
         {error && (
           <p className="text-sm text-text-muted text-center py-12">Grafik yüklenemedi.</p>
         )}
@@ -117,6 +126,6 @@ export function ClosedSignalChartModal({ signal, onClose }: Props) {
           <p className="text-sm text-text-muted text-center py-12">Bu tarih aralığı için veri bulunamadı.</p>
         )}
       </div>
-    </div>
+    </Modal>
   );
 }
