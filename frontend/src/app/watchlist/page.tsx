@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Star, Plus, Trash2, Search, X, TrendingUp, TrendingDown } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useToast } from '@/components/ui/Toast';
 import { cn, formatPrice, formatPercentage } from '@/lib/utils';
@@ -134,7 +135,23 @@ export default function WatchlistPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><div className="w-7 h-7 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" /></div>
+        // PI-1e/S2c-a: sürekli-dönen spinner → içerik-şekilli statik iskelet (Skeleton
+        // primitive; shimmer/pulse YOK, reduced-motion nötr). Loaded geometri: liste
+        // seçici satırı + varlık satırları. Tek role=status kapsayıcı; parçalar aria-hidden.
+        <div role="status" aria-busy="true" className="space-y-6">
+          <span className="sr-only">Yükleniyor</span>
+          <div className="flex items-center gap-2 flex-wrap" aria-hidden="true">
+            <Skeleton className="h-9 w-24 rounded-xl" />
+            <Skeleton className="h-9 w-20 rounded-xl" />
+            <Skeleton className="h-9 w-36 rounded-xl" />
+            <Skeleton className="h-9 w-9 rounded-xl" />
+          </div>
+          <div className="space-y-2" aria-hidden="true">
+            <Skeleton className="h-16 rounded-xl" />
+            <Skeleton className="h-16 rounded-xl" />
+            <Skeleton className="h-16 rounded-xl" />
+          </div>
+        </div>
       ) : (
         <>
           {/* List selector */}

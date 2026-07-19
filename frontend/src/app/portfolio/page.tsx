@@ -5,6 +5,7 @@ import {
   PieChart, Plus, Trash2, Search, X, TrendingUp, TrendingDown, Wallet, Share2, LogOut,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCardModal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -204,7 +205,29 @@ export default function PortfolioPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><div className="w-7 h-7 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" /></div>
+        // PI-1e/S2c-a: sürekli-dönen spinner → içerik-şekilli statik iskelet. Loaded
+        // geometri: portföy seçici + 4'lü özet grid + pozisyon satırları. Tek role=status.
+        <div role="status" aria-busy="true" className="space-y-6">
+          <span className="sr-only">Yükleniyor</span>
+          <div className="flex items-center gap-2 flex-wrap" aria-hidden="true">
+            <Skeleton className="h-9 w-24 rounded-xl" />
+            <Skeleton className="h-9 w-20 rounded-xl" />
+            <Skeleton className="h-9 w-32 rounded-xl" />
+            <Skeleton className="h-9 w-36 rounded-xl" />
+            <Skeleton className="h-9 w-9 rounded-xl" />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4" aria-hidden="true">
+            <Skeleton className="h-20 rounded-xl" />
+            <Skeleton className="h-20 rounded-xl" />
+            <Skeleton className="h-20 rounded-xl" />
+            <Skeleton className="h-20 rounded-xl" />
+          </div>
+          <div className="space-y-2" aria-hidden="true">
+            <Skeleton className="h-14 rounded-xl" />
+            <Skeleton className="h-14 rounded-xl" />
+            <Skeleton className="h-14 rounded-xl" />
+          </div>
+        </div>
       ) : (
         <>
           {/* Portfolio selector */}
@@ -245,7 +268,26 @@ export default function PortfolioPage() {
               <p className="text-xs text-text-muted max-w-sm">Yukarıdan bir isim ve başlangıç bakiyesi gir, ardından pozisyon ekle.</p>
             </GlassCard>
           ) : loadingActive || !active ? (
-            <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" /></div>
+            // PI-1e/S2c-a: aktif-portföy içeriği yüklenirken (seçici zaten üstte) —
+            // özet grid + "Açık Pozisyonlar" başlığı + pozisyon satırı iskeleti.
+            <div role="status" aria-busy="true" className="space-y-6">
+              <span className="sr-only">Yükleniyor</span>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4" aria-hidden="true">
+                <Skeleton className="h-20 rounded-xl" />
+                <Skeleton className="h-20 rounded-xl" />
+                <Skeleton className="h-20 rounded-xl" />
+                <Skeleton className="h-20 rounded-xl" />
+              </div>
+              <div className="flex items-center justify-between" aria-hidden="true">
+                <Skeleton className="h-6 w-32 rounded-md" />
+                <Skeleton className="h-7 w-40 rounded-md" />
+              </div>
+              <div className="space-y-2" aria-hidden="true">
+                <Skeleton className="h-14 rounded-xl" />
+                <Skeleton className="h-14 rounded-xl" />
+                <Skeleton className="h-14 rounded-xl" />
+              </div>
+            </div>
           ) : (
             <>
               {/* Summary */}
