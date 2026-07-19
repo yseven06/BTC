@@ -52,7 +52,7 @@ function HourHeatmap({ data }: { data: HourData[] }) {
           <div
             key={h.hour}
             className={cn(
-              'relative flex flex-col items-center justify-center rounded-lg cursor-default transition-all',
+              'relative flex flex-col items-center justify-center rounded-lg cursor-default transition-[box-shadow,scale]',
               'w-10 h-10 border border-border-subtle',
               heatColor(h.win_rate, h.total),
               hovered?.hour === h.hour && 'ring-1 ring-accent-primary scale-110'
@@ -106,7 +106,7 @@ function DayHeatmap({ data }: { data: DayData[] }) {
     <div className="grid grid-cols-7 gap-2">
       {data.map((d) => (
         <div key={d.day} className={cn(
-          'flex flex-col items-center gap-1 p-3 rounded-xl border border-border-subtle transition-all hover:scale-105',
+          'flex flex-col items-center gap-1 p-3 rounded-xl border border-border-subtle transition-[scale] hover:scale-105',
           heatColor(d.win_rate, d.total)
         )}>
           <span className="text-micro font-medium text-text-muted">{dayAbbr(d.label)}</span>
