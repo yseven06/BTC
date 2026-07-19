@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, TrendingDown, Search } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { LockedOverlay } from '@/components/ui/LockedOverlay';
@@ -179,8 +180,41 @@ export default function SymbolAnalysisPage() {
         </div>
 
         {loading && (
-          <div className="flex justify-center py-16">
-            <div className="w-7 h-7 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+          <div role="status" aria-busy="true">
+            <span className="sr-only">Yükleniyor...</span>
+            <div className="divide-y divide-border-subtle" aria-hidden="true">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="grid grid-cols-[2fr_1fr_1.5fr_1.5fr_1.5fr_1.5fr] gap-4 items-center px-5 py-4"
+                >
+                  {/* Sembol */}
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-9 w-9 rounded-xl flex-shrink-0" />
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-4 w-16 rounded-md" />
+                      <Skeleton className="h-3 w-24 rounded-md" />
+                    </div>
+                  </div>
+                  {/* Toplam */}
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-10 rounded-md" />
+                    <Skeleton className="h-3 w-16 rounded-md" />
+                  </div>
+                  {/* Kalite */}
+                  <Skeleton className="h-1.5 w-16 rounded-full" />
+                  {/* Kazanma oranı */}
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-12 rounded-md" />
+                    <Skeleton className="h-3 w-20 rounded-md" />
+                  </div>
+                  {/* HTF tipi */}
+                  <Skeleton className="h-4 w-14 rounded-md" />
+                  {/* Yön dağılımı */}
+                  <Skeleton className="h-4 w-14 rounded-md" />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

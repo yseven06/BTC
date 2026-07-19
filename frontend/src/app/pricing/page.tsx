@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, X, Crown, Zap, Sparkles } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Skeleton } from '@/components/ui/Skeleton';
 import {
   fetchPlans, fetchMySubscription, startCheckout, cancelSubscription, recordCheckoutConsent,
   type Plan, type BillingCycle, type PlanPricing, type SubscriptionTier,
@@ -236,8 +237,38 @@ export default function PricingPage() {
 
       {/* Plans */}
       {loading ? (
-        <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+        <div role="status" aria-busy="true">
+          <span className="sr-only">Yükleniyor...</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5" aria-hidden="true">
+            {[0, 1, 2].map((i) => (
+              <GlassCard key={i} className="flex flex-col md:min-h-[476px]">
+                {/* icon + plan adı */}
+                <div className="flex items-center gap-2 mb-1">
+                  <Skeleton className="h-5 w-5 rounded-md" />
+                  <Skeleton className="h-6 w-28 rounded-md" />
+                </div>
+                {/* açıklama */}
+                <Skeleton className="h-3 w-44 rounded-md mb-4" />
+                {/* fiyat bloğu */}
+                <div className="mb-5">
+                  <Skeleton className="h-9 w-28 rounded-md" />
+                  <Skeleton className="h-3 w-20 rounded-md mt-2" />
+                  <Skeleton className="h-3 w-16 rounded-md mt-1.5" />
+                </div>
+                {/* özellikler */}
+                <div className="space-y-2 mb-6 flex-1">
+                  {Array.from({ length: 9 }).map((_, r) => (
+                    <div key={r} className="flex items-start gap-2">
+                      <Skeleton className="h-3.5 w-3.5 rounded-md flex-shrink-0" />
+                      <Skeleton className="h-3.5 flex-1 rounded-md" />
+                    </div>
+                  ))}
+                </div>
+                {/* CTA */}
+                <Skeleton className="h-10 w-full rounded-xl" />
+              </GlassCard>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
