@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Download, Share2 } from 'lucide-react';
+import { Download, Share2 } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
 import { formatUsd, formatQuantity, formatPrice, formatPercentage, formatDateTR } from '@/lib/utils';
 
 export interface ShareCardData {
@@ -205,22 +206,24 @@ export function ShareCardModal({ data, onClose }: { data: ShareCardData; onClose
     }, 'image/png');
   };
 
+  // S1c1 — ad-hoc fixed-overlay kabuğu kanonik <Modal>'a devredildi: portal,
+  // role=dialog + aria-modal + aria-labelledby, panel-kapsamlı focus-trap ve
+  // odak-iadesi, ESC, drag-safe backdrop (mousedown izlemeli), gövde scroll-kilidi,
+  // E3 materyal (.glass-e3-overlay) ve giriş/çıkış motion'u artık TEK-KAYNAKTAN
+  // gelir — burada yeniden yazılmaz. Kart çizimi, indirme ve paylaşma davranışı
+  // (drawCard / ready / download / share / dosya adı) AYNEN korunur.
+  // Not: çağrı yeri bileşeni koşullu mount ediyor (portfolio: `shareData && …`),
+  // bu yüzden kapanışta parent anında unmount eder → çıkış animasyonu oynamaz
+  // (giriş oynar). Mevcut davranışa göre regresyon DEĞİL (eskiden hiç motion yoktu);
+  // düzeltmesi çağrı-yeri değişikliği gerektirir → S1c1 kapsamı dışı.
   return (
-    <div className="fixed inset-0 z-50 bg-e-0/70 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-bg-secondary border border-border-subtle rounded-2xl p-5 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-display text-text-primary">Paylaşım Kartı</h3>
-          <button onClick={onClose} className="p-1 text-text-muted hover:text-bearish"><X className="w-4 h-4" /></button>
-        </div>
-        <div className="rounded-xl overflow-hidden border border-border-subtle bg-bg-primary">
-          <canvas ref={canvasRef} className="w-full h-auto block" />
-          {!ready && (
-            <div className="flex justify-center py-20">
-              <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2 mt-4">
+    <Modal
+      open
+      onClose={onClose}
+      title="Paylaşım Kartı"
+      size="max-w-md"
+      footer={
+        <div className="flex items-center gap-2">
           <button onClick={download} className="flex-1 flex items-center justify-center gap-1.5 text-sm font-display bg-bg-tertiary text-text-primary px-4 py-2.5 rounded-xl hover:bg-bg-tertiary/70 transition-colors">
             <Download className="w-4 h-4" /> İndir
           </button>
@@ -228,7 +231,16 @@ export function ShareCardModal({ data, onClose }: { data: ShareCardData; onClose
             <Share2 className="w-4 h-4" /> Paylaş
           </button>
         </div>
+      }
+    >
+      <div className="rounded-xl overflow-hidden border border-border-subtle bg-bg-primary">
+        <canvas ref={canvasRef} className="w-full h-auto block" />
+        {!ready && (
+          <div className="flex justify-center py-20">
+            <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }
