@@ -89,8 +89,11 @@ export function DurumBandi({
     .filter((c) => c.n > 0);
 
   return (
-    <GlassCard dense>
-      <div className="space-y-1.5">
+    <GlassCard dense className="isolate">
+      {/* Statik key-light carve-out (dash-nabız-v3) — dekoratif, içerik-altı (z-0),
+          --light-key token'ı; motion/blur/shadow yok; band radius'unda clip. */}
+      <div aria-hidden="true" className="nabiz-light pointer-events-none absolute inset-0 z-0 rounded-card" />
+      <div className="relative z-10 space-y-1.5">
         {/* AI "sistem sesi" cümlesi — "AI ne düşünüyor?" (AIGorusu fold, client-türetme).
             text-xs sm:text-sm: dar ekranda band ≤~120px kalsın (sarma satırları kısalır). */}
         <p className="text-xs sm:text-sm leading-snug text-text-secondary">

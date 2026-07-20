@@ -616,6 +616,17 @@
     background: var(--light-key);
   }
 
+  /* Nabız key-light (dash-nabız-v3): Dashboard Nabız bandının statik key-light
+     carve-out'u — app'te key-light'ın YALNIZ meşru ikinci yeri (.hero-light =
+     landing hero; bu = dashboard Nabız bandı). Mevcut --light-key token'ını
+     TÜKETİR (peak .05, ΔL*≤+6 globals.css:94'te belgeli; token DEĞİŞMEZ). Statik
+     radyal luminans (glow değil); drift/motion/transition/animation/blur/shadow/
+     mix-blend YOK. --light-fill / cyan KULLANILMAZ. Katman DurumBandi'de içerik-
+     altı (z-0), pointer-events yok, band radius'unda clip'lenir. */
+  .nabiz-light {
+    background-image: var(--light-key);
+  }
+
 }
 
 /* ============================================
