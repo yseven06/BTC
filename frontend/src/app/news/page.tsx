@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Newspaper, ExternalLink, RefreshCw, Globe, Flag } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { formatRelativeTime } from '@/lib/utils';
 
 interface NewsItem {
@@ -25,8 +26,29 @@ type Tab = 'turkish' | 'global';
 function NewsList({ items, loading }: { items: NewsItem[]; loading: boolean }) {
   if (loading) {
     return (
-      <div className="flex justify-center py-12">
-        <div className="w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+      <div role="status" aria-busy="true">
+        <span className="sr-only">Yükleniyor</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-hidden="true">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <GlassCard key={i} className="flex flex-col gap-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-1.5 flex-1">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/5" />
+                </div>
+                <Skeleton className="h-4 w-4 flex-shrink-0" />
+              </div>
+              <div className="space-y-1.5">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-4/5" />
+              </div>
+              <div className="flex items-center gap-2 mt-auto">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3 w-12" />
+              </div>
+            </GlassCard>
+          ))}
+        </div>
       </div>
     );
   }
