@@ -16,7 +16,7 @@ import {
   type GlobalMarketData, type FearGreedData,
 } from '@/lib/api';
 import { ACTIVE_SIGNAL_PARAMS } from '@/lib/active-signal';
-import { formatLargeNumber, formatPercentage, cn } from '@/lib/utils';
+import { formatLargeNumber, formatPercentage, formatAbsoluteTimeTR, cn } from '@/lib/utils';
 import { PAYMENTS_ENABLED } from '@/lib/config';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import { useLivePrices } from '@/hooks/useLivePrices';
@@ -26,7 +26,6 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import OnboardingChecklist from '@/components/dashboard/OnboardingChecklist';
 import CoachmarkTour from '@/components/dashboard/CoachmarkTour';
 import { DurumBandi } from '@/components/dashboard/DurumBandi';
-import { LifecycleHealth } from '@/components/dashboard/LifecycleHealth';
 import { Sicil } from '@/components/dashboard/Sicil';
 import { Crown, Lock } from 'lucide-react';
 import { chartColor } from '@/lib/chartColors';
@@ -181,6 +180,19 @@ export default function DashboardPage() {
     if (s.live_status) acc[s.live_status] = (acc[s.live_status] ?? 0) + 1;
     return acc;
   }, {});
+  // "Bugün doğan N" — active signals generated today, client-derived from the
+  // already-fetched list (no endpoint). The day boundary reuses the product's TR
+  // date formatter (Europe/Istanbul — the same convention every displayed
+  // timestamp uses) so the count matches what users read; empty / invalid /
+  // future stamps are skipped, each signal counted once.
+  const todayTR = formatAbsoluteTimeTR(new Date(), false);
+  const bornTodayCount = signals.reduce((n, s) => {
+    if (!s.generated_at) return n;
+    const d = new Date(s.generated_at);
+    const t = d.getTime();
+    if (Number.isNaN(t) || t > Date.now()) return n;
+    return formatAbsoluteTimeTR(d, false) === todayTR ? n + 1 : n;
+  }, 0);
   // AI Görüşü + Risk Dağılımı aggregates — client-derived from active signals.
   const longCount = signals.filter((s) => String(s.direction ?? '').toLowerCase().includes('bull')).length;
   const shortCount = signals.filter((s) => String(s.direction ?? '').toLowerCase().includes('bear')).length;
@@ -291,6 +303,8 @@ export default function DashboardPage() {
         longCount={longCount}
         shortCount={shortCount}
         avgConfidence={avgConfidence}
+        lifecycleCounts={lifecycleCounts}
+        bornTodayCount={bornTodayCount}
         loading={loading}
         hasData={!!perf && !dataError}
       />
@@ -401,7 +415,6 @@ export default function DashboardPage() {
             Tümünü Gör <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
-        <LifecycleHealth counts={lifecycleCounts} />
         {!loading && signals.length === 0 ? (
           <EmptyState
             icon={<Zap className="w-6 h-6 text-accent-primary" />}

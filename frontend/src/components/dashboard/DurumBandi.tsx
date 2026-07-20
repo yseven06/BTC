@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { LIVE_STATUS_META } from '@/components/ui/LiveStatusBadge';
 import { cn, formatPercentage } from '@/lib/utils';
 
 interface DurumBandiProps {
@@ -20,6 +21,11 @@ interface DurumBandiProps {
   longCount: number;
   shortCount: number;
   avgConfidence: number;
+  /** Lifecycle-health census over the active signals (client-derived) — folded into
+   *  the system voice; the standalone LifecycleHealth row was removed from Dashboard. */
+  lifecycleCounts?: Record<string, number>;
+  /** Active signals generated today (product TR day boundary), client-derived. */
+  bornTodayCount?: number;
   loading?: boolean;
   /** False → performance summary unreachable; show an honest fallback, not zeros. */
   hasData?: boolean;
@@ -44,6 +50,8 @@ export function DurumBandi({
   longCount,
   shortCount,
   avgConfidence,
+  lifecycleCounts,
+  bornTodayCount = 0,
   loading,
   hasData = true,
 }: DurumBandiProps) {
@@ -72,6 +80,14 @@ export function DurumBandi({
     : longShare <= 0.4 ? { label: 'SHORT eğilimli', cls: 'text-bearish' }
     : { label: 'dengeli', cls: 'text-text-primary' };
 
+  // Attention-phase census — folds the removed LifecycleHealth row into the
+  // voice. "active" is intentionally excluded (activeCount is already shown in
+  // the bridge below → would duplicate); only non-zero phases render, labels
+  // come from the single LIVE_STATUS_META source (no invented status).
+  const census = (['approaching_tp', 'weakening', 'invalidating'] as const)
+    .map((k) => ({ k, n: lifecycleCounts?.[k] ?? 0, meta: LIVE_STATUS_META[k] }))
+    .filter((c) => c.n > 0);
+
   return (
     <GlassCard dense>
       <div className="space-y-1.5">
@@ -94,6 +110,23 @@ export function DurumBandi({
             </>
           ) : (
             <span>şu an aktif AL/SAT sinyali taşımıyor.</span>
+          )}
+          {/* "Bugün doğan N" — kısa, her ekranda görünür (gerçek generated_at türevi) */}
+          {total > 0 && bornTodayCount > 0 && (
+            <span> · bugün <span className="text-text-primary tabular-nums font-medium">{bornTodayCount}</span> yeni</span>
+          )}
+          {/* Lifecycle-census (dikkat-fazları) — band ≤~120px için ≥sm'de görünür;
+              dar ekranda kritik-olmayan detay gizlenir (bilgi Signal Center'da tam). */}
+          {total > 0 && census.length > 0 && (
+            <span className="hidden sm:inline">
+              {census.map((c) => (
+                <React.Fragment key={c.k}>
+                  <span className="text-text-muted"> · </span>
+                  <span className={cn('tabular-nums font-medium', c.meta.cls)}>{c.n}</span>{' '}
+                  {c.meta.label}
+                </React.Fragment>
+              ))}
+            </span>
           )}
         </p>
 
