@@ -7,6 +7,7 @@ import {
 } from 'lightweight-charts';
 import { fetchOhlcv, type OhlcvCandle } from '@/lib/api';
 import { chartColor, withAlpha } from '@/lib/chartColors';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface PriceLevel {
   price: number;
@@ -227,8 +228,8 @@ export function EngineMiniChart({ symbol, timeframe, engineName, supportingData 
     // down just as a user clicks it, swallowing the click.
     const placeholderHeight = SUPPORTS_MACD.has(engineName) ? 460 + 160 + 4 : 460;
     return (
-      <div className="flex justify-center items-center" style={{ height: placeholderHeight }}>
-        <div className="w-5 h-5 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+      <div className="bg-bg-secondary/60 rounded-xl border border-border-subtle p-2">
+        <Skeleton className="w-full" style={{ height: placeholderHeight }} />
       </div>
     );
   }
