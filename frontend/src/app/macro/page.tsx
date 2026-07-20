@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Globe, DollarSign, TrendingUp, Building2, ExternalLink, AlertCircle, Activity } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Skeleton } from '@/components/ui/Skeleton';
 import {
   fetchMacroSnapshot, fetchKapDisclosures, fetchBybitFunding,
   type MacroSnapshot, type KapDisclosure,
@@ -58,8 +59,40 @@ export default function MacroPage() {
       </div>
 
       {loading && (
-        <div className="flex justify-center py-16">
-          <div className="w-7 h-7 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+        <div role="status" aria-busy="true">
+          <span className="sr-only">Yükleniyor</span>
+          <div className="space-y-6" aria-hidden="true">
+            {/* Türkiye */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Skeleton className="h-4 w-4" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <GlassCard key={i} className="text-center py-4">
+                    <Skeleton className="h-3 w-16 mx-auto" />
+                    <Skeleton className="h-8 w-20 mx-auto mt-1" />
+                  </GlassCard>
+                ))}
+              </div>
+            </div>
+            {/* ABD */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Skeleton className="h-4 w-4" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <GlassCard key={i} className="text-center py-4">
+                    <Skeleton className="h-3 w-16 mx-auto" />
+                    <Skeleton className="h-8 w-20 mx-auto mt-1" />
+                  </GlassCard>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
