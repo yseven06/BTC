@@ -402,8 +402,7 @@ export default function DashboardPage() {
 
       {/* CP-DASH-C1: AI Görüşü kartı Nabız Bandı'nın "sistem sesi" cümlesine
           FOLD edildi (Bible §03 dash-nabız-bandı + widget-taşıma-kilidi) →
-          ayrı kart kalktı; veri (long/short/avgConfidence) DurumBandi'ye geçti.
-          AIGorusu.tsx dosyası korunur (kullanım kaldırıldı, ölü). */}
+          ayrı kart kalktı; veri (long/short/avgConfidence) DurumBandi'ye geçti. */}
 
       {/* ── Şu an — aktif sinyaller BRIDGE-GLANCE (CP-DASH-IA-A) ──
           Executive overview: top-N salt-okur teaser + toplam sayı + Signal Center
