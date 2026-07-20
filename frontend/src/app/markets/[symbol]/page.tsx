@@ -545,9 +545,92 @@ export default function AssetDetailPage() {
            to scroll to see everything. ─── */}
       <div className="w-full lg:w-[540px] lg:flex-shrink-0 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-1">
         {loading ? (
-          <GlassCard className="flex justify-center py-16">
-            <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
-          </GlassCard>
+          <div role="status" aria-busy="true">
+            <span className="sr-only">Sinyal detayı yükleniyor</span>
+            <div className="space-y-4" aria-hidden="true">
+              {/* Hero signal summary — always-rendered geometry (icon, symbol/direction,
+                  Kalite bar + Güven/Olasılık rings, risk pill) */}
+              <GlassCard dense>
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0">
+                      <Skeleton className="w-full h-full" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-3.5 w-10" />
+                      </div>
+                      <Skeleton className="h-5 w-24" />
+                      <Skeleton className="h-2.5 w-44" />
+                    </div>
+                  </div>
+                  <div className="flex items-center flex-wrap gap-3">
+                    <Skeleton className="h-10 w-24" />
+                    <div className="flex items-center gap-3 pl-3 border-l border-border-subtle">
+                      <div className="flex flex-col items-center gap-1">
+                        <Skeleton className="h-6 w-10" />
+                        <Skeleton className="h-2 w-8" />
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="w-[50px] h-[50px] rounded-full overflow-hidden">
+                          <Skeleton className="w-full h-full" />
+                        </div>
+                        <Skeleton className="h-2 w-8" />
+                      </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="w-[50px] h-[50px] rounded-full overflow-hidden">
+                          <Skeleton className="w-full h-full" />
+                        </div>
+                        <Skeleton className="h-2 w-10" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </GlassCard>
+
+              {/* IntelligencePanel neutral height reserve — it self-loads its own
+                  skeleton once mounted, so the parent only reserves the area (no
+                  content mimic, no second role=status / sr-only) */}
+              <GlassCard dense>
+                <Skeleton className="w-full min-h-[140px] sm:min-h-[98px]" />
+              </GlassCard>
+
+              {/* Trade plan — always-rendered: heading + 5-row price ladder
+                  (TP3/TP2/TP1/Entry/SL). No prices, colors, or R-multiples. */}
+              <div>
+                <Skeleton className="h-3 w-24 mb-2" />
+                <div className="bg-bg-secondary/30 border border-border-subtle rounded-card p-5">
+                  <div className="space-y-0">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i}>
+                        <div className="flex items-center gap-4">
+                          <Skeleton className="w-16 h-7 rounded-lg" />
+                          <div className="flex-1 border-t-2 border-dashed border-border-subtle/60" />
+                          <Skeleton className="h-4 w-16" />
+                        </div>
+                        {i < 4 && (
+                          <div className="flex pl-8 my-0.5">
+                            <Skeleton className="w-0.5 h-3" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 space-y-1">
+                    <Skeleton className="h-2 w-full" />
+                    <Skeleton className="h-2 w-1/2" />
+                  </div>
+                </div>
+              </div>
+
+              {/* InvestmentDisclaimer neutral text reserve */}
+              <div className="space-y-1.5">
+                <Skeleton className="h-2.5 w-full" />
+                <Skeleton className="h-2.5 w-2/3" />
+              </div>
+            </div>
+          </div>
         ) : signal ? (
           <SignalDetailSection signal={signal} compact />
         ) : (
