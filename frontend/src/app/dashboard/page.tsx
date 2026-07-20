@@ -448,6 +448,7 @@ export default function DashboardPage() {
         maxDrawdown={perf?.drawdown_analysis?.max_drawdown ?? 0}
         tpHitRate={periodStats?.tp_hit_rate ?? 0}
         slRate={periodStats?.sl_rate ?? 0}
+        closedCount={periodClosedCount}
         bestSignal={periodStats?.best_signal ?? null}
         worstSignal={periodStats?.worst_signal ?? null}
         periodLabel={periodLabel}

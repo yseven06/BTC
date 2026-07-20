@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { BarChart3, ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { ProvenanceReceipt } from '@/components/ui/Tooltip';
 import { formatPercentage, cn } from '@/lib/utils';
 
 interface SicilProps {
@@ -12,6 +13,8 @@ interface SicilProps {
   maxDrawdown: number;
   tpHitRate: number;
   slRate: number;
+  /** Closed trades in the selected period — makbuz örneklem boyutu (n=). */
+  closedCount: number;
   bestSignal: { symbol: string; return: number } | null;
   worstSignal: { symbol: string; return: number } | null;
   periodLabel: string;
@@ -21,7 +24,7 @@ interface SicilProps {
 
 export function Sicil({
   totalReturn, profitFactor, maxDrawdown, tpHitRate, slRate,
-  bestSignal, worstSignal, periodLabel, loading, hasData,
+  closedCount, bestSignal, worstSignal, periodLabel, loading, hasData,
 }: SicilProps) {
   if (loading || !hasData) return null;
 
@@ -59,7 +62,7 @@ export function Sicil({
           )}>
             {profitFactor != null ? profitFactor.toFixed(2) : '—'}
           </p>
-          <p className="text-micro text-text-muted mt-0.5">{periodLabel}</p>
+          <ProvenanceReceipt className="mt-0.5" segments={[`n=${closedCount}`, periodLabel]} />
         </div>
 
         <div className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
@@ -75,7 +78,7 @@ export function Sicil({
           <p className="text-xl num font-num-560 mt-1 text-bullish">
             {formatPercentage(tpHitRate, 0, false)}
           </p>
-          <p className="text-micro text-text-muted mt-0.5">{periodLabel}</p>
+          <ProvenanceReceipt className="mt-0.5" segments={[`n=${closedCount}`, periodLabel]} />
         </div>
 
         <div className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
@@ -83,7 +86,7 @@ export function Sicil({
           <p className="text-xl num font-num-560 mt-1 text-bearish">
             {formatPercentage(slRate, 0, false)}
           </p>
-          <p className="text-micro text-text-muted mt-0.5">{periodLabel}</p>
+          <ProvenanceReceipt className="mt-0.5" segments={[`n=${closedCount}`, periodLabel]} />
         </div>
       </div>
 
