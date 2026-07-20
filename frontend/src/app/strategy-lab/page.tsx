@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { FlaskConical, Clock, Calendar, TrendingUp, Shield } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { LockedOverlay } from '@/components/ui/LockedOverlay';
 import { useTierLimits } from '@/hooks/useTierLimits';
 import { fetchStrategyLab } from '@/lib/api';
@@ -200,8 +201,71 @@ export default function StrategyLabPage() {
       <InvestmentDisclaimer variant="backtest" />
 
       {loading && (
-        <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+        <div role="status" aria-busy="true">
+          <span className="sr-only">Yükleniyor</span>
+          <div className="space-y-5" aria-hidden="true">
+            {/* Özet stat satırı */}
+            <div className="flex gap-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <GlassCard key={i} className="flex-1 text-center py-4">
+                  <Skeleton className="h-10 w-16 mx-auto" />
+                  <Skeleton className="h-3.5 w-20 mx-auto mt-1" />
+                </GlassCard>
+              ))}
+            </div>
+            {/* Saat heatmap */}
+            <GlassCard>
+              <Skeleton className="h-5 w-48 mb-4" />
+              <div className="space-y-3">
+                <div className="flex gap-1 flex-wrap">
+                  {Array.from({ length: 24 }).map((_, i) => (
+                    <Skeleton key={i} className="w-10 h-10" />
+                  ))}
+                </div>
+                <Skeleton className="h-3 w-40" />
+              </div>
+            </GlassCard>
+            {/* Gün heatmap */}
+            <GlassCard>
+              <Skeleton className="h-5 w-48 mb-4" />
+              <div className="grid grid-cols-7 gap-2">
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <Skeleton key={i} className="h-[72px]" />
+                ))}
+              </div>
+            </GlassCard>
+            {/* Alt 2-kolon panel */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Yön Analizi rezervi */}
+              <GlassCard>
+                <Skeleton className="h-5 w-32 mb-4" />
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="space-y-1">
+                      <div className="flex justify-between">
+                        <Skeleton className="h-3 w-16" />
+                        <Skeleton className="h-3 w-28" />
+                      </div>
+                      <Skeleton className="h-2 w-full" />
+                    </div>
+                  ))}
+                </div>
+              </GlassCard>
+              {/* Risk Seviyesi rezervi */}
+              <GlassCard>
+                <Skeleton className="h-5 w-32 mb-4" />
+                <div className="grid grid-cols-2 gap-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="bg-bg-secondary/50 rounded-xl p-3 border border-border-subtle space-y-1.5">
+                      <Skeleton className="h-3 w-12" />
+                      <Skeleton className="h-6 w-10" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                  ))}
+                </div>
+              </GlassCard>
+            </div>
+          </div>
         </div>
       )}
 
