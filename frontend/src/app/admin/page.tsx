@@ -8,6 +8,7 @@ import {
   Plus, Play, AlertTriangle, CheckCircle, XCircle, Ban,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useToast } from '@/components/ui/Toast';
@@ -154,8 +155,19 @@ function OverviewTab() {
         </button>
       </div>
       {busy && !stats && (
-        <div className="flex justify-center py-16">
-          <div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+        <div role="status" aria-busy="true">
+          <span className="sr-only">Yükleniyor</span>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4" aria-hidden="true">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <GlassCard key={i} className="flex items-center gap-4">
+                <Skeleton className="w-10 h-10" />
+                <div>
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-8 w-12 mt-0.5" />
+                </div>
+              </GlassCard>
+            ))}
+          </div>
         </div>
       )}
       {error && (
