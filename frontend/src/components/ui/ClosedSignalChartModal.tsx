@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { TradingChart, type ChartCandle } from '@/components/charts/TradingChart';
 import { fetchOhlcv, type ApiSignal } from '@/lib/api';
 import { formatAbsoluteTimeTR, cn, formatPercentage } from '@/lib/utils';
@@ -102,8 +103,9 @@ export function ClosedSignalChartModal({ signal, onClose }: Props) {
           <p className="text-sm text-text-muted text-center py-12">Grafik yüklenemedi.</p>
         )}
         {!error && !candles && (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-6 h-6 text-accent-primary animate-spin" />
+          <div role="status" aria-busy="true">
+            <span className="sr-only">Yükleniyor</span>
+            <Skeleton className="w-full h-[420px]" />
           </div>
         )}
         {!error && candles && candles.length > 0 && (
