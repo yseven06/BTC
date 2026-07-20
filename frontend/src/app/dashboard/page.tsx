@@ -173,6 +173,13 @@ export default function DashboardPage() {
   const fngValue = fng?.value ?? 50;
   const periodPhrase = timeRange === '24s' ? '24 saatte' : timeRange === '7g' ? '7 günde' : '30 günde';
   const periodClosedCount = periodStats?.closed_count ?? 0;
+  // All-time closed (resolved) trades behind the equity curve / drawdown —
+  // sum of the period-agnostic performance summary's terminal outcomes. NOT
+  // total_signals - active_count (which could fold in non-trade signals); each
+  // field is coerced to a safe non-negative number so allTimeClosed is never NaN.
+  const allTimeClosed = perf
+    ? (perf.win_count ?? 0) + (perf.loss_count ?? 0) + (perf.breakeven_count ?? 0) + (perf.expired_count ?? 0)
+    : 0;
   const periodLabel = timeRange === '24s' ? 'son 24 saat' : timeRange === '7g' ? 'son 7 gün' : 'son 30 gün';
   // Lifecycle-health census over ALL active signals (not just the recent 6) —
   // client-derived from the already-fetched list, no endpoint.
@@ -449,6 +456,7 @@ export default function DashboardPage() {
         tpHitRate={periodStats?.tp_hit_rate ?? 0}
         slRate={periodStats?.sl_rate ?? 0}
         closedCount={periodClosedCount}
+        allTimeClosed={allTimeClosed}
         bestSignal={periodStats?.best_signal ?? null}
         worstSignal={periodStats?.worst_signal ?? null}
         periodLabel={periodLabel}

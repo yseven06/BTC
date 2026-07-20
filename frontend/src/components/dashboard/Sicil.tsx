@@ -15,6 +15,8 @@ interface SicilProps {
   slRate: number;
   /** Closed trades in the selected period — makbuz örneklem boyutu (n=). */
   closedCount: number;
+  /** All-time closed (resolved) trades — Toplam Getiri / Maks. Düşüş örneklemi. */
+  allTimeClosed: number;
   bestSignal: { symbol: string; return: number } | null;
   worstSignal: { symbol: string; return: number } | null;
   periodLabel: string;
@@ -24,7 +26,7 @@ interface SicilProps {
 
 export function Sicil({
   totalReturn, profitFactor, maxDrawdown, tpHitRate, slRate,
-  closedCount, bestSignal, worstSignal, periodLabel, loading, hasData,
+  closedCount, allTimeClosed, bestSignal, worstSignal, periodLabel, loading, hasData,
 }: SicilProps) {
   if (loading || !hasData) return null;
 
@@ -49,7 +51,7 @@ export function Sicil({
           )}>
             {formatPercentage(totalReturn)}
           </p>
-          <p className="text-micro text-text-muted mt-0.5">tüm zamanlar</p>
+          <ProvenanceReceipt className="mt-0.5" segments={[`n=${allTimeClosed}`, 'tüm zamanlar']} />
         </div>
 
         <div className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
@@ -70,7 +72,7 @@ export function Sicil({
           <p className="text-xl num font-num-560 mt-1 text-bearish">
             -{formatPercentage(maxDrawdown, 2, false)}
           </p>
-          <p className="text-micro text-text-muted mt-0.5">tüm zamanlar</p>
+          <ProvenanceReceipt className="mt-0.5" segments={[`n=${allTimeClosed}`, 'tüm zamanlar']} />
         </div>
 
         <div className="p-3 bg-bg-secondary/60 border border-border-subtle rounded-xl">
