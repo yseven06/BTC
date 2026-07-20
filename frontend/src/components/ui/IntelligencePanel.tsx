@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { GlassCard } from './GlassCard';
+import { Skeleton } from './Skeleton';
 import { cn, formatRelativeTime, formatPercentage, formatNumber } from '@/lib/utils';
 import { fetchSignalIntelligence, type SignalIntelligence } from '@/lib/api';
 import { Brain, History, Gauge } from 'lucide-react';
@@ -65,10 +66,21 @@ export function IntelligencePanel({ signalId, compact }: Props) {
 
   if (loading) {
     return (
-      <GlassCard dense={compact}>
-        <div className="flex items-center gap-2 text-text-muted text-xs">
-          <div className="w-4 h-4 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
-          Akıllı durum yükleniyor…
+      <GlassCard dense={compact} role="status" aria-busy="true">
+        <span className="sr-only">Akıllı durum yükleniyor</span>
+        <div aria-hidden="true">
+          <div className="flex items-center gap-1.5 mb-3">
+            <Skeleton className="h-3.5 w-3.5" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex flex-col gap-1">
+                <Skeleton className="h-2.5 w-16" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+            ))}
+          </div>
         </div>
       </GlassCard>
     );
