@@ -57,6 +57,46 @@ function StatCard({
   );
 }
 
+// Liste-loading iskeleti (S2c-d2): loaded liste satirini (glass-panel kolon-header'i
+// KORUNUR, disinda) NON-table divide-y grid-row iskeletiyle temsil eder. Yerel tutuldu
+// (yalniz bu dosyanin 4 admin listesi tuketir; paylasilan component gereksiz). Tek
+// role=status/aria-busy/sr-only helper icinde; kolon sayisi cols string'inden turer.
+function AdminListSkeleton({ cols, rows = 7, variant = 'default' }: {
+  cols: string;
+  rows?: number;
+  variant?: 'default' | 'user';
+}) {
+  const n = cols.match(/\[(.+)\]/)?.[1]?.split('_').length ?? 5;
+  return (
+    <div role="status" aria-busy="true">
+      <span className="sr-only">Yükleniyor</span>
+      <div className="divide-y divide-border-subtle" aria-hidden="true">
+        {Array.from({ length: rows }).map((_, r) => (
+          <div key={r} className={cn('grid gap-4 items-center px-5', cols, variant === 'user' ? 'py-3' : 'py-2.5')}>
+            {variant === 'user' ? (
+              <div className="flex items-center gap-3 min-w-0">
+                {/* rounded-full sarmalayici daireyi saglar; Skeleton'a cakisan rounded-* verilmez */}
+                <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+                  <Skeleton className="w-full h-full" />
+                </div>
+                <div className="space-y-1.5">
+                  <Skeleton className="h-3.5 w-24" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+              </div>
+            ) : (
+              <Skeleton className="h-4 w-20" />
+            )}
+            {Array.from({ length: n - 1 }).map((_, c) => (
+              <Skeleton key={c} className="h-4 w-16" />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -263,7 +303,7 @@ function UsersTab({ isSuperAdmin, selfId }: { isSuperAdmin: boolean; selfId: str
           ))}
         </div>
         {busy ? (
-          <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" /></div>
+          <AdminListSkeleton cols="grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]" variant="user" />
         ) : users.length === 0 ? (
           <p className="text-center text-text-muted text-sm py-12">Kullanıcı bulunamadı.</p>
         ) : (
@@ -571,7 +611,7 @@ function SignalsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           ))}
         </div>
         {busy ? (
-          <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" /></div>
+          <AdminListSkeleton cols="grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1.3fr_auto]" />
         ) : signals.length === 0 ? (
           <p className="text-center text-text-muted text-sm py-12">Sinyal bulunamadı.</p>
         ) : (
@@ -720,7 +760,7 @@ function AssetsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           ))}
         </div>
         {busy ? (
-          <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" /></div>
+          <AdminListSkeleton cols="grid-cols-[1fr_2fr_1fr_1fr_1fr_auto]" />
         ) : (
           <div className="divide-y divide-border-subtle max-h-[600px] overflow-y-auto">
             {assets.map((a) => (
@@ -869,7 +909,7 @@ function AuditTab() {
           ))}
         </div>
         {busy ? (
-          <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" /></div>
+          <AdminListSkeleton cols="grid-cols-[1.3fr_1.2fr_1.5fr_1.5fr_2fr]" />
         ) : rows.length === 0 ? (
           <p className="text-center text-text-muted text-sm py-12">Henüz kayıt yok.</p>
         ) : (
