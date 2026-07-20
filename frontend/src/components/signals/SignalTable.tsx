@@ -205,6 +205,74 @@ export function DensityToggle({ value, onChange }: { value: Density; onChange: (
   );
 }
 
+// ─── One-shot selection tint (SL-b vocabulary) ───────────────────────────────
+// When a row goes selected false→true (a user click in the master-detail Dock),
+// a brief brighter accent overlay flashes and dissolves (opacity only) back into
+// the persistent bg-accent-primary/[0.06] selected tint the row already carries.
+// It NEVER fires on first mount while already selected, on repeat/true→true
+// re-renders (rows re-render on every live-price tick), on hover/focus, or on
+// invalid/loss rows. The overlay is decorative (aria-hidden, pointer-events-none,
+// -z-10 under the content), opacity-only, no keyframe/token. Reduced-motion
+// collapses the fade to ~instant via the global layer; the persistent tint (a
+// static class, not motion) still marks selection, so nothing is lost.
+const FLASH_FALLBACK_MS = 260; // >= --dur-state (180ms) + margin; teardown when transitionend can't fire (display:none mirror row / backgrounded tab)
+
+function SelectionFlash({ selected, invalid }: { selected: boolean; invalid: boolean }) {
+  // prevSelected initialises to `selected`, so a row that mounts already selected
+  // (deep-link / Dock re-open) is a no-op. `flash` is a generation id (null =
+  // idle) used as the overlay key, so a rapid re-select remounts it fresh rather
+  // than stacking a second layer.
+  const [prevSelected, setPrevSelected] = useState(selected);
+  const [flash, setFlash] = useState<number | null>(null);
+  const [fading, setFading] = useState(false);
+
+  if (selected !== prevSelected) {
+    setPrevSelected(selected);
+    if (selected && !invalid) {
+      setFlash((flash ?? 0) + 1); // fire only on false→true, non-loss
+      setFading(false);
+    }
+  }
+
+  // Flip to opacity-0 one frame after the overlay paints at full opacity so the
+  // property-explicit opacity transition runs. rAF only, cancelled on cleanup.
+  useEffect(() => {
+    if (flash === null || fading) return;
+    const raf = requestAnimationFrame(() => setFading(true));
+    return () => cancelAnimationFrame(raf);
+  }, [flash, fading]);
+
+  // Teardown safety net — re-armed for each new flash generation, cleared on
+  // unmount, so a stale timer can never touch a newer flash and there is no
+  // state update after unmount.
+  useEffect(() => {
+    if (flash === null) return;
+    const t = setTimeout(() => { setFlash(null); setFading(false); }, FLASH_FALLBACK_MS);
+    return () => clearTimeout(t);
+  }, [flash]);
+
+  if (flash === null) return null;
+  return (
+    <span
+      key={flash}
+      aria-hidden
+      onTransitionEnd={(e) => {
+        if (
+          e.propertyName === 'opacity' &&
+          parseFloat(getComputedStyle(e.currentTarget).opacity) === 0
+        ) {
+          setFlash(null);
+          setFading(false);
+        }
+      }}
+      className={cn(
+        'pointer-events-none absolute inset-0 -z-10 bg-accent-primary/[0.12] transition-opacity duration-[var(--dur-state)] ease-signal',
+        fading ? 'opacity-0' : 'opacity-100',
+      )}
+    />
+  );
+}
+
 // ─── Row ──────────────────────────────────────────────────────────────────────
 export function SignalTableRow({
   sig,
@@ -226,7 +294,7 @@ export function SignalTableRow({
   return (
     <div
       className={cn(
-        'grid gap-4 items-center px-5 transition-colors',
+        'relative isolate grid gap-4 items-center px-5 transition-colors',
         invalid ? 'bg-bearish/[0.04] opacity-70'
           : selected ? 'bg-accent-primary/[0.06]'
           : 'hover:bg-e-2'
@@ -235,6 +303,8 @@ export function SignalTableRow({
       // yogunluk-tabanli (miras --row-h; default py-3.5 ile ozdes).
       style={{ gridTemplateColumns: GRID_TEMPLATE, paddingTop: 'var(--row-h, 0.875rem)', paddingBottom: 'var(--row-h, 0.875rem)' }}
     >
+      <SelectionFlash selected={selected} invalid={invalid} />
+
       {/* Symbol + Timeframe */}
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-8 h-8 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center text-micro font-medium text-text-secondary flex-shrink-0">
@@ -326,12 +396,14 @@ export function SignalCardRow({
   return (
     <div
       className={cn(
-        'flex flex-col gap-3 p-4 transition-colors',
+        'relative isolate flex flex-col gap-3 p-4 transition-colors',
         invalid ? 'bg-bearish/[0.04] opacity-70'
           : selected ? 'bg-accent-primary/[0.06]'
           : ''
       )}
     >
+      <SelectionFlash selected={selected} invalid={invalid} />
+
       {/* Ust: sembol·TF + yon */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
