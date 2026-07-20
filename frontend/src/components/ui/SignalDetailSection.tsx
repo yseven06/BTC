@@ -16,6 +16,7 @@ import {
 import { EngineMiniChart } from '@/components/charts/EngineMiniChart';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { IntelligencePanel } from '@/components/ui/IntelligencePanel';
+import { ProvenanceReceipt } from '@/components/ui/Tooltip';
 import { signalToKarotConfs } from '@/lib/karot-adapter';
 
 // Engines whose supporting_data carries real chart-able coordinates (S/R
@@ -640,12 +641,19 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
                 )}
               </span>
             </h3>
-            {/* CP-KAROT-UI3: konsensüs census — Karot+tooltip yerine kendi satırında
-                görünür sade metin (blok akış → dar viewport'ta doğal sarar, taşmaz).
-                AT-2 bilgisi korunur. Glyph/süs YOK. */}
-            <p className={cn('text-micro text-text-muted normal-case font-normal tabular-nums', compact ? 'mb-2' : 'mb-3')}>
-              {karotConfs.length} motor · <span className="text-bullish">{consensusBull} LONG</span> · <span className="text-bearish">{consensusBear} SHORT</span> · {consensusNeutral} nötr
-            </p>
+            {/* S4a (PV-D4 census tek-biçim): konsensüs census serbest metinden kanonik
+                ProvenanceReceipt makbuzuna taşındı — Dock census'uyla aynı gramer;
+                ayraç/ton/tabular primitive'den. AT-2 bilgisi korunur (4 segment
+                koşulsuz — 0-değerler eskisi gibi görünür kalır). Glyph/süs YOK. */}
+            <ProvenanceReceipt
+              className={cn('flex-wrap normal-case font-normal', compact ? 'mb-2' : 'mb-3')}
+              segments={[
+                `${karotConfs.length} motor`,
+                `${consensusBull} LONG`,
+                `${consensusBear} SHORT`,
+                `${consensusNeutral} nötr`,
+              ]}
+            />
             <div className={compact ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 gap-3'}>
               {engines.map((engine) => (
                 <EngineCard
