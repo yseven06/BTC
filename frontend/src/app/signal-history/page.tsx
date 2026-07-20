@@ -11,6 +11,7 @@ import {
   BarChart, Bar, XAxis, YAxis, AreaChart, Area,
 } from 'recharts';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
 import { ClosedSignalChartModal } from '@/components/ui/ClosedSignalChartModal';
@@ -321,13 +322,11 @@ export default function SignalHistoryPage() {
           </button>
         </GlassCard>
       ) : !hasAnyHistory ? (
-        <GlassCard className="flex flex-col items-center justify-center p-20 text-center">
-          <Inbox className="w-14 h-14 text-border-medium mb-4" />
-          <h3 className="text-base font-display text-text-secondary mb-1">Henüz tamamlanmış sinyal yok</h3>
-          <p className="text-sm text-text-muted max-w-md">
-            Sinyaller TP, SL, başabaş veya süre dolumuyla kapandığında burada görünecek.
-          </p>
-        </GlassCard>
+        <EmptyState
+          icon={<Inbox className="w-6 h-6 text-accent-primary" />}
+          title="Henüz tamamlanmış sinyal yok"
+          description="Sinyaller TP, SL, başabaş veya süre dolumuyla kapandığında burada görünecek."
+        />
       ) : (
         <>
           {/* Summary cards */}

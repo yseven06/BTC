@@ -5,6 +5,7 @@ import {
   PieChart, Plus, Trash2, Search, X, TrendingUp, TrendingDown, Wallet, Share2, LogOut,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ShareCardModal, type ShareCardData } from '@/components/ui/ShareCardModal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
@@ -262,11 +263,11 @@ export default function PortfolioPage() {
           </div>
 
           {portfolios.length === 0 ? (
-            <GlassCard className="flex flex-col items-center justify-center p-16 text-center">
-              <Wallet className="w-12 h-12 text-border-medium mb-3" />
-              <h3 className="text-sm font-display text-text-secondary mb-1">Henüz portföyün yok</h3>
-              <p className="text-xs text-text-muted max-w-sm">Yukarıdan bir isim ve başlangıç bakiyesi gir, ardından pozisyon ekle.</p>
-            </GlassCard>
+            <EmptyState
+              icon={<Wallet className="w-6 h-6 text-accent-primary" />}
+              title="Henüz portföyün yok"
+              description="Yukarıdan bir isim ve başlangıç bakiyesi gir, ardından pozisyon ekle."
+            />
           ) : loadingActive || !active ? (
             // PI-1e/S2c-a: aktif-portföy içeriği yüklenirken (seçici zaten üstte) —
             // özet grid + "Açık Pozisyonlar" başlığı + pozisyon satırı iskeleti.
