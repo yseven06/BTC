@@ -16,6 +16,7 @@ import {
   type ApiSignal, type Plan, type LandingProof,
 } from '@/lib/api';
 import { cn, formatPercentage, formatPrice } from '@/lib/utils';
+import { ProvenanceReceipt } from '@/components/ui/Tooltip';
 
 const ENGINES = [
   { icon: Microscope, title: 'Teknik Analiz', desc: 'Klasik indikatörler + trend/momentum birleşimiyle çok katmanlı teknik puanlama.' },
@@ -91,7 +92,11 @@ function CanliMasa({ proof }: { proof: LandingProof | null }) {
     // instrument-well (mevcut token: bg-e-0 + inset hl10 hairline; "derinlik =
     // kabın içine bakmak"). Yeni glyph/svg/motion YOK; gerçek-veri + no-fake-data
     // (K1) ve nötr-proof/dürüstlük dili AYNEN korunur.
-    <div className="relative bg-e-0 rounded-card shadow-[inset_0_0_0_1px_var(--hl10)] p-5 min-h-[380px]">
+    <div className="canli-masa relative bg-e-0 rounded-card shadow-[inset_0_0_0_1px_var(--hl10)] p-5 min-h-[380px]">
+      {/* S5a (T1): kabuk (rim + üst-lüminans — globals .canli-masa) İLK KAREDEN
+          statik-görünür; yalnız İÇERİK reveal olur (rv-5 dış wrapper'dan buraya
+          taşındı) → ilk kare = "sahne kurulu, ışık masada". */}
+      <div className="rv-5">
       <div className="flex items-center justify-between">
         <span className="text-micro font-medium uppercase tracking-wide text-text-secondary">Canlı — gerçek sinyallerden</span>
         {time && <span className="text-micro font-mono text-text-muted tabular-nums">{time}</span>}
@@ -101,7 +106,7 @@ function CanliMasa({ proof }: { proof: LandingProof | null }) {
           Sıra: kimlik+outcome → kaydedilmiş giriş bölgesi (record) → nötr sonuç-numeralı
           (result) → zaman + "sonuca göre seçilmedi". Nötr-proof kilidi korunur. */}
       {lc && (
-        <div className="border-t border-border-subtle mt-4 pt-4">
+        <div className="proof-zsep mt-4 pt-4">
           <p className="text-micro font-medium uppercase tracking-wide text-text-muted">Son kapanan</p>
           <div className="flex items-center justify-between gap-3 mt-2">
             <span className="text-sm font-display text-text-primary">
@@ -115,22 +120,29 @@ function CanliMasa({ proof }: { proof: LandingProof | null }) {
               {OUTCOME_PILL[lc.outcome].label}
             </span>
           </div>
-          {/* Kaydedilmiş yargı (record): önceden ilan edilen giriş bölgesi — makbuz grameri */}
-          <p className="text-micro text-text-muted tabular-nums mt-2">Giriş {entryText}</p>
-          {/* Gerçekleşen sonuç (result): büyütülmüş nötr sahipli-numeral. Yeşil/kırmızı
-              "başarı" framing YOK (işaret +/-'de + outcome-pill'de); kayıp da aynı sadelikte.
+          {/* S5a (board Frame-3): nötr sonuç-numerali öne (36→40px sm+), altında TEK
+              kanonik makbuz-satırı — record ("Giriş ...") + zaman + dürüstlük cümlesi
+              ProvenanceReceipt'te birleşti (CP-HERO-C record/result BİLGİSİ aynen;
+              yalnız kompozisyon board'a hizalandı). Yeşil/kırmızı framing YOK,
               count-up YOK, tabular. */}
-          <div className="num font-num-560 tabular-nums leading-none text-[32px] sm:text-[36px] text-text-primary mt-1">
+          <div className="num font-num-560 tabular-nums leading-none text-[32px] sm:text-[40px] text-text-primary mt-1">
             {formatPercentage(lc.returnPct)}
           </div>
-          <p className="text-micro text-text-muted tabular-nums mt-2">{relTime(lc.closedAt)} · sonuca göre seçilmedi</p>
+          <ProvenanceReceipt
+            className="flex-wrap mt-2"
+            segments={[
+              entryText ? `Giriş ${entryText}` : null,
+              relTime(lc.closedAt),
+              'sonuca göre seçilmedi',
+            ]}
+          />
         </div>
       )}
 
       {/* CP-HERO-C — "ŞU AN AÇIK" (canlı-defter): eyebrow + hairline-bölünmüş satırlar.
           Yeni animasyon/glyph YOK; liveStatus muted tabular kolon olarak sağa hizalı. */}
       {proof && proof.teaser.length > 0 && (
-        <div className="border-t border-border-subtle mt-4 pt-4">
+        <div className="proof-zsep mt-4 pt-4">
           <p className="text-micro font-medium uppercase tracking-wide text-text-muted">Şu an açık</p>
           <div className="mt-1 divide-y divide-border-subtle">
             {proof.teaser.map((t) => (
@@ -149,12 +161,13 @@ function CanliMasa({ proof }: { proof: LandingProof | null }) {
       )}
 
       {proof && proof.activeTotal > 0 && (
-        <div className="border-t border-border-subtle mt-4 pt-3">
+        <div className="proof-zsep mt-4 pt-3">
           <Link href="/register" className="text-xs font-display text-accent-primary hover:text-accent-ui transition-colors">
             {proof.activeTotal} aktif sinyalin tamamı ürün içinde →
           </Link>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -273,7 +286,7 @@ export default function LandingPage() {
           {/* Sağ panel — R2: 32px dikey ofset (diagonal gerilim). Yüklenirken çerçeve
               rezervi durur (CLS 0); yükleme bitip veri yoksa alan tamamen kalkar (K1). */}
           {showPanelArea && (
-            <div className="mt-10 md:mt-8 rv-5">
+            <div className="mt-10 md:mt-8">
               <CanliMasa proof={proof} />
             </div>
           )}

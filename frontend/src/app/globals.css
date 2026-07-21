@@ -627,6 +627,39 @@
     background-image: var(--light-key);
   }
 
+  /* S5a · Kanıt-Rasathanesi masa materyali (YALNIZ landing CanliMasa; previz-v3
+     board Frame-3 otoritesi; Study-A2 ritim / Study-B2 "ışık materyali okutur"
+     ilkesinin STATİK çevirisi). Rim = üst cut-lip 1px (ışık-tarafı sol daha
+     parlak); yüzey üst-lüminansı ≈+%3; zone-ayraçları ışık-yönlü 1px gradyan-
+     hairline (border-t yerine). Motion/blur/glow/transform YOK; ışık animate
+     EDİLMEZ; yeni token YOK (color-mix mevcut --tx'i tüketir). */
+  .canli-masa {
+    background-image: linear-gradient(180deg, color-mix(in oklab, var(--tx) 3%, transparent), transparent 38%);
+  }
+  .canli-masa::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 14px;
+    right: 14px;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(90deg, color-mix(in oklab, var(--tx) 24%, transparent), color-mix(in oklab, var(--tx) 9%, transparent) 62%, transparent);
+  }
+  .proof-zsep {
+    position: relative;
+  }
+  .proof-zsep::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(90deg, color-mix(in oklab, var(--tx) 14%, transparent), color-mix(in oklab, var(--tx) 6%, transparent) 60%, color-mix(in oklab, var(--tx) 5%, transparent));
+  }
+
 }
 
 /* ============================================
