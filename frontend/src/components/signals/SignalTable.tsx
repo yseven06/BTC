@@ -22,10 +22,14 @@ const COLUMNS = ['SEMBOL · TF', 'YÖN', 'ANLIK FİYAT', 'KALİTE SKORU', 'DURUM
 
 // ─── Density ──────────────────────────────────────────────────────────────────
 // User-controlled row density. Drives the per-row vertical padding via the
-// inherited `--row-h` custom property. 'comfortable' = 0.875rem = the historical
-// py-3.5 (byte-identical default); 'compact' = 0.5rem for more rows per screen.
+// inherited `--row-h` custom property (applied top+bottom to every desktop row
+// AND the matching skeleton, so the skeleton height tracks automatically).
+// PV-D3b Seçenek-A: padding trimmed so the REAL rendered desktop row lands
+// ~50-54px comfortable / ~40-44px compact (two-line content ≈31px + 2×--row-h;
+// no literal 32px height). Two-line info is preserved and the mobile
+// SignalCardRow keeps its own p-4 (independent of --row-h).
 export type Density = 'comfortable' | 'compact';
-const ROW_H: Record<Density, string> = { comfortable: '0.875rem', compact: '0.5rem' };
+const ROW_H: Record<Density, string> = { comfortable: '0.625rem', compact: '0.3125rem' };
 
 // ─── Quality helpers ──────────────────────────────────────────────────────────
 export function qualityScore(confidence: number): number {
@@ -307,7 +311,7 @@ export function SignalTableRow({
 
       {/* Symbol + Timeframe */}
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-8 h-8 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center text-micro font-medium text-text-secondary flex-shrink-0">
+        <div className="w-7 h-7 rounded-lg bg-bg-tertiary border border-border-subtle flex items-center justify-center text-micro font-medium text-text-secondary flex-shrink-0">
           {sym.slice(0, 2)}
         </div>
         <div className="min-w-0">
