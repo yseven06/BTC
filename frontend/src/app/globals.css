@@ -613,7 +613,27 @@
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    background: var(--light-key);
+    /* S5b · Kontrollü sahne-ışığı: ışık artık sayfa-lekesi değil, MASAYA oturan
+       tek anahtar ışıktır (3 statik katman = tek kaynağın gövdesi+sıyırması+
+       çevresel düşüşü; ayrı odak DEĞİL). ① masa ana-ışığı — panel sol-üst
+       köşesine oturur (%14 tepe; ② ile kompozit tavan ≈%16 → ΔL*≤+6 sınırı
+       korunur) ② üst-kenar sıyırması — rim+ilk zone'u okutur (%7) ③ sol
+       copy-kolonuna çok hafif çevresel falloff (%4; 3. parlak odak değil —
+       squint {H1, CTA} bozulmaz). --light-key token'ı DEĞİŞMEDİ (Nabız onu
+       tüketir); bu yalnız landing-hero scoped kompozisyon. Cyan/--light-fill
+       YOK; animation/transition/drift YOK (ışık statiktir). */
+    background:
+      radial-gradient(720px 420px at 63% 0%, color-mix(in oklab, var(--accent) 14%, transparent), color-mix(in oklab, var(--accent) 5%, transparent) 45%, transparent 68%),
+      radial-gradient(560px 150px at 74% 8%, color-mix(in oklab, var(--accent) 7%, transparent), transparent 70%),
+      radial-gradient(900px 520px at 8% -6%, color-mix(in oklab, var(--accent) 4%, transparent), transparent 60%);
+  }
+  /* S5b mobil (tek kolon): doz düşer, merkez-üst tek yumuşak yıkama — metin
+     okunabilirliği önce; panel fold-altından kendi rim/lüminansıyla girer. */
+  @media (max-width: 767px) {
+    .hero-light::before {
+      background:
+        radial-gradient(560px 320px at 50% -4%, color-mix(in oklab, var(--accent) 8%, transparent), transparent 62%);
+    }
   }
 
   /* Nabız key-light (dash-nabız-v3): Dashboard Nabız bandının statik key-light
