@@ -431,6 +431,16 @@ function SignalDetailBody({ sig, onClose }: { sig: ApiSignal; onClose?: () => vo
   // birebir karşılığı (mount kalıcıyken sig.id değişimi sekmeyi sıfırlar).
   const sigId = sig.id;
   useEffect(() => { setTab('overview'); }, [sigId]);
+  // S4d: content-fade generation — bumped ONLY on a real user tab change (a click that
+  // lands on a different tab). NOT on first mount (starts at 0), NOT on the sigId-driven
+  // overview reset above (that calls setTab directly), NOT on a same-tab click. The
+  // functional update + key remount coalesces rapid clicks into one fresh fade.
+  const [fadeGen, setFadeGen] = useState(0);
+  const selectTab = (next: DrawerTab) => {
+    if (next === tab) return;          // same-tab click → no-op, no fade
+    setTab(next);
+    setFadeGen((g) => g + 1);
+  };
 
   const htf     = getHtfAlignment(sig.engines_data);
   const purge   = getPurgeType(sig.engines_data);
@@ -560,9 +570,9 @@ function SignalDetailBody({ sig, onClose }: { sig: ApiSignal; onClose?: () => vo
           ] as const).map((t) => (
             <button
               key={t.id}
-              onClick={() => setTab(t.id)}
+              onClick={() => selectTab(t.id)}
               className={cn(
-                'px-3 py-1.5 text-xs font-display rounded-lg transition-colors',
+                'px-3 py-1.5 text-xs font-display rounded-lg transition-colors duration-[var(--dur-state)] ease-[var(--ease-signal)]',
                 tab === t.id
                   ? 'bg-accent-primary text-white'
                   : 'text-text-muted hover:text-text-primary'
@@ -574,7 +584,13 @@ function SignalDetailBody({ sig, onClose }: { sig: ApiSignal; onClose?: () => vo
         </div>
 
         {/* ── Scrollable Content ── */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {/* S4d enter-only fade: the keyed inner wrapper remounts on a real tab change
+              (fadeGen) so the fade restarts and rapid clicks coalesce; gen>0 skips the
+              first mount and the sigId reset. Content renders instantly (opacity only,
+              no transform → panel kaymaz); the scroll container above is untouched, so
+              scroll position is never forced. space-y-4 moved here to keep inner rhythm. */}
+          <div key={fadeGen} className={cn('space-y-4', fadeGen > 0 && '[animation:fadeIn_var(--dur-photon)_var(--ease-signal)]')}>
           {tab === 'overview' && (
             <>
               {summary && (
@@ -706,6 +722,7 @@ function SignalDetailBody({ sig, onClose }: { sig: ApiSignal; onClose?: () => vo
           {tab === 'explanation' && (
             <SignalDetailSection signal={sig} />
           )}
+          </div>
         </div>
 
         {/* ── Sticky Action Bar ── */}
