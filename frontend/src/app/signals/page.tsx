@@ -587,7 +587,7 @@ function SignalDetailBody({ sig, onClose }: { sig: ApiSignal; onClose?: () => vo
               {/* Top bullish / bearish engines */}
               {(longestBullish.length > 0 || longestBearish.length > 0) && (
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-bullish/5 border border-bullish/20 rounded-xl p-3">
+                  <div className="bg-bg-secondary/40 border border-border-subtle rounded-xl p-3">
                     <p className="text-micro text-bullish uppercase font-medium mb-2 flex items-center gap-1.5">
                       <TrendingUp className="w-3 h-3" /> LONG Lehine
                     </p>
@@ -604,7 +604,7 @@ function SignalDetailBody({ sig, onClose }: { sig: ApiSignal; onClose?: () => vo
                       <p className="text-micro text-text-muted">Lehine motor yok</p>
                     )}
                   </div>
-                  <div className="bg-bearish/5 border border-bearish/20 rounded-xl p-3">
+                  <div className="bg-bg-secondary/40 border border-border-subtle rounded-xl p-3">
                     <p className="text-micro text-bearish uppercase font-medium mb-2 flex items-center gap-1.5">
                       <TrendingDown className="w-3 h-3" /> SHORT Lehine
                     </p>
