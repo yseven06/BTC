@@ -461,6 +461,55 @@
   animation: landing-rise var(--dur-overlay) var(--ease-signal) both;
 }
 
+/* S5c · Proof-Terminal Reveal koreografisi (yalnız CanliMasa İÇERİĞİ; kabuk+
+   rim+key-light STATİK, panel transformu YOK). rv-5 tek-blok fade'inin yerini
+   alır: iskelet (zsep hairline'ları) ilk kareden durur, içerik kanıt-sırasıyla
+   nefes alır — header → bağlam+durum → makbuz → açık-defter (40ms mikro-
+   stagger) → köprü → EN SON nötr numeral settle (count-up YOK, değer sabit).
+   Süreler: parça --dur-overlay 360 · gecikmeler 120→540 (adım 40-60ms, tek
+   easing ailesi --ease-signal) · toplam bitiş 900ms ≤1.2s (T3 carve-out).
+   proof-rise = 4px'lik sakin yükselme (rv 8px'ten bilinçli küçük; --pv-rise
+   yerel fallback-var'dır, tasarım-tokenı DEĞİL — mobilde 0'a çekilir).
+   [data-landing-reveal] yoksa (reduce · oturum-tekrarı · storage-yok) her şey
+   anında tam-görünür: kesintiye-açık, yarım-opacity kalmaz (both-fill). */
+@keyframes proof-rise {
+  from { opacity: 0; transform: translateY(var(--pv-rise, 4px)); }
+  to   { opacity: 1; transform: none; }
+}
+
+[data-landing-reveal] .pv,
+[data-landing-reveal] .pv-rows > * {
+  opacity: 0;
+  animation: proof-rise var(--dur-overlay) var(--ease-signal) both;
+}
+[data-landing-reveal] .pv-1 { animation-delay: 120ms; }
+[data-landing-reveal] .pv-2 { animation-delay: 180ms; }
+[data-landing-reveal] .pv-4 { animation-delay: 240ms; }
+[data-landing-reveal] .pv-5 { animation-delay: 300ms; }
+[data-landing-reveal] .pv-rows > *:nth-child(1) { animation-delay: 340ms; }
+[data-landing-reveal] .pv-rows > *:nth-child(2) { animation-delay: 380ms; }
+[data-landing-reveal] .pv-rows > *:nth-child(3) { animation-delay: 420ms; }
+[data-landing-reveal] .pv-rows > *:nth-child(n+4) { animation-delay: 460ms; }
+[data-landing-reveal] .pv-7 { animation-delay: 480ms; }
+[data-landing-reveal] .pv-6 { animation-delay: 540ms; }
+
+/* S5c mobil: masaüstü koreografisi küçültülüp yapıştırılmaz — parçalar kapanır,
+   içerik TEK kontrollü fade olur (rise 0; panel yüksekliği sabit; gecikmesiz
+   okunurluk önce). */
+@media (max-width: 767px) {
+  [data-landing-reveal] .pv,
+  [data-landing-reveal] .pv-rows > * {
+    animation: none;
+    opacity: 1;
+  }
+  [data-landing-reveal] .pv-scope {
+    --pv-rise: 0px;
+    opacity: 0;
+    animation: proof-rise var(--dur-overlay) var(--ease-signal) both;
+    animation-delay: 120ms;
+  }
+}
+
 /* Emniyet katmanı: reduce'ta T3 tamamen atlanır (JS guard attribute'u zaten
    basmaz; bu blok oturum-ortası reduce-değişimini de anında statiğe düşürür). */
 @media (prefers-reduced-motion: reduce) {
@@ -469,6 +518,9 @@
   [data-landing-reveal] .rv-3,
   [data-landing-reveal] .rv-4,
   [data-landing-reveal] .rv-5,
+  [data-landing-reveal] .pv,
+  [data-landing-reveal] .pv-rows > *,
+  [data-landing-reveal] .pv-scope,
   [data-landing-reveal] .rv-section {
     animation: none;
     opacity: 1;

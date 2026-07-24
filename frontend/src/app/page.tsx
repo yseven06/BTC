@@ -94,10 +94,12 @@ function CanliMasa({ proof }: { proof: LandingProof | null }) {
     // (K1) ve nötr-proof/dürüstlük dili AYNEN korunur.
     <div className="canli-masa relative bg-e-0 rounded-card shadow-[inset_0_0_0_1px_var(--hl10)] p-5 min-h-[380px]">
       {/* S5a (T1): kabuk (rim + üst-lüminans — globals .canli-masa) İLK KAREDEN
-          statik-görünür; yalnız İÇERİK reveal olur (rv-5 dış wrapper'dan buraya
-          taşındı) → ilk kare = "sahne kurulu, ışık masada". */}
-      <div className="rv-5">
-      <div className="flex items-center justify-between">
+          statik-görünür; yalnız İÇERİK reveal olur → ilk kare = "sahne kurulu,
+          ışık masada". S5c: tek-blok rv-5 fade'i pv-koreografisine terfi etti —
+          pv-scope masaüstünde statik taşıyıcı (parçalar pv-1..7 sırayla nefes
+          alır), mobilde tek kontrollü fade'in kendisidir (globals S5c bloğu). */}
+      <div className="pv-scope">
+      <div className="pv pv-1 flex items-center justify-between">
         <span className="text-micro font-medium uppercase tracking-wide text-text-secondary">Canlı — gerçek sinyallerden</span>
         {time && <span className="text-micro font-mono text-text-muted tabular-nums">{time}</span>}
       </div>
@@ -107,8 +109,8 @@ function CanliMasa({ proof }: { proof: LandingProof | null }) {
           (result) → zaman + "sonuca göre seçilmedi". Nötr-proof kilidi korunur. */}
       {lc && (
         <div className="proof-zsep mt-4 pt-4">
-          <p className="text-micro font-medium uppercase tracking-wide text-text-muted">Son kapanan</p>
-          <div className="flex items-center justify-between gap-3 mt-2">
+          <p className="pv pv-2 text-micro font-medium uppercase tracking-wide text-text-muted">Son kapanan</p>
+          <div className="pv pv-2 flex items-center justify-between gap-3 mt-2">
             <span className="text-sm font-display text-text-primary">
               {lc.symbol}
               {/* twMerge özel text-micro'yu renk sınıflarıyla çakıştırıp düşürüyor → düz birleştirme */}
@@ -125,11 +127,11 @@ function CanliMasa({ proof }: { proof: LandingProof | null }) {
               ProvenanceReceipt'te birleşti (CP-HERO-C record/result BİLGİSİ aynen;
               yalnız kompozisyon board'a hizalandı). Yeşil/kırmızı framing YOK,
               count-up YOK, tabular. */}
-          <div className="num font-num-560 tabular-nums leading-none text-[32px] sm:text-[40px] text-text-primary mt-1">
+          <div className="pv pv-6 num font-num-560 tabular-nums leading-none text-[32px] sm:text-[40px] text-text-primary mt-1">
             {formatPercentage(lc.returnPct)}
           </div>
           <ProvenanceReceipt
-            className="flex-wrap mt-2"
+            className="pv pv-4 flex-wrap mt-2"
             segments={[
               entryText ? `Giriş ${entryText}` : null,
               relTime(lc.closedAt),
@@ -143,8 +145,8 @@ function CanliMasa({ proof }: { proof: LandingProof | null }) {
           Yeni animasyon/glyph YOK; liveStatus muted tabular kolon olarak sağa hizalı. */}
       {proof && proof.teaser.length > 0 && (
         <div className="proof-zsep mt-4 pt-4">
-          <p className="text-micro font-medium uppercase tracking-wide text-text-muted">Şu an açık</p>
-          <div className="mt-1 divide-y divide-border-subtle">
+          <p className="pv pv-5 text-micro font-medium uppercase tracking-wide text-text-muted">Şu an açık</p>
+          <div className="pv-rows mt-1 divide-y divide-border-subtle">
             {proof.teaser.map((t) => (
               <div key={t.symbol} className="flex items-center gap-3 py-2">
                 <span className="flex-1 text-xs font-display text-text-primary">{t.symbol}</span>
@@ -162,7 +164,7 @@ function CanliMasa({ proof }: { proof: LandingProof | null }) {
 
       {proof && proof.activeTotal > 0 && (
         <div className="proof-zsep mt-4 pt-3">
-          <Link href="/register" className="text-xs font-display text-accent-primary hover:text-accent-ui transition-colors">
+          <Link href="/register" className="pv pv-7 block text-xs font-display text-accent-primary hover:text-accent-ui transition-colors">
             {proof.activeTotal} aktif sinyalin tamamı ürün içinde →
           </Link>
         </div>
