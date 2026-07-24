@@ -276,7 +276,7 @@ export default function LandingPage() {
             {/* R5: ikincil CTA çerçevesiz metin-link — sol kolonda tek kutu (squint: H1 + tek CTA).
                 Mobilde dikey istif (CTA sarma-fix). CP-5c: ikincil CTA kanıta davet eder (#sicil). */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-7 rv-4">
-              <Link href="/register" className="inline-flex items-center justify-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-6 py-3 rounded-xl transition-all hover:shadow-cta">
+              <Link href="/register" className="inline-flex items-center justify-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-6 py-3 rounded-xl transition-[background-color,box-shadow] duration-[var(--dur-warm)] ease-[var(--ease-signal)] hover:shadow-cta">
                 Ücretsiz Başla <ArrowRight className="w-4 h-4" />
               </Link>
               <Link href="#sicil" className="inline-flex items-center gap-1.5 text-sm font-display text-text-secondary hover:text-text-primary transition-colors">
@@ -302,7 +302,7 @@ export default function LandingPage() {
       {(!proofLoaded || proof?.stats) && (
         <RevealSection active={reveal} className="max-w-6xl mx-auto px-6 pb-6">
           {proof?.stats ? (
-            <div className="border-y border-border-subtle py-5">
+            <div className="proof-zsep proof-zsep-b py-5">
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2">
                 <span className="text-h3 num font-num-560 text-text-primary">{proof.stats.closedTotal.toLocaleString('tr-TR')}</span>
                 <span className="text-sm font-display text-text-secondary">kapanmış sinyal¹</span>
@@ -409,17 +409,19 @@ export default function LandingPage() {
         </div>
       </RevealSection>
 
-      {/* How it works */}
+      {/* How it works — S5d de-template: oyuncak gradient-rozet + ortalanmış
+          3-kart kataloğu → tek yatay proof-rail'in segmentleri (Hero masasıyla
+          aynı proof-zsep hairline dili + tabular index + sola-hizalı tipografik
+          hiyerarşi). İçerik/sıra/responsive AYNEN; hover/motion YOK (statik).
+          Index gerçek sıradır (padStart yalnız sunum-biçimi, içerik değişmedi). */}
       <RevealSection active={reveal} className="max-w-4xl mx-auto px-6 py-24">
         <h2 className="text-h2 font-display text-text-primary text-center">Dakikalar İçinde Başla</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-10 gap-y-8 mt-10">
           {STEPS.map((s) => (
-            <div key={s.n} className="text-center">
-              <div className="w-12 h-12 rounded-xl gradient-bg-brand flex items-center justify-center text-white font-display text-lg mx-auto mb-3">
-                {s.n}
-              </div>
-              <h3 className="text-sm font-display text-text-primary">{s.title}</h3>
-              <p className="text-xs text-text-secondary mt-1.5">{s.desc}</p>
+            <div key={s.n} className="proof-zsep pt-5">
+              <span className="num font-num-520 text-sm tabular-nums text-text-muted">{s.n.padStart(2, '0')}</span>
+              <h3 className="text-sm font-display text-text-primary mt-2.5">{s.title}</h3>
+              <p className="text-xs text-text-secondary leading-relaxed mt-1.5">{s.desc}</p>
             </div>
           ))}
         </div>
@@ -496,7 +498,7 @@ export default function LandingPage() {
         <p className="text-sm text-text-secondary mt-2 max-w-2xl">
           Verinin nereden geldiğini, nasıl korunduğunu ve gizliliği nasıl ele aldığımızı açıkça paylaşıyoruz.
         </p>
-        <div className="border-y border-border-subtle py-3 mt-8 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <div className="proof-zsep proof-zsep-b py-3 mt-8 flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <span className="text-micro font-medium uppercase tracking-wide text-text-secondary">Gerçek veri kaynakları</span>
           <span className="text-sm text-text-muted px-1" aria-hidden="true">·</span>
           <span className="text-sm font-display text-text-primary">Binance</span>
@@ -570,7 +572,7 @@ export default function LandingPage() {
       <RevealSection active={reveal} className="max-w-4xl mx-auto px-6 pt-24 pb-32 text-center">
         <h2 className="text-h2 md:text-h1 font-display text-text-primary">Sicil ortada. Karar senin.</h2>
         <p className="text-sm text-text-secondary mt-3">Kayıt sonrası dashboard'a anında erişim — kredi kartı gerekmez.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-7 py-3.5 rounded-xl transition-all hover:shadow-cta mt-6">
+        <Link href="/register" className="inline-flex items-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-7 py-3.5 rounded-xl transition-[background-color,box-shadow] duration-[var(--dur-warm)] ease-[var(--ease-signal)] hover:shadow-cta mt-6">
           Ücretsiz Başla <ArrowRight className="w-4 h-4" />
         </Link>
       </RevealSection>

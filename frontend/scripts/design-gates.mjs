@@ -51,14 +51,10 @@ const CLIP_PATTERNS = [
 // YANLIŞ-POZİTİF üretmez. Tarama, aşağıdaki yorum-soyulmuş `line` üzerinde koşar →
 // //, /* */, {/* */} JSX yorumları ihlal sayılmaz (mevcut stripping yeniden kullanılır).
 const TRANSITION_ALL_RE = /\btransition-all\b/;
-// Grandfather (S5/S6 landing redesign'a kilitli "Ücretsiz Başla" CTA ×2) —
-// OCCURRENCE-LEVEL, dosya-geneli DEĞİL, satır-no DEĞİL: dosya + landing-CTA
-// parmak-izi (href+bg+shadow üçü de AYNI satırda) + tam-2 invariant. Fingerprint
-// tek-koşul değildir; üçü birlikte olmalı. 3. kullanım / başka dosya / eksilme →
-// stale-allowlist hatası (aşağı). S5/S6'da CTA property-explicit yapılınca bu blok kaldırılır.
-const GATE6_LEGACY_FILE = ['src', 'app', 'page.tsx'].join(sep);
-const GATE6_LEGACY_FINGERPRINT = [/href="\/register"/, /bg-accent-primary\s+hover:bg-accent-hover/, /hover:shadow-cta/];
-const GATE6_LEGACY_EXPECTED = 2;
+// (S5d) Landing-CTA grandfather'ı EMEKLİ — iki "Ücretsiz Başla" CTA'sı
+// property-explicit'e çevrildi (transition-[background-color,box-shadow]);
+// repo-geneli DoD=0, istisna/allowlist kalmadı. (Kaldırma, bu bloğun kendi
+// "S5/S6'da CTA property-explicit yapılınca bu blok kaldırılır" talimatıdır.)
 
 const DUR_SET = new Set([140, 150, 180, 300, 360, 520, 50]); // v1.5: +300 (--dur-flash, K-J)
 function badDurationsTSX(line) {
@@ -99,7 +95,7 @@ const files = [];
   }
 })(SRC);
 
-let warnHex = 0, warnClip = 0, warnDur = 0, allowedHex = 0, gate6Legacy = 0;
+let warnHex = 0, warnClip = 0, warnDur = 0, allowedHex = 0;
 const report = [];      // gate-1 + gate-4: DoD=0 → --strict'te commit-BLOKLAR.
 const durReport = [];   // gate-5/TSX: 3 mevcut borç → WARN-envanteri, BLOKLAMAZ (aşağı).
 const gate6Report = []; // gate-6/TSX: yeni transition-all ihlalleri (DoD=0) → --strict'te BLOKLAR.
@@ -134,18 +130,12 @@ for (const f of files) {
     }
     // gate-6/TSX: transition-all yasağı (yorum-soyulmuş `line` → yorum muaf).
     if (TRANSITION_ALL_RE.test(line)) {
-      const isLegacyCtx = rel.endsWith(GATE6_LEGACY_FILE)
-        && GATE6_LEGACY_FINGERPRINT.every((re) => re.test(line));
-      if (isLegacyCtx) {
-        gate6Legacy++;
-      } else {
-        gate6Report.push(
-          `  [gate-6/TSX] ${rel}:${i + 1}  runtime "transition-all" (property-belirsiz)`
-          + `\n      bağlam: ${raw.trim().slice(0, 96)}`
-          + `\n      → yalnız gerçekten değişen property'leri belirt: transition-colors ·`
-          + ` transition-[width,background-color] · transition-[top,left,width,height]`
-        );
-      }
+      gate6Report.push(
+        `  [gate-6/TSX] ${rel}:${i + 1}  runtime "transition-all" (property-belirsiz)`
+        + `\n      bağlam: ${raw.trim().slice(0, 96)}`
+        + `\n      → yalnız gerçekten değişen property'leri belirt: transition-colors ·`
+        + ` transition-[width,background-color] · transition-[top,left,width,height]`
+      );
     }
   });
 }
@@ -168,16 +158,10 @@ if (durReport.length) {
   console.log(`WARN ${warnDur} süre-token (gate-5/TSX · non-blocking envanter; CSS ayağı ERROR):`);
   durReport.slice(0, 40).forEach((r) => console.log(r));
 }
-// gate-6/TSX transition-all yasağı (S2b DoD=0) — yeni ihlaller --strict'te BLOKLAR.
-// Grandfather stale/broad kontrolü: landing-CTA legacy occurrence tam GATE6_LEGACY_EXPECTED olmalı.
-let gate6Stale = null;
-if (gate6Legacy !== GATE6_LEGACY_EXPECTED) {
-  gate6Stale = `landing-CTA grandfather sayısı beklenen ${GATE6_LEGACY_EXPECTED}, bulunan ${gate6Legacy}`
-    + ` — allowlist bayat/geniş: iki S5/S6-kilitli landing CTA (page.tsx) değişmiş/eksilmiş/çoğalmış; allowlist'i gözden geçir.`;
-}
-const gate6Fail = gate6Report.length > 0 || gate6Stale !== null;
-console.log(`gate-6/TSX transition-all — allowed legacy occurrences: ${gate6Legacy} · new violations: ${gate6Report.length}`);
-if (gate6Stale) console.log(`  [gate-6/stale-allowlist] ${gate6Stale}`);
+// gate-6/TSX transition-all yasağı — S5d ile grandfather EMEKLİ: repo-geneli
+// DoD=0; HER occurrence ihlaldir ve --strict'te BLOKLAR.
+const gate6Fail = gate6Report.length > 0;
+console.log(`gate-6/TSX transition-all — violations: ${gate6Report.length} (DoD=0 · grandfather emekli/S5d)`);
 gate6Report.forEach((r) => console.log(r));
 if (gate6Fail) console.log('  transition-all is forbidden (MO-01). Declare only the properties that actually change, e.g. transition-colors or transition-[width,background-color].');
 

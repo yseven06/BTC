@@ -731,6 +731,22 @@
     pointer-events: none;
     background: linear-gradient(90deg, color-mix(in oklab, var(--tx) 14%, transparent), color-mix(in oklab, var(--tx) 6%, transparent) 60%, color-mix(in oklab, var(--tx) 5%, transparent));
   }
+  /* S5d: proof-separator'ın ALT kenarı (Kanıt-Bandı / Güvenlik bandı gibi
+     border-y kuşakları için) — ışık üstten geldiğinden alt kenar bilinçli
+     daha loş (%10→%5); statik, token yok, glow yok. */
+  .proof-zsep-b {
+    position: relative;
+  }
+  .proof-zsep-b::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(90deg, color-mix(in oklab, var(--tx) 10%, transparent), color-mix(in oklab, var(--tx) 5%, transparent) 60%, transparent);
+  }
 
 }
 
