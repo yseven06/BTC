@@ -2,9 +2,10 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
-  TrendingUp, Shield, BarChart3, Microscope, History, Zap, Wallet,
+  TrendingUp, Shield, BarChart3, Microscope, History, Wallet,
   ArrowRight, CheckCircle, Activity, Target, Globe, FileDown, Bell,
   Info, Layers, Eye, Lock,
 } from 'lucide-react';
@@ -232,7 +233,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-10 bg-bg-primary border-b border-border-subtle">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-8 h-8" />
+            <Image src="/logo-icon-square.png" alt="TradeMinds AI" width={32} height={32} className="w-8 h-8" />
             <span className="text-base font-display gradient-text-brand">TradeMinds AI</span>
             <span className="text-micro font-medium uppercase text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
           </div>
