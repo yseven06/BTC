@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Candle Range Theory (CRT) Analysis
+Zate Trade – Candle Range Theory (CRT) Analysis
 
 Analyses higher-timeframe candle ranges for intraday trading signals.
 

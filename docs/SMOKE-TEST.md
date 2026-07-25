@@ -1,6 +1,6 @@
 # Production Smoke-Test Checklist
 
-TradeMinds AI yayın-öncesi / deploy-sonrası duman testi. Her senaryo **PASS/FAIL**
+Zate Trade yayın-öncesi / deploy-sonrası duman testi. Her senaryo **PASS/FAIL**
 olarak işaretlenir; kritik bir senaryo FAIL ise yayın yapılmaz. İlgili:
 [SECURITY.md](./SECURITY.md), [DEPLOYMENT.md](./DEPLOYMENT.md), [OPERATIONS.md](./OPERATIONS.md).
 

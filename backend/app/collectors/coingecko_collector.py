@@ -1,5 +1,5 @@
 """
-TradeMinds AI – CoinGecko Market Data Collector
+Zate Trade – CoinGecko Market Data Collector
 
 Fetches market cap, supply details, tokenomics details, and metadata
 for cryptocurrency assets.

@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# TradeMinds AI - Backend launcher (Windows / PowerShell)
+# Zate Trade - Backend launcher (Windows / PowerShell)
 #
 # Starts the FastAPI backend on http://localhost:8000 using the project's
 # bundled venv. Keep this window OPEN. Press Ctrl+C to stop the backend.

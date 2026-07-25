@@ -237,8 +237,8 @@ export default function LandingPage() {
       <header className="sticky top-0 z-10 bg-bg-primary border-b border-border-subtle">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <Image src="/logo-icon-square.png" alt="TradeMinds AI" width={32} height={32} className="w-8 h-8" />
-            <span className="text-base font-display gradient-text-brand">TradeMinds AI</span>
+            <Image src="/logo-icon-square.png" alt="Zate Trade" width={32} height={32} className="w-8 h-8" />
+            <span className="text-base font-display gradient-text-brand">Zate Trade</span>
             <span className="text-micro font-medium uppercase text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
           </div>
           <div className="flex items-center gap-3">
@@ -276,7 +276,7 @@ export default function LandingPage() {
               sonucu ile kayda geçer. Kazananları da kaybedenleri de aynı sicilde görürsün.
             </p>
             <p className="text-sm text-text-secondary mt-4 rv-3">
-              TradeMinds bir yatırım danışmanı değildir; analiz aracıdır. Karar ve risk sana aittir.
+              Zate Trade bir yatırım danışmanı değildir; analiz aracıdır. Karar ve risk sana aittir.
             </p>
             {/* R5: ikincil CTA çerçevesiz metin-link — sol kolonda tek kutu (squint: H1 + tek CTA).
                 Mobilde dikey istif (CTA sarma-fix). CP-5c: ikincil CTA kanıta davet eder (#sicil). */}
@@ -442,7 +442,7 @@ export default function LandingPage() {
       <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 py-16 md:py-24 border-t border-border-subtle">
         <h2 className="nv-1 text-h2 font-display text-text-primary text-center">Şeffaflık: Nasıl Çalışır, Neyi Vaat Etmez</h2>
         <p className="nv-2 text-sm text-text-secondary text-center mt-2 max-w-2xl mx-auto">
-          TradeMinds bir &quot;sinyal grubu&quot; değildir — denetlenebilir bir kayıt defteridir.
+          Zate Trade bir &quot;sinyal grubu&quot; değildir — denetlenebilir bir kayıt defteridir.
           Neyi yapmadığımız, neyi yaptığımız kadar nettir.
         </p>
 

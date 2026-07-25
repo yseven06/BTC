@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Market Structure Engine
+Zate Trade – Market Structure Engine
 
 Combines swing-point / trend-structure analysis with support-resistance
 identification to produce a composite :class:`EngineResult`.

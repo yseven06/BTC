@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Macro & Market-Wide Data Routes
+Zate Trade – Macro & Market-Wide Data Routes
 
 Surfaces public macroeconomic data and BIST disclosures used by the
 macro engine and frontend dashboards.

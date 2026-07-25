@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Signal Generator
+Zate Trade – Signal Generator
 
 Takes individual engine analysis results, computes a weighted composite score,
 determines trade direction/strength, and calculates levels (Entry, Stop Loss,

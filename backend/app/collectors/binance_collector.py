@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Binance Market Data Collector
+Zate Trade – Binance Market Data Collector
 
 Fetches live prices, orderbooks, and historical candlesticks from the Binance API.
 """

@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Risk Management Engine
+Zate Trade – Risk Management Engine
 
 Analyzes volatility, drawdowns, risk levels, and returns a safety score
 and risk assessment as an EngineResult.

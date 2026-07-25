@@ -1,4 +1,4 @@
-# TradeMinds AI — crawler policy
+# Zate Trade — crawler policy
 # Public pages (landing, legal) are crawlable; authenticated app + API are not.
 User-agent: *
 Allow: /$

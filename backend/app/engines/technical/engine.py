@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Technical Analysis Engine
+Zate Trade – Technical Analysis Engine
 
 Orchestrates all technical sub-analysers (indicators + candlestick patterns)
 and returns a composite :class:`EngineResult`.

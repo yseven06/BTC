@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Smart Money Concepts (SMC) Engine
+Zate Trade – Smart Money Concepts (SMC) Engine
 
 Analyzes order blocks, Fair Value Gaps (FVG), breaker blocks, liquidity zones,
 and premium/discount zones to produce a composite SMC EngineResult.

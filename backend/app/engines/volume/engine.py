@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Volume Analysis Engine
+Zate Trade – Volume Analysis Engine
 
 Analyzes volume profile, volume spikes, divergences, and accumulation/distribution
 to output a Volume Analysis EngineResult.

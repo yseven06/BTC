@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Market Regime detection.
+Zate Trade – Market Regime detection.
 
 Classifies the current market into a regime (trending / ranging / volatile /
 low-volume / breakout) so the rest of the system can adapt its behaviour —

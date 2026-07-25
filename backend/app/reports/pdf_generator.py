@@ -1,5 +1,5 @@
 """
-TradeMinds AI – PDF Report Generator
+Zate Trade – PDF Report Generator
 
 Produces a clean, branded PDF for a single signal: header, levels, scores,
 engine breakdown, and explanation. Uses ReportLab — zero external services.
@@ -97,7 +97,7 @@ def _page_decoration(canvas: Canvas, _doc) -> None:
     # Footer
     canvas.setFillColor(TEXT_DIM)
     canvas.setFont(BASE_FONT, 8)
-    canvas.drawString(2 * cm, 1 * cm, "TradeMinds AI · Otomatik üretilmiş analiz raporu")
+    canvas.drawString(2 * cm, 1 * cm, "Zate Trade · Otomatik üretilmiş analiz raporu")
     canvas.drawRightString(w - 2 * cm, 1 * cm, f"Sayfa {canvas.getPageNumber()}")
     canvas.restoreState()
 

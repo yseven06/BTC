@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Market Structure Analysis
+Zate Trade – Market Structure Analysis
 
 Detects:
     * Swing Highs / Swing Lows (configurable lookback)

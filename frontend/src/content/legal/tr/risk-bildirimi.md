@@ -12,7 +12,7 @@ locale: tr
 > [Kullanım Koşulları](/yasal/kullanim-kosullari) ile birlikte bir bütün oluşturur.
 ## 1. Amaç ve Kapsam
 
-Bu Risk Bildirimi, TradeMinds AI ("**Platform**") tarafından sunulan analiz, sinyal,
+Bu Risk Bildirimi, Zate Trade ("**Platform**") tarafından sunulan analiz, sinyal,
 puanlama, geriye dönük test (backtest) ve karar destek içeriklerinin niteliğini ve
 bu içeriklerin kullanımına ilişkin riskleri açıklamak amacıyla hazırlanmıştır.
 Platform'a kayıt olarak veya Platform'u kullanarak bu belgeyi okuduğunuzu ve içeriğini

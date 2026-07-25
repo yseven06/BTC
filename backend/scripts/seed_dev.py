@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Local Development Seed Script
+Zate Trade – Local Development Seed Script
 ==============================================
 Run from the backend/ directory:
 
@@ -381,7 +381,7 @@ async def _generate_and_save_signal(session, asset: Asset, timeframe: str = "1h"
 
 async def main() -> None:
     print("\n" + "=" * 60)
-    print("  TradeMinds AI — Local Dev Seed")
+    print("  Zate Trade — Local Dev Seed")
     print("=" * 60)
 
     # Step 1: ensure all tables exist

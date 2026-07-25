@@ -1,5 +1,5 @@
 // ============================================
-// TradeMinds AI - Internationalization System
+// Zate Trade - Internationalization System
 // ============================================
 
 import { Language } from '@/types';
@@ -21,7 +21,7 @@ const translations = {
     'nav.news': 'Haberler',
 
     // ---- Brand ----
-    'brand.name': 'TradeMinds AI',
+    'brand.name': 'Zate Trade',
     'brand.tagline': 'Yapay Zeka Destekli Trading İstihbaratı',
 
     // ---- Signal Types ----
@@ -250,7 +250,7 @@ const translations = {
     'nav.news': 'News',
 
     // ---- Brand ----
-    'brand.name': 'TradeMinds AI',
+    'brand.name': 'Zate Trade',
     'brand.tagline': 'AI-Powered Trading Intelligence',
 
     // ---- Signal Types ----

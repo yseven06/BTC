@@ -111,12 +111,12 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
       {/* Logo */}
       <div className={cn('flex items-center h-16 px-4 border-b border-border-subtle', collapsed ? 'justify-center' : 'gap-3')}>
         <div className="relative flex items-center justify-center w-9 h-9 flex-shrink-0">
-          <Image src="/logo-icon-square.png" alt="TradeMinds AI" width={36} height={36} className="w-full h-full object-contain" />
+          <Image src="/logo-icon-square.png" alt="Zate Trade" width={36} height={36} className="w-full h-full object-contain" />
         </div>
         {!collapsed && (
           <div className="animate-fade-in overflow-hidden">
             <div className="flex items-center gap-1.5">
-              <h1 className="text-base font-display text-text-primary whitespace-nowrap">TradeMinds</h1>
+              <h1 className="text-base font-display text-text-primary whitespace-nowrap">Zate Trade</h1>
               <span className="text-micro font-medium uppercase text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
             </div>
             <p className="text-micro text-text-muted font-medium uppercase">AI Trading</p>

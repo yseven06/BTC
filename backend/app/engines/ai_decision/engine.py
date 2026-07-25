@@ -1,5 +1,5 @@
 """
-TradeMinds AI – AI Decision Engine Orchestrator
+Zate Trade – AI Decision Engine Orchestrator
 
 Coordinates the execution of all specialized analysis engines in parallel,
 aggregates their results, and passes them to the Signal Generator and
@@ -123,7 +123,7 @@ class AIDecisionEngine:
             Dict containing the final decision, signals, engine results,
             and explanations.
         """
-        logger.info(f"Starting TradeMinds analysis suite for {symbol} ({timeframe})")
+        logger.info(f"Starting ZateTrade analysis suite for {symbol} ({timeframe})")
 
         # Determine asset type
         asset_type = kwargs.get("asset_type", None)

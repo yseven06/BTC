@@ -15,7 +15,7 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { slug } = await params;
   const meta = getLegalMeta(slug);
-  return { title: meta ? `${meta.title} — TradeMinds AI` : 'Yasal Belge' };
+  return { title: meta ? `${meta.title} — Zate Trade` : 'Yasal Belge' };
 }
 
 export default async function LegalDocPage(

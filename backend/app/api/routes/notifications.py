@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Notification Settings Routes
+Zate Trade – Notification Settings Routes
 
 Manage Telegram delivery configuration and send a test message.
 """
@@ -106,6 +106,6 @@ async def send_test(
     result = await send_telegram_message(
         s.telegram_bot_token,
         s.telegram_chat_id,
-        "✅ <b>TradeMinds AI</b>\nTelegram bildirimleri başarıyla bağlandı!",
+        "✅ <b>Zate Trade</b>\nTelegram bildirimleri başarıyla bağlandı!",
     )
     return result

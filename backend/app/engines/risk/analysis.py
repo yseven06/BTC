@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Risk Management Engine Helpers
+Zate Trade – Risk Management Engine Helpers
 
 Calculates volatility levels, position sizing metrics (Kelly, fixed fractional, ATR-based),
 Risk/Reward ratios, and composite Risk Scores.

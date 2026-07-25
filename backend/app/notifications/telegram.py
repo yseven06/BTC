@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Telegram Notification Service
+Zate Trade – Telegram Notification Service
 
 Sends formatted messages to a Telegram chat using the Bot API.
 No third-party library needed — uses httpx against the public Bot API.
@@ -68,7 +68,7 @@ def format_lifecycle_message(
     if reason:
         lines.append(f"📋 {reason}")
     lines.append(f"💵 Fiyat: <code>{fmt(price)}</code>")
-    lines += ["", "<i>TradeMinds AI · Sinyal Takibi</i>"]
+    lines += ["", "<i>Zate Trade · Sinyal Takibi</i>"]
     return "\n".join(lines)
 
 
@@ -136,6 +136,6 @@ def format_signal_message(
         f"✅ TP2: <code>{fmt(tp2)}</code>",
         f"⚠️ Risk: {risk_level}",
         "",
-        "<i>TradeMinds AI</i>",
+        "<i>Zate Trade</i>",
     ]
     return "\n".join(lines)

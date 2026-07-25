@@ -1,4 +1,4 @@
-# Phase 2 Product Roadmap — TradeMinds AI
+# Phase 2 Product Roadmap — Zate Trade
 
 > ## 🏁 CHECKPOINT — BETA-READY BASELINE (2026-06-30)
 > Beta-hazırlık **A-bloğu (A1-A5) TAMAM** · şirket varsayımı kaldırıldı → **gerçek kişi/bireysel

@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# TradeMinds AI - Frontend launcher (Windows / PowerShell)
+# Zate Trade - Frontend launcher (Windows / PowerShell)
 #
 # Starts the Next.js dev server on http://localhost:3000.
 # Keep this window OPEN. Press Ctrl+C to stop.

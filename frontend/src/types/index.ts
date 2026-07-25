@@ -1,5 +1,5 @@
 // ============================================
-// TradeMinds AI - TypeScript Type Definitions
+// Zate Trade - TypeScript Type Definitions
 // ============================================
 
 export type SignalType = 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell';

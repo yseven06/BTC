@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Support & Resistance Analysis
+Zate Trade – Support & Resistance Analysis
 
 Identifies:
     * Horizontal S/R from price pivots (touch counting + recency weighting)

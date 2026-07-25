@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Signal Performance Tracker
+Zate Trade – Signal Performance Tracker
 
 Fetches active signals, checks subsequent price action using live data from the
 Binance collector (crypto-only), and resolves trade outcomes in the DB.

@@ -1,5 +1,5 @@
 """
-TradeMinds AI – On-Chain Data Collector
+Zate Trade – On-Chain Data Collector
 
 Aggregates free, public on-chain metrics from multiple sources.
 No API keys required — uses public endpoints with reasonable timeouts.

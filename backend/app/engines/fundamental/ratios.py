@@ -1,5 +1,5 @@
 """
-TradeMinds AI – BIST Stock Fundamental Ratios Analysis
+Zate Trade – BIST Stock Fundamental Ratios Analysis
 
 Analyzes stock financial metrics including profitability, valuation, leverage,
 efficiency, and liquidity ratios against industry benchmarks.

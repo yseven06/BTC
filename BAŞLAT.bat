@@ -1,15 +1,15 @@
 @echo off
 REM ============================================================
-REM   TradeMinds AI - One-Click Launcher
+REM   Zate Trade - One-Click Launcher
 REM   Cift tikla, iki pencere acilir: Backend + Frontend.
 REM ============================================================
 
-title TradeMinds Launcher
+title ZateTrade Launcher
 
 cd /d "%~dp0"
 
 echo.
-echo   TradeMinds AI baslatiliyor...
+echo   Zate Trade baslatiliyor...
 echo   Iki yeni pencere acilacak (yesil = Backend, mavi = Frontend).
 echo   Bu pencere otomatik kapanacak.
 echo.

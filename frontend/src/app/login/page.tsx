@@ -56,9 +56,9 @@ function LoginForm() {
         {/* Logo */}
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 mb-3">
-            <Image src="/logo-icon-square.png" alt="TradeMinds AI" width={64} height={64} className="w-full h-full object-contain" />
+            <Image src="/logo-icon-square.png" alt="Zate Trade" width={64} height={64} className="w-full h-full object-contain" />
           </div>
-          <div className="text-h2 font-display text-text-primary">TradeMinds</div>
+          <div className="text-h2 font-display text-text-primary">Zate Trade</div>
           <p className="text-sm text-text-secondary mt-1">AI Trading Intelligence</p>
         </div>
 

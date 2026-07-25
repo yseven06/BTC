@@ -60,7 +60,7 @@ async function drawCard(canvas: HTMLCanvasElement, data: ShareCardData) {
   ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = tx;
   ctx.font = '700 40px Arial';
-  ctx.fillText('TRADEMINDS AI', 164, 100);
+  ctx.fillText('ZATE TRADE', 164, 100);
   ctx.fillStyle = tx2;
   ctx.font = '400 22px Arial';
   ctx.fillText('AI Trading Intelligence', 164, 130);
@@ -141,7 +141,7 @@ async function drawCard(canvas: HTMLCanvasElement, data: ShareCardData) {
   ctx.fillStyle = tx3;
   const footerText = data.isClosed && data.closedAt
     ? `Kapanış: ${formatDateTR(data.closedAt)}`
-    : 'TradeMinds AI ile kendi pozisyonunu takip et';
+    : 'Zate Trade ile kendi pozisyonunu takip et';
   ctx.fillText(footerText, 64, CARD_SIZE - 64);
 }
 
@@ -182,7 +182,7 @@ export function ShareCardModal({ data, onClose }: { data: ShareCardData; onClose
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `trademinds-${data.symbol.toLowerCase()}-${data.isClosed ? 'kapali' : 'acik'}.png`;
+      a.download = `zatetrade-${data.symbol.toLowerCase()}-${data.isClosed ? 'kapali' : 'acik'}.png`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -195,10 +195,10 @@ export function ShareCardModal({ data, onClose }: { data: ShareCardData; onClose
     if (!canvas) return;
     canvas.toBlob(async (blob) => {
       if (!blob) return;
-      const file = new File([blob], `trademinds-${data.symbol.toLowerCase()}.png`, { type: 'image/png' });
+      const file = new File([blob], `zatetrade-${data.symbol.toLowerCase()}.png`, { type: 'image/png' });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         try {
-          await navigator.share({ files: [file], title: 'TradeMinds AI', text: `${data.symbol} pozisyonum` });
+          await navigator.share({ files: [file], title: 'Zate Trade', text: `${data.symbol} pozisyonum` });
           return;
         } catch { /* user canceled or unsupported — fall back to download */ }
       }

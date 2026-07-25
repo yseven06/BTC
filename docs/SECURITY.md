@@ -1,6 +1,6 @@
 # Güvenlik (Security) — Posizyon, Ops ve Checklist
 
-TradeMinds AI güvenlik sertleştirmesi (Madde 6) özeti + operasyon rehberi.
+Zate Trade güvenlik sertleştirmesi (Madde 6) özeti + operasyon rehberi.
 İlgili: [PRODUCT-LEGAL-PRINCIPLES.md](./PRODUCT-LEGAL-PRINCIPLES.md) (bağlayıcı ürün/legal/security ilkeleri),
 [DEPLOYMENT.md](./DEPLOYMENT.md), [OPERATIONS.md](./OPERATIONS.md),
 [CAPTCHA-STRATEGY.md](./CAPTCHA-STRATEGY.md), [LEGAL-PACKAGE-PLAN.md](./LEGAL-PACKAGE-PLAN.md).

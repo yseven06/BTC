@@ -1,5 +1,5 @@
 #!/bin/sh
-# TradeMinds pre-commit — design-lint gate'leri (Bible v1.3 §08 K4 · P1-F/g)
+# ZateTrade pre-commit — design-lint gate'leri (Bible v1.3 §08 K4 · P1-F/g)
 # Versiyonlu hook: repo kökü .githooks/ + `git config core.hooksPath .githooks`
 # (yeni klonda bir kez çalıştırılır; bkz. commit mesajı P1-F/g-2).
 #

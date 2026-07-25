@@ -81,10 +81,10 @@ export default function RegisterPage() {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 mb-3">
-            <Image src="/logo-icon-square.png" alt="TradeMinds AI" width={64} height={64} className="w-full h-full object-contain" />
+            <Image src="/logo-icon-square.png" alt="Zate Trade" width={64} height={64} className="w-full h-full object-contain" />
           </div>
           <div className="flex items-center justify-center gap-2">
-            <div className="text-h2 font-display text-text-primary">TradeMinds</div>
+            <div className="text-h2 font-display text-text-primary">Zate Trade</div>
             <span className="text-micro font-medium uppercase text-accent-primary bg-accent-primary/12 border border-accent-primary/30 px-1.5 py-0.5 rounded">BETA</span>
           </div>
           <p className="text-sm text-text-secondary mt-1">Yeni Hesap Oluştur</p>

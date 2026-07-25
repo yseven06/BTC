@@ -1,6 +1,6 @@
 # Monitoring & Analytics — Kurulum ve Doğrulama
 
-TradeMinds AI'ın izleme (Sentry), ürün analitiği (PostHog) ve dış erişilebilirlik
+Zate Trade'ın izleme (Sentry), ürün analitiği (PostHog) ve dış erişilebilirlik
 takibi (UptimeRobot) katmanlarının kurulum rehberi.
 
 > **Tasarım ilkesi — env-gated / no-op:** Bu katmanların *tamamı* environment
@@ -206,14 +206,14 @@ Backend `/health` endpoint'i dış dünyadan periyodik ping'lenir; düşerse ala
 
 `/health` cevabı:
 ```json
-{ "status": "healthy", "service": "trademinds-backend", "debug_mode": false }
+{ "status": "healthy", "service": "zatetrade-backend", "debug_mode": false }
 ```
 
 ### Kurulum
 1. [uptimerobot.com](https://uptimerobot.com) → ücretsiz hesap.
 2. **Add New Monitor**:
    - **Monitor Type:** HTTP(s)
-   - **Friendly Name:** `TradeMinds Backend /health`
+   - **Friendly Name:** `ZateTrade Backend /health`
    - **URL:** `https://<railway-backend-domain>/health`
    - **Monitoring Interval:** 5 dakika (ücretsiz planın en sıkı aralığı)
 3. (Önerilir) **Keyword** monitörü olarak da kur: response içinde `healthy`

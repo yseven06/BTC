@@ -1,5 +1,5 @@
 // ============================================
-// TradeMinds AI - Utility Functions
+// Zate Trade - Utility Functions
 // ============================================
 
 import { clsx, type ClassValue } from 'clsx';

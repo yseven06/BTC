@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { listLegalDocs } from '@/lib/legal/registry';
 
-export const metadata: Metadata = { title: 'Yasal Belgeler — TradeMinds AI' };
+export const metadata: Metadata = { title: 'Yasal Belgeler — Zate Trade' };
 
 export default function LegalIndexPage() {
   const docs = listLegalDocs();

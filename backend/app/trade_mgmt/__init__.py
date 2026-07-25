@@ -1,5 +1,5 @@
 """
-TradeMinds — Trade Management v2 (Phase 1: Offline Replay Harness).
+ZateTrade — Trade Management v2 (Phase 1: Offline Replay Harness).
 
 ISOLATED, READ-ONLY analysis package. Nothing in the live hot paths
 (tracker / scheduler / signal_generator / lifecycle) imports from here, so the

@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Report Routes
+Zate Trade – Report Routes
 
 PDF export endpoints for signals and performance summaries.
 Pro tier or above required.
@@ -70,7 +70,7 @@ async def signal_pdf(
     }
 
     pdf_bytes = generate_signal_pdf(payload)
-    filename = f"trademinds-signal-{payload['symbol']}-{signal_id.hex[:8]}.pdf"
+    filename = f"zatetrade-signal-{payload['symbol']}-{signal_id.hex[:8]}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -149,5 +149,5 @@ async def performance_pdf(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": 'attachment; filename="trademinds-performance.pdf"'},
+        headers={"Content-Disposition": 'attachment; filename="zatetrade-performance.pdf"'},
     )

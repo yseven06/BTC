@@ -88,7 +88,7 @@ CI/CD yok (deploy manuel) · scheduler ayrı worker'a çıkarılmadı (tek-repli
 yok (ileri-telafi modeli) · object storage / nonce-CSP açık. Bunlar bilinçli post-beta.
 
 ## 8. Crypto-only cutover (CP-1) — operasyonel rollout adımı (⚠️ migration DEĞİL)
-> **İlke:** TradeMinds artık **%100 crypto-only**. Kod tarafı (crypto-only backend filtreleri +
+> **İlke:** ZateTrade artık **%100 crypto-only**. Kod tarafı (crypto-only backend filtreleri +
 > kullanıcı-yüzeyi temizliği) commit'te versiyonlu ve **deterministik/tekrar-üretilebilir**. BIST
 > asset'lerinin canlı DB'de pasifleştirilmesi **bilinçli olarak migration değildir** — DB durum
 > mutasyonu kod commit'inden ayrı, aşağıdaki operasyonel adımla uygulanır. Böylece commit yalnızca kodu

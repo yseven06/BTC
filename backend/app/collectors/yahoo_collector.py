@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Yahoo Finance BIST Collector
+Zate Trade – Yahoo Finance BIST Collector
 
 Fetches OHLCV + live price for BIST stocks (symbol format: THYAO.IS) via Yahoo's
 public chart API (query1.finance.yahoo.com/v8/finance/chart) — a direct HTTP

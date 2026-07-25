@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Bybit Market Data Collector
+Zate Trade – Bybit Market Data Collector
 
 Public Bybit v5 REST API. No API key required for market data.
 Useful for futures/perp data and as a fallback to Binance.

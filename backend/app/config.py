@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     )
 
     # --- Application ---
-    APP_NAME: str = "TradeMinds AI"
+    APP_NAME: str = "Zate Trade"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     ENVIRONMENT: str = "development"

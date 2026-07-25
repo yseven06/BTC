@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Explanation Generator
+Zate Trade – Explanation Generator
 
 Generates detailed, structured explanations in Turkish and English, translating
 technical metrics, market structures, and support/resistance zones into readable insights.

@@ -1,4 +1,4 @@
-# TradeMinds AI — Deployment Guide
+# Zate Trade — Deployment Guide
 
 Topology: **Backend → Railway** · **Frontend → Vercel** · **DB/Storage → Supabase**.
 Secrets are never committed — set them as platform environment variables.

@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Billing & Subscription Routes
+Zate Trade – Billing & Subscription Routes
 
 Endpoints:
   GET  /plans                       — pricing catalog (public)
@@ -259,7 +259,7 @@ async def start_checkout(
                 "price_data": {
                     "currency": "usd",
                     "product_data": {
-                        "name": f"TradeMinds {payload.tier.value.upper()} – {months} ay",
+                        "name": f"Zate Trade {payload.tier.value.upper()} – {months} ay",
                     },
                     "unit_amount": int(price * 100),
                     "recurring": get_stripe_recurring(payload.cycle),

@@ -62,7 +62,7 @@ function decodeEntities(s: string): string {
 async function fetchUtf8(url: string): Promise<string | null> {
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'TradeMinds/1.0 RSS Reader' },
+      headers: { 'User-Agent': 'ZateTrade/1.0 RSS Reader' },
       cache: 'no-store',
     });
     if (!res.ok) return null;

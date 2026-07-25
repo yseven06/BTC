@@ -13,7 +13,7 @@ locale: tr
 > ayrıca [Açık Rıza Metni](/yasal/acik-riza) sunulur.
 ## 1. Veri Sorumlusu
 
-Kişisel verileriniz, veri sorumlusu sıfatıyla TradeMinds AI ("**Platform**") tarafından
+Kişisel verileriniz, veri sorumlusu sıfatıyla Zate Trade ("**Platform**") tarafından
 işlenir.
 
 > _[Hizmet sağlayıcının (işletici) yasal bilgileri kesinleştiğinde; ticaret unvanı/işletici adı,

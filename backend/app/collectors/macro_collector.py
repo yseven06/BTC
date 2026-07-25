@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Macro & Fundamental Data Collector
+Zate Trade – Macro & Fundamental Data Collector
 
 Aggregates data that is not coin/stock specific but moves entire markets:
 

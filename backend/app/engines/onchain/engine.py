@@ -1,5 +1,5 @@
 """
-TradeMinds AI – On-Chain Analysis Engine
+Zate Trade – On-Chain Analysis Engine
 
 Analyzes blockchain and market sentiment metrics that price action alone
 cannot reveal:

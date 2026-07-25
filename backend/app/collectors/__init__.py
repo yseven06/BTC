@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Data Collectors Package
+Zate Trade – Data Collectors Package
 
 Contains connectors for fetching live market prices and OHLCV bars from
 external providers: Binance, CoinGecko, and Yahoo Finance.

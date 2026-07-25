@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Tier-Based Feature Gating
+Zate Trade – Tier-Based Feature Gating
 
 Defines per-tier feature limits and dependency-injectable helpers used by
 API routes to enforce subscription gates.

@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Live Price Endpoint
+Zate Trade – Live Price Endpoint
 
 Provides a lightweight ticker endpoint for any asset.
 Crypto → Binance REST (no auth), Stocks → Yahoo Finance.

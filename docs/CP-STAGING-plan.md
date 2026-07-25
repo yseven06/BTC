@@ -7,7 +7,7 @@
 
 ---
 
-## Bu mimariyi belirleyen üç load-bearing gerçek (TradeMinds'e özgü)
+## Bu mimariyi belirleyen üç load-bearing gerçek (ZateTrade'e özgü)
 
 1. **Single-flight IN-PROCESS bir bellek-bool'udur** (F0-1E; `--workers 1`, tek-replika sabiti — DEPLOYMENT.md). İki scheduler (local + staging) aynı Supabase'e **paralel** koşarsa → **çift-işleme/yarış**; tek koruma `signal_trade_path.signal_id` UNIQUE ("kırılgan koruma"). ⇒ Göç = **CUTOVER (her an TEK yazıcı)**, "parallel run" DEĞİL.
 2. **DB pool 8+2, Supavisor 15-cap altında** (db-idle-in-transaction-leak kaydı). İki instance = ~20 bağlantı > 15 → **bağlantı tükenmesi**. ⇒ Local pool kapanmadan staging pool açılmaz → temiz cutover zorunlu.
@@ -28,7 +28,7 @@
 
 ## 3. Host seçimi — karşılaştırma
 
-| Seçenek | Avantaj | Risk | Maliyet | Güvenilirlik | env/secret riski | TradeMinds uygunluğu |
+| Seçenek | Avantaj | Risk | Maliyet | Güvenilirlik | env/secret riski | ZateTrade uygunluğu |
 |---|---|---|---|---|---|---|
 | **Local + alarm** (mevcut) | 0 kurulum, hazır | makine-kapalı kanıtlı; babysitting | $0 | Düşük-orta | mevcut = iyi | **Interim** |
 | **Küçük VPS** (Hetzner/DO/Linode) | tam kontrol, systemd, sabit-fiyat | OS/patch/uptime **sen** yönetirsin | ~$4-6/ay | Yüksek (bakımlıysa) | SSH+env kendin sertleştirir | İyi ama ops-yükü |

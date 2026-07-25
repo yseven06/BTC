@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Smart Money Concepts (SMC)
+Zate Trade – Smart Money Concepts (SMC)
 
 Detects:
     * Order Blocks (OB) – bullish & bearish, mitigated tracking

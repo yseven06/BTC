@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# TradeMinds AI – Full dev launcher (Windows / PowerShell)
+# Zate Trade – Full dev launcher (Windows / PowerShell)
 #
 # Opens TWO new PowerShell windows:
 #   • Backend  → http://localhost:8000
@@ -19,7 +19,7 @@ if (-not (Test-Path $backendScript))  { Write-Host "Missing: $backendScript"  -F
 if (-not (Test-Path $frontendScript)) { Write-Host "Missing: $frontendScript" -ForegroundColor Red; exit 1 }
 
 Write-Host ""
-Write-Host "  Launching TradeMinds AI dev environment..." -ForegroundColor Cyan
+Write-Host "  Launching Zate Trade dev environment..." -ForegroundColor Cyan
 Write-Host "    Backend window  → http://localhost:8000" -ForegroundColor DarkGray
 Write-Host "    Frontend window → http://localhost:3000" -ForegroundColor DarkGray
 Write-Host ""

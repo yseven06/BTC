@@ -1,4 +1,4 @@
-# 🧠 TradeMinds AI — Trading Intelligence Platform
+# 🧠 Zate Trade — Trading Intelligence Platform
 
 <div align="center">
 
@@ -16,7 +16,7 @@
 
 ## 📋 Overview
 
-TradeMinds AI is a professional-grade trading intelligence platform that combines **8 analysis engines** into a unified **AI Decision Engine** to generate high-confidence trading signals with detailed explanations.
+Zate Trade is a professional-grade trading intelligence platform that combines **8 analysis engines** into a unified **AI Decision Engine** to generate high-confidence trading signals with detailed explanations.
 
 ### Key Features
 
@@ -170,7 +170,7 @@ Once both servers are up, open <http://localhost:3000/login> and sign in:
 
 | Field | Value |
 |-------|-------|
-| E-posta | `dev@trademinds.io` |
+| E-posta | `dev@zatetrade.com` |
 | Şifre   | `devpass123` |
 
 This dev account is seeded as **admin** so all gated features (Pro/Premium

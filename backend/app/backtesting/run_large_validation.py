@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Large Scale walk-forward validation script.
+Zate Trade – Large Scale walk-forward validation script.
 Runs 3-year walk-forward backtesting simulations for BTCUSDT, ETHUSDT, THYAO.IS, and GARAN.IS.
 Outputs institutional-grade metrics: Win Rate, Profit Factor, Sharpe, Sortino, Drawdown, Expectancy, and Monthly Breakdown.
 """
@@ -65,7 +65,7 @@ def compute_monthly_breakdown(equity_curve_list: list) -> dict:
 
 async def main():
     print("================================================================")
-    print("      TRADEMINDS AI - INSTITUTIONAL SCALE VALIDATION            ")
+    print("      ZATE TRADE - INSTITUTIONAL SCALE VALIDATION            ")
     print("================================================================\n")
     print("Initializing collectors and backtest engine...")
 

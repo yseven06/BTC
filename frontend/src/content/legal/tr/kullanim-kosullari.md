@@ -13,7 +13,7 @@ locale: tr
 > ve [Çerez Politikası](/yasal/cerez-politikasi) bu sözleşmenin ayrılmaz parçalarıdır.
 ## 1. Taraflar ve Kabul
 
-Bu Kullanım Koşulları ("**Sözleşme**"); TradeMinds AI ("**Platform**", "**biz**") —
+Bu Kullanım Koşulları ("**Sözleşme**"); Zate Trade ("**Platform**", "**biz**") —
 _[Hizmet sağlayıcının (işletici) yasal bilgileri kesinleştiğinde; ticaret unvanı/işletici adı,
 vergi kimlik bilgileri, açık adres ile resmî iletişim (e-posta/telefon; varsa KEP/MERSİS)
 bilgileri — işleticinin hukuki statüsüne ve ilgili mevzuata uygun biçimde — burada yer alacaktır]_ — ile

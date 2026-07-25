@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Volume Analysis Engine Helpers
+Zate Trade – Volume Analysis Engine Helpers
 
 Performs volume profile calculations, volume spike detection, volume-price
 divergence checks, and climax volume analysis.

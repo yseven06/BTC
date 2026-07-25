@@ -93,7 +93,7 @@ export default function OnboardingChecklist() {
         <div className="min-w-0">
           <h2 className="text-sm font-display text-text-primary flex items-center gap-2">
             <PartyPopper className="w-4 h-4 text-accent-primary flex-shrink-0" />
-            {allDone ? 'Harika! Kuruluma hazırsın' : "TradeMinds'e hoş geldin — başlamak için 4 adım"}
+            {allDone ? 'Harika! Kuruluma hazırsın' : "Zate Trade'e hoş geldin — başlamak için 4 adım"}
           </h2>
           {!allDone && (
             <p className="text-xs text-text-secondary mt-0.5">Birkaç dakikada ürünü tanı, ilk değerini yakala.</p>

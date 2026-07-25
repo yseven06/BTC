@@ -1,7 +1,7 @@
 """
-TradeMinds AI - Analysis Engines Package
+Zate Trade - Analysis Engines Package
 
-This package contains all analysis engines that power the TradeMinds AI
+This package contains all analysis engines that power the Zate Trade
 trading intelligence platform. Each engine inherits from BaseEngine and
 provides a specific type of market analysis.
 

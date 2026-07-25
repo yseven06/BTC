@@ -1,7 +1,7 @@
 """
 Adaptive Signal Intelligence models.
 
-These tables turn TradeMinds from a stateless signal generator into a system
+These tables turn ZateTrade from a stateless signal generator into a system
 that *remembers*:
 
   • SignalSnapshot — an immutable photograph of every condition that existed

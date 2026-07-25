@@ -1,1 +1,1 @@
-"""TradeMinds AI – Reporting module."""
+"""Zate Trade – Reporting module."""

@@ -1,5 +1,5 @@
 /**
- * TradeMinds AI – Centralized API Client
+ * Zate Trade – Centralized API Client
  */
 
 import { solveChallenge, challengeSitekey } from './challenge';
@@ -1198,12 +1198,12 @@ async function downloadPdf(path: string, filename: string): Promise<void> {
 export async function downloadSignalPdf(signal_id: string, symbol = 'signal'): Promise<void> {
   await downloadPdf(
     `/api/v1/reports/signal/${signal_id}.pdf`,
-    `trademinds-${symbol}-${signal_id.slice(0, 8)}.pdf`,
+    `zatetrade-${symbol}-${signal_id.slice(0, 8)}.pdf`,
   );
 }
 
 export async function downloadPerformancePdf(): Promise<void> {
-  await downloadPdf('/api/v1/reports/performance.pdf', 'trademinds-performance.pdf');
+  await downloadPdf('/api/v1/reports/performance.pdf', 'zatetrade-performance.pdf');
 }
 
 // ---------------------------------------------------------------------------

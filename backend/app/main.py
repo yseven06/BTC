@@ -1,5 +1,5 @@
 """
-TradeMinds AI Backend Application Entrypoint.
+Zate Trade Backend Application Entrypoint.
 
 Sets up FastAPI instance, CORS headers, global exception handlers,
 and wires in all REST api routes.
@@ -48,7 +48,7 @@ if settings.SENTRY_DSN:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handles application startup and shutdown events."""
-    logger.info("Starting TradeMinds AI Backend...")
+    logger.info("Starting Zate Trade Backend...")
     if settings.DEBUG:
         try:
             await init_db()
@@ -65,14 +65,14 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    logger.info("Shutting down TradeMinds AI Backend...")
+    logger.info("Shutting down Zate Trade Backend...")
     stop_scheduler()
     await close_db()
     logger.info("Database connection closed.")
 
 
 app = FastAPI(
-    title="TradeMinds AI API",
+    title="Zate Trade API",
     description="Advanced AI-Powered multi-engine trading intelligence and signal generation platform.",
     version="1.0.0",
     lifespan=lifespan,
@@ -123,7 +123,7 @@ async def health_check():
     """Health check endpoint for container / server validation."""
     return {
         "status": "healthy",
-        "service": "trademinds-backend",
+        "service": "zatetrade-backend",
     }
 
 

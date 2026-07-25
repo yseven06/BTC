@@ -22,7 +22,7 @@ deploy adımları için → [DEPLOYMENT.md](./DEPLOYMENT.md).
 ```bash
 curl -s https://<railway-backend-domain>/health
 # Beklenen:
-# {"status":"healthy","service":"trademinds-backend","debug_mode":false}
+# {"status":"healthy","service":"zatetrade-backend","debug_mode":false}
 ```
 - `debug_mode` production'da `false` olmalı (`true` ise `DEBUG` env yanlış set
   edilmiş → prod'da `init_db()` tetiklenir, istenmez).
@@ -68,7 +68,7 @@ curl -s https://<railway-backend-domain>/api/v1/prices/market-status
 
 **Railway loglarında aranacak sağlıklı başlangıç dizeleri:**
 ```
-Starting TradeMinds AI Backend...
+Starting Zate Trade Backend...
 Background scheduler started.
 [Scheduler] Started. Jobs: ...
 Sentry monitoring enabled (environment=production)   # SENTRY_DSN set ise

@@ -1,4 +1,4 @@
-// TradeMinds AI service worker — conservative + safe.
+// Zate Trade service worker — conservative + safe.
 // Navigations: network-first (users always get the freshest app; offline → cached
 // shell). Static assets: stale-while-revalidate. API/auth: never cached. Bump
 // CACHE_VERSION to invalidate. Registered ONLY in production (see PWARegister).

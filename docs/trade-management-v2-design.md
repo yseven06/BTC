@@ -12,7 +12,7 @@ Phase 1 implementasyon spec'i: `docs/trade-management-v2-phase1-spec.md`. Görse
 
 ## 0. Bir cümlede tez
 
-TradeMinds bugün **statik** bir sinyal üretiyor (sabit entry/SL/TP1-2-3) ve çözümü **sabit-kodlu** bir
+ZateTrade bugün **statik** bir sinyal üretiyor (sabit entry/SL/TP1-2-3) ve çözümü **sabit-kodlu** bir
 yönetim politikasıyla (TP1'de %50 çık + SL'i breakeven'a çek, TP2 %30, TP3 kalan) simüle ediyor.
 **Trade Management v2**, bu yönetim politikasını (a) `signal_trade_path` üzerinde **offline karşı-olgusal
 replay** ile *öğrenir*, (b) gerçek zamanlı olarak her aktif sinyale **insan trader gibi yönetim tavsiyesi**

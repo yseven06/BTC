@@ -1,5 +1,5 @@
 """
-TradeMinds AI - Base Engine Abstract Class
+Zate Trade - Base Engine Abstract Class
 
 Defines the abstract interface that all analysis engines must implement.
 Provides common types (SignalBias, EngineResult) used across the platform.
@@ -46,7 +46,7 @@ class EngineResult(BaseModel):
 
 
 class BaseEngine(ABC):
-    """Abstract base class for all TradeMinds analysis engines.
+    """Abstract base class for all ZateTrade analysis engines.
 
     Every concrete engine **must** provide:
     * ``name``  – unique string identifier

@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Crypto Fundamentals Analysis Helpers
+Zate Trade – Crypto Fundamentals Analysis Helpers
 
 Analyzes cryptocurrency-specific fundamentals: Circulating supply ratio, Market Cap/FDV,
 tokenomics scoring, and network valuation metrics.

@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Historical Backtesting Engine
+Zate Trade – Historical Backtesting Engine
 
 Simulates walk-forward, candle-by-candle trade execution historically, tracking
 portfolio values, active trades (SL, TP1/TP2/TP3, Expiration), and calculating

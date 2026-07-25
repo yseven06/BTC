@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Notification orchestration.
+Zate Trade – Notification orchestration.
 
 Per-user notification dispatch: each user has their own NotificationSettings and
 their own Telegram destination. A new-signal notification fans out to every user

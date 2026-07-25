@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Candlestick Pattern Detection
+Zate Trade – Candlestick Pattern Detection
 
 Detects classical candlestick patterns on an OHLCV DataFrame.
 

@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Abstract Base Collector
+Zate Trade – Abstract Base Collector
 
 Defines interface protocols that all market collectors (crypto, stocks) must implement.
 """

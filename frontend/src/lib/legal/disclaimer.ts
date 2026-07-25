@@ -20,13 +20,13 @@ export const DISCLAIMER_LINK = '/yasal/risk-bildirimi';
 
 /** One-sentence summary — footer and compact placements. */
 export const DISCLAIMER_SHORT =
-  'TradeMinds AI, yapay zekâ destekli bir analiz ve karar destek platformudur. ' +
+  'Zate Trade, yapay zekâ destekli bir analiz ve karar destek platformudur. ' +
   'Sunulan içerikler genel niteliktedir ve yatırım tavsiyesi değildir; yatırım ' +
   'kararları ve riski tamamen size aittir ve Platform sizin adınıza işlem gerçekleştirmez.';
 
 /** Full paragraph — inline placements on signal/decision surfaces. */
 export const DISCLAIMER_FULL =
-  'TradeMinds AI, yapay zekâ destekli bir analiz ve karar destek platformudur. ' +
+  'Zate Trade, yapay zekâ destekli bir analiz ve karar destek platformudur. ' +
   'Burada yer alan analiz, sinyal ve değerlendirmeler genel niteliktedir ve ' +
   'yatırım danışmanlığı/yatırım tavsiyesi kapsamında değildir. Nihai yatırım kararı ' +
   've riski tamamen size aittir; Platform sizin adınıza emir iletmez, işlem yapmaz veya ' +

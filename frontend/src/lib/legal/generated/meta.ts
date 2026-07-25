@@ -26,7 +26,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.2",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "d06b253fe26ec91279cfb4e0fd9ad05567e6af73dd5acd4978d8b58869979982",
+    "hash": "26651c726805227465802d8103405beef9cbc416440fad8fe04590fda09e69fa",
     "reconsentOnMinor": false
   },
   "cerez-politikasi": {
@@ -53,7 +53,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "765d5dc2f60901e3940bfac411a9ca648211439d670a57f7143af1f87b9df4f6",
+    "hash": "a0a71daf7ad6d3b4abbfbc0046b353cff526bda69f02d8796032dbff05425b46",
     "reconsentOnMinor": false
   },
   "mesafeli-satis": {
@@ -71,7 +71,7 @@ export const LEGAL_META: Record<string, LegalDocMeta> = {
     "version": "0.9.1",
     "effectiveDate": "2026-06-29",
     "locale": "tr",
-    "hash": "fe855b155c69b222e7bfeedbe46f65d4bb050228e56ddc14e25f155b2e006e78",
+    "hash": "a42201eb9ae5ee205a4f3aef1dba3467a110e7a0f822cf86532957af87c26a48",
     "reconsentOnMinor": false
   },
   "ticari-ileti": {

@@ -22,7 +22,7 @@ interface FaqItem {
 const FAQS: FaqItem[] = [
   {
     icon: Zap,
-    q: 'TradeMinds AI sinyalleri nasıl üretiyor?',
+    q: 'Zate Trade sinyalleri nasıl üretiyor?',
     a: (
       <>
         9 farklı analiz motoru paralel çalışır: <b>Teknik Analiz, Market Structure, SMC, Volume,
@@ -99,7 +99,7 @@ const FAQS: FaqItem[] = [
     q: 'Sinyaller yatırım tavsiyesi midir?',
     a: (
       <>
-        <b>Hayır.</b> TradeMinds AI yalnızca <i>analitik özet</i> üretir. Her yatırımcı kendi
+        <b>Hayır.</b> Zate Trade yalnızca <i>analitik özet</i> üretir. Her yatırımcı kendi
         risk yönetimini ve karar sürecini sürdürmelidir. Geçmiş performans gelecek getirileri
         garanti etmez. Kaldıraçlı ürünlerde anapara kaybı riski yüksektir.
       </>
@@ -210,7 +210,7 @@ export default function HelpPage() {
 
       {/* Disclaimer */}
       <p className="text-micro text-text-muted leading-relaxed border-t border-border-subtle pt-4">
-        TradeMinds AI yatırım tavsiyesi sunmaz. Tüm analizler bilgilendirme amaçlıdır.
+        Zate Trade yatırım tavsiyesi sunmaz. Tüm analizler bilgilendirme amaçlıdır.
         Sermaye piyasası araçları yüksek risk içerir; yatırımcılar kendi durumlarına göre
         karar vermeli ve gerekli durumlarda profesyonel danışmanlık almalıdır.
       </p>

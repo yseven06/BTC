@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Validation Backtest Script
+Zate Trade – Validation Backtest Script
 
 Runs walk-forward backtesting for BTCUSDT, ETHUSDT, THYAO.IS, and GARAN.IS
 for both 6-month and 12-month periods, outputting key performance metrics
@@ -29,7 +29,7 @@ logging.getLogger("yfinance").setLevel(logging.WARNING)
 
 async def main():
     print("====================================================")
-    print("      TRADEMINDS AI - HISTORICAL VALIDATION         ")
+    print("      ZATE TRADE - HISTORICAL VALIDATION         ")
     print("====================================================\n")
 
     binance = BinanceCollector()

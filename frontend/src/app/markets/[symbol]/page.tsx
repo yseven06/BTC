@@ -53,7 +53,7 @@ function buildPineScript(symbol: string, signal: ApiSignal): string {
 
   return [
     '//@version=5',
-    `indicator("TradeMinds AI — ${symbol} Sinyal Seviyeleri", overlay=true)`,
+    `indicator("Zate Trade — ${symbol} Sinyal Seviyeleri", overlay=true)`,
     '',
     ...hlines,
     '',

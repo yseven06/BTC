@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Macro Analysis Engine
+Zate Trade – Macro Analysis Engine
 
 Looks at the broader economic backdrop that affects every asset:
 

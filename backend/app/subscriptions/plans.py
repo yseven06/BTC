@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Subscription Plan Catalog
+Zate Trade – Subscription Plan Catalog
 
 Defines the available tiers, pricing across billing cycles, and the
 features unlocked at each tier. Single source of truth used by the

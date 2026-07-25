@@ -1,5 +1,5 @@
 """
-TradeMinds AI Backend Application Package.
+Zate Trade Backend Application Package.
 
 A comprehensive AI-powered trading intelligence platform providing
 real-time market analysis, signal generation, and portfolio management.

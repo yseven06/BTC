@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Background Scheduler
+Zate Trade – Background Scheduler
 
 APScheduler-based background worker that:
   • Regenerates signals at candle close for each active asset

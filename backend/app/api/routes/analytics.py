@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Analytics Routes
+Zate Trade – Analytics Routes
 
 Strategy Lab: hour/day/volatility heatmaps with WoE scoring
 Symbol Analysis: per-symbol win rates, OB vs FVG breakdown

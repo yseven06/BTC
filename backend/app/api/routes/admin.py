@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Admin Panel API
+Zate Trade – Admin Panel API
 
 All endpoints under /admin require an admin user (role=admin or
 role=super_admin). Founder-only actions (granting roles, deleting users,

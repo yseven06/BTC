@@ -1,5 +1,5 @@
 """
-TradeMinds AI - Technical Indicators Module
+Zate Trade - Technical Indicators Module
 
 Computes a comprehensive set of technical indicators on OHLCV DataFrames.
 Each function returns the computed value(s) AND a signal interpretation

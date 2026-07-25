@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Fundamental Analysis Engine
+Zate Trade – Fundamental Analysis Engine
 
 Orchestrates stock financial ratio analysis and crypto supply/tokenomics analysis
 to produce a composite Fundamental EngineResult.

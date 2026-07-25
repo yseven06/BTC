@@ -1,5 +1,5 @@
 """
-TradeMinds AI – Candle Range Theory (CRT) Engine
+Zate Trade – Candle Range Theory (CRT) Engine
 
 Analyzes higher timeframe candle ranges, sweeps, and range positions
 to generate a CRT EngineResult.

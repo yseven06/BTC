@@ -8,6 +8,7 @@ import { ReconsentGate } from "@/components/consent/ReconsentGate";
 import LayoutShell from "@/components/layout/LayoutShell";
 import { ToastProvider } from "@/components/ui/Toast";
 import { PWARegister } from "@/components/PWARegister";
+import { BRAND_NAME, SITE_URL as BRAND_SITE_URL } from "@/lib/brand";
 import { Inter } from "next/font/google";
 
 // Self-hosted via next/font — Inter YALNIZ numeral/display rolu (Bible typo-font-family, P8/D1);
@@ -15,31 +16,34 @@ import { Inter } from "next/font/google";
 // govde system-ui, mono ui-monospace OS-native (webfont mono kaldirildi, P8/D2).
 const inter = Inter({ subsets: ["latin", "latin-ext"], variable: "--font-sans", display: "swap" });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-const SITE_TITLE = "TradeMinds AI — Kripto Sinyal ve Analiz Platformu";
+// Rebrand: marka tek-kaynak lib/brand.ts. Canonical origin prod'da env ile
+// (NEXT_PUBLIC_SITE_URL) override edilebilir; varsayılan = https://zatetrade.com.
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || BRAND_SITE_URL;
+const SITE_TITLE = `${BRAND_NAME} — Kripto Sinyal ve Analiz Platformu`;
 const SITE_DESCRIPTION = "9 AI motoruyla kripto piyasaları için sinyal üretimi, piyasa yapısı analizi ve otomatik risk skorlaması.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: SITE_TITLE,
   description: SITE_DESCRIPTION,
-  applicationName: "TradeMinds AI",
+  applicationName: BRAND_NAME,
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "TradeMinds" },
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: BRAND_NAME },
   openGraph: {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     url: SITE_URL,
-    siteName: "TradeMinds AI",
-    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "TradeMinds AI — Kripto Sinyal ve Analiz Platformu" }],
+    siteName: BRAND_NAME,
+    // Rebrand: eski og-image.jpg wordmark'ı raster'a gömülüydü (eski marka) →
+    // referans kaldırıldı, dosya silindi. Yeni 1200×630 OG görseli deploy
+    // checklist'indedir; o gelene dek paylaşım kartı görselsiz (title/description) çıkar.
     locale: "tr_TR",
     type: "website",
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: ["/og-image.jpg"],
   },
 };
 

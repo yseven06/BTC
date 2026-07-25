@@ -53,11 +53,11 @@ export function Footer() {
 
         <div className="mt-4 flex flex-col gap-1 border-t border-white/5 pt-4 text-micro text-text-muted sm:flex-row sm:items-center sm:justify-between">
           <p>
-            <span className="font-medium text-text-secondary">TradeMinds AI</span>
+            <span className="font-medium text-text-secondary">Zate Trade</span>
             <span aria-hidden className="mx-1.5 text-white/20">·</span>
             Yapay zekâ destekli analiz ve karar destek platformu
           </p>
-          <p>© {year} TradeMinds AI. Tüm hakları saklıdır.</p>
+          <p>© {year} Zate Trade. Tüm hakları saklıdır.</p>
         </div>
       </div>
     </footer>
