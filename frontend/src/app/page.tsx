@@ -56,6 +56,10 @@ function RevealSection({ active, id, className, children }: {
 }) {
   const ref = useCallback((el: HTMLElement | null) => {
     if (!el) return;
+    // S6 emniyet-ağı: IO yoksa (çok eski tarayıcı) kurulum ReferenceError'la
+    // render'ı düşürür VE nv-grupları kalıcı gizli kalırdı → anında rv-in bas,
+    // içerik tam görünür (motion kaybı bilgi kaybı değildir).
+    if (typeof IntersectionObserver === 'undefined') { el.classList.add('rv-in'); return; }
     const io = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) { el.classList.add('rv-in'); io.disconnect(); }
     }, { rootMargin: '0px 0px -10% 0px' });
@@ -301,9 +305,9 @@ export default function LandingPage() {
           verecek yeşil-kırmızı sunum yok). Oran/ortalama-getiri metrikleri landing'e dönmez (K-B2+).
           Yüklenirken alan rezervi (CLS 0); veri yoksa bant render edilmez. */}
       {(!proofLoaded || proof?.stats) && (
-        <RevealSection active={reveal} className="max-w-6xl mx-auto px-6 pb-6">
+        <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 pb-6">
           {proof?.stats ? (
-            <div className="proof-zsep proof-zsep-b py-5">
+            <div className="nv-1 proof-zsep proof-zsep-b py-5">
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2">
                 <span className="text-h3 num font-num-560 text-text-primary">{proof.stats.closedTotal.toLocaleString('tr-TR')}</span>
                 <span className="text-sm font-display text-text-secondary">kapanmış sinyal¹</span>
@@ -324,7 +328,7 @@ export default function LandingPage() {
                   </>
                 )}
               </div>
-              <p className="text-micro text-text-secondary mt-3">
+              <p className="nv-2 text-micro text-text-secondary mt-3">
                 ¹ Tüm zamanlar · {proof.stats.closedTotal.toLocaleString('tr-TR')} kapanmış sinyal · sonuca göre
                 filtrelenmedi · geçmiş performans gelecek sonuçların göstergesi değildir.
               </p>
@@ -338,12 +342,12 @@ export default function LandingPage() {
       {/* Sicil — CP-5c: son kapanan sinyaller, SONUCA GÖRE FİLTRESİZ (anti-cherry-pick,
           kilitli karar). Kazanan da kaybeden de aynı sicilde; "yalnız-kazanan" bölümü emekli. */}
       {sicilSignals.length > 0 && (
-        <RevealSection active={reveal} id="sicil" className="max-w-6xl mx-auto px-6 pt-16 pb-24 scroll-mt-16">
-          <h2 className="text-h2 font-display text-text-primary text-center">Sicil: Son Kapanan Sinyaller</h2>
-          <p className="text-sm text-text-secondary text-center mt-2 max-w-xl mx-auto">
+        <RevealSection active={reveal} id="sicil" className="nv max-w-6xl mx-auto px-6 pt-16 pb-24 scroll-mt-16">
+          <h2 className="nv-1 text-h2 font-display text-text-primary text-center">Sicil: Son Kapanan Sinyaller</h2>
+          <p className="nv-2 text-sm text-text-secondary text-center mt-2 max-w-xl mx-auto">
             Sonuca göre filtrelenmedi — kazanan da kaybeden de burada.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
+          <div className="nv-rows grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
             {sicilSignals.map((s) => (
               <div key={s.id} className="glass-panel border border-border-subtle rounded-card p-4">
                 <div className="flex items-center justify-between mb-2">
@@ -376,14 +380,14 @@ export default function LandingPage() {
           ferah anlatı (sol) + KUTUSUZ hairline motor-listesi (sağ; "boşluk→hairline→asla-kutu").
           İçerik hiyerarşisi: 9 motor eşit-önemli (konsensüs tezi) → vurgulu-tek-kart değil,
           form değişimi. İkonlar nötr (renk=anlam; motor ikonu eylem/AI-karar değil). */}
-      <RevealSection active={reveal} className="max-w-6xl mx-auto px-6 py-24">
+      <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 py-24">
         <div className="md:grid md:grid-cols-[5fr_7fr] md:gap-12 lg:gap-16">
           <div>
-            <h2 className="text-h2 font-display text-text-primary">Sinyalin arkasındaki 9 motor</h2>
-            <p className="text-sm text-text-secondary mt-3 leading-relaxed">
+            <h2 className="nv-1 text-h2 font-display text-text-primary">Sinyalin arkasındaki 9 motor</h2>
+            <p className="nv-2 text-sm text-text-secondary mt-3 leading-relaxed">
               9 bağımsız AI motoru birlikte çalışıp profesyonel düzeyde bir trading kokpiti sunar.
             </p>
-            <div className="mt-8 space-y-3">
+            <div className="nv-3 mt-8 space-y-3">
               {[
                 { icon: History, label: 'Sinyal Geçmişi' },
                 { icon: Microscope, label: 'Strategy Lab' },
@@ -396,7 +400,7 @@ export default function LandingPage() {
               ))}
             </div>
           </div>
-          <div className="mt-10 md:mt-0 border-y border-border-subtle divide-y divide-border-subtle">
+          <div className="nv-4 mt-10 md:mt-0 border-y border-border-subtle divide-y divide-border-subtle">
             {ENGINES.map((e) => (
               <div key={e.title} className="flex items-start gap-3 py-3">
                 <e.icon className="w-4 h-4 text-text-secondary flex-shrink-0 mt-0.5" />
@@ -415,9 +419,9 @@ export default function LandingPage() {
           aynı proof-zsep hairline dili + tabular index + sola-hizalı tipografik
           hiyerarşi). İçerik/sıra/responsive AYNEN; hover/motion YOK (statik).
           Index gerçek sıradır (padStart yalnız sunum-biçimi, içerik değişmedi). */}
-      <RevealSection active={reveal} className="max-w-4xl mx-auto px-6 py-24">
-        <h2 className="text-h2 font-display text-text-primary text-center">Dakikalar İçinde Başla</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-10 gap-y-8 mt-10">
+      <RevealSection active={reveal} className="nv max-w-4xl mx-auto px-6 py-24">
+        <h2 className="nv-1 text-h2 font-display text-text-primary text-center">Dakikalar İçinde Başla</h2>
+        <div className="nv-seq grid grid-cols-1 md:grid-cols-3 gap-x-10 gap-y-8 mt-10">
           {STEPS.map((s) => (
             <div key={s.n} className="proof-zsep pt-5">
               <span className="num font-num-520 text-sm tabular-nums text-text-muted">{s.n.padStart(2, '0')}</span>
@@ -429,14 +433,14 @@ export default function LandingPage() {
       </RevealSection>
 
       {/* Transparency: how it works + honest limits + key messages (all verifiable) */}
-      <RevealSection active={reveal} className="max-w-6xl mx-auto px-6 py-24 border-t border-border-subtle">
-        <h2 className="text-h2 font-display text-text-primary text-center">Şeffaflık: Nasıl Çalışır, Neyi Vaat Etmez</h2>
-        <p className="text-sm text-text-secondary text-center mt-2 max-w-2xl mx-auto">
+      <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 py-24 border-t border-border-subtle">
+        <h2 className="nv-1 text-h2 font-display text-text-primary text-center">Şeffaflık: Nasıl Çalışır, Neyi Vaat Etmez</h2>
+        <p className="nv-2 text-sm text-text-secondary text-center mt-2 max-w-2xl mx-auto">
           TradeMinds bir &quot;sinyal grubu&quot; değildir — denetlenebilir bir kayıt defteridir.
           Neyi yapmadığımız, neyi yaptığımız kadar nettir.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-10">
+        <div className="nv-3 grid grid-cols-1 md:grid-cols-2 gap-5 mt-10">
           {/* How it works — honest mechanics */}
           <div className="glass-panel border border-border-subtle rounded-card p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -468,7 +472,7 @@ export default function LandingPage() {
             hizmet dili, TAMAMEN NÖTR — bull/bear tinti yok). Eski 3 anahtar-mesaj kartı
             buraya konsolide edildi; üçlü-mesaj (a/b/c) madde 4 + madde 2 + alttaki inline
             InvestmentDisclaimer ile bölüm gövdesinde BİRLİKTE yaşamaya devam eder (Prensip-4). */}
-        <div className="glass-panel border border-border-subtle rounded-card p-6 mt-6">
+        <div className="nv-4 glass-panel border border-border-subtle rounded-card p-6 mt-6">
           <h3 className="text-sm font-display text-text-primary">Ne yapmayız</h3>
           <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 mt-4">
             {[
@@ -494,12 +498,12 @@ export default function LandingPage() {
       {/* Güvenlik — CP-4: 3'lü eşit grid kırıldı — veri-kaynakları karta değil hairline
           bandına (Kanıt-Bandı dili; 2 madde kart olmayı hak etmiyor); altta 2 kart.
           Başlık sola-dayalı (içerik-bölümü; tören-bölümleri ortalanmış kalır). */}
-      <RevealSection active={reveal} className="max-w-6xl mx-auto px-6 py-24 border-t border-border-subtle">
-        <h2 className="text-h2 font-display text-text-primary">Güvenlik ve Veri Şeffaflığı</h2>
-        <p className="text-sm text-text-secondary mt-2 max-w-2xl">
+      <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 py-24 border-t border-border-subtle">
+        <h2 className="nv-1 text-h2 font-display text-text-primary">Güvenlik ve Veri Şeffaflığı</h2>
+        <p className="nv-2 text-sm text-text-secondary mt-2 max-w-2xl">
           Verinin nereden geldiğini, nasıl korunduğunu ve gizliliği nasıl ele aldığımızı açıkça paylaşıyoruz.
         </p>
-        <div className="proof-zsep proof-zsep-b py-3 mt-8 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <div className="nv-3 proof-zsep proof-zsep-b py-3 mt-8 flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <span className="text-micro font-medium uppercase tracking-wide text-text-secondary">Gerçek veri kaynakları</span>
           <span className="text-sm text-text-muted px-1" aria-hidden="true">·</span>
           <span className="text-sm font-display text-text-primary">Binance</span>
@@ -508,7 +512,7 @@ export default function LandingPage() {
           <span className="text-sm font-display text-text-primary">CoinGecko</span>
           <span className="text-sm text-text-secondary">— piyasa metadata & Fear/Greed</span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
+        <div className="nv-4 grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
           {/* Security */}
           <div className="glass-panel border border-border-subtle rounded-card p-6">
             <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3"><Shield className="w-5 h-5 text-accent-primary" /></div>
@@ -536,10 +540,10 @@ export default function LandingPage() {
 
       {/* Pricing teaser */}
       {plans.length > 0 && (
-        <RevealSection active={reveal} className="max-w-6xl mx-auto px-6 py-24">
-          <h2 className="text-h2 font-display text-text-primary text-center">Basit, Şeffaf Fiyatlandırma</h2>
-          <p className="text-sm text-text-secondary text-center mt-2">Şeffaf fiyatlandırma, gizli ücret yok — dilediğin an yükselt veya iptal et.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-10 max-w-3xl mx-auto">
+        <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 py-24">
+          <h2 className="nv-1 text-h2 font-display text-text-primary text-center">Basit, Şeffaf Fiyatlandırma</h2>
+          <p className="nv-2 text-sm text-text-secondary text-center mt-2">Şeffaf fiyatlandırma, gizli ücret yok — dilediğin an yükselt veya iptal et.</p>
+          <div className="nv-rows grid grid-cols-1 md:grid-cols-2 gap-5 mt-10 max-w-3xl mx-auto">
             {plans.map((p) => {
               const monthly = p.pricing.find((pr) => pr.cycle === 'monthly');
               return (
@@ -560,7 +564,7 @@ export default function LandingPage() {
               );
             })}
           </div>
-          <div className="text-center mt-8">
+          <div className="nv-5 text-center mt-8">
             <Link href="/pricing" className="text-sm font-display text-accent-primary hover:text-accent-ui">
               Tüm planları ve süre seçeneklerini gör →
             </Link>
@@ -570,10 +574,10 @@ export default function LandingPage() {
 
       {/* Final CTA — CP-4: sıfat-başlık → manifesto-uyumlu kapanış; buton metni tüm
           primary'lerle hizalandı (K-A minor kapanışı: tek metin "Ücretsiz Başla"). */}
-      <RevealSection active={reveal} className="max-w-4xl mx-auto px-6 pt-24 pb-32 text-center">
-        <h2 className="text-h2 md:text-h1 font-display text-text-primary">Sicil ortada. Karar senin.</h2>
-        <p className="text-sm text-text-secondary mt-3">Kayıt sonrası dashboard&apos;a anında erişim — kredi kartı gerekmez.</p>
-        <Link href="/register" className="inline-flex items-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-7 py-3.5 rounded-xl transition-[background-color,box-shadow] duration-[var(--dur-warm)] ease-[var(--ease-signal)] hover:shadow-cta mt-6">
+      <RevealSection active={reveal} className="nv max-w-4xl mx-auto px-6 pt-24 pb-32 text-center">
+        <h2 className="nv-1 text-h2 md:text-h1 font-display text-text-primary">Sicil ortada. Karar senin.</h2>
+        <p className="nv-2 text-sm text-text-secondary mt-3">Kayıt sonrası dashboard&apos;a anında erişim — kredi kartı gerekmez.</p>
+        <Link href="/register" className="nv-3 inline-flex items-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-7 py-3.5 rounded-xl transition-[background-color,box-shadow] duration-[var(--dur-warm)] ease-[var(--ease-signal)] hover:shadow-cta mt-6">
           Ücretsiz Başla <ArrowRight className="w-4 h-4" />
         </Link>
       </RevealSection>

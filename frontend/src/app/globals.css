@@ -510,6 +510,67 @@
   }
 }
 
+/* S6 · Anlatı-nefesi (fold-altı bölümler): rv-section'ın tek-blok fade'i,
+   bölüm-KUTUSU-statik + içerik-GRUPLARI-sıralı nefese terfi eder. IO kapısı
+   AYNEN mevcut RevealSection/rv-in (yeni observer/kütüphane YOK; view-timeline
+   bilinçli KULLANILMADI — sade-IO). Kutu görünür kaldığından bölümün
+   proof-zsep hairline/iskeleti ÖNCE okunur (S5c "iskelet önce" deseninin
+   bölüm ölçeği); gizlilik yalnız işaretli çocuk-gruplarındadır. Gruplar
+   element değil KÜMEDİR (satır-başına gecikme yok): nv-1..5 tekil gruplar ·
+   nv-rows = kart-satır kümeleri (-n+3 / n+4) · nv-seq = ardışık segmentlerin
+   çocuk-grupları (Adımlar raili: hairline statik durur, segment içeriği
+   sırayla). Süre/easing tek-aile: landing-rise + --dur-overlay +
+   --ease-signal; bölüm-sonu ≤640ms (≤850 bandı). Attribute yoksa (reduce ·
+   oturum-tekrarı · storage-yok · JS-ölü) hiçbir kural uygulanmaz → statik-tam. */
+[data-landing-reveal] .rv-section.nv,
+[data-landing-reveal] .rv-section.nv.rv-in {
+  /* Kutu STATİK: rv-section'ın tek-blok fade'i (opacity + landing-rise) nv
+     bölümlerinde iptal — yoksa kutu ve gruplar üst üste yükselir (çift-hareket,
+     kompozit ~16px) ve "iskelet önce okunur" bozulurdu. */
+  opacity: 1;
+  animation: none;
+}
+[data-landing-reveal] .rv-section.nv :is(.nv-1, .nv-2, .nv-3, .nv-4, .nv-5),
+[data-landing-reveal] .rv-section.nv .nv-rows > *,
+[data-landing-reveal] .rv-section.nv .nv-seq > * > * {
+  opacity: 0;
+}
+[data-landing-reveal] .rv-section.nv.rv-in :is(.nv-1, .nv-2, .nv-3, .nv-4, .nv-5),
+[data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *,
+[data-landing-reveal] .rv-section.nv.rv-in .nv-seq > * > * {
+  animation: landing-rise var(--dur-overlay) var(--ease-signal) both;
+}
+[data-landing-reveal] .rv-section.nv.rv-in .nv-2 { animation-delay: 60ms; }
+[data-landing-reveal] .rv-section.nv.rv-in .nv-3 { animation-delay: 120ms; }
+[data-landing-reveal] .rv-section.nv.rv-in .nv-4 { animation-delay: 200ms; }
+[data-landing-reveal] .rv-section.nv.rv-in .nv-5 { animation-delay: 280ms; }
+[data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *:nth-child(-n+3) { animation-delay: 200ms; }
+[data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *:nth-child(n+4) { animation-delay: 250ms; }
+[data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(1) > * { animation-delay: 120ms; }
+[data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(2) > * { animation-delay: 180ms; }
+[data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(3) > * { animation-delay: 240ms; }
+
+/* S6 mobil: masaüstü koreografi küçültülüp yapıştırılmaz — süre --dur-state
+   (180ms), gecikmeler kısalır, yükselme proof-rise/--pv-rise=2px (S5c
+   keyframe'i yeniden kullanılır; yeni keyframe YOK). İçerik bekletilmez. */
+@media (max-width: 767px) {
+  [data-landing-reveal] .rv-section.nv.rv-in :is(.nv-1, .nv-2, .nv-3, .nv-4, .nv-5),
+  [data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *,
+  [data-landing-reveal] .rv-section.nv.rv-in .nv-seq > * > * {
+    --pv-rise: 2px;
+    animation: proof-rise var(--dur-state) var(--ease-signal) both;
+  }
+  [data-landing-reveal] .rv-section.nv.rv-in .nv-2 { animation-delay: 40ms; }
+  [data-landing-reveal] .rv-section.nv.rv-in .nv-3 { animation-delay: 80ms; }
+  [data-landing-reveal] .rv-section.nv.rv-in .nv-4 { animation-delay: 120ms; }
+  [data-landing-reveal] .rv-section.nv.rv-in .nv-5 { animation-delay: 160ms; }
+  [data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *:nth-child(-n+3) { animation-delay: 120ms; }
+  [data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *:nth-child(n+4) { animation-delay: 160ms; }
+  [data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(1) > * { animation-delay: 80ms; }
+  [data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(2) > * { animation-delay: 120ms; }
+  [data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(3) > * { animation-delay: 160ms; }
+}
+
 /* Emniyet katmanı: reduce'ta T3 tamamen atlanır (JS guard attribute'u zaten
    basmaz; bu blok oturum-ortası reduce-değişimini de anında statiğe düşürür). */
 @media (prefers-reduced-motion: reduce) {
@@ -521,6 +582,9 @@
   [data-landing-reveal] .pv,
   [data-landing-reveal] .pv-rows > *,
   [data-landing-reveal] .pv-scope,
+  [data-landing-reveal] .rv-section.nv :is(.nv-1, .nv-2, .nv-3, .nv-4, .nv-5),
+  [data-landing-reveal] .rv-section.nv .nv-rows > *,
+  [data-landing-reveal] .rv-section.nv .nv-seq > * > *,
   [data-landing-reveal] .rv-section {
     animation: none;
     opacity: 1;
