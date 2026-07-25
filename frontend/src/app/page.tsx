@@ -318,7 +318,7 @@ export default function LandingPage() {
                 {proof.stats.tp1Rate != null && (
                   <>
                     <span className="text-sm text-text-muted px-1" aria-hidden="true">·</span>
-                    <span className="text-sm font-display text-text-secondary">TP1'e ulaşma</span>
+                    <span className="text-sm font-display text-text-secondary">TP1&apos;e ulaşma</span>
                     <span className="text-base num font-num-560 text-text-primary">{formatPercentage(proof.stats.tp1Rate, 0, false)}¹</span>
                   </>
                 )}
@@ -431,7 +431,7 @@ export default function LandingPage() {
       <RevealSection active={reveal} className="max-w-6xl mx-auto px-6 py-24 border-t border-border-subtle">
         <h2 className="text-h2 font-display text-text-primary text-center">Şeffaflık: Nasıl Çalışır, Neyi Vaat Etmez</h2>
         <p className="text-sm text-text-secondary text-center mt-2 max-w-2xl mx-auto">
-          TradeMinds bir "sinyal grubu" değildir — denetlenebilir bir kayıt defteridir.
+          TradeMinds bir &quot;sinyal grubu&quot; değildir — denetlenebilir bir kayıt defteridir.
           Neyi yapmadığımız, neyi yaptığımız kadar nettir.
         </p>
 
@@ -571,7 +571,7 @@ export default function LandingPage() {
           primary'lerle hizalandı (K-A minor kapanışı: tek metin "Ücretsiz Başla"). */}
       <RevealSection active={reveal} className="max-w-4xl mx-auto px-6 pt-24 pb-32 text-center">
         <h2 className="text-h2 md:text-h1 font-display text-text-primary">Sicil ortada. Karar senin.</h2>
-        <p className="text-sm text-text-secondary mt-3">Kayıt sonrası dashboard'a anında erişim — kredi kartı gerekmez.</p>
+        <p className="text-sm text-text-secondary mt-3">Kayıt sonrası dashboard&apos;a anında erişim — kredi kartı gerekmez.</p>
         <Link href="/register" className="inline-flex items-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-7 py-3.5 rounded-xl transition-[background-color,box-shadow] duration-[var(--dur-warm)] ease-[var(--ease-signal)] hover:shadow-cta mt-6">
           Ücretsiz Başla <ArrowRight className="w-4 h-4" />
         </Link>

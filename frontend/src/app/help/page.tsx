@@ -42,7 +42,7 @@ const FAQS: FaqItem[] = [
           <li>1 saatlik sinyaller → her saat başı</li>
           <li>4 saatlik sinyaller → her 4 saatte bir</li>
         </ul>
-        Anlık fiyatlar Binance WebSocket'ten saniyelik akar.
+        Anlık fiyatlar Binance WebSocket&apos;ten saniyelik akar.
       </>
     ),
   },
@@ -53,7 +53,7 @@ const FAQS: FaqItem[] = [
       <>
         Sinyalin <b>güven skoru (0–100)</b>, 10 üzerinden bir kalite barına dönüşür:
         8–10 yeşil (yüksek kalite), 6–7 sarı, 4–5 turuncu, 0–3 kırmızı.
-        Trade'lerde 7+ kalite ve uygun risk seviyesi tercih edilir.
+        Trade&apos;lerde 7+ kalite ve uygun risk seviyesi tercih edilir.
       </>
     ),
   },
@@ -78,7 +78,7 @@ const FAQS: FaqItem[] = [
         <b>Pro ($25/ay):</b> Sınırsız sinyal, tüm AI motorları, TradingView grafikleri, Telegram
         bildirimleri, Strategy Lab, Sembol Analizi, PDF raporları, backtest.<br/>
         <b>Premium ($69/ay):</b> Pro + API erişimi + sınırsız backtest + öncelikli destek.
-        Yıllık planlarda %50'ye varan tasarruf var.{' '}
+        Yıllık planlarda %50&apos;ye varan tasarruf var.{' '}
         <Link href="/pricing" className="text-accent-primary underline">Planları gör</Link>.
       </>
     ),
@@ -88,8 +88,8 @@ const FAQS: FaqItem[] = [
     q: 'PDF rapor nasıl alınır?',
     a: (
       <>
-        Sinyal Merkezi → bir sinyale tıkla → açılan panelde "PDF İndir" butonuna bas.
-        Performans sayfasının sağ üstündeki "PDF" butonu ise tüm performans özetini indirir.
+        Sinyal Merkezi → bir sinyale tıkla → açılan panelde &quot;PDF İndir&quot; butonuna bas.
+        Performans sayfasının sağ üstündeki &quot;PDF&quot; butonu ise tüm performans özetini indirir.
         Bu özellik Pro+ abonelik gerektirir.
       </>
     ),

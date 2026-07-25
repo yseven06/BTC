@@ -128,9 +128,9 @@ export default function SettingsPage() {
           <p className="flex items-center gap-1.5 font-display text-text-primary">
             <HelpCircle className="w-3.5 h-3.5 text-accent-primary" /> Nasıl kurulur?
           </p>
-          <p>1. Telegram'da <code className="text-accent-primary">@BotFather</code>'a yazıp <code className="text-accent-primary">/newbot</code> ile bot oluştur, <b>token</b>'ı al.</p>
-          <p>2. <code className="text-accent-primary">@userinfobot</code>'a yazıp <b>chat ID</b>'ni öğren.</p>
-          <p>3. İkisini aşağıya gir, kaydet, "Test Gönder" ile dene.</p>
+          <p>1. Telegram&apos;da <code className="text-accent-primary">@BotFather</code>&apos;a yazıp <code className="text-accent-primary">/newbot</code> ile bot oluştur, <b>token</b>&apos;ı al.</p>
+          <p>2. <code className="text-accent-primary">@userinfobot</code>&apos;a yazıp <b>chat ID</b>&apos;ni öğren.</p>
+          <p>3. İkisini aşağıya gir, kaydet, &quot;Test Gönder&quot; ile dene.</p>
         </div>
 
         <div className="space-y-4">
@@ -186,7 +186,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <label className="text-xs font-display text-text-primary">Sinyal yaşam döngüsü bildirimleri</label>
-              <p className="text-micro text-text-muted">Sinyal geçersizleşince veya TP'ye yaklaşınca proaktif uyarı gönderilir.</p>
+              <p className="text-micro text-text-muted">Sinyal geçersizleşince veya TP&apos;ye yaklaşınca proaktif uyarı gönderilir.</p>
             </div>
             <Toggle checked={notifyLifecycle} onChange={setNotifyLifecycle} />
           </div>

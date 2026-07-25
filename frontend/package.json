@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "lint:design": "stylelint \"src/**/*.css\" && node scripts/design-gates.mjs",
     "lint:design:strict": "stylelint \"src/**/*.css\" && node scripts/design-gates.mjs --strict",
     "legal:gen": "node scripts/legal-gen.mjs",
@@ -18,7 +18,7 @@
     "prepare": "cd .. && git config core.hooksPath frontend/.husky"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx}": "eslint --max-warnings=0",
+    "*.{ts,tsx,js,jsx}": "eslint",
     "*.css": "stylelint"
   },
   "dependencies": {

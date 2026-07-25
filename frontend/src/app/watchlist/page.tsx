@@ -192,7 +192,7 @@ export default function WatchlistPage() {
             <GlassCard className="flex flex-col items-center justify-center p-16 text-center">
               <Star className="w-12 h-12 text-border-medium mb-3" />
               <h3 className="text-sm font-display text-text-secondary mb-1">Henüz izleme listen yok</h3>
-              <p className="text-xs text-text-muted max-w-sm">Yukarıdan bir isim yazıp "+" ile ilk listeni oluştur, ardından varlık aramasıyla içine sembol ekle.</p>
+              <p className="text-xs text-text-muted max-w-sm">Yukarıdan bir isim yazıp &quot;+&quot; ile ilk listeni oluştur, ardından varlık aramasıyla içine sembol ekle.</p>
             </GlassCard>
           ) : active ? (
             <>

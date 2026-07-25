@@ -467,7 +467,7 @@ export default function AssetDetailPage() {
               title="Gerçek TradingView'da bu sembolü aç"
               className="flex items-center gap-1.5 text-micro font-medium text-text-muted hover:text-text-primary border border-border-subtle hover:border-accent-primary/40 px-2.5 py-1.5 rounded-lg transition-colors"
             >
-              <ExternalLink className="w-3.5 h-3.5" /> TradingView'da Aç
+              <ExternalLink className="w-3.5 h-3.5" /> TradingView&apos;da Aç
             </button>
             {signal && (
               <button
@@ -493,9 +493,9 @@ export default function AssetDetailPage() {
                   <div className="absolute right-0 top-full mt-2 w-64 glass-e3-overlay rounded-panel p-3 text-micro leading-relaxed text-text-secondary z-dropdown">
                     <p className="font-display text-text-primary mb-1.5">Nasıl kullanılır?</p>
                     <ol className="list-decimal list-inside space-y-1">
-                      <li>Pine Script Kopyala'ya bas</li>
-                      <li>TradingView'da Aç ile gerçek TradingView'ı aç</li>
-                      <li>Pine Editor'e yapıştır ve indikatör olarak ekle</li>
+                      <li>Pine Script Kopyala&apos;ya bas</li>
+                      <li>TradingView&apos;da Aç ile gerçek TradingView&apos;ı aç</li>
+                      <li>Pine Editor&apos;e yapıştır ve indikatör olarak ekle</li>
                     </ol>
                     <p className="mt-1.5 text-text-muted">Giriş/SL/TP seviyeleri orada da görünür.</p>
                   </div>
@@ -668,7 +668,7 @@ export default function AssetDetailPage() {
                   onClick={() => router.push('/signal-history')}
                   className="w-full mt-3 text-micro text-accent-primary hover:text-accent-ui text-center"
                 >
-                  Sinyal Geçmişi'nde tümünü gör →
+                  Sinyal Geçmişi&apos;nde tümünü gör →
                 </button>
               </GlassCard>
             )}

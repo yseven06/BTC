@@ -299,7 +299,7 @@ export default function AlertsPage() {
         {!loading && alerts.length === 0 && (
           <GlassCard>
             <p className="text-text-muted text-sm text-center py-10">
-              Henüz alarm oluşturulmamış. Yukarıdan "Yeni Alarm" ile ilkini oluştur.
+              Henüz alarm oluşturulmamış. Yukarıdan &quot;Yeni Alarm&quot; ile ilkini oluştur.
             </p>
           </GlassCard>
         )}

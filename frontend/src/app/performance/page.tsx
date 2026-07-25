@@ -509,7 +509,7 @@ export default function PerformancePage() {
                 ) : (
                   <>
                     <Play className="w-4 h-4" />
-                    <span>Backtest'i Başlat</span>
+                    <span>Backtest&apos;i Başlat</span>
                   </>
                 )}
               </Button>

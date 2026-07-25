@@ -213,7 +213,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
           <div className="flex items-center gap-2 flex-wrap">
             <History className="w-4 h-4 text-accent-primary flex-shrink-0" />
             <span className="text-micro text-text-secondary">
-              Benzer <b className="text-text-primary">{data.similar_setups.match_count}</b> geçmiş setup'ta
+              Benzer <b className="text-text-primary">{data.similar_setups.match_count}</b> geçmiş setup&apos;ta
               {' '}
               <b className={data.similar_setups.win_rate >= 55 ? 'text-bullish' : data.similar_setups.win_rate <= 45 ? 'text-bearish' : 'text-text-primary'}>
                 {formatPercentage(data.similar_setups.win_rate, 0, false)}

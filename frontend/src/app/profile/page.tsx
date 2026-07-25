@@ -209,7 +209,7 @@ export default function ProfilePage() {
 
             {/* Custom URL Input */}
             <div className="mt-3">
-              <label className="text-micro font-medium text-text-muted uppercase">Veya Özel Fotoğraf URL'si</label>
+              <label className="text-micro font-medium text-text-muted uppercase">Veya Özel Fotoğraf URL&apos;si</label>
               <input
                 type="text"
                 value={avatarUrl}
