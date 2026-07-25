@@ -2,17 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, TrendingUp, TrendingDown, Target, Shield, Zap, ExternalLink, Code2, Check, AlertTriangle, X, Maximize2, Minimize2, HelpCircle } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, ExternalLink, Code2, Check, AlertTriangle, X, Maximize2, Minimize2, HelpCircle } from 'lucide-react';
 import { toTradingViewSymbol } from '@/lib/tradingview';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { SignalBadge } from '@/components/ui/SignalBadge';
-import { ScoreRing } from '@/components/ui/ScoreRing';
 import TradingViewChart from '@/components/charts/TradingViewChart';
 import { TradingChart, type ChartCandle } from '@/components/charts/TradingChart';
 import { fetchActiveSignals, fetchOhlcv, fetchSignalHistory, type ApiSignal } from '@/lib/api';
 import { useLivePrices } from '@/hooks/useLivePrices';
-import { SignalType } from '@/types';
 import { cn, formatRelativeTime, formatAbsoluteTimeTR, formatPrice, formatPercentage } from '@/lib/utils';
 import { SignalDetailSection } from '@/components/ui/SignalDetailSection';
 import { CoinIcon } from '@/components/ui/CoinIcon';
@@ -130,6 +127,9 @@ export default function AssetDetailPage() {
   // or not the "sinyal değişti" banner above it is showing.
   const rowRef = React.useRef<HTMLDivElement>(null);
   const [rowHeight, setRowHeight] = useState<number | null>(null);
+  // lint(exhaustive-deps): karmaşık dep ifadeleri hook dışında stabilize edildi — değerler birebir aynı.
+  const changeNoticeDep = changeNotice ? changeNotice : null;
+  const tfFallbackNoticeDep = tfFallbackNotice ? tfFallbackNotice : null;
   useEffect(() => {
     if (manualFullscreen) return;
     const update = () => {
@@ -144,7 +144,7 @@ export default function AssetDetailPage() {
     // offset after the first paint.
     const t = setTimeout(update, 200);
     return () => { window.removeEventListener('resize', update); clearTimeout(t); };
-  }, [manualFullscreen, changeNotice ? changeNotice : null, tfFallbackNotice ? tfFallbackNotice : null, loading]);
+  }, [manualFullscreen, changeNoticeDep, tfFallbackNoticeDep, loading]);
 
   // lightweight-charts needs an explicit pixel height — it won't just fill
   // a flex/grid parent — so the chart's own render area is measured and fed
@@ -680,11 +680,3 @@ export default function AssetDetailPage() {
   );
 }
 
-function LevelRow({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-text-muted">{label}</span>
-      <span className={cn('text-sm font-display font-mono', color)}>{value}</span>
-    </div>
-  );
-}

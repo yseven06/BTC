@@ -128,11 +128,11 @@ async function apiFetch<T>(path: string, init?: RequestInit, _isRetry = false, _
     if (res.status === 204) return undefined as T;
     const text = await res.text();
     return (text ? JSON.parse(text) : undefined) as T;
-  } catch (err: any) {
-    if (err?.name === 'AbortError') {
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
       throw new Error('Sunucu yanıt vermiyor. Lütfen birazdan tekrar dene.');
     }
-    if (err?.message?.includes('Failed to fetch') || err?.message?.includes('NetworkError')) {
+    if (err instanceof Error && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
       throw new Error('Sunucuya bağlanılamadı. İnternet bağlantını kontrol edip tekrar dene.');
     }
     throw err;
@@ -179,7 +179,7 @@ export interface ApiSignal {
   invalidation_conditions: string;
   explanation_tr?: string;
   explanation_en?: string;
-  engines_data?: Record<string, any>;
+  engines_data?: Record<string, unknown>;
   timeframe: string;
   generated_at: string;
   expires_at?: string;
@@ -1141,7 +1141,7 @@ export async function deleteAdminAsset(asset_id: string): Promise<void> {
 
 export interface AdminJobStatus {
   label: string; running: boolean; last_run_at: string | null;
-  last_status: 'ok' | 'error' | null; last_error: string | null; last_result: any;
+  last_status: 'ok' | 'error' | null; last_error: string | null; last_result: unknown;
 }
 
 export async function fetchAdminJobStatus(): Promise<{ jobs: Record<string, AdminJobStatus> }> {
@@ -1157,7 +1157,7 @@ export async function triggerAdminJob(job_id: string): Promise<void> {
 export interface AdminAuditLogRow {
   id: string; actor_email: string; action: string;
   target_type: string | null; target_id: string | null;
-  detail: Record<string, any>; created_at: string;
+  detail: Record<string, unknown>; created_at: string;
 }
 
 export async function fetchAdminAuditLog(params?: { action?: string; page?: number; page_size?: number }):

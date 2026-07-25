@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import MainLayout from './MainLayout';
 import { Footer } from './Footer';
 import { useAuth } from '@/lib/auth-context';
@@ -53,7 +54,7 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
       <div className="min-h-screen flex items-center justify-center bg-bg-primary">
         <div className="flex flex-col items-center animate-fade-in">
           <div className="inline-flex items-center justify-center w-16 h-16 mb-3">
-            <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-full h-full object-contain" />
+            <Image src="/logo-icon-square.png" alt="TradeMinds AI" width={64} height={64} className="w-full h-full object-contain" />
           </div>
           <div className="text-h2 font-display gradient-text-brand">TradeMinds</div>
           <p className="text-sm text-text-secondary mt-1">AI Trading Intelligence</p>

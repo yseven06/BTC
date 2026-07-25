@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import {
-  HelpCircle, ChevronDown, Mail, Github, MessageCircle,
+  HelpCircle, ChevronDown, Mail, MessageCircle,
   Zap, Shield, BarChart3, Lock, Brain, FileDown,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';

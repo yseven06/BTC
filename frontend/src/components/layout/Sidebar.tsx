@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Zap, TrendingUp, Star, PieChart, Bell,
   BarChart3, BarChart2, Settings, ChevronLeft, ChevronRight,
-  LogOut, User, Newspaper, Crown, Microscope, CreditCard,
+  LogOut, Newspaper, Crown, Microscope, CreditCard,
   Globe, Shield, History,
 } from 'lucide-react';
 import { cn, formatDateTR } from '@/lib/utils';
@@ -110,7 +111,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
       {/* Logo */}
       <div className={cn('flex items-center h-16 px-4 border-b border-border-subtle', collapsed ? 'justify-center' : 'gap-3')}>
         <div className="relative flex items-center justify-center w-9 h-9 flex-shrink-0">
-          <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-full h-full object-contain" />
+          <Image src="/logo-icon-square.png" alt="TradeMinds AI" width={36} height={36} className="w-full h-full object-contain" />
         </div>
         {!collapsed && (
           <div className="animate-fade-in overflow-hidden">
@@ -215,7 +216,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen = false, onMob
           <div className="relative flex-shrink-0">
             <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-amber to-accent-primary flex items-center justify-center">
               {effectiveUser?.avatar_url ? (
-                <img src={effectiveUser.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                <Image src={effectiveUser.avatar_url} alt="Avatar" width={32} height={32} unoptimized className="w-full h-full object-cover" />
               ) : (
                 <span className="text-xs font-display text-white">{displayName[0]?.toUpperCase() ?? 'T'}</span>
               )}

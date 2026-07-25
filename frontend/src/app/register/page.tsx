@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -64,8 +65,8 @@ export default function RegisterPage() {
       }));
       await register(email, password, fullName || undefined, consents);
       router.replace('/dashboard');
-    } catch (err: any) {
-      const msg = err?.message ?? '';
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err ?? '');
       if (msg.includes('409')) setError('Bu e-posta zaten kayıtlı.');
       else if (msg.includes('422')) setError('Bilgileri kontrol et: geçerli bir e-posta ve en az 8 karakter, harf + rakam içeren bir şifre gerekli.');
       else if (msg.includes('Backend') || msg.includes('bağlan') || msg.includes('yanıt')) setError('Sunucuya şu anda ulaşılamıyor. Lütfen birazdan tekrar dene.');
@@ -80,7 +81,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 mb-3">
-            <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-full h-full object-contain" />
+            <Image src="/logo-icon-square.png" alt="TradeMinds AI" width={64} height={64} className="w-full h-full object-contain" />
           </div>
           <div className="flex items-center justify-center gap-2">
             <div className="text-h2 font-display text-text-primary">TradeMinds</div>

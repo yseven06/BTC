@@ -2,6 +2,7 @@
 
 import React, { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -33,8 +34,8 @@ function LoginForm() {
     try {
       await login(email, password, remember);
       router.replace(redirect);
-    } catch (err: any) {
-      const msg = err?.message ?? '';
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err ?? '');
       if (msg.includes('401') || msg.includes('Invalid')) {
         setError('E-posta veya şifre hatalı.');
       } else if (msg.includes('403') || msg.includes('deactivated')) {
@@ -55,7 +56,7 @@ function LoginForm() {
         {/* Logo */}
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 mb-3">
-            <img src="/logo-icon-square.png" alt="TradeMinds AI" className="w-full h-full object-contain" />
+            <Image src="/logo-icon-square.png" alt="TradeMinds AI" width={64} height={64} className="w-full h-full object-contain" />
           </div>
           <div className="text-h2 font-display text-text-primary">TradeMinds</div>
           <p className="text-sm text-text-secondary mt-1">AI Trading Intelligence</p>
