@@ -14,7 +14,10 @@ export function Footer() {
   const docs = listLegalDocs();
   const year = new Date().getFullYear();
 
-  const linkClass = 'text-text-muted transition-colors hover:text-text-secondary';
+  // S8/a11y: --tx3 (text-muted) token-dokümanı gereği OKUNUR METİN DEĞİL (<4.5:1;
+  // Lighthouse 3.49) → linkler tx2'ye çıkar; py-1 dokunma-alanını ≥24px'e taşır
+  // (target-size), görsel yoğunluk değişmez (padding şeffaf).
+  const linkClass = 'inline-flex items-center py-1 text-text-secondary transition-colors hover:text-text-primary';
 
   // Flatten registry docs + the two standing links into one ordered list so we
   // can interleave subtle separators between them.
@@ -51,7 +54,8 @@ export function Footer() {
           </ul>
         </nav>
 
-        <div className="mt-4 flex flex-col gap-1 border-t border-white/5 pt-4 text-micro text-text-muted sm:flex-row sm:items-center sm:justify-between">
+        {/* S8/a11y: okunur satırlar tx2 (tx3 yalnız dekor) — sessizlik boyutla korunur. */}
+        <div className="mt-4 flex flex-col gap-1 border-t border-white/5 pt-4 text-micro text-text-secondary sm:flex-row sm:items-center sm:justify-between">
           <p>
             <span className="font-medium text-text-secondary">Zate Trade</span>
             <span aria-hidden className="mx-1.5 text-white/20">·</span>

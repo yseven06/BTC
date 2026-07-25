@@ -53,7 +53,10 @@ await expectCase('marker + kombine class muaf', '.glow-drift[data-landing-ambien
 await expectCase('REGRESYON marker YOK + 24s bloklu', '.hero-bg { animation: glowDrift 24s linear infinite; }', true);
 await expectCase('REGRESYON app transition 900ms bloklu', '.foo { transition-duration: 900ms; }', true);
 await expectCase('REGRESYON :root token-def 900ms bloklu', ':root { --dur-x: 900ms; }', true);
-await expectCase('REGRESYON set-disi 300ms bloklu', '.foo { transition-duration: 300ms; }', true);
+// S8 senkron: 300ms, K-J v1.5'te --dur-flash olarak ALLOWED_MS'e girdi (plugin
+// satır ~29) — eski "300 bloklu" beklentisi o günden beri bayattı. Regresyon
+// niyeti (set-dışı ara-değer bloklanır) 320ms ile birebir korunur.
+await expectCase('REGRESYON set-disi 320ms bloklu', '.foo { transition-duration: 320ms; }', true);
 await expectCase('REGRESYON set-disi 12ms bloklu', '.foo { animation-duration: 12ms; }', true);
 await expectCase('REGRESYON benzer-ama-farkli marker (data-landing) bloklu', '[data-landing] { animation: x 24s linear infinite; }', true);
 

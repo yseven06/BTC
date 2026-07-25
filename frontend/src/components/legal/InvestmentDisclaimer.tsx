@@ -42,12 +42,15 @@ export function InvestmentDisclaimer({
           ? DISCLAIMER_FULL
           : DISCLAIMER_SHORT;
 
-  // Low-intensity: plain muted line (footer / compact).
+  // Low-intensity: plain quiet line (footer / compact).
+  // S8/a11y: gövde tx3→tx2 (tx3 token-dokümanı gereği okunur-metin değil; LH 3.49).
+  // Paragraf-İÇİ link yalnız renkle ayırt edilemez (WCAG 1.4.1) + accent küçük
+  // metinde <4.5:1 (LH 3.23) → tx2 + kalıcı underline; accent dolgu-rolünde kalır.
   if (variant === 'footer' || variant === 'compact') {
     return (
-      <p className={cn('text-xs leading-relaxed text-text-muted', className)}>
+      <p className={cn('text-xs leading-relaxed text-text-secondary', className)}>
         {body}{' '}
-        <Link href={DISCLAIMER_LINK} className="text-accent-primary hover:underline">
+        <Link href={DISCLAIMER_LINK} className="text-text-secondary underline underline-offset-2 hover:text-text-primary">
           Risk Bildirimi
         </Link>
       </p>
@@ -65,7 +68,7 @@ export function InvestmentDisclaimer({
         'flex gap-2 rounded-lg border px-3 py-2 text-xs leading-relaxed',
         isWarning
           ? 'border-amber/40 bg-amber/10 text-tx'
-          : 'border-white/10 bg-bg-secondary/60 text-text-muted',
+          : 'border-white/10 bg-bg-secondary/60 text-text-secondary',
         className,
       )}
     >
@@ -75,7 +78,7 @@ export function InvestmentDisclaimer({
       />
       <span>
         {body}{' '}
-        <Link href={DISCLAIMER_LINK} className="text-accent-primary hover:underline">
+        <Link href={DISCLAIMER_LINK} className="text-text-secondary underline underline-offset-2 hover:text-text-primary">
           Ayrıntılı bilgi
         </Link>
       </span>
