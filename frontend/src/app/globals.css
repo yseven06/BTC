@@ -454,10 +454,10 @@
 
 /* Fold-altı bölümler: IO 'rv-in' basana dek gizli (layout yerinde — CLS 0);
    giriş tek-atım fade + 8px rise. */
-[data-landing-reveal] .rv-section {
+.rv-js[data-landing-reveal] .rv-section {
   opacity: 0;
 }
-[data-landing-reveal] .rv-section.rv-in {
+.rv-js[data-landing-reveal] .rv-section.rv-in {
   animation: landing-rise var(--dur-overlay) var(--ease-signal) both;
 }
 
@@ -522,53 +522,53 @@
    sırayla). Süre/easing tek-aile: landing-rise + --dur-overlay +
    --ease-signal; bölüm-sonu ≤640ms (≤850 bandı). Attribute yoksa (reduce ·
    oturum-tekrarı · storage-yok · JS-ölü) hiçbir kural uygulanmaz → statik-tam. */
-[data-landing-reveal] .rv-section.nv,
-[data-landing-reveal] .rv-section.nv.rv-in {
+.rv-js[data-landing-reveal] .rv-section.nv,
+.rv-js[data-landing-reveal] .rv-section.nv.rv-in {
   /* Kutu STATİK: rv-section'ın tek-blok fade'i (opacity + landing-rise) nv
      bölümlerinde iptal — yoksa kutu ve gruplar üst üste yükselir (çift-hareket,
      kompozit ~16px) ve "iskelet önce okunur" bozulurdu. */
   opacity: 1;
   animation: none;
 }
-[data-landing-reveal] .rv-section.nv :is(.nv-1, .nv-2, .nv-3, .nv-4, .nv-5),
-[data-landing-reveal] .rv-section.nv .nv-rows > *,
-[data-landing-reveal] .rv-section.nv .nv-seq > * > * {
+.rv-js[data-landing-reveal] .rv-section.nv :is(.nv-1, .nv-2, .nv-3, .nv-4, .nv-5),
+.rv-js[data-landing-reveal] .rv-section.nv .nv-rows > *,
+.rv-js[data-landing-reveal] .rv-section.nv .nv-seq > * > * {
   opacity: 0;
 }
-[data-landing-reveal] .rv-section.nv.rv-in :is(.nv-1, .nv-2, .nv-3, .nv-4, .nv-5),
-[data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *,
-[data-landing-reveal] .rv-section.nv.rv-in .nv-seq > * > * {
+.rv-js[data-landing-reveal] .rv-section.nv.rv-in :is(.nv-1, .nv-2, .nv-3, .nv-4, .nv-5),
+.rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *,
+.rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-seq > * > * {
   animation: landing-rise var(--dur-overlay) var(--ease-signal) both;
 }
-[data-landing-reveal] .rv-section.nv.rv-in .nv-2 { animation-delay: 60ms; }
-[data-landing-reveal] .rv-section.nv.rv-in .nv-3 { animation-delay: 120ms; }
-[data-landing-reveal] .rv-section.nv.rv-in .nv-4 { animation-delay: 200ms; }
-[data-landing-reveal] .rv-section.nv.rv-in .nv-5 { animation-delay: 280ms; }
-[data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *:nth-child(-n+3) { animation-delay: 200ms; }
-[data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *:nth-child(n+4) { animation-delay: 250ms; }
-[data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(1) > * { animation-delay: 120ms; }
-[data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(2) > * { animation-delay: 180ms; }
-[data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(3) > * { animation-delay: 240ms; }
+.rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-2 { animation-delay: 60ms; }
+.rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-3 { animation-delay: 120ms; }
+.rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-4 { animation-delay: 200ms; }
+.rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-5 { animation-delay: 280ms; }
+.rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *:nth-child(-n+3) { animation-delay: 200ms; }
+.rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *:nth-child(n+4) { animation-delay: 250ms; }
+.rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(1) > * { animation-delay: 120ms; }
+.rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(2) > * { animation-delay: 180ms; }
+.rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(3) > * { animation-delay: 240ms; }
 
 /* S6 mobil: masaüstü koreografi küçültülüp yapıştırılmaz — süre --dur-state
    (180ms), gecikmeler kısalır, yükselme proof-rise/--pv-rise=2px (S5c
    keyframe'i yeniden kullanılır; yeni keyframe YOK). İçerik bekletilmez. */
 @media (max-width: 767px) {
-  [data-landing-reveal] .rv-section.nv.rv-in :is(.nv-1, .nv-2, .nv-3, .nv-4, .nv-5),
-  [data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *,
-  [data-landing-reveal] .rv-section.nv.rv-in .nv-seq > * > * {
+  .rv-js[data-landing-reveal] .rv-section.nv.rv-in :is(.nv-1, .nv-2, .nv-3, .nv-4, .nv-5),
+  .rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *,
+  .rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-seq > * > * {
     --pv-rise: 2px;
     animation: proof-rise var(--dur-state) var(--ease-signal) both;
   }
-  [data-landing-reveal] .rv-section.nv.rv-in .nv-2 { animation-delay: 40ms; }
-  [data-landing-reveal] .rv-section.nv.rv-in .nv-3 { animation-delay: 80ms; }
-  [data-landing-reveal] .rv-section.nv.rv-in .nv-4 { animation-delay: 120ms; }
-  [data-landing-reveal] .rv-section.nv.rv-in .nv-5 { animation-delay: 160ms; }
-  [data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *:nth-child(-n+3) { animation-delay: 120ms; }
-  [data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *:nth-child(n+4) { animation-delay: 160ms; }
-  [data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(1) > * { animation-delay: 80ms; }
-  [data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(2) > * { animation-delay: 120ms; }
-  [data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(3) > * { animation-delay: 160ms; }
+  .rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-2 { animation-delay: 40ms; }
+  .rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-3 { animation-delay: 80ms; }
+  .rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-4 { animation-delay: 120ms; }
+  .rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-5 { animation-delay: 160ms; }
+  .rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *:nth-child(-n+3) { animation-delay: 120ms; }
+  .rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-rows > *:nth-child(n+4) { animation-delay: 160ms; }
+  .rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(1) > * { animation-delay: 80ms; }
+  .rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(2) > * { animation-delay: 120ms; }
+  .rv-js[data-landing-reveal] .rv-section.nv.rv-in .nv-seq > *:nth-child(3) > * { animation-delay: 160ms; }
 }
 
 /* Emniyet katmanı: reduce'ta T3 tamamen atlanır (JS guard attribute'u zaten
@@ -582,10 +582,10 @@
   [data-landing-reveal] .pv,
   [data-landing-reveal] .pv-rows > *,
   [data-landing-reveal] .pv-scope,
-  [data-landing-reveal] .rv-section.nv :is(.nv-1, .nv-2, .nv-3, .nv-4, .nv-5),
-  [data-landing-reveal] .rv-section.nv .nv-rows > *,
-  [data-landing-reveal] .rv-section.nv .nv-seq > * > *,
-  [data-landing-reveal] .rv-section {
+  .rv-js[data-landing-reveal] .rv-section.nv :is(.nv-1, .nv-2, .nv-3, .nv-4, .nv-5),
+  .rv-js[data-landing-reveal] .rv-section.nv .nv-rows > *,
+  .rv-js[data-landing-reveal] .rv-section.nv .nv-seq > * > *,
+  .rv-js[data-landing-reveal] .rv-section {
     animation: none;
     opacity: 1;
   }

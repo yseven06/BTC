@@ -48,11 +48,15 @@ const OUTCOME_PILL = {
 
 // M-L1 · T3 fold-altı bölüm reveal'ı (Doctrine §1/§3): viewport-girişte TEK-ATIM
 // 'rv-in' — IntersectionObserver pasif (scroll-listener yok), ilk kesişimde
-// disconnect (once). active=false ise düz section'dır: IO hiç kurulmaz, statik hal
-// (reduce / oturumda-tekrar / storage-yok dalları). Koşullu-mount bölümlerde
-// ref-callback IO'yu mount anında kurar; React 19 ref-cleanup ile sızıntısız.
-function RevealSection({ active, id, className, children }: {
-  active: boolean; id?: string; className?: string; children: React.ReactNode;
+// disconnect (once). S8/SSR: sınıf + IO artık KOŞULSUZ — sunucu ve istemci
+// markup'ı birebir aynı kalır (hydration-deterministik). Reveal'in yaşayıp
+// yaşamayacağına markup değil, <html> üzerindeki [data-landing-reveal]
+// (pre-hydration inline script) + .rv-js (hydration kolu) karar verir;
+// attribute yokken rv-section/rv-in sınıfları CSS'te hiçbir kurala düşmez
+// (görsel no-op). Koşullu-mount bölümlerde ref-callback IO'yu mount anında
+// kurar; React 19 ref-cleanup ile sızıntısız.
+function RevealSection({ id, className, children }: {
+  id?: string; className?: string; children: React.ReactNode;
 }) {
   const ref = useCallback((el: HTMLElement | null) => {
     if (!el) return;
@@ -67,7 +71,7 @@ function RevealSection({ active, id, className, children }: {
     return () => io.disconnect();
   }, []);
   return (
-    <section ref={active ? ref : undefined} id={id} className={active ? className + ' rv-section' : className}>
+    <section ref={ref} id={id} className={className + ' rv-section'}>
       {children}
     </section>
   );
@@ -188,21 +192,24 @@ export default function LandingPage() {
   const [sicilSignals, setSicilSignals] = useState<ApiSignal[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
 
-  // M-L1 · T3 reveal kararı — bir kez, ilk render'da (VL v1.5 / K-J):
-  // reduce'ta ve aynı oturumda tekrar-görüntülemede attribute hiç basılmaz →
-  // statik dal; storage kapalıysa da statik (fail-safe). İçerik yalnız client'ta
-  // mount olduğundan (auth-loading spinner'ı) FOUC/hydration riski yapısal yok.
-  const [reveal] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    try {
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
-      if (sessionStorage.getItem('tm_landing_reveal') === '1') return false;
-      sessionStorage.setItem('tm_landing_reveal', '1');
-      return true;
-    } catch {
-      return false;
-    }
-  });
+  // S8 · Reveal kararı artık render-state DEĞİL (SSR-uyumlu M-L1/T3 devamı):
+  // karar, hero markup'ından ÖNCE duran SSR'lı inline script'te (aşağıda,
+  // REVEAL_BOOT) İLK BOYAMADAN ÖNCE verilir ve <html>'e [data-landing-reveal]
+  // olarak yazılır — React'ın yönettiği ağaçta attribute yok → sunucu/istemci
+  // ilk render'ı birebir eşit (hydration-deterministik). Dallar aynen: reduce ·
+  // oturumda-tekrar · storage-yok · JS-ölü → attribute yok → statik-tam görünür.
+  // Fold-altı S6 gizlemesi ayrıca .rv-js (hydration kolu) ister — bundle hiç
+  // gelmezse fold-altı içerik asla gizlenmez (bilgi kaybı imkânsız).
+  useEffect(() => {
+    const el = document.documentElement;
+    el.classList.add('rv-js');
+    return () => {
+      // Soft-nav ile aynı oturumda geri dönüşte replay olmasın + landing-dışına
+      // sızmasın: kol ve attribute birlikte iner (oturum bayrağı zaten yazıldı).
+      el.classList.remove('rv-js');
+      el.removeAttribute('data-landing-reveal');
+    };
+  }, []);
 
   useEffect(() => {
     if (!loading && user) router.replace('/dashboard');
@@ -223,7 +230,14 @@ export default function LandingPage() {
     fetchPlans().then((r) => setPlans(r.plans.filter((p) => p.tier !== 'free'))).catch((e) => console.error('Landing: planlar alınamadı', e));
   }, []);
 
-  if (loading || user) {
+  // S8/ölçüm: kapı yalnız `user` (dashboard yönlendirmesi beklenirken). Eski
+  // `loading || user` hali prerender'a SPINNER bastırıyordu → landing client'ta
+  // geç mount oluyor, S7 layout-shift dökümünün tek CLS kaynağı (0.0657) ve
+  // mobil LCP 4.3s'in sürücüsü buydu. Anonim ziyaretçi artık SSR landing'i ilk
+  // boyamada görür; auth yavaş/erişilemezse de public landing görünür kalır.
+  // Giriş-yapmışta redirect (yukarıdaki useEffect) ve yetki kuralları AYNEN —
+  // yalnız yönlendirme-öncesi ara kare spinner yerine public sayfanın kendisi.
+  if (user) {
     return <div className="min-h-screen flex items-center justify-center bg-bg-primary"><div className="w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
 
@@ -232,7 +246,18 @@ export default function LandingPage() {
   const showPanelArea = !proofLoaded || hasProofPanel;
 
   return (
-    <div className="landing-atmosphere min-h-screen bg-bg-primary" data-landing-reveal={reveal ? '' : undefined}>{/* CP-6/K-C1: grain zemin katmanı (R3; yalnız landing) · M-L1: reveal yalnız attribute varken yaşar */}
+    <div className="landing-atmosphere min-h-screen bg-bg-primary">{/* CP-6/K-C1: grain zemin katmanı (R3; yalnız landing) · M-L1: reveal <html>[data-landing-reveal] altında yaşar (S8 REVEAL_BOOT) */}
+      {/* S8 · REVEAL_BOOT — SSR'lı, parser-bloklayan inline script: hero markup'ı
+          parse edilmeden (ilk boyamadan önce) koşar; ilk-oturum-ziyareti +
+          reduce-değil + storage-yazılabilir ise <html>'e attribute basar →
+          hero rv/pv koreografisi boyamanın ilk karesinden itibaren yaşar
+          (SSR'da geç-JS blink'i imkânsız). Statik dize → hydration-deterministik. */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html:
+            "try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches&&!sessionStorage.getItem('tm_landing_reveal')){sessionStorage.setItem('tm_landing_reveal','1');document.documentElement.setAttribute('data-landing-reveal','')}}catch(e){}",
+        }}
+      />
       {/* Nav — sticky (CP-1a): opak --e0 zemin + alt-hairline; scroll'da erisim korunur. z-10 = --z-sticky (kanonik olcek). */}
       <header className="sticky top-0 z-10 bg-bg-primary border-b border-border-subtle">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -305,7 +330,7 @@ export default function LandingPage() {
           verecek yeşil-kırmızı sunum yok). Oran/ortalama-getiri metrikleri landing'e dönmez (K-B2+).
           Yüklenirken alan rezervi (CLS 0); veri yoksa bant render edilmez. */}
       {(!proofLoaded || proof?.stats) && (
-        <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 pb-6">
+        <RevealSection className="nv max-w-6xl mx-auto px-6 pb-6">
           {proof?.stats ? (
             <div className="nv-1 proof-zsep proof-zsep-b py-5">
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2">
@@ -345,7 +370,7 @@ export default function LandingPage() {
       {/* Sicil — CP-5c: son kapanan sinyaller, SONUCA GÖRE FİLTRESİZ (anti-cherry-pick,
           kilitli karar). Kazanan da kaybeden de aynı sicilde; "yalnız-kazanan" bölümü emekli. */}
       {sicilSignals.length > 0 && (
-        <RevealSection active={reveal} id="sicil" className="nv max-w-6xl mx-auto px-6 pt-16 pb-16 md:pb-24 scroll-mt-16">
+        <RevealSection id="sicil" className="nv max-w-6xl mx-auto px-6 pt-16 pb-16 md:pb-24 scroll-mt-16">
           <h2 className="nv-1 text-h2 font-display text-text-primary text-center">Sicil: Son Kapanan Sinyaller</h2>
           <p className="nv-2 text-sm text-text-secondary text-center mt-2 max-w-xl mx-auto">
             Sonuca göre filtrelenmedi — kazanan da kaybeden de burada.
@@ -385,7 +410,7 @@ export default function LandingPage() {
           form değişimi. İkonlar nötr (renk=anlam; motor ikonu eylem/AI-karar değil). */}
       {/* S7 ritim: Sicil→Motorlar aynı kanıt-ailesi → üst nefes kısalır (pt-16);
           mobil tüm fold-altı bölümlerde py-16 (192px'lik tekdüze tren kırılır). */}
-      <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 pt-16 pb-16 md:pb-24">
+      <RevealSection className="nv max-w-6xl mx-auto px-6 pt-16 pb-16 md:pb-24">
         <div className="md:grid md:grid-cols-[5fr_7fr] md:gap-12 lg:gap-16">
           <div>
             <h2 className="nv-1 text-h2 font-display text-text-primary">Sinyalin arkasındaki 9 motor</h2>
@@ -425,7 +450,7 @@ export default function LandingPage() {
           aynı proof-zsep hairline dili + tabular index + sola-hizalı tipografik
           hiyerarşi). İçerik/sıra/responsive AYNEN; hover/motion YOK (statik).
           Index gerçek sıradır (padStart yalnız sunum-biçimi, içerik değişmedi). */}
-      <RevealSection active={reveal} className="nv max-w-4xl mx-auto px-6 py-16 md:py-24">
+      <RevealSection className="nv max-w-4xl mx-auto px-6 py-16 md:py-24">
         <h2 className="nv-1 text-h2 font-display text-text-primary text-center">Dakikalar İçinde Başla</h2>
         <div className="nv-seq grid grid-cols-1 md:grid-cols-3 gap-x-10 gap-y-8 mt-10">
           {STEPS.map((s) => (
@@ -439,7 +464,7 @@ export default function LandingPage() {
       </RevealSection>
 
       {/* Transparency: how it works + honest limits + key messages (all verifiable) */}
-      <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 py-16 md:py-24 border-t border-border-subtle">
+      <RevealSection className="nv max-w-6xl mx-auto px-6 py-16 md:py-24 border-t border-border-subtle">
         <h2 className="nv-1 text-h2 font-display text-text-primary text-center">Şeffaflık: Nasıl Çalışır, Neyi Vaat Etmez</h2>
         <p className="nv-2 text-sm text-text-secondary text-center mt-2 max-w-2xl mx-auto">
           Zate Trade bir &quot;sinyal grubu&quot; değildir — denetlenebilir bir kayıt defteridir.
@@ -508,7 +533,7 @@ export default function LandingPage() {
           Başlık sola-dayalı (içerik-bölümü; tören-bölümleri ortalanmış kalır). */}
       {/* S7 ritim: Şeffaflık+Güvenlik tek güven-yayı → Güvenlik'in üst nefesi kısalır
           (pt-16); border-t hairline dikişi zaten işaretler. */}
-      <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 pt-16 pb-16 md:pb-24 border-t border-border-subtle">
+      <RevealSection className="nv max-w-6xl mx-auto px-6 pt-16 pb-16 md:pb-24 border-t border-border-subtle">
         <h2 className="nv-1 text-h2 font-display text-text-primary">Güvenlik ve Veri Şeffaflığı</h2>
         <p className="nv-2 text-sm text-text-secondary mt-2 max-w-2xl">
           Verinin nereden geldiğini, nasıl korunduğunu ve gizliliği nasıl ele aldığımızı açıkça paylaşıyoruz.
@@ -555,7 +580,7 @@ export default function LandingPage() {
 
       {/* Pricing teaser */}
       {plans.length > 0 && (
-        <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 py-16 md:py-24">
+        <RevealSection className="nv max-w-6xl mx-auto px-6 py-16 md:py-24">
           <h2 className="nv-1 text-h2 font-display text-text-primary text-center">Basit, Şeffaf Fiyatlandırma</h2>
           <p className="nv-2 text-sm text-text-secondary text-center mt-2">Şeffaf fiyatlandırma, gizli ücret yok — dilediğin an yükselt veya iptal et.</p>
           <div className="nv-rows grid grid-cols-1 md:grid-cols-2 gap-5 mt-10 max-w-3xl mx-auto">
@@ -590,7 +615,7 @@ export default function LandingPage() {
       {/* Final CTA — CP-4: sıfat-başlık → manifesto-uyumlu kapanış; buton metni tüm
           primary'lerle hizalandı (K-A minor kapanışı: tek metin "Ücretsiz Başla"). */}
       {/* S7 ritim: kapanış nefesi sayfanın EN BÜYÜĞÜ kalır (bilinçli); mobilde bir kademe kısa. */}
-      <RevealSection active={reveal} className="nv max-w-4xl mx-auto px-6 pt-20 pb-24 md:pt-24 md:pb-32 text-center">
+      <RevealSection className="nv max-w-4xl mx-auto px-6 pt-20 pb-24 md:pt-24 md:pb-32 text-center">
         <h2 className="nv-1 text-h2 md:text-h1 font-display text-text-primary">Sicil ortada. Karar senin.</h2>
         <p className="nv-2 text-sm text-text-secondary mt-3">Kayıt sonrası dashboard&apos;a anında erişim — kredi kartı gerekmez.</p>
         <Link href="/register" className="nv-3 focus-ring inline-flex items-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-7 py-3.5 rounded-xl transition-[background-color,box-shadow] duration-[var(--dur-warm)] ease-[var(--ease-signal)] hover:shadow-cta mt-6">

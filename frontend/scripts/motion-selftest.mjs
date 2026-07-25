@@ -122,11 +122,15 @@ const rvSelectorLines = cssNoComments.split('\n')
   .map((l) => l.trim())
   .filter((l) => /\.rv-/.test(l) && /[,{]\s*$/.test(l));
 ok(rvSelectorLines.length >= 8, `M-L1: .rv-* selector satırları mevcut (bulunan: ${rvSelectorLines.length})`);
-ok(rvSelectorLines.every((l) => l.startsWith('[data-landing-reveal]')),
+// S8/SSR senkronu: fold-altı kurallar artık `.rv-js[data-landing-reveal]` ile
+// DAHA DA DAR kapsanır (attribute ZORUNLU kalır + hydration-kolu şartı; bundle
+// gelmezse fold-altı içerik hiç gizlenmez). Guard-niyeti aynen: attribute'suz
+// hiçbir .rv-* kuralı yaşayamaz — her iki form da attribute'u şart koşar.
+ok(rvSelectorLines.every((l) => l.startsWith('[data-landing-reveal]') || l.startsWith('.rv-js[data-landing-reveal]')),
   'M-L1: tüm .rv-* selector\'leri [data-landing-reveal] scope-içi (app-sızıntısı yok)');
 // (b) Reduce emniyet katmanı: reveal reduce'ta tamamen atlanır (animation none +
 //     opacity 1) — .rv-section reduce-listesinin son selector'ü, blok gövdesine bitişik.
-ok(/\[data-landing-reveal\] \.rv-section \{ animation: none; opacity: 1; \}/.test(cssN),
+ok(/\.rv-js\[data-landing-reveal\] \.rv-section \{ animation: none; opacity: 1; \}/.test(cssN),
   'M-L1: reduce emniyet bloğu (animation:none + opacity:1) mevcut');
 // (c) T3 sekans-bütçe kilidi: max stagger-çarpanı × --stagger + --dur-settle ≤ 1200ms
 //     (VL v1.5 carve-out: sekans toplamı ≤1.2s; öğe süreleri zaten set-içi).
