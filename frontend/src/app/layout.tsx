@@ -34,16 +34,17 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     url: SITE_URL,
     siteName: BRAND_NAME,
-    // Rebrand: eski og-image.jpg wordmark'ı raster'a gömülüydü (eski marka) →
-    // referans kaldırıldı, dosya silindi. Yeni 1200×630 OG görseli deploy
-    // checklist'indedir; o gelene dek paylaşım kartı görselsiz (title/description) çıkar.
+    // OG-CP: DOM-kontrollü 1200×630 kart (landing key-light + proof-hairline
+    // ailesi; sahte veri yok) — sembol hi-res logo-icon.png'den upscale'siz.
+    images: [{ url: "/og-zatetrade.png", width: 1200, height: 630, alt: `${BRAND_NAME} — AI Market Intelligence` }],
     locale: "tr_TR",
     type: "website",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
+    images: ["/og-zatetrade.png"],
   },
 };
 
