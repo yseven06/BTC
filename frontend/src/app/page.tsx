@@ -244,7 +244,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             {/* CP-4/E: mobilde Giriş gizli (MP-v1 nav spec: logo+CTA kalır) — nav-CTA sarma fix'i */}
             <Link href="/login" className="hidden sm:inline text-sm font-display text-text-secondary hover:text-text-primary transition-colors">Giriş Yap</Link>
-            <Link href="/register" className="whitespace-nowrap text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors">
+            <Link href="/register" className="focus-ring whitespace-nowrap text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-4 py-2 rounded-xl transition-colors">
               Ücretsiz Başla
             </Link>
           </div>
@@ -281,7 +281,7 @@ export default function LandingPage() {
             {/* R5: ikincil CTA çerçevesiz metin-link — sol kolonda tek kutu (squint: H1 + tek CTA).
                 Mobilde dikey istif (CTA sarma-fix). CP-5c: ikincil CTA kanıta davet eder (#sicil). */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-7 rv-4">
-              <Link href="/register" className="inline-flex items-center justify-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-6 py-3 rounded-xl transition-[background-color,box-shadow] duration-[var(--dur-warm)] ease-[var(--ease-signal)] hover:shadow-cta">
+              <Link href="/register" className="focus-ring inline-flex items-center justify-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-6 py-3 rounded-xl transition-[background-color,box-shadow] duration-[var(--dur-warm)] ease-[var(--ease-signal)] hover:shadow-cta">
                 Ücretsiz Başla <ArrowRight className="w-4 h-4" />
               </Link>
               <Link href="#sicil" className="inline-flex items-center gap-1.5 text-sm font-display text-text-secondary hover:text-text-primary transition-colors">
@@ -334,7 +334,10 @@ export default function LandingPage() {
               </p>
             </div>
           ) : (
-            <div className="min-h-[64px]" />
+            // S7/CLS: rezerv, bandın GERÇEK yüksekliğine sabitlendi (ölçüm: 375→180px,
+            // md+→89px; eski 64px rezerv veri gelince altındaki her şeyi ~25px itiyordu —
+            // Lighthouse desktop CLS 0.066'nın tek kaynağı). Rezerv-B ilkesi aynen.
+            <div className="min-h-[180px] md:min-h-[89px]" />
           )}
         </RevealSection>
       )}
@@ -342,7 +345,7 @@ export default function LandingPage() {
       {/* Sicil — CP-5c: son kapanan sinyaller, SONUCA GÖRE FİLTRESİZ (anti-cherry-pick,
           kilitli karar). Kazanan da kaybeden de aynı sicilde; "yalnız-kazanan" bölümü emekli. */}
       {sicilSignals.length > 0 && (
-        <RevealSection active={reveal} id="sicil" className="nv max-w-6xl mx-auto px-6 pt-16 pb-24 scroll-mt-16">
+        <RevealSection active={reveal} id="sicil" className="nv max-w-6xl mx-auto px-6 pt-16 pb-16 md:pb-24 scroll-mt-16">
           <h2 className="nv-1 text-h2 font-display text-text-primary text-center">Sicil: Son Kapanan Sinyaller</h2>
           <p className="nv-2 text-sm text-text-secondary text-center mt-2 max-w-xl mx-auto">
             Sonuca göre filtrelenmedi — kazanan da kaybeden de burada.
@@ -380,7 +383,9 @@ export default function LandingPage() {
           ferah anlatı (sol) + KUTUSUZ hairline motor-listesi (sağ; "boşluk→hairline→asla-kutu").
           İçerik hiyerarşisi: 9 motor eşit-önemli (konsensüs tezi) → vurgulu-tek-kart değil,
           form değişimi. İkonlar nötr (renk=anlam; motor ikonu eylem/AI-karar değil). */}
-      <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 py-24">
+      {/* S7 ritim: Sicil→Motorlar aynı kanıt-ailesi → üst nefes kısalır (pt-16);
+          mobil tüm fold-altı bölümlerde py-16 (192px'lik tekdüze tren kırılır). */}
+      <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 pt-16 pb-16 md:pb-24">
         <div className="md:grid md:grid-cols-[5fr_7fr] md:gap-12 lg:gap-16">
           <div>
             <h2 className="nv-1 text-h2 font-display text-text-primary">Sinyalin arkasındaki 9 motor</h2>
@@ -395,7 +400,8 @@ export default function LandingPage() {
                 { icon: Wallet, label: 'Portföy Takibi' },
               ].map((f) => (
                 <div key={f.label} className="flex items-center gap-2 text-sm font-display text-text-secondary">
-                  <CheckCircle className="w-4 h-4 text-bullish flex-shrink-0" /> {f.label}
+                  {/* S7: liste-ikonu nötr — yeşil olay-rengidir, dekor değil (COL renk=anlam) */}
+                  <CheckCircle className="w-4 h-4 text-text-secondary flex-shrink-0" /> {f.label}
                 </div>
               ))}
             </div>
@@ -419,7 +425,7 @@ export default function LandingPage() {
           aynı proof-zsep hairline dili + tabular index + sola-hizalı tipografik
           hiyerarşi). İçerik/sıra/responsive AYNEN; hover/motion YOK (statik).
           Index gerçek sıradır (padStart yalnız sunum-biçimi, içerik değişmedi). */}
-      <RevealSection active={reveal} className="nv max-w-4xl mx-auto px-6 py-24">
+      <RevealSection active={reveal} className="nv max-w-4xl mx-auto px-6 py-16 md:py-24">
         <h2 className="nv-1 text-h2 font-display text-text-primary text-center">Dakikalar İçinde Başla</h2>
         <div className="nv-seq grid grid-cols-1 md:grid-cols-3 gap-x-10 gap-y-8 mt-10">
           {STEPS.map((s) => (
@@ -433,7 +439,7 @@ export default function LandingPage() {
       </RevealSection>
 
       {/* Transparency: how it works + honest limits + key messages (all verifiable) */}
-      <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 py-24 border-t border-border-subtle">
+      <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 py-16 md:py-24 border-t border-border-subtle">
         <h2 className="nv-1 text-h2 font-display text-text-primary text-center">Şeffaflık: Nasıl Çalışır, Neyi Vaat Etmez</h2>
         <p className="nv-2 text-sm text-text-secondary text-center mt-2 max-w-2xl mx-auto">
           TradeMinds bir &quot;sinyal grubu&quot; değildir — denetlenebilir bir kayıt defteridir.
@@ -448,9 +454,9 @@ export default function LandingPage() {
               <h3 className="text-sm font-display text-text-primary">Nasıl çalışır</h3>
             </div>
             <ul className="space-y-3 text-xs text-text-secondary leading-relaxed">
-              <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-accent-primary flex-shrink-0 mt-0.5" /> 9 bağımsız AI motoru her sinyali ayrı puanlar; sonuçlar birleşik bir güven skorunda toplanır.</li>
-              <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-accent-primary flex-shrink-0 mt-0.5" /> Piyasa rejimi (trend/range/volatilite) tespit edilir; ağırlıklar coin bazında geçmiş performansa göre uyarlanır.</li>
-              <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-accent-primary flex-shrink-0 mt-0.5" /> Her sinyal canlı izlenir; başarı metrikleri yalnızca gerçek, kapanmış sinyallerden hesaplanır.</li>
+              <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-text-secondary flex-shrink-0 mt-0.5" /> 9 bağımsız AI motoru her sinyali ayrı puanlar; sonuçlar birleşik bir güven skorunda toplanır.</li>
+              <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-text-secondary flex-shrink-0 mt-0.5" /> Piyasa rejimi (trend/range/volatilite) tespit edilir; ağırlıklar coin bazında geçmiş performansa göre uyarlanır.</li>
+              <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-text-secondary flex-shrink-0 mt-0.5" /> Her sinyal canlı izlenir; başarı metrikleri yalnızca gerçek, kapanmış sinyallerden hesaplanır.</li>
             </ul>
           </div>
 
@@ -468,12 +474,14 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Ne Yapmayız — CP-3: negatif-taahhüt paneli (Prensip-2/legal-metin alt-kümesi;
+        {/* Ne Yapmayız — CP-3: negatif-taahhüt (Prensip-2/legal-metin alt-kümesi;
             hizmet dili, TAMAMEN NÖTR — bull/bear tinti yok). Eski 3 anahtar-mesaj kartı
             buraya konsolide edildi; üçlü-mesaj (a/b/c) madde 4 + madde 2 + alttaki inline
-            InvestmentDisclaimer ile bölüm gövdesinde BİRLİKTE yaşamaya devam eder (Prensip-4). */}
-        <div className="nv-4 glass-panel border border-border-subtle rounded-card p-6 mt-6">
-          <h3 className="text-sm font-display text-text-primary">Ne yapmayız</h3>
+            InvestmentDisclaimer ile bölüm gövdesinde BİRLİKTE yaşamaya devam eder (Prensip-4).
+            S7: bölümdeki 3. yuvarlak kutu → proof-zsep hairline bandı (Kanıt-Bandı/veri-
+            kaynakları dili); içerik ve grid AYNEN, yalnız kap değişti. */}
+        <div className="nv-4 proof-zsep pt-5 mt-8">
+          <h3 className="text-micro font-medium uppercase tracking-wide text-text-secondary">Ne yapmayız</h3>
           <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 mt-4">
             {[
               'Borsa API anahtarı veya cüzdan bağlantısı istemeyiz; paranıza erişimimiz olmaz.',
@@ -498,7 +506,9 @@ export default function LandingPage() {
       {/* Güvenlik — CP-4: 3'lü eşit grid kırıldı — veri-kaynakları karta değil hairline
           bandına (Kanıt-Bandı dili; 2 madde kart olmayı hak etmiyor); altta 2 kart.
           Başlık sola-dayalı (içerik-bölümü; tören-bölümleri ortalanmış kalır). */}
-      <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 py-24 border-t border-border-subtle">
+      {/* S7 ritim: Şeffaflık+Güvenlik tek güven-yayı → Güvenlik'in üst nefesi kısalır
+          (pt-16); border-t hairline dikişi zaten işaretler. */}
+      <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 pt-16 pb-16 md:pb-24 border-t border-border-subtle">
         <h2 className="nv-1 text-h2 font-display text-text-primary">Güvenlik ve Veri Şeffaflığı</h2>
         <p className="nv-2 text-sm text-text-secondary mt-2 max-w-2xl">
           Verinin nereden geldiğini, nasıl korunduğunu ve gizliliği nasıl ele aldığımızı açıkça paylaşıyoruz.
@@ -513,25 +523,30 @@ export default function LandingPage() {
           <span className="text-sm text-text-secondary">— piyasa metadata & Fear/Greed</span>
         </div>
         <div className="nv-4 grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
-          {/* Security */}
+          {/* Security — S7: ikon-çip kutusu (SaaS imzası) → Şeffaflık kartlarıyla aynı
+              inline ikon+başlık deseni; ikon accent kalır (kart başına tek accent izi). */}
           <div className="glass-panel border border-border-subtle rounded-card p-6">
-            <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3"><Shield className="w-5 h-5 text-accent-primary" /></div>
-            <h3 className="text-sm font-display text-text-primary">Güvenlik yaklaşımı</h3>
-            <ul className="mt-3 space-y-1.5 text-xs text-text-secondary">
-              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Tüm trafik HTTPS/TLS ile şifrelenir</li>
-              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Modern güvenlik başlıkları (CSP, HSTS) etkin</li>
-              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Kötüye kullanıma karşı hız sınırlama (rate limiting)</li>
-              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Şifreler güçlü algoritmayla saklanır; düz metin tutulmaz</li>
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="w-5 h-5 text-accent-primary" />
+              <h3 className="text-sm font-display text-text-primary">Güvenlik yaklaşımı</h3>
+            </div>
+            <ul className="space-y-1.5 text-xs text-text-secondary">
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-text-secondary flex-shrink-0 mt-0.5" /> Tüm trafik HTTPS/TLS ile şifrelenir</li>
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-text-secondary flex-shrink-0 mt-0.5" /> Modern güvenlik başlıkları (CSP, HSTS) etkin</li>
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-text-secondary flex-shrink-0 mt-0.5" /> Kötüye kullanıma karşı hız sınırlama (rate limiting)</li>
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-text-secondary flex-shrink-0 mt-0.5" /> Şifreler güçlü algoritmayla saklanır; düz metin tutulmaz</li>
             </ul>
           </div>
-          {/* Privacy / KVKK */}
+          {/* Privacy / KVKK — S7: aynı inline ikon+başlık hizalaması */}
           <div className="glass-panel border border-border-subtle rounded-card p-6">
-            <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3"><Lock className="w-5 h-5 text-accent-primary" /></div>
-            <h3 className="text-sm font-display text-text-primary">Gizlilik &amp; KVKK</h3>
-            <ul className="mt-3 space-y-1.5 text-xs text-text-secondary">
-              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> KVKK uyumlu çerez yönetimi; analitik çerezler varsayılan kapalı</li>
-              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Onaylar kayıt altına alınır; tercihini istediğin an değiştirebilirsin</li>
-              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0 mt-0.5" /> Verilerin yalnızca hizmeti sunmak için işlenir</li>
+            <div className="flex items-center gap-2 mb-4">
+              <Lock className="w-5 h-5 text-accent-primary" />
+              <h3 className="text-sm font-display text-text-primary">Gizlilik &amp; KVKK</h3>
+            </div>
+            <ul className="space-y-1.5 text-xs text-text-secondary">
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-text-secondary flex-shrink-0 mt-0.5" /> KVKK uyumlu çerez yönetimi; analitik çerezler varsayılan kapalı</li>
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-text-secondary flex-shrink-0 mt-0.5" /> Onaylar kayıt altına alınır; tercihini istediğin an değiştirebilirsin</li>
+              <li className="flex gap-2"><CheckCircle className="w-3.5 h-3.5 text-text-secondary flex-shrink-0 mt-0.5" /> Verilerin yalnızca hizmeti sunmak için işlenir</li>
             </ul>
             <Link href="/yasal" className="inline-block mt-3 text-xs font-display text-accent-primary hover:underline">Yasal belgeleri incele →</Link>
           </div>
@@ -540,7 +555,7 @@ export default function LandingPage() {
 
       {/* Pricing teaser */}
       {plans.length > 0 && (
-        <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 py-24">
+        <RevealSection active={reveal} className="nv max-w-6xl mx-auto px-6 py-16 md:py-24">
           <h2 className="nv-1 text-h2 font-display text-text-primary text-center">Basit, Şeffaf Fiyatlandırma</h2>
           <p className="nv-2 text-sm text-text-secondary text-center mt-2">Şeffaf fiyatlandırma, gizli ücret yok — dilediğin an yükselt veya iptal et.</p>
           <div className="nv-rows grid grid-cols-1 md:grid-cols-2 gap-5 mt-10 max-w-3xl mx-auto">
@@ -556,7 +571,7 @@ export default function LandingPage() {
                   <ul className="space-y-1.5 mt-4">
                     {p.features.filter((f) => f.included).slice(0, 5).map((f) => (
                       <li key={f.label} className="flex items-center gap-2 text-xs text-text-secondary">
-                        <CheckCircle className="w-3.5 h-3.5 text-bullish flex-shrink-0" /> {f.label}
+                        <CheckCircle className="w-3.5 h-3.5 text-text-secondary flex-shrink-0" /> {f.label}
                       </li>
                     ))}
                   </ul>
@@ -574,10 +589,11 @@ export default function LandingPage() {
 
       {/* Final CTA — CP-4: sıfat-başlık → manifesto-uyumlu kapanış; buton metni tüm
           primary'lerle hizalandı (K-A minor kapanışı: tek metin "Ücretsiz Başla"). */}
-      <RevealSection active={reveal} className="nv max-w-4xl mx-auto px-6 pt-24 pb-32 text-center">
+      {/* S7 ritim: kapanış nefesi sayfanın EN BÜYÜĞÜ kalır (bilinçli); mobilde bir kademe kısa. */}
+      <RevealSection active={reveal} className="nv max-w-4xl mx-auto px-6 pt-20 pb-24 md:pt-24 md:pb-32 text-center">
         <h2 className="nv-1 text-h2 md:text-h1 font-display text-text-primary">Sicil ortada. Karar senin.</h2>
         <p className="nv-2 text-sm text-text-secondary mt-3">Kayıt sonrası dashboard&apos;a anında erişim — kredi kartı gerekmez.</p>
-        <Link href="/register" className="nv-3 inline-flex items-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-7 py-3.5 rounded-xl transition-[background-color,box-shadow] duration-[var(--dur-warm)] ease-[var(--ease-signal)] hover:shadow-cta mt-6">
+        <Link href="/register" className="nv-3 focus-ring inline-flex items-center gap-2 text-sm font-display bg-accent-primary hover:bg-accent-hover text-white px-7 py-3.5 rounded-xl transition-[background-color,box-shadow] duration-[var(--dur-warm)] ease-[var(--ease-signal)] hover:shadow-cta mt-6">
           Ücretsiz Başla <ArrowRight className="w-4 h-4" />
         </Link>
       </RevealSection>
