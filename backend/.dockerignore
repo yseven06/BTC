@@ -1,0 +1,55 @@
+# Build context exclusions for backend/Dockerfile.
+# Anything listed here never reaches the daemon, so it can neither slow the
+# build nor end up baked into an image layer.
+
+# Secrets — credentials must arrive at runtime via env_file, never in a layer
+.env
+.env.*
+
+# Local virtualenv — the image builds its own at /opt/venv
+venv/
+.venv/
+env/
+
+# Python bytecode and tool caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# Tests and local-only helpers — not part of the running service
+tests/
+_make_admin.py
+
+# Local run artifacts
+*.log
+*.err
+logs/
+htmlcov/
+.coverage
+coverage.xml
+
+# Platform manifests that do not apply to the VPS deployment
+railway.json
+Procfile
+
+# Docker's own files
+Dockerfile
+.dockerignore
+
+# Editor and OS noise
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini

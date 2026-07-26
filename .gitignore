@@ -17,10 +17,11 @@ node_modules/
 out/
 .vercel
 
-# Environment
+# Environment — every variant is ignored, including .env.production and any
+# future suffix. Only the committed template is exempt.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # IDE
 .vscode/

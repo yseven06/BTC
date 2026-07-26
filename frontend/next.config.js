@@ -31,6 +31,10 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  // Emits .next/standalone — a self-contained server bundle carrying only the
+  // node_modules it actually reaches. Keeps the runtime image small enough to
+  // build and run comfortably on the VPS.
+  output: 'standalone',
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

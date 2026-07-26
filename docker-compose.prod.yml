@@ -1,0 +1,107 @@
+# Production stack for the Zate Trade VPS.
+#
+# Separate from docker-compose.yml, which stays the development file (bind
+# mounts, --reload, next dev) and is not touched by this deployment.
+#
+# Postgres lives on Supabase and Redis on Upstash. Both remain external managed
+# services, so no database container is defined here.
+#
+# PORT BINDING IS A SECURITY BOUNDARY: Docker writes published ports directly
+# into iptables and bypasses ufw entirely. Binding to 0.0.0.0 would put both
+# services on the public internet regardless of the firewall rules. Every
+# published port below is pinned to 127.0.0.1 — Nginx is the only public door.
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml build
+#   docker compose -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.prod.yml ps
+#   docker compose -f docker-compose.prod.yml logs -f backend
+#
+# Migrations are deliberately NOT run automatically — they are destructive on
+# re-run and RELEASE-RUNBOOK.md governs the apply-vs-stamp decision:
+#   docker compose -f docker-compose.prod.yml run --rm backend python scripts/migrate.py status
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: zatetrade-backend:latest
+    container_name: zatetrade-backend
+    restart: unless-stopped
+
+    # Real credentials live only in this file on the server, never in the repo
+    # or an image layer. The app's own fail-fast validator refuses to start on a
+    # weak JWT_SECRET, a localhost DATABASE_URL or a misconfigured CORS_ORIGINS.
+    env_file:
+      - ./backend/.env.production
+
+    ports:
+      - "127.0.0.1:8000:8000"
+
+    # urllib comes with the runtime image — no curl or wget to install.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # APScheduler runs inside the web process. A second replica would duplicate
+    # every signal and every resolution — see docs/DEPLOYMENT.md.
+    deploy:
+      replicas: 1
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      # NEXT_PUBLIC_* are compiled into the client bundle, so they belong to the
+      # build, not the runtime. The :? suffix aborts the build with a readable
+      # message instead of silently shipping the localhost fallback.
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?set NEXT_PUBLIC_API_URL (e.g. https://api.zatetrade.com) before building}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?set NEXT_PUBLIC_SITE_URL (e.g. https://zatetrade.com) before building}
+    image: zatetrade-frontend:latest
+    container_name: zatetrade-frontend
+    restart: unless-stopped
+
+    # Server-side only values (Sentry DSN and friends). Optional: the public
+    # configuration is already baked in above, so the app starts without it.
+    env_file:
+      - path: ./frontend/.env.production
+        required: false
+
+    ports:
+      - "127.0.0.1:3000:3000"
+
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get('http://127.0.0.1:3000/', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

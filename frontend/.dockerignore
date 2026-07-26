@@ -1,0 +1,49 @@
+# Build context exclusions for frontend/Dockerfile.
+# node_modules and .next are the two that matter most — the local copies are
+# hundreds of megabytes and the image rebuilds both from scratch.
+
+# Secrets — NEXT_PUBLIC_* values arrive as build args, everything else at runtime
+.env
+.env.*
+
+# Reinstalled inside the image from package-lock.json
+node_modules/
+
+# Local build output — the image runs its own build
+.next/
+out/
+*.tsbuildinfo
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# Git hooks — the `prepare` script is dropped during build anyway
+.husky/
+
+# Local run artifacts
+*.log
+*.err
+npm-debug.log*
+coverage/
+
+# Local-only tooling, never invoked by next build
+take_screenshots.js
+
+# Platform manifest that does not apply to the VPS deployment
+vercel.json
+
+# Docker's own files
+Dockerfile
+.dockerignore
+
+# Editor and OS noise
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
