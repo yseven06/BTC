@@ -214,6 +214,21 @@ call fails — that's the "Giriş yapılamadı" you see.
 
 ---
 
+## 🔒 Quality Gates
+
+Every change passes two enforcement layers before it can reach production:
+
+| Layer | When | Checks |
+|-------|------|--------|
+| **Husky hooks** (`frontend/.husky/`) | On `git commit` | Type check, ESLint/Stylelint on staged files, design gates, Conventional Commits message format |
+| **GitHub Actions** (`.github/workflows/ci.yml`) | On push / PR to `main` | Type check, lint, design gates, full `next build`, credential pattern scan |
+
+Hooks activate automatically after `npm install` in `frontend/` — no manual setup
+on a fresh clone. See **[`docs/QUALITY-GATES.md`](docs/QUALITY-GATES.md)** for the
+full gate reference, ESLint configuration rationale, and known lint debt.
+
+---
+
 ## 📁 Project Structure
 
 ```
