@@ -39,6 +39,14 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
 
+    # Avatar uploads are written to /app/static/uploads by the running app, i.e.
+    # into the container's writable layer, which is discarded every time the
+    # container is recreated (any redeploy). A named volume keeps them across
+    # image rebuilds. The image creates the directory owned by the app user, so
+    # Docker seeds the volume with that ownership on first use.
+    volumes:
+      - zatetrade_static:/app/static
+
     # urllib comes with the runtime image — no curl or wget to install.
     healthcheck:
       test:
@@ -105,3 +113,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+volumes:
+  zatetrade_static:

@@ -52,6 +52,17 @@ COPY --from=builder /opt/venv /opt/venv
 WORKDIR /app
 COPY --chown=app:app . .
 
+# `WORKDIR /app` creates the directory as root and `COPY --chown` only relabels
+# the entries it copies — never the parent. The app therefore inherited a
+# root-owned working directory and died on import: main.py calls
+# os.makedirs("static/uploads") at module level, and `static/` is not in the
+# repo, so the unprivileged user had to create it inside a directory it could
+# not write to (PermissionError: 'static'). Creating the tree here and handing
+# the whole of /app to the runtime user fixes that class of failure, not just
+# this one path. `static/` is also a volume mount point in production
+# (docker-compose.prod.yml) so uploads survive redeploys.
+RUN mkdir -p /app/static/uploads && chown -R app:app /app
+
 # Unprivileged from here on: a container escape lands on a nologin account that
 # owns nothing outside /app.
 USER app
