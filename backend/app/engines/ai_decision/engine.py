@@ -224,6 +224,9 @@ class AIDecisionEngine:
             "tp3": signal_data.tp3,
             "invalidation_conditions": signal_data.invalidation_conditions,
             "birth_telemetry": signal_data.birth_telemetry,
+            # Consensus primitives for the candidate decision log (P2.2-a).
+            # Observation only — no consumer of this payload branches on it.
+            "consensus_telemetry": signal_data.consensus_telemetry,
             "engine_results": [res.model_dump() for res in results],
             "explanation_tr": explanations["tr"],
             "explanation_en": explanations["en"],

@@ -35,6 +35,17 @@ from app.engines.market_regime import detect_regime
 from app.services.intelligence import build_snapshot
 from app.services.coin_memory import load_effective_weights_meta, update_coin_memory
 from app.services.lifecycle_log import make_event
+from app.services.candidate_log import record_candidate
+from app.models.decision_candidate import (
+    REASON_CONFIDENCE_GATE,
+    REASON_DUPLICATE_OR_EXISTING,
+    REASON_NOT_ACTIONABLE,
+    REASON_PUBLISHED,
+    REASON_REVERSAL_DEFER,
+    VERDICT_DROPPED,
+    VERDICT_PUBLISHED,
+    VERDICT_SKIPPED,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -289,6 +300,13 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
             new_type = SIG_TYPE_MAP.get(decision["signal_type"], SignalType.HOLD)
             new_is_actionable = new_type != SignalType.HOLD
 
+            # OBSERVATION ONLY (P2.2-a): name WHY this scan ends where it ends.
+            # Three separate sites can demote a call and all three write the same
+            # variables, so afterwards the cause is unrecoverable. A plain string
+            # assignment at each site is the only honest way to keep them apart.
+            # Nothing branches on this value.
+            demotion_reason = None if new_is_actionable else REASON_NOT_ACTIONABLE
+
             # Quality gate: an actionable (BUY/SELL) call below 65% confidence
             # ("7/10" on the UI's confidence/10 quality bar) isn't worth
             # surfacing as a trade idea — demote it to HOLD so it falls
@@ -300,6 +318,7 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 new_type = SignalType.HOLD
                 new_direction = Direction.NEUTRAL
                 new_is_actionable = False
+                demotion_reason = REASON_CONFIDENCE_GATE   # telemetry only
 
             # A regen cycle should NOT blindly replace a still-running trade
             # idea every time the clock ticks — a 15m signal realistically
@@ -402,12 +421,24 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                     ))
                 else:
                     skip_new_signal = True
+                    demotion_reason = REASON_DUPLICATE_OR_EXISTING   # telemetry only
                     logger.info(
                         "[Scheduler] %s %s scan agrees with already-active %s signal — no new signal created.",
                         symbol, timeframe, old.timeframe,
                     )
 
             if skip_new_signal:
+                # CANDIDATE LOG (P2.2-a) — call site 1 of 3. The verdict above is
+                # already final; this records it and returns nothing anyone reads.
+                await record_candidate(
+                    db, asset_id=asset.id, symbol=symbol, timeframe=timeframe,
+                    decision=decision, df=df, evaluated_at=now,
+                    verdict=VERDICT_SKIPPED, demotion_reason=demotion_reason,
+                    final_signal_type=new_type.value, final_direction=new_direction.value,
+                    regime_label=regime_label, regime_result=regime_result,
+                    engine_weights=engine_weights, adaptive_active=adaptive_active,
+                    last_close=last_close,
+                )
                 await db.commit()
                 return
 
@@ -427,6 +458,7 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 new_type = SignalType.HOLD
                 new_direction = Direction.NEUTRAL
                 new_is_actionable = False
+                demotion_reason = REASON_REVERSAL_DEFER   # telemetry only
 
             # A HOLD scan has no trade idea behind it — persisting one just
             # to immediately replace it on the next cycle (per the "old was
@@ -435,6 +467,19 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
             # still ran and informed the active-signal checks above; only
             # the noisy "nothing to act on" record is skipped.
             if not new_is_actionable:
+                # CANDIDATE LOG (P2.2-a) — call site 2 of 3, and the one this
+                # sprint exists for: this is where every rejected trade idea used
+                # to vanish without trace, which is why no looser threshold could
+                # ever be simulated.
+                await record_candidate(
+                    db, asset_id=asset.id, symbol=symbol, timeframe=timeframe,
+                    decision=decision, df=df, evaluated_at=now,
+                    verdict=VERDICT_DROPPED, demotion_reason=demotion_reason,
+                    final_signal_type=new_type.value, final_direction=new_direction.value,
+                    regime_label=regime_label, regime_result=regime_result,
+                    engine_weights=engine_weights, adaptive_active=adaptive_active,
+                    last_close=last_close,
+                )
                 await db.commit()
                 logger.info("[Scheduler] %s %s scan resulted in HOLD — not persisted.", symbol, timeframe)
                 return
@@ -485,6 +530,19 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 signal_id=new_sig.id, from_status=None, to_status="active",
                 kind="birth", reason="Sinyal üretildi", regime=regime_label,
             ))
+
+            # CANDIDATE LOG (P2.2-a) — call site 3 of 3. Placed AFTER the flush
+            # above so new_sig.id exists, and BEFORE the commit so a published
+            # candidate row can never exist without its signal or vice versa.
+            await record_candidate(
+                db, asset_id=asset.id, symbol=symbol, timeframe=timeframe,
+                decision=decision, df=df, evaluated_at=now,
+                verdict=VERDICT_PUBLISHED, demotion_reason=REASON_PUBLISHED,
+                final_signal_type=new_type.value, final_direction=new_direction.value,
+                regime_label=regime_label, regime_result=regime_result,
+                engine_weights=engine_weights, adaptive_active=adaptive_active,
+                last_close=last_close, signal_id=new_sig.id,
+            )
 
             # Capture an immutable snapshot of the conditions this signal was
             # born into (engine scores, market regime, volatility, sentiment).

@@ -69,6 +69,13 @@ class GeneratedSignalData:
     invalidation_conditions: str
     # Additive generation-time provenance (telemetry only — NOT a decision input).
     birth_telemetry: Optional[Dict[str, Any]] = None
+    # Consensus primitives, exported for the candidate decision log (P2.2-a).
+    # OUTPUT ONLY — nothing reads this back and no branch above depends on it.
+    # These are function-locals that the scheduler cannot otherwise see; the
+    # alternative was re-deriving them there from engine_results, which would
+    # copy the disagreement coefficient into a second location that would
+    # silently drift from this one.
+    consensus_telemetry: Optional[Dict[str, Any]] = None
 
 
 # Base engine weights (sum to 1.00). The single source of truth for the
@@ -141,6 +148,16 @@ def generate_signal(
     else:
         signal_type = "STRONG_SELL"
         direction = "bearish"
+
+    # OBSERVATION ONLY (P2.2-a): remember what the composite bands alone decided,
+    # before the consensus gate and the MTF layer below get to demote it. Two
+    # plain assignments; nothing reads them until the return statement, so no
+    # branch below can see or be affected by them. Without this, a HOLD in the
+    # candidate log is ambiguous between "composite landed in the HOLD band" and
+    # "composite said BUY and a gate took it away" — which is precisely the
+    # distinction the calibration work needs.
+    threshold_signal_type = signal_type
+    threshold_direction = direction
 
     # --- SIGNAL QUALITY CONSENSUS ---
     # Quantity was never the goal — a handful of signals that genuinely
@@ -416,6 +433,27 @@ def generate_signal(
         logger.warning("birth telemetry build failed for %s (ignored; signal unaffected): %s", symbol, _bt_exc)
         birth_telemetry = None
 
+    # Consensus primitives for the candidate decision log (P2.2-a). Built here so
+    # the disagreement coefficient stays defined in exactly one place (line ~120)
+    # instead of being re-derived by the caller. Pure packaging of values already
+    # computed above — it reads no new state and decides nothing.
+    #
+    # Deliberately NOT called "disagreement_count": that name has three defensible
+    # readings that yield different integers. The primitives are exported instead
+    # so any definition can be derived later without this file having picked one.
+    consensus_telemetry = {
+        "bull_count": bullish_count,
+        "bear_count": bearish_count,
+        "conflict_min_count": min(bullish_count, bearish_count) if (bullish_count and bearish_count) else 0,
+        "disagreement_penalty": round(disagreement_penalty, 2),
+        "mtf_penalty": round(mtf_penalty, 2),
+        # What the composite bands alone produced, before the consensus/MTF gates.
+        "threshold_signal_type": threshold_signal_type,
+        "threshold_direction": threshold_direction,
+        # Did a gate inside THIS function demote the call?
+        "engine_demoted": signal_type != threshold_signal_type,
+    }
+
     # Return structured data
     return GeneratedSignalData(
         signal_type=signal_type,
@@ -432,5 +470,6 @@ def generate_signal(
         tp3=_price_round(tp3),
         invalidation_conditions=invalidation_conditions,
         birth_telemetry=birth_telemetry,
+        consensus_telemetry=consensus_telemetry,
     )
 

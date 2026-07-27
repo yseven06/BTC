@@ -18,6 +18,7 @@ from app.models.subscription import Subscription, Payment
 from app.models.admin_audit import AdminAuditLog
 from app.models.consent_log import ConsentLog
 from app.models.intelligence import SignalSnapshot, CoinMemory, SignalStatusHistory, SignalTradePath
+from app.models.decision_candidate import SignalDecisionCandidate
 
 __all__ = [
     "User",
@@ -39,4 +40,5 @@ __all__ = [
     "CoinMemory",
     "SignalStatusHistory",
     "SignalTradePath",
+    "SignalDecisionCandidate",
 ]

@@ -1,0 +1,26 @@
+-- 0010: RLS parity for signal_decision_candidates (P2.2-a).
+--
+-- The table itself needs NO CREATE TABLE here. scripts/migrate.py runs
+-- Base.metadata.create_all BEFORE applying pending .sql files (migrate.py:94),
+-- which is exactly how signal_snapshots, coin_memory, signal_status_history and
+-- signal_trade_path were all created — none of them has a creating migration.
+-- Registering the model in app/models/__init__.py is what makes that happen.
+--
+-- This migration exists for one reason: 0006_enable_rls.sql is a fixed
+-- enumeration of the 21 tables that existed when it was written, and it is
+-- already applied and stamped, so it cannot be amended retroactively. A table
+-- created afterwards by create_all lands with RLS OFF and would be the only
+-- public table without it — re-opening the Supabase rls_disabled_in_public
+-- CRITICAL advisory that 0006/0007 closed.
+--
+-- ENABLE (not FORCE), with NO policy attached: RLS on plus zero policies is
+-- deny-all for anon/authenticated, while the backend — which connects as the
+-- table-owning postgres role (rolbypassrls) — is unaffected. 0007 already
+-- revoked schema USAGE from anon/authenticated, so this is defence in depth;
+-- but only the ENABLE silences the advisory.
+--
+-- Idempotent (IF EXISTS) and non-destructive: it grants no access, it only
+-- closes the default-open posture. Migrations are forward-only, so the rollback
+-- is a new migration containing:
+--   ALTER TABLE public.signal_decision_candidates DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.signal_decision_candidates ENABLE ROW LEVEL SECURITY;
