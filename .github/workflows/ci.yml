@@ -81,23 +81,43 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-          cache-dependency-path: backend/requirements.lock
+          cache-dependency-path: |
+            backend/requirements.lock
+            backend/requirements-dev.txt
 
       - name: Install
-        run: pip install -r requirements.lock
+        # requirements.lock is the RUNTIME set and contains no test runner —
+        # the dev file supplies pytest, which is why it must be installed too.
+        run: |
+          pip install -r requirements.lock
+          pip install -r requirements-dev.txt
 
       - name: Test-safety guard is armed
-        # Proves the guard would actually stop a production DSN, in CI, before
-        # trusting the suite below. Expected to FAIL the pytest run — the step
-        # passes only when it does.
+        # Proves the guard actually stops a production DSN, in CI, before the
+        # suite it protects is trusted.
+        #
+        # Asserting on the RULE NAME in the output, not merely on a non-zero exit
+        # code: the first version of this step checked the exit code alone and
+        # passed for entirely the wrong reason — pytest was not installed, the
+        # command failed, and "the guard blocked it" was the wrong conclusion.
         run: |
           set -e
-          if DATABASE_URL='postgresql+asyncpg://u:p@aws-1-us-east-1.pooler.supabase.com:5432/postgres' \
-             python -m pytest tests -q >/dev/null 2>&1; then
-            echo "::error::conftest guard did not block a production-shaped DSN"
-            exit 1
-          fi
-          echo "Guard blocked the production-shaped DSN."
+          out="$(DATABASE_URL='postgresql+asyncpg://u:p@aws-1-us-east-1.pooler.supabase.com:5432/postgres' \
+                 python -m pytest tests -q 2>&1 || true)"
+          case "$out" in
+            *yonetilen-veritabani-saglayicisi*)
+              echo "Guard blocked the production-shaped DSN." ;;
+            *)
+              echo "::error::guard did not fire — the run was stopped by something else"
+              printf '%s\n' "$out" | tail -20
+              exit 1 ;;
+          esac
+          # And it must not have leaked the credential while refusing.
+          case "$out" in
+            *pooler.supabase.com*|*"u:p"*)
+              echo "::error::guard output leaked the DSN"
+              exit 1 ;;
+          esac
 
       - name: Test
         run: python -m pytest tests app/trade_mgmt/tests -q

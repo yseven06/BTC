@@ -1,0 +1,13 @@
+# Test-only dependencies. Kept OUT of requirements.txt / requirements.lock on
+# purpose: those two are what the production image installs, and a test runner
+# has no business in a runtime image.
+#
+# Until now pytest was declared nowhere at all — the suite ran only because a
+# developer had happened to install it into a local venv. CI caught that the
+# moment a backend job existed: `pip install -r requirements.lock` produced an
+# environment with no pytest in it.
+#
+# Pinned to the versions the suite is actually developed against, so CI
+# reproduces local results instead of drifting onto whatever is newest.
+pytest==9.1.1
+pytest-asyncio==1.4.0
