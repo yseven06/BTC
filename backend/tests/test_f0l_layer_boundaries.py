@@ -140,7 +140,16 @@ def test_generate_signal_takes_only_market_inputs_and_weights():
     from app.engines.ai_decision.signal_generator import generate_signal
 
     params = list(inspect.signature(generate_signal).parameters)
-    assert params == ["symbol", "timeframe", "df", "engine_results", "mtf_trends", "weights"]
+    # `current_price` (F1) is a MARKET input, not a learned one: it is the live
+    # last trade, read from the full frame so trade levels are not placed a bar
+    # behind the market while the features measure only closed bars. The rule
+    # this test guards is unchanged — `weights` is still the only channel the
+    # learned layer may enter through.
+    assert params == ["symbol", "timeframe", "df", "engine_results", "mtf_trends",
+                      "weights", "current_price"]
+    learned = [p for p in params if p not in
+               ("symbol", "timeframe", "df", "engine_results", "mtf_trends", "current_price")]
+    assert learned == ["weights"], f"a second learned-layer channel appeared: {learned}"
 
 
 @pytest.mark.parametrize("field", [

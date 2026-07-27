@@ -187,6 +187,7 @@ def build_candidate_values(
 
     birth = decision.get("birth_telemetry") or {}
     consensus = decision.get("consensus_telemetry") or {}
+    decision_input = decision.get("decision_input_telemetry") or {}
     engine_results = decision.get("engine_results")
 
     entry_low = _f(decision.get("entry_zone_low"))
@@ -283,6 +284,24 @@ def build_candidate_values(
             # rather than a column so no migration is needed and no existing row
             # or query changes meaning.
             "primary_demotion_reason": primary_demotion_reason,
+            # F1 — the decision-input contract. `decision_input_version` is the
+            # cohort boundary: rows written before it exist were scored on a
+            # candle that was still forming, and mixing the two populations in
+            # one analysis compares different systems. The price pair is what
+            # makes "closed bars pointed the right way but price had already
+            # run" a countable case rather than an anecdote.
+            **{k: decision_input.get(k) for k in (
+                "decision_input_version",
+                "candle_policy",
+                "current_price",
+                "decision_current_price_source",
+                "analysis_close_price",
+                "last_analysis_bar_open_time",
+                "last_analysis_bar_close_time",
+                "last_analysis_bar_closed",
+                "current_vs_analysis_close_pct",
+                "current_vs_analysis_close_atr",
+            )},
             "threshold_signal_type": consensus.get("threshold_signal_type"),
             "threshold_direction": consensus.get("threshold_direction"),
             "engine_demoted": consensus.get("engine_demoted"),

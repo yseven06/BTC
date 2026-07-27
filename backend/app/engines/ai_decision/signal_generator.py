@@ -76,6 +76,20 @@ class GeneratedSignalData:
     # copy the disagreement coefficient into a second location that would
     # silently drift from this one.
     consensus_telemetry: Optional[Dict[str, Any]] = None
+    # F1 provenance: which frame the features were measured on, and how far the
+    # live price had already travelled past that bar's close. OUTPUT ONLY.
+    # Recording the gap is the point — it is what lets "the closed bars pointed
+    # the right way but price had already run" be counted later instead of
+    # argued about.
+    decision_input_telemetry: Optional[Dict[str, Any]] = None
+
+
+# F1 decision-input contract. Bumped only when the MEANING of the decision input
+# changes — this is the cohort boundary that separates candidates scored on a
+# partially-formed candle from those scored on closed bars, and analysis that
+# mixes the two would be comparing different systems.
+DECISION_INPUT_VERSION = "closed_candle_v1"
+CANDLE_POLICY = "closed_features_live_geometry"
 
 
 # Base engine weights (sum to 1.00). The single source of truth for the
@@ -101,6 +115,7 @@ def generate_signal(
     engine_results: List[EngineResult],
     mtf_trends: Dict[str, str] = None,
     weights: Dict[str, float] | None = None,
+    current_price: float | None = None,
 ) -> GeneratedSignalData:
     """Consolidate scores from all engines, calculate entry/SL/TP levels, and form trade plan.
 
@@ -286,9 +301,17 @@ def generate_signal(
         risk_level = "high"
 
     # 6. Trade Levels (Entry, SL, TPs) based on ATR and S/R
-    current_price = float(df["close"].iloc[-1])
-    
-    # Calculate ATR for scaling
+    #
+    # F1 — two different prices, deliberately. `current_price` is the LIVE price
+    # (the caller reads it from the full frame, forming candle included) and it
+    # anchors every level, so a plan is never placed a full bar behind the
+    # market. `df` here is the CLOSED-bar analysis frame, so ATR — a volatility
+    # measurement — is not computed from a candle that is 2/15 complete.
+    # Falling back to df's last close keeps direct callers working unchanged.
+    analysis_close = float(df["close"].iloc[-1])
+    current_price = float(current_price) if current_price is not None else analysis_close
+
+    # Calculate ATR for scaling — from the closed frame (D2).
     atr_series = calculate_atr(df)
     _atr_last = float(atr_series.iloc[-1])
     atr_fallback_used = bool(np.isnan(_atr_last) or _atr_last <= 0)
@@ -454,6 +477,27 @@ def generate_signal(
         "engine_demoted": signal_type != threshold_signal_type,
     }
 
+    # F1 provenance. `atr_raw` is the un-substituted ATR: when it is missing the
+    # ATR-normalised gap is left NULL rather than divided by the fallback, which
+    # would produce a number that looks measured and is not.
+    _gap_pct = (
+        ((current_price - analysis_close) / analysis_close * 100.0)
+        if analysis_close else None
+    )
+    decision_input_telemetry = {
+        "decision_input_version": DECISION_INPUT_VERSION,
+        "candle_policy": CANDLE_POLICY,
+        "current_price": current_price,
+        "analysis_close_price": analysis_close,
+        "current_vs_analysis_close_pct": round(_gap_pct, 6) if _gap_pct is not None else None,
+        "current_vs_analysis_close_atr": (
+            round((current_price - analysis_close) / atr_raw, 6)
+            if (atr_raw and atr_raw > 0) else None
+        ),
+        "atr_source": "closed_bars",
+        "atr_fallback_used": atr_fallback_used,
+    }
+
     # Return structured data
     return GeneratedSignalData(
         signal_type=signal_type,
@@ -471,5 +515,6 @@ def generate_signal(
         invalidation_conditions=invalidation_conditions,
         birth_telemetry=birth_telemetry,
         consensus_telemetry=consensus_telemetry,
+        decision_input_telemetry=decision_input_telemetry,
     )
 

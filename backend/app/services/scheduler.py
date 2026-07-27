@@ -32,6 +32,7 @@ from app.backtesting import labels
 from app.backtesting.tracker import track_and_resolve_active_signals
 from app.notifications.service import notify_signal
 from app.engines.market_regime import detect_regime
+from app.services.candle_window import analysis_window
 from app.services.intelligence import build_snapshot
 from app.services.coin_memory import load_effective_weights_meta, update_coin_memory
 from app.services.lifecycle_log import make_event
@@ -252,10 +253,21 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
     finally:
         await binance.close()
 
+    # F1 — the analysis view: bars that have definitively closed. `df` itself
+    # stays the full frame, because its last close is the live price the trade
+    # levels are anchored on. Regime, the engines and the candidate's bar key all
+    # read this view instead; the regime rules are untouched, only their input.
+    try:
+        window = analysis_window(df, timeframe)
+        df_closed = window.df if not window.df.empty else df
+    except Exception as exc:
+        logger.warning("[Scheduler] Closed-candle window failed for %s: %s", symbol, exc)
+        window, df_closed = None, df
+
     # Detect the market regime once from the same frame the engines see, so the
     # snapshot below records exactly the conditions this signal was scored under.
     try:
-        regime_result = detect_regime(df)
+        regime_result = detect_regime(df_closed)
     except Exception as exc:
         logger.warning("[Scheduler] Regime detection failed for %s: %s", symbol, exc)
         regime_result = None
@@ -446,7 +458,7 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 # already final; this records it and returns nothing anyone reads.
                 await record_candidate(
                     db, asset_id=asset.id, symbol=symbol, timeframe=timeframe,
-                    decision=decision, df=df, evaluated_at=now,
+                    decision=decision, df=df_closed, evaluated_at=now,
                     verdict=VERDICT_SKIPPED, demotion_reason=demotion_reason,
                     primary_demotion_reason=primary_demotion_reason,
                     final_signal_type=new_type.value, final_direction=new_direction.value,
@@ -490,7 +502,7 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 # ever be simulated.
                 await record_candidate(
                     db, asset_id=asset.id, symbol=symbol, timeframe=timeframe,
-                    decision=decision, df=df, evaluated_at=now,
+                    decision=decision, df=df_closed, evaluated_at=now,
                     verdict=VERDICT_DROPPED, demotion_reason=demotion_reason,
                     primary_demotion_reason=primary_demotion_reason,
                     final_signal_type=new_type.value, final_direction=new_direction.value,
@@ -554,7 +566,7 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
             # candidate row can never exist without its signal or vice versa.
             await record_candidate(
                 db, asset_id=asset.id, symbol=symbol, timeframe=timeframe,
-                decision=decision, df=df, evaluated_at=now,
+                decision=decision, df=df_closed, evaluated_at=now,
                 verdict=VERDICT_PUBLISHED, demotion_reason=REASON_PUBLISHED,
                 primary_demotion_reason=REASON_PUBLISHED,
                 final_signal_type=new_type.value, final_direction=new_direction.value,

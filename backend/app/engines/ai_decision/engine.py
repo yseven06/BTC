@@ -29,6 +29,7 @@ from app.engines.ai_decision.signal_generator import generate_signal
 from app.engines.ai_decision.explanation_generator import generate_explanation
 from app.collectors.binance_collector import BinanceCollector
 from app.collectors.yahoo_collector import YahooCollector
+from app.services.candle_window import analysis_window, closed_candles
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,42 @@ _HTF_CANDLE_COUNTS: dict = {
     "12h": 2,    # 12h → 1d  HTF
     "1d":  7,    # 1d  → 1w  HTF
 }
+
+
+def _analysis_view(df: pd.DataFrame, timeframe: str, symbol: str = ""):
+    """The frame the engines measure on, plus its provenance.
+
+    A named function rather than three lines inline so the invariant it carries —
+    "engines never see the forming candle" — can be asserted by calling it,
+    instead of by reading the orchestrator's source and hoping the reading is
+    faithful.
+    """
+    window = analysis_window(df, timeframe)
+    if window.df.empty:
+        # Refusing to score is worse than scoring what we were given: this only
+        # happens when every bar in the frame has yet to close, which in
+        # production means the fetch itself was wrong, not the market.
+        logger.warning(
+            "[F1] %s %s: no closed bars in frame — falling back to the full "
+            "frame for this evaluation", symbol, timeframe,
+        )
+        return df, window
+    return window.df, window
+
+
+def _live_price(df: pd.DataFrame) -> Optional[float]:
+    """The most recent traded price — the FULL frame's last close.
+
+    Deliberately reads the frame including the candle still forming: that close
+    is the live price, and pricing entry/SL/TP off the previous bar instead would
+    place every level a full bar behind the market.
+    """
+    try:
+        if df is None or len(df) == 0:
+            return None
+        return float(df["close"].iloc[-1])
+    except Exception:  # noqa: BLE001 — a missing price must not abort the run
+        return None
 
 
 def _derive_htf_boundaries(df: pd.DataFrame, timeframe: str) -> tuple:
@@ -134,10 +171,18 @@ class AIDecisionEngine:
                 asset_type = "crypto"
         kwargs["asset_type"] = asset_type
 
+        # F1 — split the frame in two. Everything that MEASURES the market runs
+        # on bars that have definitively closed; the live price the geometry
+        # anchors on keeps coming from the full frame. Binance always returns the
+        # candle currently forming and every job fires 1-3 minutes into one, so
+        # without this the indicators were reading a bar that was a fraction
+        # complete (measured: volume at 2/15 of a 15m bar, 2/240 of a 4h bar).
+        analysis_df, window = _analysis_view(ohlcv_data, timeframe, symbol)
+
         # Pre-compute the HTF boundaries once and inject them into kwargs so
         # the CRT engine receives real higher-timeframe H/L values instead of
         # falling back to its same-timeframe "last 24 bars" heuristic.
-        htf_high, htf_low = _derive_htf_boundaries(ohlcv_data, timeframe)
+        htf_high, htf_low = _derive_htf_boundaries(analysis_df, timeframe)
         kwargs.setdefault("htf_high", htf_high)
         kwargs.setdefault("htf_low", htf_low)
 
@@ -148,7 +193,7 @@ class AIDecisionEngine:
         for engine in self.engines:
             active_engines.append(engine)
             tasks.append(
-                self._safe_run_engine(engine, symbol, timeframe, ohlcv_data, **kwargs)
+                self._safe_run_engine(engine, symbol, timeframe, analysis_df, **kwargs)
             )
 
         # Run multi-timeframe trend checks in parallel with engines
@@ -172,7 +217,12 @@ class AIDecisionEngine:
                             df_tf = await yahoo.fetch_ohlcv(symbol, tf, limit=60)
                         else:
                             df_tf = await binance.fetch_ohlcv(symbol, tf, limit=60)
-                        return tf, calculate_trend_bias(df_tf)
+                        # F1 — each MTF frame closes on ITS OWN boundary. Applying
+                        # the primary timeframe's cut here would drop up to 16 valid
+                        # 15m bars when the primary is 4h, and dropping the last row
+                        # blindly would discard a 4h bar that had genuinely closed.
+                        tf_closed = closed_candles(df_tf, tf)
+                        return tf, calculate_trend_bias(tf_closed if not tf_closed.empty else df_tf)
                     except Exception as ex:
                         logger.warning(f"Failed to fetch TF {tf} trend: {str(ex)}")
                         return tf, "neutral"
@@ -197,10 +247,14 @@ class AIDecisionEngine:
         # Calculate entries, targets, and signal type in the deterministic signal
         # generator. engine_weights (regime/coin-adaptive) may be supplied by the
         # caller; when absent the generator falls back to its static base mix.
+        # F1 — the generator measures on closed bars but anchors price on the
+        # live one. Passing current_price explicitly keeps that a decision made
+        # here rather than a side effect of which frame happened to be handed in.
         signal_data = generate_signal(
-            symbol, timeframe, ohlcv_data, results,
+            symbol, timeframe, analysis_df, results,
             mtf_trends=mtf_trends,
             weights=kwargs.get("engine_weights"),
+            current_price=_live_price(ohlcv_data),
         )
 
         # Generate structured explanations in TR and EN
@@ -227,6 +281,16 @@ class AIDecisionEngine:
             # Consensus primitives for the candidate decision log (P2.2-a).
             # Observation only — no consumer of this payload branches on it.
             "consensus_telemetry": signal_data.consensus_telemetry,
+            # F1 — which bar the features were measured on, and how far the live
+            # price had already moved past it. Observation only.
+            "decision_input_telemetry": {
+                **(signal_data.decision_input_telemetry or {}),
+                "last_analysis_bar_open_time": window.last_bar_open_time,
+                "last_analysis_bar_close_time": window.last_bar_close_time,
+                "last_analysis_bar_closed": window.last_bar_closed,
+                "dropped_forming_bars": window.dropped_forming,
+                "decision_current_price_source": "full_frame_last_close",
+            },
             "engine_results": [res.model_dump() for res in results],
             "explanation_tr": explanations["tr"],
             "explanation_en": explanations["en"],

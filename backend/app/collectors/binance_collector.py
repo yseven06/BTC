@@ -73,17 +73,31 @@ class BinanceCollector(BaseCollector):
                 "taker_buy_base_asset_volume", "taker_buy_quote_asset_volume", "ignore"
             ]
             df = pd.DataFrame(data, columns=columns)
-            
+
             # Convert types to float
             for col in ["open", "high", "low", "close", "volume"]:
                 df[col] = df[col].astype(float)
 
-            # Set datetime index
-            df["timestamp"] = pd.to_datetime(df["open_time"], unit="ms")
+            # Set datetime index. UTC-aware: Binance timestamps are UTC, and
+            # saying so lets a consumer compare them against `now` without
+            # having to know that. `.timestamp()` and `tz_localize(None)` both
+            # behave identically on aware and naive indexes, so the existing
+            # chart and tracker consumers are unaffected.
+            df["timestamp"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
             df.set_index("timestamp", inplace=True)
-            
-            # Select required columns
-            df = df[["open", "high", "low", "close", "volume"]]
+
+            # close_time is field 6 of every kline and is the exchange's own
+            # answer to "has this bar finished?". It used to be dropped here,
+            # which left the decision path unable to tell a closed bar from the
+            # one still forming — see app/services/candle_window.py. Carried as a
+            # column rather than replacing anything: every consumer reads OHLCV
+            # by name, so an extra column changes nothing for them.
+            df["close_time"] = pd.to_datetime(df["close_time"], unit="ms", utc=True)
+
+            # The forming candle is deliberately NOT removed here. The chart
+            # (prices.py) and the tracker (tracker.py:294-311) both want it; only
+            # the decision path needs it excluded, and that is its own concern.
+            df = df[["open", "high", "low", "close", "volume", "close_time"]]
             return df
 
         except Exception as e:
