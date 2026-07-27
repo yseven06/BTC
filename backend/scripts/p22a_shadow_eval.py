@@ -366,8 +366,13 @@ async def main() -> None:
     ap.add_argument("--report", action="store_true", help="report only, write nothing")
     ap.add_argument("--dry-run", action="store_true",
                     help="count what pass A would retire; writes nothing")
+    ap.add_argument("--pass-a-only", action="store_true",
+                    help="retire permanently-unevaluable rows and STOP: pass B is "
+                         "never called, so no bars are fetched and no evaluable "
+                         "candidate is written")
     ap.add_argument("--limit", type=int, default=500,
-                    help="applied to each pass independently")
+                    help="bounds EACH pass separately — without --pass-a-only a "
+                         "single run can therefore touch up to 2x this many rows")
     args = ap.parse_args()
 
     if args.dry_run:
@@ -383,8 +388,17 @@ async def main() -> None:
             await db.commit()
         print(f"pass A: {retired} kalici degerlendirilemez satir emekli edildi (fetch yok)")
 
-        stats = await evaluate(args.limit)
-        print("\npass B degerlendirme:", dict(stats))
+        # The separation is structural, not a filter inside pass B: evaluate() is
+        # simply never called, and BinanceCollector is constructed inside it, so
+        # --pass-a-only cannot reach the network even if the eligibility window
+        # later fills up. `--limit` bounds each pass on its own, so without this
+        # flag one run writes up to 2x the limit; with it, exactly up to limit.
+        if args.pass_a_only:
+            print("pass B: --pass-a-only verildi — hic calistirilmadi "
+                  "(bar fetch yok, degerlendirilebilir adaya yazim yok)")
+        else:
+            stats = await evaluate(args.limit)
+            print("\npass B degerlendirme:", dict(stats))
 
     await report()
 

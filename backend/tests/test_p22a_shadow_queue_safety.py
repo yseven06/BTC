@@ -15,13 +15,16 @@ M1b  Rows that can NEVER be evaluated (93.6 % of production candidates carry
      them in SQL fixes the starvation but leaves them as permanent NULLs, so a
      second bounded pass retires them without fetching anything.
 """
+import asyncio
 import inspect
+import sys
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import pytest
+from sqlalchemy.dialects import postgresql
 
-from app.models.decision_candidate import SHADOW_UNDECIDABLE
+from app.models.decision_candidate import SHADOW_NO_FILL, SHADOW_UNDECIDABLE
 from app.services.shadow_eval import evaluate_candidate_shadow
 
 BAR = datetime(2026, 7, 20, 12, 0, tzinfo=timezone.utc)
@@ -270,3 +273,166 @@ def test_m1b_retry_window_retires_before_the_observation_gate():
     runner = _runner()
     assert runner.MAX_RETRY_AGE < timedelta(days=14)
     assert runner.MAX_RETRY_AGE >= timedelta(days=2), "must exceed the 48h eligibility age"
+
+
+# ── --pass-a-only · the two passes must be separable on demand ─────────────
+#
+# `--limit` bounds EACH pass on its own, so a plain `--limit 50` can write up to
+# 100 rows. The flag exists so a batch can retire unevaluable rows without any
+# chance of also starting bar evaluation. Today the pass-B pool happens to be
+# younger than the 48h window, which makes a plain run harmless — but that is a
+# property of the calendar, not of the tool, and it expires. These tests check
+# the structural guarantee instead: pass B is never entered at all.
+
+
+class _Result:
+    """Enough of a Result for the statements these paths issue."""
+    rowcount = 0
+
+    def scalars(self):
+        return self
+
+    def all(self):
+        return []
+
+
+class _Recorder:
+    """AsyncSession stand-in that records statements instead of running them.
+
+    Nothing reaches a database, so a write can be detected by inspecting what
+    was issued rather than by looking for its side effect.
+    """
+
+    def __init__(self):
+        self.statements = []
+        self.commits = 0
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def execute(self, stmt):
+        self.statements.append(stmt)
+        return _Result()
+
+    async def commit(self):
+        self.commits += 1
+
+
+class _BoomCollector:
+    """Constructed at the top of evaluate(), before anything else — so if pass B
+    is entered at all, this fires."""
+
+    def __init__(self, *a, **k):
+        raise AssertionError("pass B entered: BinanceCollector was constructed")
+
+
+def _sql(stmt):
+    compiled = stmt.compile(dialect=postgresql.dialect())
+    return str(compiled).upper(), compiled.params
+
+
+def _wire(monkeypatch, runner, argv):
+    rec = _Recorder()
+    monkeypatch.setattr(runner, "async_session_factory", lambda: rec)
+    monkeypatch.setattr(runner, "BinanceCollector", _BoomCollector)
+    monkeypatch.setattr(sys, "argv", ["p22a", *argv])
+    return rec
+
+
+def test_pass_a_only_never_enters_pass_b(monkeypatch):
+    """The real evaluate() is left in place — only the collector is booby-trapped
+    — so this proves the flag skips pass B rather than proving a mock was set."""
+    runner = _runner()
+    rec = _wire(monkeypatch, runner, ["--pass-a-only", "--limit", "50"])
+
+    asyncio.run(runner.main())        # must not raise
+
+    assert rec.commits == 1, "pass A must commit exactly once"
+    writes = [s for s in rec.statements if str(s).strip().upper().startswith("UPDATE")]
+    assert len(writes) == 1, "exactly one bounded UPDATE, and nothing from pass B"
+
+
+def test_without_the_flag_pass_b_still_runs(monkeypatch):
+    """Teeth for the test above: with the same trap and no flag, pass B MUST be
+    entered. If this ever stops raising, the previous test proves nothing."""
+    runner = _runner()
+    _wire(monkeypatch, runner, ["--limit", "50"])
+
+    with pytest.raises(AssertionError, match="pass B entered"):
+        asyncio.run(runner.main())
+
+
+def test_pass_a_only_dry_run_issues_no_write_at_all(monkeypatch):
+    runner = _runner()
+    rec = _wire(monkeypatch, runner, ["--dry-run", "--pass-a-only", "--limit", "50"])
+
+    asyncio.run(runner.main())
+
+    assert rec.commits == 0
+    for stmt in rec.statements:
+        assert str(stmt).strip().upper().startswith("SELECT"), "dry-run issued a write"
+
+
+def test_report_mode_issues_no_write_and_no_commit(monkeypatch):
+    runner = _runner()
+    rec = _wire(monkeypatch, runner, ["--report"])
+
+    asyncio.run(runner.main())
+
+    assert rec.commits == 0
+    for stmt in rec.statements:
+        assert str(stmt).strip().upper().startswith("SELECT")
+
+
+def test_pass_a_update_is_bounded_to_the_limit_and_cannot_hit_evaluable_rows():
+    """One UPDATE, scoped to an id sub-select carrying the caller's LIMIT and the
+    unevaluable predicate — so neither an unbounded sweep nor an evaluable row
+    can be reached."""
+    rec = _Recorder()
+    asyncio.run(_runner().retire_permanent(rec, 50))
+
+    assert len(rec.statements) == 1
+    sql, params = _sql(rec.statements[0])
+
+    assert sql.startswith("UPDATE")
+    assert "LIMIT" in sql and 50 in params.values(), "the caller's limit must bind"
+    # Claimed rows are excluded twice: inside the id sub-select and again on the
+    # UPDATE itself, so a second run cannot re-process a row.
+    assert sql.count("SHADOW_EVALUATED_AT IS NULL") == 2
+    # Selection is the unevaluable half, as an OR of failures.
+    assert "ENGINE_DIRECTION IS NULL" in sql
+    assert "ENTRY_ZONE_LOW IS NULL" in sql
+    assert "STOP_LOSS IS NULL" in sql
+
+
+def test_pass_a_dry_run_compiles_to_a_select_only():
+    rec = _Recorder()
+    asyncio.run(_runner().retire_permanent(rec, 50, dry_run=True))
+
+    assert len(rec.statements) == 1
+    sql, params = _sql(rec.statements[0])
+    assert sql.startswith("SELECT")
+    assert "UPDATE" not in sql
+    assert 50 in params.values()
+
+
+def test_retired_undecidable_never_counts_as_resolved():
+    """Pass A gives ~1 200 rows a shadow_evaluated_at. If `resolved` were ever
+    defined as that column being non-null, the observation gate would read two
+    orders of magnitude high. The report's own definition excludes them — these
+    assertions fail if the filter and the constant ever drift apart."""
+    runner = _runner()
+    rep = inspect.getsource(runner.report)
+
+    assert 'r.shadow_outcome != "undecidable"' in rep
+    assert SHADOW_UNDECIDABLE == "undecidable"
+
+    # never_entered is scored but kept out of PF/expectancy.
+    assert 'r.shadow_outcome != "never_entered"' in rep
+    assert SHADOW_NO_FILL == "never_entered"
+
+    # And pass A writes exactly that constant, not a look-alike.
+    assert "SHADOW_UNDECIDABLE" in inspect.getsource(runner.retire_permanent)
