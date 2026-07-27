@@ -143,6 +143,40 @@ SHADOW_EXPIRY = "expiry"
 SHADOW_INVALIDATED = "invalidated"
 SHADOW_UNDECIDABLE = "undecidable"    # no post-bar data yet — never imputed as a result
 
+# Why a row can NEVER be shadow-evaluated. These are properties of the stored row
+# itself, not of the bars, so waiting cannot change them: a HOLD scan will not
+# acquire a direction tomorrow.
+SHADOW_REASON_NO_DIRECTION = "no_direction"
+SHADOW_REASON_NO_GEOMETRY = "no_geometry"
+SHADOW_PERMANENT_REASONS = frozenset({SHADOW_REASON_NO_DIRECTION, SHADOW_REASON_NO_GEOMETRY})
+
+# The only directions a shadow trade can be walked from.
+EVALUABLE_DIRECTIONS = ("bullish", "bearish")
+
+
+def classify_birth_shadow(direction, entry_zone_low, entry_zone_high, stop_loss):
+    """Why this candidate can never be shadow-evaluated — or None if it can.
+
+    Everything this needs is known when the row is written, so a permanently
+    unevaluable candidate can be stamped at birth instead of being inserted
+    pending and retired by a later UPDATE. At ~6 500 such rows a day, that is the
+    difference between a queue that means "waiting to be measured" and one that
+    is 93 % rows which never can be.
+
+    Direction is checked FIRST and wins outright. The offline retirement pass
+    decides the same thing in SQL with a CASE whose first arm is the direction
+    test, and the two must not disagree — a test walks a truth table across both.
+
+    Lives on the model rather than in either caller: the runtime logger and the
+    offline script both already import this module, so they share one definition
+    without the runtime ever importing the script.
+    """
+    if direction is None or direction not in EVALUABLE_DIRECTIONS:
+        return SHADOW_REASON_NO_DIRECTION
+    if entry_zone_low is None or entry_zone_high is None or stop_loss is None:
+        return SHADOW_REASON_NO_GEOMETRY
+    return None
+
 
 class SignalDecisionCandidate(Base):
     """One scored evaluation of one asset on one bar, whatever its verdict."""

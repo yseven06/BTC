@@ -39,6 +39,10 @@ from sqlalchemy import and_, case, or_, select, update  # noqa: E402
 from app.collectors.binance_collector import BinanceCollector  # noqa: E402
 from app.database import async_session_factory  # noqa: E402
 from app.models.decision_candidate import (  # noqa: E402
+    EVALUABLE_DIRECTIONS,
+    SHADOW_PERMANENT_REASONS,
+    SHADOW_REASON_NO_DIRECTION,
+    SHADOW_REASON_NO_GEOMETRY,
     SHADOW_UNDECIDABLE,
     SignalDecisionCandidate,
 )
@@ -61,7 +65,9 @@ MAX_RETRY_AGE = timedelta(days=7)
 
 # Reasons that can never change on a later run: they are properties of the STORED
 # ROW, not of the bars. A HOLD candidate will not acquire a direction tomorrow.
-PERMANENT_REASONS = frozenset({"no_direction", "no_geometry"})
+# Shared with the runtime logger, which stamps new rows with the same reasons at
+# birth — the strings must not drift between the two paths.
+PERMANENT_REASONS = SHADOW_PERMANENT_REASONS
 
 # The only columns this script may ever write.
 _WRITABLE = {
@@ -93,7 +99,7 @@ def evaluable_predicate():
     """Rows the evaluator CAN reach a verdict on: a real direction and complete
     geometry. This is the pass-B selection."""
     return and_(
-        SignalDecisionCandidate.engine_direction.in_(("bullish", "bearish")),
+        SignalDecisionCandidate.engine_direction.in_(EVALUABLE_DIRECTIONS),
         SignalDecisionCandidate.entry_zone_low.isnot(None),
         SignalDecisionCandidate.entry_zone_high.isnot(None),
         SignalDecisionCandidate.stop_loss.isnot(None),
@@ -110,7 +116,7 @@ def unevaluable_predicate():
     """
     return or_(
         SignalDecisionCandidate.engine_direction.is_(None),
-        SignalDecisionCandidate.engine_direction.notin_(("bullish", "bearish")),
+        SignalDecisionCandidate.engine_direction.notin_(EVALUABLE_DIRECTIONS),
         SignalDecisionCandidate.entry_zone_low.is_(None),
         SignalDecisionCandidate.entry_zone_high.is_(None),
         SignalDecisionCandidate.stop_loss.is_(None),
@@ -148,11 +154,13 @@ async def retire_permanent(db, limit: int, dry_run: bool = False) -> int:
         "shadow_outcome": SHADOW_UNDECIDABLE,
         # Which half of "unevaluable" this row is, decided in SQL so the reason
         # matches the predicate that selected it.
+        # Direction first, geometry second — the same priority classify_birth_shadow
+        # applies in Python. A test walks a truth table across both paths.
         "shadow_resolution_reason": case(
             (or_(SignalDecisionCandidate.engine_direction.is_(None),
-                 SignalDecisionCandidate.engine_direction.notin_(("bullish", "bearish"))),
-             "no_direction"),
-            else_="no_geometry",
+                 SignalDecisionCandidate.engine_direction.notin_(EVALUABLE_DIRECTIONS)),
+             SHADOW_REASON_NO_DIRECTION),
+            else_=SHADOW_REASON_NO_GEOMETRY,
         ),
     }
     _assert_write_targets(payload)

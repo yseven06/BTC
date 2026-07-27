@@ -152,9 +152,12 @@ def test_m1_query_excludes_unevaluable_rows_at_the_database():
     assert src.index("evaluable_predicate()") < src.index("_fetch_bars")
 
     pred = inspect.getsource(runner.evaluable_predicate)
-    assert 'engine_direction.in_(("bullish", "bearish"))' in pred
+    assert "engine_direction.in_(EVALUABLE_DIRECTIONS)" in pred
     assert "entry_zone_low.isnot(None)" in pred
     assert "stop_loss.isnot(None)" in pred
+    # The constant is shared with the runtime logger, so pin its value here too —
+    # source text alone would not catch it being widened.
+    assert runner.EVALUABLE_DIRECTIONS == ("bullish", "bearish")
 
 
 def test_m1_stale_rows_are_retired_rather_than_retried_forever():
@@ -225,12 +228,21 @@ def test_m1b_pass_a_is_bounded_and_can_never_be_a_full_table_update():
 
 
 def test_m1b_pass_a_marks_undecidable_not_a_result():
-    src = inspect.getsource(_runner().retire_permanent)
+    runner = _runner()
+    src = inspect.getsource(runner.retire_permanent)
     assert "SHADOW_UNDECIDABLE" in src
     assert "_assert_write_targets" in src
+
     # The reason is decided in SQL so it cannot disagree with the predicate that
-    # selected the row.
-    assert "no_direction" in src and "no_geometry" in src
+    # selected the row. Assert on the values actually bound into the statement,
+    # not on the source text — the strings are now shared constants.
+    rec = _Recorder()
+    asyncio.run(runner.retire_permanent(rec, 1))
+    params = rec.statements[0].compile(dialect=postgresql.dialect()).params
+    bound = {v for v in params.values() if isinstance(v, str)}
+    assert {"no_direction", "no_geometry"} <= bound
+    assert "undecidable" in bound
+    assert runner.PERMANENT_REASONS == {"no_direction", "no_geometry"}
 
 
 def test_m1b_dry_run_writes_nothing():

@@ -40,9 +40,11 @@ from app.models.decision_candidate import (
     CANDIDATE_POLICY_VERSION,
     CANDIDATE_SCHEMA_VERSION,
     CAPTURE_FULL,
+    SHADOW_UNDECIDABLE,
     SIMILARITY_UNAVAILABLE,
     SOURCE_SCHEDULER,
     SignalDecisionCandidate,
+    classify_birth_shadow,
 )
 from app.services.trade_geometry import dist_pct, planned_rr
 
@@ -294,6 +296,34 @@ def build_candidate_values(
             ),
         }),
     }
+
+    # Birth-time shadow classification. Whether this row can EVER be
+    # shadow-evaluated is fully determined by the direction and geometry just
+    # written above — no bar, no waiting and no later query can change it. So a
+    # permanently unevaluable candidate is stamped here rather than inserted
+    # pending and retired by a separate UPDATE ~6 500 times a day.
+    #
+    # This is telemetry state only. It does not read or affect verdict,
+    # demotion_reason, confidence, composite, direction, geometry or anything the
+    # signal decision depends on — those are already final by the time this
+    # function is called, and nothing here writes back to them.
+    #
+    # Only the three classification fields are set. Measurement columns (MFE,
+    # MAE, R, return, entry-validity) stay NULL: this row is RETIRED, never
+    # RESOLVED, and the report's scored/resolved filters exclude `undecidable`
+    # precisely so a retired row cannot be counted as an observation.
+    birth_reason = classify_birth_shadow(
+        direction=values["engine_direction"],
+        entry_zone_low=entry_low,
+        entry_zone_high=entry_high,
+        stop_loss=stop,
+    )
+    values["shadow_outcome"] = SHADOW_UNDECIDABLE if birth_reason else None
+    values["shadow_resolution_reason"] = birth_reason
+    # The decision's own timestamp, not wall clock: it is already tz-aware and it
+    # keeps the row internally consistent with evaluated_at.
+    values["shadow_evaluated_at"] = evaluated_at if birth_reason else None
+
     return values
 
 
