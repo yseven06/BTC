@@ -15,6 +15,7 @@ from typing import Any, Dict, List
 
 import pandas as pd
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, defer
 
@@ -31,7 +32,37 @@ from app.notifications.service import notify_lifecycle, LIFECYCLE_ALERT_STATES
 from app.backtesting.trade_path import compute_trade_path
 from app.engines.ai_decision.entry_telemetry import build_entry_telemetry
 from app.backtesting.resolution_core import resolve_trade_path
-from app.models.intelligence import SignalSnapshot
+from app.models.intelligence import SignalSnapshot, SignalTradePath
+
+
+async def _persist_trade_path_once(db, row) -> bool:
+    """INSERT one SignalTradePath with ``ON CONFLICT (signal_id) DO NOTHING``.
+
+    Returns True when this call actually wrote the row, False when a row for the
+    same signal was already there.
+
+    Why not ``db.add(row)``: signal_id is UNIQUE (ix_signal_trade_path_signal_id),
+    so a second resolution pass over the same signal made the ORM flush raise
+    IntegrityError. That flush happens inside update_trade_mgmt_stats — i.e.
+    INSIDE the caller's fail-open try — so the except swallowed the exception
+    while PostgreSQL had already aborted the transaction, and every later
+    statement in the same sweep died with 'current transaction is aborted'.
+    Fail-open silently became fail-closed for the whole pass. Letting the
+    database resolve the conflict means no exception is raised at all and the
+    transaction stays usable.
+
+    None values are omitted so column defaults still apply — id (uuid4) and
+    created_at (server_default now()) are never set on the transient row.
+    """
+    values = {c.key: getattr(row, c.key) for c in row.__table__.columns
+              if getattr(row, c.key) is not None}
+    stmt = (
+        pg_insert(SignalTradePath.__table__)
+        .values(**values)
+        .on_conflict_do_nothing(index_elements=["signal_id"])
+        .returning(SignalTradePath.__table__.c.id)
+    )
+    return (await db.execute(stmt)).scalar_one_or_none() is not None
 
 
 async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, tp3,
@@ -86,9 +117,12 @@ async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, t
             entry_zone_low=ez_low, entry_zone_high=ez_high, birth=birth,
             entry_telemetry=entry_tel,
         )
-        db.add(row)
+        if not await _persist_trade_path_once(db, row):
+            return          # already recorded by an earlier pass — nothing to do
         # Coin Memory v2 rollup (also inside the fail-open envelope) — derivable
         # cache over signal_trade_path; does not touch weight/decision logic.
+        # Reached only when THIS call wrote the row, so a repeated pass can
+        # neither duplicate the row nor double-count the rollup.
         await update_trade_mgmt_stats(db, row)
     except Exception as tp_exc:
         logger.warning("TradePath instrumentation failed for %s (fail-open, ignored): %s",
@@ -146,7 +180,8 @@ async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, liv
             entry_telemetry=entry_tel,
             source="live",
         )
-        db.add(row)
+        if not await _persist_trade_path_once(db, row):
+            return          # already recorded by an earlier pass — nothing to do
         await update_trade_mgmt_stats(db, row)
     except Exception as tp_exc:
         logger.warning("TradePath(live_sl) instrumentation failed for %s (fail-open, ignored): %s",
