@@ -307,6 +307,16 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
             # Nothing branches on this value.
             demotion_reason = None if new_is_actionable else REASON_NOT_ACTIONABLE
 
+            # `demotion_reason` above is the TERMINAL reason — the last thing that
+            # decided this scan's fate — and later sites deliberately overwrite it.
+            # That is correct for "why did this end where it ended", but it destroys
+            # the FIRST real decision: a call demoted by the confidence gate that
+            # then also meets an active signal is recorded as duplicate_or_existing,
+            # and the confidence-gate rejection becomes invisible to calibration.
+            # This second local is first-write-wins, so both survive. Telemetry
+            # only — no branch reads either of them.
+            primary_demotion_reason = demotion_reason
+
             # Quality gate: an actionable (BUY/SELL) call below 65% confidence
             # ("7/10" on the UI's confidence/10 quality bar) isn't worth
             # surfacing as a trade idea — demote it to HOLD so it falls
@@ -319,6 +329,8 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 new_direction = Direction.NEUTRAL
                 new_is_actionable = False
                 demotion_reason = REASON_CONFIDENCE_GATE   # telemetry only
+                if primary_demotion_reason is None:
+                    primary_demotion_reason = REASON_CONFIDENCE_GATE
 
             # A regen cycle should NOT blindly replace a still-running trade
             # idea every time the clock ticks — a 15m signal realistically
@@ -422,6 +434,8 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 else:
                     skip_new_signal = True
                     demotion_reason = REASON_DUPLICATE_OR_EXISTING   # telemetry only
+                    if primary_demotion_reason is None:
+                        primary_demotion_reason = REASON_DUPLICATE_OR_EXISTING
                     logger.info(
                         "[Scheduler] %s %s scan agrees with already-active %s signal — no new signal created.",
                         symbol, timeframe, old.timeframe,
@@ -434,6 +448,7 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                     db, asset_id=asset.id, symbol=symbol, timeframe=timeframe,
                     decision=decision, df=df, evaluated_at=now,
                     verdict=VERDICT_SKIPPED, demotion_reason=demotion_reason,
+                    primary_demotion_reason=primary_demotion_reason,
                     final_signal_type=new_type.value, final_direction=new_direction.value,
                     regime_label=regime_label, regime_result=regime_result,
                     engine_weights=engine_weights, adaptive_active=adaptive_active,
@@ -459,6 +474,8 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 new_direction = Direction.NEUTRAL
                 new_is_actionable = False
                 demotion_reason = REASON_REVERSAL_DEFER   # telemetry only
+                if primary_demotion_reason is None:
+                    primary_demotion_reason = REASON_REVERSAL_DEFER
 
             # A HOLD scan has no trade idea behind it — persisting one just
             # to immediately replace it on the next cycle (per the "old was
@@ -475,6 +492,7 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                     db, asset_id=asset.id, symbol=symbol, timeframe=timeframe,
                     decision=decision, df=df, evaluated_at=now,
                     verdict=VERDICT_DROPPED, demotion_reason=demotion_reason,
+                    primary_demotion_reason=primary_demotion_reason,
                     final_signal_type=new_type.value, final_direction=new_direction.value,
                     regime_label=regime_label, regime_result=regime_result,
                     engine_weights=engine_weights, adaptive_active=adaptive_active,
@@ -538,6 +556,7 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 db, asset_id=asset.id, symbol=symbol, timeframe=timeframe,
                 decision=decision, df=df, evaluated_at=now,
                 verdict=VERDICT_PUBLISHED, demotion_reason=REASON_PUBLISHED,
+                primary_demotion_reason=REASON_PUBLISHED,
                 final_signal_type=new_type.value, final_direction=new_direction.value,
                 regime_label=regime_label, regime_result=regime_result,
                 engine_weights=engine_weights, adaptive_active=adaptive_active,

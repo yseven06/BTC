@@ -162,6 +162,7 @@ def build_candidate_values(
     evaluated_at: datetime,
     verdict: str,
     demotion_reason: Optional[str],
+    primary_demotion_reason: Optional[str] = None,
     final_signal_type: Optional[str] = None,
     final_direction: Optional[str] = None,
     regime_label: Optional[str] = None,
@@ -272,6 +273,14 @@ def build_candidate_values(
         "adaptive_active": adaptive_active,
 
         "extra": _json_safe({
+            # `demotion_reason` above is the TERMINAL reason and later scheduler
+            # sites overwrite it on purpose. This is the FIRST one that fired, so
+            # a candidate rejected by the confidence gate that then also met an
+            # active signal is not silently reclassified as duplicate_or_existing
+            # — the confidence-gate rejection stays countable. Lives in `extra`
+            # rather than a column so no migration is needed and no existing row
+            # or query changes meaning.
+            "primary_demotion_reason": primary_demotion_reason,
             "threshold_signal_type": consensus.get("threshold_signal_type"),
             "threshold_direction": consensus.get("threshold_direction"),
             "engine_demoted": consensus.get("engine_demoted"),
