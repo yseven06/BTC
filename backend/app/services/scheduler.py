@@ -307,9 +307,13 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
     regime_label = regime_result.regime.value if regime_result else None
     engine_weights = None
     adaptive_active = False   # A8-1: captured for additive birth telemetry only
+    # F1-D: the whole base → regime → coin-memory chain as this decision resolved
+    # it. Recorded, never consulted — coin_memory is overwritten on every fold, so
+    # decision time is the only moment this state still exists.
+    adaptive_snapshot = None
     try:
         async with async_session_factory() as wdb:
-            engine_weights, adaptive_active = await load_effective_weights_meta(
+            engine_weights, adaptive_active, adaptive_snapshot = await load_effective_weights_meta(
                 wdb, symbol.upper(), timeframe, regime_label)
     except Exception as exc:
         logger.warning("[Scheduler] Effective-weight load failed for %s: %s", symbol, exc)
@@ -493,6 +497,7 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                     final_signal_type=new_type.value, final_direction=new_direction.value,
                     regime_label=regime_label, regime_result=regime_result,
                     engine_weights=engine_weights, adaptive_active=adaptive_active,
+                    adaptive_snapshot=adaptive_snapshot,
                     last_close=last_close,
                 )
                 await db.commit()
@@ -537,6 +542,7 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                     final_signal_type=new_type.value, final_direction=new_direction.value,
                     regime_label=regime_label, regime_result=regime_result,
                     engine_weights=engine_weights, adaptive_active=adaptive_active,
+                    adaptive_snapshot=adaptive_snapshot,
                     last_close=last_close,
                 )
                 await db.commit()
@@ -601,6 +607,7 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 final_signal_type=new_type.value, final_direction=new_direction.value,
                 regime_label=regime_label, regime_result=regime_result,
                 engine_weights=engine_weights, adaptive_active=adaptive_active,
+                adaptive_snapshot=adaptive_snapshot,
                 last_close=last_close, signal_id=new_sig.id,
             )
 

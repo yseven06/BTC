@@ -211,9 +211,24 @@ def test_the_decision_derives_the_model_from_the_feature_not_the_cache():
     """F0-L2's core inversion. get_effective_weights no longer reads the stored
     column; it recomputes from engine_stats via the shared decision helper, so the
     decision is as fresh as the feature even if a fold was skipped or ran late."""
-    src = inspect.getsource(get_effective_weights)
-    assert "_decision_adaptive_weights(" in src, "the decision stopped deriving the model"
-    assert "memory.adaptive_weights" not in src, "the decision still reads the cache column"
+    # Behavioural first, and immune to refactoring: a cache column that
+    # disagrees with the feature must not move the decision. F1-D split the
+    # resolution into resolve_weight_chain, which a source-grep on
+    # get_effective_weights alone would no longer see through.
+    from types import SimpleNamespace as _NS
+    stats = {e: {"correct": 12, "total": 12} for e in
+             ("technical_analysis", "market_structure", "smart_money_concepts")}
+    honest = _NS(total_signals=30, engine_stats=stats, adaptive_weights=None)
+    poisoned = _NS(total_signals=30, engine_stats=stats,
+                   adaptive_weights={"technical_analysis": 99.0})
+    assert get_effective_weights("ranging", honest) == get_effective_weights("ranging", poisoned), \
+        "the decision moved when only the cached column changed"
+
+    # …and structurally, across the whole decision path rather than one frame.
+    from app.services.coin_memory import resolve_weight_chain
+    path = inspect.getsource(get_effective_weights) + inspect.getsource(resolve_weight_chain)
+    assert "_decision_adaptive_weights(" in path, "the decision stopped deriving the model"
+    assert "memory.adaptive_weights" not in path, "the decision still reads the cache column"
 
     from app.services.coin_memory import _decision_adaptive_weights
     helper = inspect.getsource(_decision_adaptive_weights)

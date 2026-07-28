@@ -45,15 +45,18 @@ def test_meta_weights_byte_identical():
     load_effective_weights (same get_effective_weights call) + the correct flag."""
     mem = NS(total_signals=25, engine_stats=_learned_stats())
     w1 = asyncio.run(load_effective_weights(_db_returning(mem), "BTC", "4h", "ranging"))
-    w2, active = asyncio.run(load_effective_weights_meta(_db_returning(mem), "BTC", "4h", "ranging"))
+    w2, active, snap = asyncio.run(load_effective_weights_meta(_db_returning(mem), "BTC", "4h", "ranging"))
     assert w1 == w2 and active is True
+    # F1-D: the snapshot rides alongside and must report the same effective mix
+    assert snap["effective_weights"] == w1 and snap["adaptive_active"] is True
 
     mem2 = NS(total_signals=5, engine_stats={})
-    w3, active3 = asyncio.run(load_effective_weights_meta(_db_returning(mem2), "BTC", "4h", "ranging"))
+    w3, active3, snap3 = asyncio.run(load_effective_weights_meta(_db_returning(mem2), "BTC", "4h", "ranging"))
     w3b = asyncio.run(load_effective_weights(_db_returning(mem2), "BTC", "4h", "ranging"))
     assert w3 == w3b and active3 is False
+    assert snap3["effective_weights"] == w3b and snap3["fallback_reason"] == "below_min_samples"
 
-    w4, active4 = asyncio.run(load_effective_weights_meta(_db_returning(None), "BTC", "4h", None))
+    w4, active4, snap4 = asyncio.run(load_effective_weights_meta(_db_returning(None), "BTC", "4h", None))
     w4b = asyncio.run(load_effective_weights(_db_returning(None), "BTC", "4h", None))
     assert w4 == w4b and active4 is False   # no memory → base weights, inactive
 

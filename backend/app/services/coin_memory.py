@@ -24,8 +24,12 @@ Overfitting guards are central, not afterthoughts:
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import math
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import select
@@ -126,16 +130,66 @@ def _decision_adaptive_weights(memory: Optional[CoinMemory]) -> Optional[Dict[st
     return _recompute_adaptive_weights(getattr(memory, "engine_stats", None) or {})
 
 
-def get_effective_weights(
+# ── F1-D: decision-time weight-chain snapshot ────────────────────────────────
+# The layers below already existed as locals inside get_effective_weights; only
+# the final dict came out, so a candidate recorded WHICH mix was used but never
+# HOW it was reached. That is why backtest adaptive parity is not_applied: the
+# coin_memory row is overwritten on every fold (no version, valid_from or as_of
+# column), so the state that produced a past decision cannot be recovered
+# afterwards. Capturing it at decision time is the only non-look-ahead way to
+# get it, and this is forward-only — nothing is backfilled.
+
+ADAPTIVE_TELEMETRY_VERSION = "adaptive_state_v1"
+ADAPTIVE_CAPTURE_POLICY = "decision_time_snapshot"
+ADAPTIVE_HISTORY_POLICY = "forward_only"
+
+# Why the coin-learned layer did not apply. None means it did.
+FALLBACK_NO_MEMORY = "no_memory_row"
+FALLBACK_BELOW_MIN_SAMPLES = "below_min_samples"
+FALLBACK_NO_ENGINE_READY = "no_engine_above_min_samples"
+
+
+@dataclass(frozen=True)
+class WeightChain:
+    """Every layer of one weight resolution, as the decision actually saw it.
+
+    Frozen, and every dict is built fresh here, so a snapshot taken from it
+    cannot be altered by anything that later mutates the caller's weights.
+    """
+
+    base: Dict[str, float]
+    regime_adjusted: Dict[str, float]
+    regime_multipliers: Dict[str, float]
+    memory_multipliers: Optional[Dict[str, float]]
+    effective: Dict[str, float]
+    memory_applied: bool
+    fallback_reason: Optional[str]
+
+
+def _memory_fallback_reason(memory: Optional[CoinMemory],
+                            learned: Optional[Dict[str, float]]) -> Optional[str]:
+    """Label the branch _decision_adaptive_weights took. Reads only, decides nothing."""
+    if learned is not None:
+        return None
+    if memory is None:
+        return FALLBACK_NO_MEMORY
+    if memory.total_signals < MIN_SAMPLES_FOR_ADAPTIVE:
+        return FALLBACK_BELOW_MIN_SAMPLES
+    return FALLBACK_NO_ENGINE_READY
+
+
+def resolve_weight_chain(
     regime: Optional[str],
     memory: Optional[CoinMemory],
-) -> Dict[str, float]:
-    """Final engine weights = base → regime tilt → coin-learned tilt → normalise.
+) -> WeightChain:
+    """Resolve the weights AND keep every intermediate layer.
 
-    The learned layer is applied only when `memory` has enough resolved samples and
-    a computable adaptive model; otherwise just the regime-tilted base is used. F0-L2:
-    the model is recomputed from the feature here, not read from the stored cache.
+    This is the arithmetic get_effective_weights used to hold inline, unchanged:
+    base → regime tilt → coin-learned tilt → normalise. get_effective_weights is
+    now a thin wrapper over `.effective`, so the telemetry records the very chain
+    the decision used rather than a parallel re-derivation of it.
     """
+    base = dict(BASE_ENGINE_WEIGHTS)
     weights = regime_weights(regime)
 
     learned = _decision_adaptive_weights(memory)
@@ -146,9 +200,143 @@ def get_effective_weights(
             k: weights[k] * float(learned.get(k, 1.0))
             for k in weights
         }
-        weights = _normalize(combined)
+        effective = _normalize(combined)
+    else:
+        effective = weights
 
-    return weights
+    raw_tilt = _REGIME_TILTS.get(regime or "", {})
+    return WeightChain(
+        base=base,
+        regime_adjusted=dict(weights),
+        # Spelled out for every engine, so a reader never has to know that an
+        # omitted engine means 1.0. These are the RAW tilts; regime_adjusted is
+        # what they became after renormalisation.
+        regime_multipliers={k: float(raw_tilt.get(k, 1.0)) for k in base},
+        memory_multipliers=dict(learned) if learned else None,
+        effective=dict(effective),
+        memory_applied=learned is not None,
+        fallback_reason=_memory_fallback_reason(memory, learned),
+    )
+
+
+def get_effective_weights(
+    regime: Optional[str],
+    memory: Optional[CoinMemory],
+) -> Dict[str, float]:
+    """Final engine weights = base → regime tilt → coin-learned tilt → normalise.
+
+    The learned layer is applied only when `memory` has enough resolved samples and
+    a computable adaptive model; otherwise just the regime-tilted base is used. F0-L2:
+    the model is recomputed from the feature here, not read from the stored cache.
+    """
+    return resolve_weight_chain(regime, memory).effective
+
+
+def _finite_weights(d: Optional[Dict[str, float]]) -> Optional[Dict[str, float]]:
+    """Reject NaN/Infinity rather than writing a value JSON cannot round-trip.
+
+    Raises so the caller records the failure explicitly; silently substituting a
+    number would put a fabricated weight in the historical record, which is the
+    one thing this telemetry exists to prevent.
+    """
+    if d is None:
+        return None
+    out: Dict[str, float] = {}
+    for k, v in d.items():
+        f = float(v)
+        if not math.isfinite(f):
+            raise ValueError(f"non-finite weight for {k!r}: {v!r}")
+        out[k] = f
+    return out
+
+
+def _memory_state_fingerprint(memory: Optional[CoinMemory]) -> Optional[str]:
+    """Identify the memory state that produced these multipliers.
+
+    coin_memory has no version column and every fold overwrites the row, so
+    there is no id to point at. This hashes the ONLY inputs that decide the
+    multipliers — each engine's total and correct counts — which is enough for a
+    later replay to prove it is looking at the same state, and small enough that
+    no unrelated column drift changes it.
+    """
+    if memory is None:
+        return None
+    stats = getattr(memory, "engine_stats", None) or {}
+    canonical = {
+        engine: {
+            "total": int((stats.get(engine) or {}).get("total", 0)),
+            "correct": int((stats.get(engine) or {}).get("correct", 0)),
+        }
+        for engine in BASE_ENGINE_WEIGHTS
+    }
+    canonical["_total_signals"] = int(memory.total_signals or 0)
+    blob = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(blob.encode()).hexdigest()[:32]
+
+
+def weight_chain_snapshot(
+    chain: WeightChain,
+    *,
+    symbol: str,
+    timeframe: str,
+    regime: Optional[str],
+    memory: Optional[CoinMemory],
+) -> Dict[str, Any]:
+    """A serializable, immutable record of the chain, for the candidate row.
+
+    Deliberately NOT the whole memory row: only the fields that actually decided
+    the multipliers, plus enough identity to find the same state again. Carries
+    no credential, no free-form blob and nothing unbounded.
+
+    Direction and the decision timestamp are added by the candidate logger,
+    which is where they are known; inventing them here would mean two sources of
+    truth for the same fact.
+    """
+    engine_order = list(BASE_ENGINE_WEIGHTS)
+    effective = _finite_weights(chain.effective) or {}
+    missing = [e for e in engine_order if e not in effective]
+    if missing:
+        raise ValueError(f"effective weights missing engines: {missing}")
+
+    last_updated = getattr(memory, "last_updated_at", None)
+    if last_updated is not None and last_updated.tzinfo is None:
+        # Stored naive by an older writer; the column is UTC by convention.
+        last_updated = last_updated.replace(tzinfo=timezone.utc)
+
+    return {
+        "telemetry_version": ADAPTIVE_TELEMETRY_VERSION,
+        "capture_policy": ADAPTIVE_CAPTURE_POLICY,
+        "history_policy": ADAPTIVE_HISTORY_POLICY,
+        "historical_backfill": False,
+        "captured_at": datetime.now(timezone.utc).isoformat(),
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "regime": regime,
+        "engine_order": engine_order,
+        "base_weights": _finite_weights(chain.base),
+        "regime_multipliers": _finite_weights(chain.regime_multipliers),
+        "regime_adjusted_weights": _finite_weights(chain.regime_adjusted),
+        "coin_memory_multipliers": _finite_weights(chain.memory_multipliers),
+        # The learned layer is last in the chain, so this equals
+        # effective_weights today. Kept distinct so a future layer inserted
+        # after it does not silently redefine either name.
+        "coin_memory_adjusted_weights": dict(effective),
+        "effective_weights": dict(effective),
+        "effective_weight_sum": round(sum(effective.values()), 10),
+        "adaptive_active": chain.memory_applied,
+        "memory_available": memory is not None,
+        "memory_applied": chain.memory_applied,
+        "memory_key": f"{symbol}|{timeframe}",
+        "memory_sample_count": int(memory.total_signals) if memory is not None else None,
+        "memory_last_updated_at": last_updated.isoformat() if last_updated else None,
+        "memory_state_fingerprint": _memory_state_fingerprint(memory),
+        "fallback_reason": chain.fallback_reason,
+        "min_samples_for_adaptive": MIN_SAMPLES_FOR_ADAPTIVE,
+        "min_engine_samples": MIN_ENGINE_SAMPLES,
+        "adaptive_band": [ADAPTIVE_BAND_LOW, ADAPTIVE_BAND_HIGH],
+        "normalization_applied": True,
+        "source": "load_effective_weights_meta",
+    }
 
 
 def _bias_direction(bias: Any) -> Optional[str]:
@@ -425,16 +613,35 @@ async def load_effective_weights_meta(
     symbol: str,
     timeframe: str,
     regime: Optional[str],
-) -> Tuple[Dict[str, float], bool]:
+) -> Tuple[Dict[str, float], bool, Optional[Dict[str, Any]]]:
     """Like load_effective_weights but ALSO reports whether the adaptive layer was
-    applied, for A8-1 birth telemetry. The weights are computed by the SAME
-    get_effective_weights call → BYTE-IDENTICAL to load_effective_weights; only an
-    additive read-only flag is returned alongside."""
+    applied, for A8-1 birth telemetry, and (F1-D) a snapshot of the whole chain.
+
+    The weights come from the SAME resolution get_effective_weights performs →
+    BYTE-IDENTICAL to load_effective_weights; the flag and the snapshot are
+    additive and read-only.
+
+    The snapshot is built in its own try/except on purpose. It is pure and has no
+    business failing, but if it ever did, the decision must not notice: an
+    exception escaping here would leave the caller's engine_weights at None and
+    the signal would be scored on the static base mix instead of the adaptive
+    one. Telemetry that can change a decision is not telemetry.
+    """
     res = await db.execute(
         select(CoinMemory).where(CoinMemory.symbol == symbol, CoinMemory.timeframe == timeframe)
     )
     mem = res.scalar_one_or_none()
-    return get_effective_weights(regime, mem), adaptive_is_active(mem)
+    chain = resolve_weight_chain(regime, mem)
+
+    snapshot: Optional[Dict[str, Any]] = None
+    try:
+        snapshot = weight_chain_snapshot(
+            chain, symbol=symbol, timeframe=timeframe, regime=regime, memory=mem)
+    except Exception as exc:  # noqa: BLE001 — never let telemetry reach the decision
+        logger.warning("[CoinMemory] adaptive snapshot failed for %s %s: %s",
+                       symbol, timeframe, exc)
+
+    return chain.effective, chain.memory_applied, snapshot
 
 
 # ════════════════════════════════════════════════════════════════════════════

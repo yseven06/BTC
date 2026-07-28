@@ -154,6 +154,35 @@ def _volume_ratio_geometry(engine_results: Any) -> Optional[float]:
     return None
 
 
+def _adaptive_state_entry(
+    snapshot: Optional[Dict[str, Any]],
+    decision: Any,
+    evaluated_at: Any,
+) -> Optional[Dict[str, Any]]:
+    """Complete the decision-time weight snapshot with what only this layer knows.
+
+    coin_memory builds the weight chain — it is the only place that still holds
+    the memory row the decision read. Direction and the decision timestamp are
+    added here, where they are authoritative; deriving them upstream would give
+    the same fact two sources.
+
+    A copy is taken because the caller's dict is reused across the three
+    record_candidate sites in one sweep; mutating it here would let a later row
+    change what an earlier one recorded.
+    """
+    if not snapshot:
+        return None
+    entry = dict(snapshot)
+    direction = None
+    if isinstance(decision, dict):
+        direction = decision.get("direction")
+    entry["direction"] = direction
+    entry["decision_evaluated_at"] = (
+        evaluated_at.isoformat() if hasattr(evaluated_at, "isoformat") else evaluated_at
+    )
+    return entry
+
+
 def build_candidate_values(
     *,
     asset_id,
@@ -171,6 +200,7 @@ def build_candidate_values(
     regime_result: Any = None,
     engine_weights: Any = None,
     adaptive_active: Optional[bool] = None,
+    adaptive_snapshot: Optional[Dict[str, Any]] = None,
     last_close: Optional[float] = None,
     signal_id=None,
     source: str = SOURCE_SCHEDULER,
@@ -313,6 +343,14 @@ def build_candidate_values(
                 # existing extra["entry"] rows and needs a version bump.
                 "reading_a_midpoint; birth-candle not re-appended"
             ),
+            # F1-D — the base → regime → coin-memory chain as this decision
+            # resolved it. Handed in already built; nothing is recomputed here,
+            # because a second resolution could read a coin_memory row a later
+            # fold had already overwritten and would then record weights the
+            # decision never used. None on the older path or if the snapshot
+            # could not be built — absent, never guessed.
+            "adaptive_state_telemetry": _adaptive_state_entry(
+                adaptive_snapshot, decision, evaluated_at),
         }),
     }
 
