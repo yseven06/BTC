@@ -273,6 +273,48 @@ class BacktestResponse(BaseModel):
     equity_curve: List[Dict[str, Any]]
     trades_log: List[Dict[str, Any]]
 
+    @classmethod
+    def from_report(cls, report: Any) -> "BacktestResponse":
+        """Build the response from a BacktestReport, field by declared field.
+
+        Driven by the SCHEMA, not by the report, and that direction is the whole
+        point. The hand-written constructor this replaces named 18 of the 39
+        declared fields, so every parity and provenance field the engine
+        computes arrived at the client as null — present in the JSON, because
+        the route does not exclude none, but empty. Iterating the schema means a
+        field cannot be left out. Iterating the schema RATHER THAN the report
+        means the eight report-only metrics (planned/realized R, TP reach rates)
+        cannot leak into the API contract either; they are the engine's own
+        bookkeeping and were never part of it.
+
+        Values cross untouched: no defaulting, no coercion, no tidying. None
+        stays None, 0 stays 0, [] stays [], and a float stays a float — a
+        caller reading `dropped_forming_bars == 0` must not receive null.
+
+        Missing attributes raise rather than quietly defaulting, because a quiet
+        default is exactly the failure being fixed. A test asserts the report
+        carries every declared field, so drift is caught in CI, not in prod.
+        """
+        return cls(**cls.report_values(report))
+
+    @classmethod
+    def report_values(cls, report: Any) -> Dict[str, Any]:
+        """The declared fields pulled off `report`, before the model touches them.
+
+        Split out from `from_report` so the pass-through can be asserted on the
+        raw values. Once Pydantic has validated them a transformation becomes
+        invisible — it coerces the string "65.0" straight back to 65.0, so a
+        mapper that stringified everything would still produce a correct-looking
+        response and only break the day a value stops round-tripping. Tests
+        assert identity against the report here, where that is still visible.
+        """
+        missing = [name for name in cls.model_fields if not hasattr(report, name)]
+        if missing:
+            raise ValueError(
+                f"BacktestReport is missing response fields: {sorted(missing)}"
+            )
+        return {name: getattr(report, name) for name in cls.model_fields}
+
 
 # Resolve forward reference
 SignalDetailResponse.model_rebuild()

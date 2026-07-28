@@ -1044,26 +1044,11 @@ async def backtest_endpoint(
             detail="Backtest simulation failed. Please try again later.",
         )
 
-    return BacktestResponse(
-        total_trades=report.total_trades,
-        wins=report.wins,
-        losses=report.losses,
-        breakevens=report.breakevens,
-        expired=report.expired,
-        win_rate=report.win_rate,
-        loss_rate=report.loss_rate,
-        profit_factor=report.profit_factor,
-        sharpe_ratio=report.sharpe_ratio,
-        sortino_ratio=report.sortino_ratio,
-        max_drawdown_pct=report.max_drawdown_pct,
-        average_return_pct=report.average_return_pct,
-        average_rr=report.average_rr,
-        expectancy_pct=report.expectancy_pct,
-        max_consecutive_wins=report.max_consecutive_wins,
-        max_consecutive_losses=report.max_consecutive_losses,
-        equity_curve=report.equity_curve,
-        trades_log=report.trades_log,
-    )
+    # Every declared field, straight off the report. The list that used to live
+    # here named 18 of 39, so the parity and provenance metadata — including the
+    # limitations that say a backtest number is not a live expectation — reached
+    # the caller as null. See BacktestResponse.from_report.
+    return BacktestResponse.from_report(report)
 
 
 @router.post(
