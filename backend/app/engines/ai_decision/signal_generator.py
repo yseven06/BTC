@@ -108,6 +108,46 @@ BASE_ENGINE_WEIGHTS: Dict[str, float] = {
 }
 
 
+# Engines whose score counts as a consensus VOTE in the quality gate below.
+#
+# This is deliberately NOT the same list as BASE_ENGINE_WEIGHTS: all nine
+# engines feed the composite, only these five get a vote. `onchain_analysis`,
+# `macro_analysis` and `risk_management` were never in it; `fundamental_analysis`
+# was removed by CP-FUND-VOTE-1 because it is not a measurement.
+#
+# The orchestrator (engine.py:313) passes engines only (symbol, timeframe, df)
+# — no `fundamental_data` — so FundamentalAnalysisEngine substitutes
+# `_generate_fallback_data`, a hardcoded payload that does not depend on the
+# symbol. 85M/100M supply lands in the ">70% circulating" branch for a
+# tokenomics 65, and mcap/fdv is exactly 0.85 which fails the strict `> 0.85`
+# test, so valuation stays 50: composite 57.5, every coin, every bar. The logged
+# candidates agree — 57.5 on 8098 of 8098, sd = 0, one distinct value, confidence
+# pinned at 80.0.
+#
+# 57.5 > 53 clears the bullish confirmation bar on EVERY candidate, and 57.5 is
+# neither < 47 nor > 60, so on the bearish side it can neither confirm nor
+# conflict. The result was a free +1 confirmation for long calls and silence for
+# short ones: a constant cannot discriminate, and 44 candidates in that snapshot
+# reached the actionable threshold on the strength of it alone. Its Cohen's d
+# between published and rejected candidates is 0.00 in both directions.
+#
+# The engine still runs, still carries its 0.07 composite weight, still appears
+# in telemetry and explanations. It just no longer votes.
+CONSENSUS_VOTE_ENGINES: tuple = (
+    "technical_analysis",
+    "market_structure",
+    "volume_analysis",
+    "smart_money_concepts",
+    "candle_range_theory",
+)
+
+# How many of CONSENSUS_VOTE_ENGINES must confirm. Unchanged at 4 by
+# CP-FUND-VOTE-1: the bar was already effectively "4 real confirmations OR 3 plus
+# the constant", so holding the number while dropping the constant is what makes
+# it mean what it always claimed to mean. Same value for both directions.
+REQUIRED_CONSENSUS_VOTES = 4
+
+
 def generate_signal(
     symbol: str,
     timeframe: str,
@@ -181,27 +221,28 @@ def generate_signal(
     # picking these numbers: requiring SMC AND CRT to both individually
     # confirm passed only 17.5% of them — too strict for a platform with no
     # resolved win/loss history yet to validate that bar against. Needing 4
-    # of the 6 engines (now incl. Fundamental) to agree, with SMC OR CRT as
-    # one of those four, passed 66% — a real tightening from the old >=2-of-5
-    # rule without going silent. Revisit these thresholds once enough
-    # signals have actually resolved to measure true win rate per setting.
+    # of the engines to agree, with SMC OR CRT as one of those four, passed
+    # 66% — a real tightening from the old >=2-of-5 rule without going silent.
+    # Revisit these thresholds once enough signals have actually resolved to
+    # measure true win rate per setting.
+    #
+    # CP-FUND-VOTE-1: the voting pool is CONSENSUS_VOTE_ENGINES (five), not the
+    # nine that feed the composite. It used to be six; see that constant for why
+    # the sixth was never a vote.
     if direction in ["bullish", "bearish"]:
-        ta_res = next((res for res in engine_results if res.engine_name == "technical_analysis"), None)
-        ms_res = next((res for res in engine_results if res.engine_name == "market_structure"), None)
-        vol_res = next((res for res in engine_results if res.engine_name == "volume_analysis"), None)
-        smc_res = next((res for res in engine_results if res.engine_name == "smart_money_concepts"), None)
-        crt_res = next((res for res in engine_results if res.engine_name == "candle_range_theory"), None)
-        fund_res = next((res for res in engine_results if res.engine_name == "fundamental_analysis"), None)
+        def _pool_score(name: str) -> float:
+            # Same lookup the six explicit `next(...)` lines used to do, and the
+            # same 50.0 default for an engine that did not produce a result:
+            # neutral on every threshold below, so a missing engine can neither
+            # confirm nor conflict.
+            res = next((r for r in engine_results if r.engine_name == name), None)
+            return res.score if res else 50.0
+
+        smc_score = _pool_score("smart_money_concepts")
+        crt_score = _pool_score("candle_range_theory")
         risk_res = next((res for res in engine_results if res.engine_name == "risk_management"), None)
 
-        ta_score = ta_res.score if ta_res else 50.0
-        ms_score = ms_res.score if ms_res else 50.0
-        vol_score = vol_res.score if vol_res else 50.0
-        smc_score = smc_res.score if smc_res else 50.0
-        crt_score = crt_res.score if crt_res else 50.0
-        fund_score = fund_res.score if fund_res else 50.0
-
-        pool = [ta_score, ms_score, vol_score, smc_score, crt_score, fund_score]
+        pool = [_pool_score(name) for name in CONSENSUS_VOTE_ENGINES]
 
         if direction == "bullish":
             strong_conflicts = sum(1 for s in pool if s < 40)
@@ -212,12 +253,13 @@ def generate_signal(
             if risk_res and "risk_score_raw" in risk_res.supporting_data:
                 risk_too_high = risk_res.supporting_data["risk_score_raw"] >= 9.5
 
-            # Need 4 of 6 engines confirming AND at least one of SMC/CRT
-            # among them (see threshold note above).
-            if strong_conflicts >= 2 or confirmations < 4 or not smc_crt_confirm or risk_too_high:
+            # Need REQUIRED_CONSENSUS_VOTES of the voting engines confirming AND
+            # at least one of SMC/CRT among them (see threshold note above).
+            if (strong_conflicts >= 2 or confirmations < REQUIRED_CONSENSUS_VOTES
+                    or not smc_crt_confirm or risk_too_high):
                 logger.info(
                     f"Signal downgraded to HOLD for {symbol} (StrongConflicts: {strong_conflicts}, "
-                    f"Confirmations: {confirmations}/6, SMC or CRT agree: {smc_crt_confirm}, ExtremeRisk: {risk_too_high})"
+                    f"Confirmations: {confirmations}/{len(pool)}, SMC or CRT agree: {smc_crt_confirm}, ExtremeRisk: {risk_too_high})"
                 )
                 signal_type = "HOLD"
                 direction = "neutral"
@@ -231,10 +273,11 @@ def generate_signal(
             if risk_res and "risk_score_raw" in risk_res.supporting_data:
                 risk_too_high = risk_res.supporting_data["risk_score_raw"] >= 9.5
 
-            if strong_conflicts >= 2 or confirmations < 4 or not smc_crt_confirm or risk_too_high:
+            if (strong_conflicts >= 2 or confirmations < REQUIRED_CONSENSUS_VOTES
+                    or not smc_crt_confirm or risk_too_high):
                 logger.info(
                     f"Signal downgraded to HOLD for {symbol} (StrongConflicts: {strong_conflicts}, "
-                    f"Confirmations: {confirmations}/6, SMC or CRT agree: {smc_crt_confirm}, ExtremeRisk: {risk_too_high})"
+                    f"Confirmations: {confirmations}/{len(pool)}, SMC or CRT agree: {smc_crt_confirm}, ExtremeRisk: {risk_too_high})"
                 )
                 signal_type = "HOLD"
                 direction = "neutral"
