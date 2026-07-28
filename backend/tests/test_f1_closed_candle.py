@@ -379,12 +379,28 @@ def test_mtf_frames_close_on_their_own_timeframe():
     assert "closed_candles(df_tf, timeframe)" not in src
 
 
-def test_backtest_branch_is_untouched():
-    """D3 — backtest is a separate checkpoint."""
+def test_backtest_decision_branch_is_untouched():
+    """F1 (D3) left the backtest alone; F1-B' then bounded its DATASET and nothing
+    else. What must still hold is that no F1 concept reached the backtest's own
+    decision loop: the closed-candle cut happens once, on the raw frame, before
+    the walk — the per-bar slicing and the is_backtest MTF branch are as they were."""
     from app.backtesting import engine as bt
 
-    assert "closed_candles" not in inspect.getsource(bt)
-    assert "analysis_window" not in inspect.getsource(bt)
+    src = inspect.getsource(bt)
+    # The one permitted use: a single dataset-level boundary.
+    assert src.count("closed_candles(") == 1
+    assert "df = closed_candles(df, timeframe)" in src
+    assert "analysis_window" not in src, "the backtest must not re-derive a second window"
+
+    # The decision loop's own slicing is untouched.
+    run = inspect.getsource(bt.BacktestEngine.run_backtest)
+    assert "sub_df = df.iloc[:i + 1]" in run
+    assert "closed_candles(sub_df" not in run, "no per-bar re-cut"
+
+    # And the backtest MTF branch in the orchestrator is still the original one.
+    from app.engines.ai_decision import engine as orch
+    osrc = inspect.getsource(orch.AIDecisionEngine.analyze_and_decide)
+    assert "mtf_df[mtf_df.index <= current_time]" in osrc
 
 
 # ── 24-26 · price separation ───────────────────────────────────────────────

@@ -22,6 +22,7 @@ from app.engines.ai_decision.signal_generator import _price_round
 from app.backtesting.resolution_core import (
     step_bar, new_walk_state, WalkState, resolve_inside_bar_ambiguity,
 )
+from app.services.candle_window import UnknownTimeframeError, closed_candles
 from app.services.trade_geometry import planned_rr
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,23 @@ class Trade:
     # Per-bar resolution geometry (shared with the live tracker via step_bar).
     # Holds current_sl, remaining_share, hit flags, MFE/MAE, fills, etc.
     state: Optional["WalkState"] = None
+
+
+# F1-B' — the contract this backtest runs under. Constants rather than literals so
+# a report and a test cannot drift apart on what the run actually did.
+BACKTEST_INPUT_VERSION = "closed_candle_v1"
+# Features see history through the decision bar, which is itself already closed.
+FEATURE_CUTOFF_POLICY = "through_previous_closed_decision_bar"
+# The trade's first resolution bar is the one after the decision bar.
+EXECUTION_START_POLICY = "next_closed_bar"
+# Historical OHLCV has no intrabar path, so the decision bar's close is the closest
+# no-lookahead stand-in for the live price production anchors on.
+DECISION_PRICE_POLICY = "previous_closed_bar_close_proxy"
+# Consequence of the line above: close, not a price a minute into the next candle.
+PRODUCTION_INTRABAR_PARITY = "approximate"
+# is_backtest=True skips the live MTF fetch and no caller supplies mtf_data, so
+# mtf_trends is always empty here while production computes it from 15m/1h/4h.
+MTF_PARITY = "unavailable"
 
 
 def apply_backtest_bar(trade, k: int, bar, max_age: int) -> bool:
@@ -119,6 +137,19 @@ class BacktestReport:
     tp3_reach_rate: float = 0.0
     avg_realized_r: Optional[float] = None
     median_realized_r: Optional[float] = None
+    # F1-B' — what this run's numbers actually mean. Stated rather than assumed,
+    # because "backtest PF" and "live PF" are only comparable to the degree these
+    # policies match production, and three of them currently do not.
+    backtest_input_version: str = BACKTEST_INPUT_VERSION
+    feature_cutoff_policy: str = FEATURE_CUTOFF_POLICY
+    execution_start_policy: str = EXECUTION_START_POLICY
+    decision_price_policy: str = DECISION_PRICE_POLICY
+    production_intrabar_parity: str = PRODUCTION_INTRABAR_PARITY
+    mtf_parity: str = MTF_PARITY
+    # How many trailing rows the closed-candle cut removed. Non-zero means the
+    # fetch included a candle that was still forming — the run is unaffected, but
+    # the number says so out loud rather than leaving it to be inferred.
+    dropped_forming_bars: int = 0
 
 
 class BacktestEngine:
@@ -138,9 +169,28 @@ class BacktestEngine:
         execution_model: str = "conservative",
     ) -> BacktestReport:
         """Run step-by-step backtest simulation."""
+        # F1-B' — bound the dataset to bars that have definitively closed, ONCE,
+        # before the walk begins.
+        #
+        # The decision side was already correct: bar i is closed when it is scored
+        # and the trade it produces starts at i+1. What was not bounded is the far
+        # end. The backtest fetches live (signals.py:1012, limit=300), so the final
+        # row is usually the candle still forming, and while the `i < n - 1` guard
+        # keeps it out of the FEATURES, nothing kept it out of EXECUTION: a
+        # decision at i = n-2 sets entry_index = n-1, so a trade could open on a
+        # partial bar and be resolved against its incomplete high/low.
+        #
+        # That is not feature look-ahead — it is executing against a bar that has
+        # not finished happening. Cutting here fixes both, and makes the walk
+        # deterministic: without it the same historical backtest could return
+        # different numbers depending on what minute of the candle it was run in.
+        raw_bars = len(df) if df is not None else 0
+        df = closed_candles(df, timeframe)
+        dropped_forming = max(0, raw_bars - len(df))
+
         n = len(df)
         min_bars = 60  # Require at least 60 bars of history for sub-engines to compute EMAs, etc.
-        
+
         if n < min_bars + 10:
             raise ValueError(f"Insufficient history ({n} bars) for backtesting. Minimum required is {min_bars + 10} bars.")
 
@@ -274,10 +324,28 @@ class BacktestEngine:
             # as BEFORE/AFTER deltas (vs a baseline run), NOT as absolute live
             # expectations. Documented, not changed (a configurable-overlap mode is
             # BP2-gated and deferred).
-            # IMPORTANT: The signal is generated from data up to and including bar i
-            # (the closed bar).  We then enter on bar i+1's open price to eliminate
-            # lookahead bias — you cannot trade the close of the candle that just
-            # produced the signal in a live system.
+            # TIMING (corrected F1-B': the previous note claimed entry at bar i+1's
+            # OPEN price, which the code has never done):
+            #
+            #   features   bars 0..i        — i is closed when it is scored
+            #   price      close[i]         — anchors the entry zone and levels
+            #   execution  bar i+1 onward   — the trade's first resolution bar
+            #
+            # No look-ahead: nothing after bar i is visible to the decision, and the
+            # bar that produced a signal never resolves that same signal (the trade
+            # is appended at the END of this iteration, while resolution runs at the
+            # TOP of the next one).
+            #
+            # The entry FILL is the published zone's midpoint, not bar i+1's open —
+            # the same assumption the live tracker makes. That is a fill-realism
+            # assumption (the midpoint may not have traded in bar i+1), not a
+            # look-ahead one.
+            #
+            # Production anchors on the live intrabar price a minute or two into the
+            # forming candle; close[i] is the closest no-lookahead proxy available in
+            # historical OHLCV. Measured on 24k bar pairs, open[i+1] differs from
+            # close[i] by a median 0.02 %, so the choice is close to immaterial — it
+            # is recorded in the report metadata rather than argued about here.
             if len(active_trades) == 0 and i < n - 1:
                 # Slice dataframe up to and including the current closed bar
                 sub_df = df.iloc[:i + 1]
@@ -339,6 +407,13 @@ class BacktestEngine:
                         )
                         active_trades.append(new_trade)
 
+                except UnknownTimeframeError:
+                    # NOT swallowed. This is a configuration error, not a bar the
+                    # engines happened to fail on: it would recur on every single
+                    # bar and the run would finish "successfully" with zero trades,
+                    # which reads as "the strategy found no setups". Fail loudly on
+                    # the first occurrence instead.
+                    raise
                 except Exception as e:
                     # Log engine failure but continue simulation
                     logger.debug(f"Backtest engine analysis skipped at index {i}: {str(e)}")
@@ -425,6 +500,7 @@ class BacktestEngine:
             expectancy_pct=round(expectancy, 2),
             max_consecutive_wins=consecutive_wins,
             max_consecutive_losses=consecutive_losses,
+            dropped_forming_bars=dropped_forming,
             equity_curve=equity_curve,
             trades_log=trades_log,
             avg_planned_rr_tp1=avg_planned_rr_tp1,

@@ -207,7 +207,16 @@ class SignalHistoryStats(BaseModel):
 class BacktestRequest(BaseModel):
     """Configuration options for triggering a walk-forward backtest."""
     symbol: str
-    timeframe: str = "1h"
+    # The seven timeframes the repository actually supports, as defined by the
+    # Timeframe enum (models/price_data.py) and matched exactly by the Binance
+    # collector's interval map. Validated rather than left an open string: an
+    # unsupported value used to be swallowed twice over — the collector silently
+    # substituted 1h data, and after F1 the closed-candle helper raised inside the
+    # backtest's broad except and the run returned zero trades with HTTP 200.
+    # Both failure modes look like "the strategy found nothing".
+    # 30m/2h appear in some lookup tables but are NOT supported: no collector can
+    # fetch them and the DB enum cannot store them.
+    timeframe: Literal["1m", "5m", "15m", "1h", "4h", "1d", "1w"] = "1h"
     initial_capital: float = 10000.0
     risk_pct: float = 2.0
     max_age: int = 48
@@ -236,6 +245,15 @@ class BacktestResponse(BaseModel):
     expectancy_pct: float
     max_consecutive_wins: int
     max_consecutive_losses: int
+    # F1-B' provenance — what this run's numbers mean. Defaulted so an older
+    # caller or a stored report without them still validates.
+    backtest_input_version: Optional[str] = None
+    feature_cutoff_policy: Optional[str] = None
+    execution_start_policy: Optional[str] = None
+    decision_price_policy: Optional[str] = None
+    production_intrabar_parity: Optional[str] = None
+    mtf_parity: Optional[str] = None
+    dropped_forming_bars: Optional[int] = None
     equity_curve: List[Dict[str, Any]]
     trades_log: List[Dict[str, Any]]
 
