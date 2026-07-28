@@ -280,7 +280,11 @@ def test_23_report_carries_every_policy_field():
     assert EXECUTION_START_POLICY == "next_closed_bar"
     assert DECISION_PRICE_POLICY == "previous_closed_bar_close_proxy"
     assert PRODUCTION_INTRABAR_PARITY == "approximate"
-    assert MTF_PARITY == "unavailable"
+    # F1-C supplied the MTF input and moved this from "unavailable" to "exact".
+    # What F1-B' guards is that the field EXISTS and is not silently blank — the
+    # value itself is F1-C's to state, and test_f1c_parity pins it.
+    assert MTF_PARITY in ("unavailable", "exact")
+    assert MTF_PARITY, "the parity claim must never be empty"
 
     from app.schemas.signal import BacktestResponse
     for f in ("backtest_input_version", "decision_price_policy", "mtf_parity",

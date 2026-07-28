@@ -22,7 +22,18 @@ from app.engines.ai_decision.signal_generator import _price_round
 from app.backtesting.resolution_core import (
     step_bar, new_walk_state, WalkState, resolve_inside_bar_ambiguity,
 )
-from app.services.candle_window import UnknownTimeframeError, closed_candles
+from app.backtesting.mtf_window import (
+    MTF_BAR_LIMIT,
+    MTF_TIMEFRAMES,
+    build_mtf_data,
+)
+from app.collectors.binance_collector import BinanceCollector
+from app.services.candle_window import (
+    CLOSE_TIME_COLUMN,
+    UnknownTimeframeError,
+    closed_candles,
+    timeframe_duration,
+)
 from app.services.trade_geometry import planned_rr
 
 logger = logging.getLogger(__name__)
@@ -74,9 +85,51 @@ EXECUTION_START_POLICY = "next_closed_bar"
 DECISION_PRICE_POLICY = "previous_closed_bar_close_proxy"
 # Consequence of the line above: close, not a price a minute into the next candle.
 PRODUCTION_INTRABAR_PARITY = "approximate"
-# is_backtest=True skips the live MTF fetch and no caller supplies mtf_data, so
-# mtf_trends is always empty here while production computes it from 15m/1h/4h.
-MTF_PARITY = "unavailable"
+# F1-C — MTF frames are now supplied and sliced as-of the decision instant, using
+# production's own fixed 15m/1h/4h list, its bias function and its penalty.
+MTF_PARITY = "exact"
+MTF_ALIGNMENT_POLICY = "as_of_close_time_per_timeframe"
+MTF_DATA_SOURCE = "binance_klines_historical"
+
+# F1-C — the confidence gate. The score itself was already being computed by
+# generate_signal on every backtest bar; what was missing was production's rule
+# for acting on it. Exact only BECAUSE MTF is exact: mtf_penalty is a term of the
+# confidence formula, so a backtest without MTF produced a score systematically
+# 15.0 higher per disagreeing frame, and gating that number would have admitted
+# precisely the calls production rejects.
+CONFIDENCE_SCORE_PARITY = "exact"
+CONFIDENCE_GATE_POLICY = "min_actionable_confidence"
+# Mirrors scheduler.py:338. Duplicated rather than imported because the live value
+# is a function-local inside _generate_signal and importing the scheduler would
+# drag the whole live runtime into the backtest. A test reads the scheduler's
+# source and fails if the two ever diverge.
+MIN_ACTIONABLE_CONFIDENCE = 65.0
+# Production's reversal path needs an ACTIVE opposite signal. The backtest holds
+# at most one position and makes no decision at all while one is open
+# (`len(active_trades) == 0`), so that branch is structurally unreachable here.
+REVERSAL_GATE_POLICY = "not_applicable_single_position"
+
+# Base weights only. The adaptive layer is NOT unmeasurable — its output is stored
+# per candidate — but reproducing the state IN FORCE at a past bar needs an as-of
+# rebuild of CoinMemory, which has no cutoff parameter today and whose existing
+# rebuild overwrites the live row. Applying TODAY's learned weights to past bars
+# would be look-ahead wearing a parity label, so the backtest keeps the static mix
+# and says so.
+ADAPTIVE_WEIGHTS_PARITY = "not_applied"
+ADAPTIVE_WEIGHTS_POLICY = "static_base_weights"
+
+# What still separates a backtest number from a live one. Carried in the report so
+# a reader does not have to remember it.
+PARITY_LIMITATIONS = (
+    "decision price is the closed bar's close; production anchors on the live "
+    "intrabar price (historical OHLCV has no intrabar path)",
+    "engine weights are the static base mix; production applies regime and "
+    "coin-memory tilts whose state at a past bar is not reconstructible without "
+    "an as-of CoinMemory rebuild",
+    "the reversal gate and symbol occupancy have no backtest equivalent — the "
+    "walk holds one position and decides nothing while it is open",
+    "no commission or slippage model on either side",
+)
 
 
 def apply_backtest_bar(trade, k: int, bar, max_age: int) -> bool:
@@ -146,10 +199,58 @@ class BacktestReport:
     decision_price_policy: str = DECISION_PRICE_POLICY
     production_intrabar_parity: str = PRODUCTION_INTRABAR_PARITY
     mtf_parity: str = MTF_PARITY
+    mtf_alignment_policy: str = MTF_ALIGNMENT_POLICY
+    mtf_data_source: str = MTF_DATA_SOURCE
+    adaptive_weights_parity: str = ADAPTIVE_WEIGHTS_PARITY
+    adaptive_weights_policy: str = ADAPTIVE_WEIGHTS_POLICY
+    confidence_score_parity: str = CONFIDENCE_SCORE_PARITY
+    confidence_gate_policy: str = CONFIDENCE_GATE_POLICY
+    confidence_threshold: float = MIN_ACTIONABLE_CONFIDENCE
+    reversal_gate_policy: str = REVERSAL_GATE_POLICY
+    # Not "exact": the intrabar price proxy and the adaptive layer both differ.
+    overall_decision_parity: str = "approximate"
+    parity_limitations: List[str] = field(default_factory=lambda: list(PARITY_LIMITATIONS))
+    # How the two new gates actually bit, so a metrics change can be attributed.
+    mtf_frames_available: int = 0
+    candidates_rejected_by_confidence: int = 0
+    candidates_holded_by_mtf: int = 0
+    confidence_distribution: Dict[str, float] = field(default_factory=dict)
     # How many trailing rows the closed-candle cut removed. Non-zero means the
     # fetch included a candle that was still forming — the run is unaffected, but
     # the number says so out loud rather than leaving it to be inferred.
     dropped_forming_bars: int = 0
+
+
+def _confidence_summary(values: List[float]) -> Dict[str, float]:
+    """Percentiles of the scored confidences, plus how many cleared the gate.
+
+    Reported because the gate's effect is only interpretable next to the
+    distribution it cut: "12 rejected" means something different when the median
+    is 64 than when it is 80.
+    """
+    if not values:
+        return {}
+    v = sorted(values)
+    q = lambda p: v[min(len(v) - 1, int(len(v) * p))]
+    above = sum(1 for x in v if x >= MIN_ACTIONABLE_CONFIDENCE)
+    return {
+        "n": float(len(v)),
+        "p10": round(q(0.10), 2), "median": round(q(0.50), 2), "p90": round(q(0.90), 2),
+        "min": round(v[0], 2), "max": round(v[-1], 2),
+        "pct_at_or_above_threshold": round(100.0 * above / len(v), 2),
+    }
+
+
+def _close_time_index(df: pd.DataFrame, timeframe: str) -> pd.DatetimeIndex:
+    """When each primary bar closed — the instant a decision on it is made."""
+    idx = pd.DatetimeIndex(df.index)
+    idx = idx.tz_localize("UTC") if idx.tz is None else idx.tz_convert("UTC")
+    if CLOSE_TIME_COLUMN in df.columns:
+        raw = pd.to_datetime(df[CLOSE_TIME_COLUMN], utc=True, errors="coerce")
+        ct = pd.DatetimeIndex(raw)
+        if not ct.isna().any():
+            return ct
+    return idx + timeframe_duration(timeframe)
 
 
 class BacktestEngine:
@@ -157,6 +258,40 @@ class BacktestEngine:
 
     def __init__(self) -> None:
         self.decision_engine = AIDecisionEngine()
+
+    async def _fetch_mtf_frames(self, symbol: str, primary: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+        """Production's 15m/1h/4h frames covering the walk's span.
+
+        `endTime` is anchored past the last primary bar and enough bars are asked
+        for to cover the window plus the EMA warm-up `calculate_trend_bias` needs.
+        A frame that cannot be fetched is omitted, not faked: downstream a missing
+        timeframe reads as "no opinion", which is what not knowing actually means.
+        """
+        frames: Dict[str, pd.DataFrame] = {}
+        if primary is None or len(primary) == 0:
+            return frames
+        idx = pd.DatetimeIndex(primary.index)
+        idx = idx.tz_localize("UTC") if idx.tz is None else idx.tz_convert("UTC")
+        span_h = max(1.0, (idx[-1] - idx[0]).total_seconds() / 3600.0)
+
+        collector = BinanceCollector()
+        try:
+            for tf in MTF_TIMEFRAMES:
+                try:
+                    dur_h = timeframe_duration(tf).total_seconds() / 3600.0
+                    need = int(span_h / dur_h) + MTF_BAR_LIMIT + 10
+                    end_ms = int((idx[-1] + timeframe_duration(tf)).timestamp() * 1000)
+                    frames[tf] = await collector.fetch_ohlcv(
+                        symbol, tf, limit=min(1000, max(need, 100)), end_time_ms=end_ms)
+                except Exception as exc:      # noqa: BLE001 — one frame, not the run
+                    logger.warning("[F1-C] %s MTF fetch failed for %s: %s",
+                                   symbol, tf, type(exc).__name__)
+        finally:
+            try:
+                await collector.close()
+            except Exception:                 # noqa: BLE001
+                pass
+        return frames
 
     async def run_backtest(
         self,
@@ -167,6 +302,7 @@ class BacktestEngine:
         risk_pct: float = 2.0,  # 2% risk of current capital per trade
         max_age: int = 48,      # signal lifetime in WALL-CLOCK HOURS (live = fixed 48h)
         execution_model: str = "conservative",
+        mtf_frames: Optional[Dict[str, pd.DataFrame]] = None,
     ) -> BacktestReport:
         """Run step-by-step backtest simulation."""
         # F1-B' — bound the dataset to bars that have definitively closed, ONCE,
@@ -201,12 +337,25 @@ class BacktestEngine:
                      "1h": 1.0, "4h": 4.0, "1d": 24.0, "1w": 168.0}
         max_age_bars = max(1, round(max_age / _TF_HOURS.get(timeframe, 1.0)))
 
+        # F1-C — the multi-timeframe input. Fetched ONCE for the whole run (four
+        # klines requests total, not one per bar) and then sliced as-of each
+        # decision. Injectable so the walk can be tested without a network.
+        if mtf_frames is None:
+            mtf_frames = await self._fetch_mtf_frames(symbol, df)
+        primary_close = _close_time_index(df, timeframe)
+
         capital = initial_capital
         equity_curve: List[Dict[str, Any]] = []
         trades_log: List[Dict[str, Any]] = []
         active_trades: List[Trade] = []
         
         trade_counter = 0
+        # F1-C counters: how the two new gates actually bit, so a metrics change
+        # can be attributed to a gate rather than guessed at.
+        confidences: List[float] = []
+        rejected_by_confidence = 0
+        holded = 0
+        mtf_frames_seen = 0
         consecutive_wins = 0
         consecutive_losses = 0
         current_win_streak = 0
@@ -350,6 +499,16 @@ class BacktestEngine:
                 # Slice dataframe up to and including the current closed bar
                 sub_df = df.iloc[:i + 1]
 
+                # F1-C — MTF as-of THIS decision instant, which is when bar i
+                # CLOSED. Filtering on close time is the whole point: the
+                # orchestrator's own backtest slice compares open times, so a 4h
+                # bar opening at 08:00 and closing at 11:59:59 would survive a
+                # 08:15 decision. Pre-filtering here means it is already gone and
+                # that second slice cannot put it back.
+                decision_time = primary_close[i].to_pydatetime()
+                mtf_data = build_mtf_data(mtf_frames, decision_time)
+                mtf_frames_seen = max(mtf_frames_seen, len(mtf_data))
+
                 try:
                     # Run Orchestrator with backtest flag to skip live MTF fetches
                     decision = await self.decision_engine.analyze_and_decide(
@@ -359,13 +518,31 @@ class BacktestEngine:
                         portfolio_size=capital,
                         risk_pct=risk_pct,
                         is_backtest=True,
+                        mtf_data=mtf_data,
                     )
 
                     sig_type = decision.get("signal_type")
                     direction = decision.get("direction")
+                    conf = decision.get("confidence_score")
+                    if conf is not None:
+                        confidences.append(float(conf))
+
+                    # F1-C — production's confidence gate, at production's point in
+                    # the sequence: after the engines have spoken and the MTF
+                    # demotion has been applied, before anything is acted on
+                    # (scheduler.py:338-339). Exact only because MTF is exact —
+                    # mtf_penalty is a term of this very score, so gating a
+                    # backtest score computed without MTF would have admitted the
+                    # calls production rejects.
+                    actionable = sig_type in ["STRONG_BUY", "BUY", "SELL", "STRONG_SELL"]
+                    if actionable and conf is not None and float(conf) < MIN_ACTIONABLE_CONFIDENCE:
+                        rejected_by_confidence += 1
+                        actionable = False
+                    elif not actionable:
+                        holded += 1
 
                     # We simulate entry on BUY / SELL signals
-                    if sig_type in ["STRONG_BUY", "BUY", "SELL", "STRONG_SELL"]:
+                    if actionable:
                         trade_counter += 1
 
                         # KEY1-c (D2): enter at the entry-zone MIDPOINT with the
@@ -501,6 +678,10 @@ class BacktestEngine:
             max_consecutive_wins=consecutive_wins,
             max_consecutive_losses=consecutive_losses,
             dropped_forming_bars=dropped_forming,
+            mtf_frames_available=mtf_frames_seen,
+            candidates_rejected_by_confidence=rejected_by_confidence,
+            candidates_holded_by_mtf=holded,
+            confidence_distribution=_confidence_summary(confidences),
             equity_curve=equity_curve,
             trades_log=trades_log,
             avg_planned_rr_tp1=avg_planned_rr_tp1,

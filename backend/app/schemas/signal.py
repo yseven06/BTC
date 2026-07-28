@@ -254,6 +254,22 @@ class BacktestResponse(BaseModel):
     production_intrabar_parity: Optional[str] = None
     mtf_parity: Optional[str] = None
     dropped_forming_bars: Optional[int] = None
+    # F1-C parity provenance. All optional so an older caller or a stored report
+    # without them still validates.
+    mtf_alignment_policy: Optional[str] = None
+    mtf_data_source: Optional[str] = None
+    adaptive_weights_parity: Optional[str] = None
+    adaptive_weights_policy: Optional[str] = None
+    confidence_score_parity: Optional[str] = None
+    confidence_gate_policy: Optional[str] = None
+    confidence_threshold: Optional[float] = None
+    reversal_gate_policy: Optional[str] = None
+    overall_decision_parity: Optional[str] = None
+    parity_limitations: Optional[List[str]] = None
+    mtf_frames_available: Optional[int] = None
+    candidates_rejected_by_confidence: Optional[int] = None
+    candidates_holded_by_mtf: Optional[int] = None
+    confidence_distribution: Optional[Dict[str, float]] = None
     equity_curve: List[Dict[str, Any]]
     trades_log: List[Dict[str, Any]]
 
