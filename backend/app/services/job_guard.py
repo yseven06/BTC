@@ -80,6 +80,30 @@ class JobSpec:
 # actually guarantees the cadence.
 PER_ASSET_BUDGET_SECONDS = 45.0
 
+# How long a cancelled job may spend releasing its resources before the guard
+# stops waiting for it.
+#
+# CP-HTTP-RESILIENCE-1's deadline was SOFT: asyncio.timeout starts the
+# cancellation on time, but `async with` does not return until the coroutine has
+# finished unwinding, so an unbounded `finally` made the deadline unbounded too.
+# Measured on 2026-07-28: a 30s budget released its slot after 127.1s, and a
+# later run was still holding the slot 1363s in. Reproduced exactly — a body
+# with no cleanup returns at 0.50s against a 0.5s budget (hard), one with a 2s
+# cleanup returns at 2.52s (soft), one whose cleanup never finishes never
+# returns at all.
+#
+# So the guard now waits for cleanup only this long. Measured healthy cleanup
+# cost, which is what this has to cover:
+#
+#   httpx aclose(), unused client        p50 0.03ms  p90 0.04ms  max 6.05ms
+#   httpx aclose(), 2 live keepalives    p50 0.10ms  p90 0.11ms  max 0.11ms
+#   httpx aclose(), cancelled request    p50 0.01ms  p90 0.02ms  max 0.02ms
+#
+# 5s is ~800x the slowest measured step, so no healthy cleanup can trip it,
+# while budget + grace stays below every job's cadence (price_alerts 35s < 60s,
+# perf_tracking 95s < 120s, signals_15m 605s < 900s).
+CLEANUP_GRACE_SECONDS = 5.0
+
 # How far past its cadence a critical job may go before liveness calls it stale.
 # 2.5x means price_alerts (60s) is flagged after 150s and signals_15m (900s)
 # after ~37 min — both well inside the 45-minute outage that went unnoticed.
@@ -163,10 +187,58 @@ class _Liveness:
     upstream_dns_errors: int = 0
     assets_skipped: int = 0
     last_error_kind: Optional[str] = None
+    # CP-HTTP-RESILIENCE-2 — cancellation and cleanup are separate phases, and
+    # conflating them is what hid the 30s -> 127s gap. These say which one ran long.
+    cancellation_requested_at: Optional[str] = None
+    cleanup_started_at: Optional[str] = None
+    cleanup_completed_at: Optional[str] = None
+    cleanup_duration_seconds: Optional[float] = None
+    cleanup_overrun: int = 0
+    forced_cleanup: int = 0
+    orphan_tasks: int = 0
+    deadline_overrun_seconds: Optional[float] = None
+    slot_release_seconds: Optional[float] = None
+    last_cleanup_error: Optional[str] = None
 
 
 _STATE: Dict[str, _Liveness] = {}
 _PROCESS_START = time.monotonic()
+
+# Strong references to tasks the guard stopped waiting for. A task with no live
+# reference can be garbage-collected mid-flight and vanish silently, so an
+# abandoned cleanup is HELD here until it finishes — abandoned by the scheduler,
+# not by the process. Counted and logged rather than forgotten.
+_ORPHANS: "set[asyncio.Task[Any]]" = set()
+
+
+def _abandon(job_id: str, task: "asyncio.Task[Any]") -> None:
+    """Stop waiting for `task`, but keep it observable until it really ends."""
+    _ORPHANS.add(task)
+    e = _entry(job_id)
+    e.orphan_tasks += 1
+    e.forced_cleanup += 1
+
+    def _done(t: "asyncio.Task[Any]") -> None:
+        _ORPHANS.discard(t)
+        ent = _entry(job_id)
+        ent.orphan_tasks = max(0, ent.orphan_tasks - 1)
+        if t.cancelled():
+            logger.warning("[JobGuard] job=%s terk edilen cleanup sonunda iptal edildi", job_id)
+            return
+        exc = t.exception()
+        if exc is not None:
+            ent.last_cleanup_error = type(exc).__name__
+            logger.warning("[JobGuard] job=%s terk edilen cleanup %s ile bitti",
+                           job_id, type(exc).__name__)
+        else:
+            logger.info("[JobGuard] job=%s terk edilen cleanup sonunda tamamlandi", job_id)
+
+    task.add_done_callback(_done)
+
+
+def orphan_count() -> int:
+    """Tasks the guard has stopped waiting for and that have not ended yet."""
+    return len(_ORPHANS)
 
 
 def _entry(job_id: str) -> _Liveness:
@@ -180,6 +252,9 @@ def _now_iso() -> str:
 def reset_for_tests() -> None:
     """Clear accumulated liveness. Test-only; production never calls this."""
     _STATE.clear()
+    for t in list(_ORPHANS):
+        t.cancel()
+    _ORPHANS.clear()
 
 
 def record_start(job_id: str) -> None:
@@ -276,6 +351,8 @@ def snapshot() -> Dict[str, Any]:
             "critical": spec.critical,
             "budget_seconds": spec.budget_seconds,
             "cadence_seconds": spec.cadence_seconds,
+            "cleanup_grace_seconds": CLEANUP_GRACE_SECONDS,
+            "wall_clock_limit_seconds": spec.budget_seconds + CLEANUP_GRACE_SECONDS,
             "last_started_at": e.started_at,
             "last_finished_at": e.finished_at,
             "last_success_at": e.success_at,
@@ -289,12 +366,28 @@ def snapshot() -> Dict[str, Any]:
             "assets_skipped_count": e.assets_skipped,
             "last_error_kind": e.last_error_kind,
             "stale": stale,
+            # Cancellation vs cleanup, kept apart: a job that overran its budget
+            # and one whose cleanup would not finish need different answers, and
+            # the previous single "deadline exceeded" counter could not tell them
+            # apart.
+            "cancellation_requested_at": e.cancellation_requested_at,
+            "cleanup_started_at": e.cleanup_started_at,
+            "cleanup_completed_at": e.cleanup_completed_at,
+            "cleanup_duration_seconds": e.cleanup_duration_seconds,
+            "cleanup_overrun_count": e.cleanup_overrun,
+            "forced_cleanup_count": e.forced_cleanup,
+            "orphan_task_count": e.orphan_tasks,
+            "deadline_overrun_seconds": e.deadline_overrun_seconds,
+            "slot_release_seconds": e.slot_release_seconds,
+            "last_cleanup_error": e.last_cleanup_error,
         }
     return {
-        "degraded": bool(stale_jobs or overrunning),
+        "degraded": bool(stale_jobs or overrunning or _ORPHANS),
         "critical_job_stale": bool(stale_jobs),
         "stale_jobs": stale_jobs,
         "overrunning_jobs": overrunning,
+        "cleanup_grace_seconds": CLEANUP_GRACE_SECONDS,
+        "orphan_task_count": len(_ORPHANS),
         "jobs": jobs,
     }
 
@@ -304,39 +397,91 @@ def snapshot() -> Dict[str, Any]:
 # --------------------------------------------------------------------------- #
 
 async def run_with_deadline(job_id: str, coro: Awaitable[Any],
-                            budget: Optional[float] = None) -> Any:
-    """Await `coro`, cancelling it if it outlives the job's budget.
+                            budget: Optional[float] = None,
+                            cleanup_grace: Optional[float] = None) -> Any:
+    """Run `coro`, and return within `budget + cleanup_grace` no matter what.
 
-    On expiry asyncio.timeout cancels the inner await, every `finally` on the
-    way out runs (which is how the collectors' `await client.close()` still
-    fires), and JobDeadlineExceeded is raised so the caller records ONE event
-    rather than a silent disappearance.
+    Two separate phases, because conflating them is what made the previous
+    deadline soft:
 
-    A CancelledError that did NOT come from this deadline — process shutdown,
-    an outer cancel — is re-raised untouched. Swallowing it would leave the
-    scheduler believing a job is still alive after the loop tore it down.
+      business  — up to `budget`. Overrunning here cancels the work.
+      cleanup   — up to `cleanup_grace`, and ONLY resource release. If the
+                  coroutine has not finished unwinding by then the guard stops
+                  waiting, releases the scheduler slot, and hands the task to
+                  the orphan registry.
+
+    The earlier version awaited the body inside `async with asyncio.timeout(...)`.
+    That block does not return until the coroutine has finished unwinding, so a
+    `finally` that blocked forever held the slot forever — measured in
+    production at 127.1s against a 30s budget, and once at 1363s and counting.
+    Here the wait is on a Task, so declining to wait any longer is possible.
+
+    An abandoned task is NOT forgotten: a strong reference is kept (an unheld
+    task can be garbage-collected mid-flight and disappear), it is counted in
+    telemetry, and its eventual outcome is logged.
+
+    A CancelledError from outside — process shutdown, an outer cancel — still
+    propagates unchanged; the body is cancelled first so shutdown does not leave
+    work running, but the error is never relabelled as a deadline.
     """
     limit = budget_for(job_id) if budget is None else budget
+    grace = CLEANUP_GRACE_SECONDS if cleanup_grace is None else cleanup_grace
     started = time.monotonic()
+    entry = _entry(job_id)
+    task: "asyncio.Task[Any]" = asyncio.ensure_future(coro)
+
     try:
-        async with asyncio.timeout(limit):
-            return await coro
+        done, _ = await asyncio.wait({task}, timeout=limit)
     except asyncio.CancelledError:
-        # asyncio.timeout converts its own cancellation to TimeoutError, so
-        # reaching here means somebody else cancelled us.
+        task.cancel()
+        _, pending = await asyncio.wait({task}, timeout=grace)
+        if pending:
+            _abandon(job_id, task)
         raise
-    except (asyncio.TimeoutError, TimeoutError) as exc:
-        elapsed = time.monotonic() - started
+
+    if done:
+        entry.slot_release_seconds = round(time.monotonic() - started, 3)
+        entry.deadline_overrun_seconds = None
+        return task.result()          # re-raises whatever the body raised
+
+    # --- budget spent: cancel the work, then bound the unwinding ---
+    cancel_at = time.monotonic()
+    entry.cancellation_requested_at = _now_iso()
+    entry.cleanup_started_at = entry.cancellation_requested_at
+    task.cancel()
+
+    _, pending = await asyncio.wait({task}, timeout=grace)
+    cleanup_seconds = time.monotonic() - cancel_at
+    entry.cleanup_duration_seconds = round(cleanup_seconds, 3)
+
+    if pending:
+        entry.cleanup_overrun += 1
+        entry.cleanup_completed_at = None
+        _abandon(job_id, task)
         logger.error(
-            "[JobGuard] job=%s deadline=%.0fs elapsed=%.1fs — cancelled and slot released",
-            job_id, limit, elapsed,
+            "[JobGuard] job=%s deadline=%.0fs cleanup_grace=%.0fs — cleanup asildi, "
+            "slot zorla serbest birakildi, gorev orphan kaydina alindi",
+            job_id, limit, grace,
         )
-        raise JobDeadlineExceeded(job_id, limit) from exc
+    else:
+        entry.cleanup_completed_at = _now_iso()
+        if task.cancelled() is False and task.exception() is not None:
+            entry.last_cleanup_error = type(task.exception()).__name__
+
+    total = time.monotonic() - started
+    entry.slot_release_seconds = round(total, 3)
+    entry.deadline_overrun_seconds = round(total - limit, 3)
+    logger.error(
+        "[JobGuard] job=%s deadline=%.0fs toplam=%.1fs cleanup=%.2fs%s — slot serbest",
+        job_id, limit, total, cleanup_seconds, " (CLEANUP ASIMI)" if pending else "",
+    )
+    raise JobDeadlineExceeded(job_id, limit)
 
 
 async def run_asset_with_deadline(job_id: str, symbol: str, timeframe: str,
                                   coro: Awaitable[Any],
-                                  budget: Optional[float] = None) -> bool:
+                                  budget: Optional[float] = None,
+                                  cleanup_grace: Optional[float] = None) -> bool:
     """Run one asset's work under its own bound.
 
     Returns True if it finished, False if it was given up on. A False here is
@@ -348,23 +493,44 @@ async def run_asset_with_deadline(job_id: str, symbol: str, timeframe: str,
     module constant is the single source of truth and a test can move it.
     """
     budget = PER_ASSET_BUDGET_SECONDS if budget is None else budget
+    grace = CLEANUP_GRACE_SECONDS if cleanup_grace is None else cleanup_grace
+    task: "asyncio.Task[Any]" = asyncio.ensure_future(coro)
+
     try:
-        async with asyncio.timeout(budget):
-            await coro
-        return True
+        done, _ = await asyncio.wait({task}, timeout=budget)
     except asyncio.CancelledError:
+        task.cancel()
+        _, pending = await asyncio.wait({task}, timeout=grace)
+        if pending:
+            _abandon(job_id, task)
         raise
-    except (asyncio.TimeoutError, TimeoutError) as exc:
-        kind = record_asset_skipped(job_id, exc)
-        logger.warning(
-            "[JobGuard] job=%s symbol=%s timeframe=%s budget=%.0fs kind=%s — asset skipped",
-            job_id, symbol, timeframe, budget, kind,
-        )
-        return False
-    except Exception as exc:  # noqa: BLE001 — one asset must not end the sweep
-        kind = record_asset_skipped(job_id, exc)
-        logger.warning(
-            "[JobGuard] job=%s symbol=%s timeframe=%s kind=%s error=%s — asset skipped",
-            job_id, symbol, timeframe, kind, type(exc).__name__,
-        )
-        return False
+
+    if done:
+        try:
+            task.result()
+            return True
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001 — one asset must not end the sweep
+            kind = record_asset_skipped(job_id, exc)
+            logger.warning(
+                "[JobGuard] job=%s symbol=%s timeframe=%s kind=%s error=%s — asset skipped",
+                job_id, symbol, timeframe, kind, type(exc).__name__,
+            )
+            return False
+
+    # The asset outlived its budget. Same two-phase shape as the whole-job
+    # guard: cancel, then bound the unwinding so one asset cannot hold the
+    # sweep — which is what it would do if its cleanup never finished.
+    task.cancel()
+    _, pending = await asyncio.wait({task}, timeout=grace)
+    kind = record_asset_skipped(job_id, asyncio.TimeoutError())
+    if pending:
+        _entry(job_id).cleanup_overrun += 1
+        _abandon(job_id, task)
+    logger.warning(
+        "[JobGuard] job=%s symbol=%s timeframe=%s budget=%.0fs kind=%s — asset skipped%s",
+        job_id, symbol, timeframe, budget, kind,
+        " (cleanup asimi, orphan)" if pending else "",
+    )
+    return False
