@@ -120,11 +120,28 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/health", tags=["System"])
 async def health_check():
-    """Health check endpoint for container / server validation."""
-    return {
+    """Liveness for the container healthcheck, plus scheduler observability.
+
+    `status` and `service` are unchanged and always present: the compose
+    healthcheck only asserts that this responds, and a degraded scheduler must
+    NOT take the container down — restarting it would discard the very state
+    that says something is wrong, and the web surface is still serving fine.
+
+    The `scheduler` block is additive. It exists because on 2026-07-28 signal
+    generation stopped for 45 minutes while this endpoint answered 200 in 4ms:
+    it reported process liveness and had no idea the scheduler existed. Read
+    `scheduler.degraded` / `scheduler.critical_job_stale` for that question.
+    """
+    body = {
         "status": "healthy",
         "service": "zatetrade-backend",
     }
+    try:
+        from app.services import job_guard
+        body["scheduler"] = job_guard.snapshot()
+    except Exception:  # noqa: BLE001 — telemetry must never break liveness
+        logger.debug("scheduler liveness snapshot unavailable", exc_info=True)
+    return body
 
 
 @app.exception_handler(Exception)

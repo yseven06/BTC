@@ -13,6 +13,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Awaitable, Dict
 
+from apscheduler.events import EVENT_JOB_MAX_INSTANCES, EVENT_JOB_MISSED
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import func, select
@@ -34,6 +35,7 @@ from app.notifications.service import notify_signal
 from app.engines.market_regime import detect_regime
 from app.services.candle_window import analysis_window
 from app.services.intelligence import build_snapshot
+from app.services import job_guard
 from app.services.coin_memory import load_effective_weights_meta, update_coin_memory
 from app.services.lifecycle_log import make_event
 from app.services.candidate_log import record_candidate
@@ -79,15 +81,23 @@ def get_job_status() -> Dict[str, Dict[str, Any]]:
 
 
 async def _run_tracked(job_id: str, coro: Awaitable[Any]) -> Any:
-    """Await `coro` while recording start/end/result/error for `job_id`."""
+    """Await `coro` under its whole-job deadline, recording start/end/result/error.
+
+    The deadline is the point of this wrapper as much as the bookkeeping is.
+    Every HTTP request underneath is already bounded; the job was not, so a
+    degraded upstream turned a 4-minute sweep into a multi-hour one that
+    outlived its own cadence and — under max_instances=1 — suppressed every
+    later run. See app/services/job_guard.py for the measured arithmetic.
+    """
     _JOB_STATUS[job_id] = {
         **_JOB_STATUS.get(job_id, {}),
         "label": _JOB_LABELS.get(job_id, job_id),
         "running": True,
         "started_at": datetime.now(timezone.utc).isoformat(),
     }
+    job_guard.record_start(job_id)
     try:
-        result = await coro
+        result = await job_guard.run_with_deadline(job_id, coro)
         _JOB_STATUS[job_id].update({
             "running": False,
             "last_run_at": datetime.now(timezone.utc).isoformat(),
@@ -95,9 +105,22 @@ async def _run_tracked(job_id: str, coro: Awaitable[Any]) -> Any:
             "last_result": result if isinstance(result, (dict, list, str, int, float, type(None))) else str(result),
             "last_error": None,
         })
+        job_guard.record_success(job_id)
         return result
+    except asyncio.CancelledError:
+        # Shutdown or an outer cancel — not our deadline. Clear `running` so the
+        # admin panel and liveness snapshot do not show a job that no longer
+        # exists, then let the cancellation continue unswallowed.
+        _JOB_STATUS[job_id].update({
+            "running": False,
+            "last_run_at": datetime.now(timezone.utc).isoformat(),
+            "last_status": "cancelled",
+        })
+        job_guard.record_failure(job_id, asyncio.CancelledError())
+        raise
     except Exception as exc:
-        logger.error("[Scheduler] Job %s failed: %s", job_id, exc, exc_info=True)
+        kind = job_guard.record_failure(job_id, exc)
+        logger.error("[Scheduler] Job %s failed (kind=%s): %s", job_id, kind, exc, exc_info=True)
         _JOB_STATUS[job_id].update({
             "running": False,
             "last_run_at": datetime.now(timezone.utc).isoformat(),
@@ -129,6 +152,12 @@ async def _job_perf_tracking() -> None:
 
 async def _job_price_alerts() -> None:
     await _run_tracked("price_alerts", _check_price_alerts())
+
+
+async def _job_startup_check() -> None:
+    # Routed through _run_tracked like every other job so the boot-time sweep is
+    # bounded too — it makes the same upstream calls and could wedge the same way.
+    await _run_tracked("startup_check", _startup_generate_if_empty())
 
 
 async def trigger_job_now(job_id: str) -> bool:
@@ -622,17 +651,26 @@ async def _run_all_signals(timeframe: str = "1h") -> None:
         res = await db.execute(query)
         assets = res.scalars().all()
 
+    job_id = f"signals_{timeframe}"
     logger.info("[Scheduler] Generating %s signals for %d assets", timeframe, len(assets))
+    skipped = 0
     for i, asset in enumerate(assets):
-        try:
-            await _generate_signal(asset.symbol, asset.asset_type.value, timeframe)
-        except Exception as exc:
-            # _generate_signal already logs and absorbs exceptions, but belt-and-braces:
-            logger.error("[Scheduler] _generate_signal raised for %s: %s", asset.symbol, exc)
+        # Per-asset bound. One asset costs at most PER_ASSET_BUDGET_SECONDS
+        # instead of the ~130s an all-timeouts asset would burn across its 13
+        # upstream requests. A skipped asset writes NO candidate and no signal —
+        # the same outcome an asset whose generation raised already had. Stale
+        # or invented data is never substituted.
+        ok = await job_guard.run_asset_with_deadline(
+            job_id, asset.symbol, timeframe,
+            _generate_signal(asset.symbol, asset.asset_type.value, timeframe),
+        )
+        if not ok:
+            skipped += 1
         # Brief spacing so a multi-asset sweep doesn't hammer Binance
         if i < len(assets) - 1:
             await asyncio.sleep(1.0)
-    logger.info("[Scheduler] %s sweep complete", timeframe)
+    logger.info("[Scheduler] %s sweep complete (%d/%d islendi, %d atlandi)",
+                timeframe, len(assets) - skipped, len(assets), skipped)
 
 
 async def _run_performance_tracking() -> Dict[str, Any]:
@@ -791,6 +829,11 @@ async def _startup_generate_if_empty() -> None:
             await _run_all_signals(tf)
 
 
+def _on_job_not_run(event: Any) -> None:
+    """A trigger APScheduler declined — max_instances reached, or a missed fire."""
+    job_guard.record_missed(event.job_id)
+
+
 def start_scheduler() -> AsyncIOScheduler:
     global _scheduler
     if _scheduler and _scheduler.running:
@@ -863,12 +906,17 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # Run startup check as a one-time job 5 seconds after start
     _scheduler.add_job(
-        _startup_generate_if_empty,
+        _job_startup_check,
         "date",
         id="startup_check",
         replace_existing=True,
         name="Startup signal check",
     )
+
+    # A trigger APScheduler refuses is the symptom that went unread for 45
+    # minutes on 2026-07-28 — it only ever reached the log. Counting it makes
+    # "the 11:02 and 11:17 sweeps never ran" answerable from /health.
+    _scheduler.add_listener(_on_job_not_run, EVENT_JOB_MAX_INSTANCES | EVENT_JOB_MISSED)
 
     _scheduler.start()
     logger.info("[Scheduler] Started. Jobs: %s", [j.name for j in _scheduler.get_jobs()])
