@@ -351,6 +351,14 @@ def build_candidate_values(
             # could not be built — absent, never guessed.
             "adaptive_state_telemetry": _adaptive_state_entry(
                 adaptive_snapshot, decision, evaluated_at),
+            # CP-OBS-ENGINE-ERR — which of the nine engines ran and which
+            # returned the crash fallback. Only {score, bias, confidence} is
+            # persisted per engine, and the fallback's (50.0, neutral) pair is
+            # what macro_analysis returns on 100% of candidates and
+            # risk_management on 90%, so without this a failed engine reads as a
+            # neutral opinion. Handed in from the decision payload already
+            # built and already redacted; nothing is recomputed here.
+            "engine_execution_telemetry": decision.get("engine_execution_telemetry"),
         }),
     }
 

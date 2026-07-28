@@ -9,12 +9,13 @@ Explanation Generator.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
-from app.engines.base import BaseEngine, EngineResult
+from app.engines.base import BaseEngine, EngineResult, SignalBias
 from app.engines.technical.engine import TechnicalAnalysisEngine
 from app.engines.market_structure.engine import MarketStructureEngine
 from app.engines.smc.engine import SMCEngine
@@ -32,6 +33,79 @@ from app.collectors.yahoo_collector import YahooCollector
 from app.services.candle_window import analysis_window, closed_candles
 
 logger = logging.getLogger(__name__)
+
+
+# --- engine failure fallback (CP-OBS-ENGINE-ERR) ---------------------------
+#
+# What _safe_run_engine substitutes when an engine raises. Named rather than
+# inlined so the telemetry below reports the values that were actually used
+# instead of a second copy that could drift from them. The numbers themselves
+# are unchanged: 50.0 is neutral on every consensus threshold (neither the
+# bullish >53/<40 pair nor the bearish <47/>60 pair), so an outage can neither
+# confirm nor conflict.
+ENGINE_FALLBACK_SCORE = 50.0
+ENGINE_FALLBACK_BIAS = SignalBias.NEUTRAL
+ENGINE_FALLBACK_CONFIDENCE = 30.0
+
+ENGINE_EXECUTION_TELEMETRY_VERSION = "engine_execution_v1"
+
+
+def _error_fingerprint(engine_name: str, exc: BaseException) -> str:
+    """A stable, redacted identity for one failure mode.
+
+    Deliberately hashed rather than stored plain. The inputs are the engine, the
+    exception's fully-qualified type and the source location that raised — the
+    last of which is repo-relative but still goes through the digest, so nothing
+    reconstructable reaches the database. `str(exc)` is never an input: an
+    exception message is arbitrary text that can carry a URL with a token in it,
+    and a fingerprint that changed with the message would not group failures
+    anyway. The full traceback is already in the logs via exc_info=True; this
+    field exists to count and group, not to diagnose.
+    """
+    tb = exc.__traceback__
+    while tb is not None and tb.tb_next is not None:
+        tb = tb.tb_next
+    where = ""
+    if tb is not None:
+        path = tb.tb_frame.f_code.co_filename.replace("\\", "/")
+        # Repo-relative: an absolute path leaks the deploy layout into the digest
+        # input and would make the same bug fingerprint differently per machine.
+        if "/app/" in path:
+            path = "app/" + path.split("/app/", 1)[1]
+        where = f"{path}:{tb.tb_lineno}"
+    raw = f"{engine_name}|{type(exc).__module__}.{type(exc).__qualname__}|{where}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+
+def build_engine_execution_telemetry(
+    engine_count: int, failures: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """Summarise one analysis run's engine outcomes. Pure; no I/O.
+
+    A crashed engine and a genuinely neutral one are indistinguishable in the
+    candidate log today: only {score, bias, confidence} is persisted, and the
+    fallback (50.0, neutral, 30.0) shares its score and bias with macro_analysis
+    on 100% of candidates and with risk_management on 90%. The only separator is
+    a confidence value nothing queries. This records the distinction directly.
+    """
+    failed = list(failures or [])
+    return {
+        "version": ENGINE_EXECUTION_TELEMETRY_VERSION,
+        "engine_count": int(engine_count),
+        "successful_engine_count": int(engine_count) - len(failed),
+        "failed_engine_count": len(failed),
+        "failed_engines": failed,
+        "fallback_used": bool(failed),
+    }
+
+
+def _engine_execution_or_none(engine_count: int, failures: List[Dict[str, Any]]):
+    """Fail-open wrapper. Telemetry that can break a decision is not telemetry."""
+    try:
+        return build_engine_execution_telemetry(engine_count, failures)
+    except Exception as exc:  # noqa: BLE001 — never let observability decide
+        logger.warning("[EngineTelemetry] summary not built (ignored): %s", exc)
+        return None
 
 
 # Mapping from a given timeframe to how many of its candles make up one
@@ -190,10 +264,15 @@ class AIDecisionEngine:
         tasks = []
         active_engines = []
 
+        # CP-OBS-ENGINE-ERR: a per-call list, not instance state — two symbols
+        # analysed concurrently must not accumulate into the same collector.
+        engine_failures: List[Dict[str, Any]] = []
+
         for engine in self.engines:
             active_engines.append(engine)
             tasks.append(
-                self._safe_run_engine(engine, symbol, timeframe, analysis_df, **kwargs)
+                self._safe_run_engine(engine, symbol, timeframe, analysis_df,
+                                      failures=engine_failures, **kwargs)
             )
 
         # Run multi-timeframe trend checks in parallel with engines
@@ -292,6 +371,12 @@ class AIDecisionEngine:
                 "decision_current_price_source": "full_frame_last_close",
             },
             "engine_results": [res.model_dump() for res in results],
+            # CP-OBS-ENGINE-ERR — which engines actually ran, and which returned
+            # the crash fallback. Observation only; nothing branches on it. Built
+            # in its own try/except because a telemetry error must never be able
+            # to take down a decision that has already been made.
+            "engine_execution_telemetry": _engine_execution_or_none(
+                len(active_engines), engine_failures),
             "explanation_tr": explanations["tr"],
             "explanation_en": explanations["en"],
             "generated_at": pd.Timestamp.now().isoformat(),
@@ -306,20 +391,43 @@ class AIDecisionEngine:
         symbol: str,
         timeframe: str,
         ohlcv_data: pd.DataFrame,
+        *,
+        failures: Optional[List[Dict[str, Any]]] = None,
         **kwargs: Any,
     ) -> EngineResult:
-        """Runs a single engine catching any potential failures to keep the system robust."""
+        """Runs a single engine catching any potential failures to keep the system robust.
+
+        `failures` is an out-parameter: a per-call list the orchestrator owns, so
+        two symbols analysed concurrently cannot see each other's entries. It is
+        appended to, never read here, and nothing in the returned result depends
+        on whether it was passed — the substituted values are identical either
+        way (CP-OBS-ENGINE-ERR is observation only).
+        """
         try:
             return await engine.analyze(symbol, timeframe, ohlcv_data, **kwargs)
         except Exception as e:
             logger.error(f"Error running engine {engine.name} on {symbol}: {str(e)}", exc_info=True)
+            if failures is not None:
+                # Redacted by construction: the exception TYPE and a digest, never
+                # str(e) and never the traceback. The message can carry a URL with
+                # a token in it; the log above already has the full detail.
+                try:
+                    failures.append({
+                        "engine": engine.name,
+                        "error_type": type(e).__name__,
+                        "error_fingerprint": _error_fingerprint(engine.name, e),
+                        "fallback_score": ENGINE_FALLBACK_SCORE,
+                        "fallback_bias": ENGINE_FALLBACK_BIAS.value,
+                        "fallback_confidence": ENGINE_FALLBACK_CONFIDENCE,
+                    })
+                except Exception as tel_exc:  # noqa: BLE001 — telemetry never decides
+                    logger.warning("[EngineTelemetry] failure not recorded (ignored): %s", tel_exc)
             # Return a neutral result with warnings rather than crashing the orchestrator
-            from app.engines.base import SignalBias
             return EngineResult(
                 engine_name=engine.name,
-                score=50.0,
-                bias=SignalBias.NEUTRAL,
-                confidence=30.0,
+                score=ENGINE_FALLBACK_SCORE,
+                bias=ENGINE_FALLBACK_BIAS,
+                confidence=ENGINE_FALLBACK_CONFIDENCE,
                 key_findings=[f"Failed to execute engine {engine.name} due to internal error"],
                 supporting_data={},
                 warnings=[f"Engine error: {str(e)}"],
