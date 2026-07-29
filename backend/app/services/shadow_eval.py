@@ -38,7 +38,8 @@ real signals.
 
 from __future__ import annotations
 
-from datetime import datetime
+import math
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -53,10 +54,124 @@ from app.models.decision_candidate import (
     SHADOW_TP3,
     SHADOW_UNDECIDABLE,
 )
+from app.services.candle_window import TIMEFRAME_DURATIONS
 
 PATH_BAR_WALK = "bar_walk"
 PATH_EXPIRY = "expiry"
 PATH_NO_FILL = "no_fill"
+
+# --- the window a candidate is judged over (CP-SHADOW-PASSB-A) ---------------
+#
+# A signal expires 48 hours after birth (scheduler.py / signals.py set
+# `expires_at = generated_at + 48h`), so 48 hours is both how long a shadow trade
+# may run AND the earliest a candidate can have a settled verdict. One constant
+# for both, because they are the same fact seen from two sides; a test asserts it
+# still matches the expiry the production path actually stamps.
+SHADOW_HORIZON = timedelta(hours=48)
+
+# Bars requested beyond the horizon. Binance's `endTime` is inclusive of the bar
+# containing it and the first walked bar must be STRICTLY after the decision bar,
+# so the query has to reach at least one bar either side of the window to
+# guarantee it is fully covered. 20 is slack for that plus exchange-side gaps
+# (halts, maintenance) which would otherwise silently shorten the window.
+SHADOW_FETCH_SAFETY_BARS = 20
+
+# Binance klines hard cap. Exceeding it does not error — it silently clamps, so
+# the request would come back short and the shortfall would look like missing
+# market data instead of a bad request.
+EXCHANGE_MAX_LIMIT = 1000
+
+SHADOW_PASSB_VERSION = "shadow_passb_v1"
+SHADOW_EXECUTION_MODEL = "conservative"
+
+
+def historical_window(bar_time: datetime, timeframe: str) -> Tuple[datetime, datetime, int]:
+    """(window_start, window_end, request_limit) for ONE candidate's own 48 hours.
+
+    This is the whole point of CP-SHADOW-PASSB-A. The previous runner asked the
+    exchange for "the last 300 bars", which is a window anchored on *now* rather
+    than on the candidate: at 15m, 300 bars span 3d3h, so once a 15m row aged past
+    that it could never be covered again and was retired unmeasured. 685 of the
+    979 evaluable rows are 15m.
+
+    `window_start` is EXCLUSIVE — the decision bar itself is never walked.
+    """
+    dur = TIMEFRAME_DURATIONS.get(timeframe)
+    if dur is None:
+        raise ValueError(f"unsupported timeframe for shadow evaluation: {timeframe!r}")
+    window_end = bar_time + SHADOW_HORIZON
+    # Derived from the timeframe, never a shared constant: a single number would
+    # be right for at most one timeframe and quietly wrong for the rest.
+    needed = math.ceil(SHADOW_HORIZON / dur)
+    limit = min(needed + SHADOW_FETCH_SAFETY_BARS, EXCHANGE_MAX_LIMIT)
+    return bar_time, window_end, limit
+
+
+def clip_to_window(df: Any, bar_time: datetime, timeframe: str) -> Any:
+    """Bars strictly after the decision bar and no later than the horizon.
+
+    Normalises first: the exchange's ordering and uniqueness are not a contract,
+    and a duplicated bar would be walked twice while an out-of-order frame would
+    make "first touch" meaningless. Returns an empty frame rather than raising on
+    a shape it cannot compare — the caller decides what an empty window means.
+    """
+    if df is None or getattr(df, "empty", True):
+        return df
+
+    _start, window_end, _limit = historical_window(bar_time, timeframe)
+
+    idx = df.index
+    tz_aware = getattr(idx, "tz", None) is not None
+
+    def _align(ts: datetime):
+        if tz_aware:
+            return ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
+        return ts.replace(tzinfo=None) if ts.tzinfo else ts
+
+    lo, hi = _align(bar_time), _align(window_end)
+    out = df[~df.index.duplicated(keep="first")].sort_index()
+    try:
+        # STRICTLY after the decision bar, up to and including the horizon bar.
+        return out[(out.index > lo) & (out.index <= hi)]
+    except TypeError:
+        return out.iloc[0:0]
+
+
+def shadow_passb_provenance(
+    *,
+    bar_time: datetime,
+    timeframe: str,
+    requested_limit: int,
+    df: Any,
+    dry_run: bool,
+    intrabar_ambiguous: Optional[bool] = None,
+) -> Dict[str, Any]:
+    """How this shadow evaluation was produced, and what the walk noticed about
+    its own reliability. Additive; never read by the evaluator or by a decision.
+    """
+    start, end, _ = historical_window(bar_time, timeframe)
+    n = 0 if df is None or getattr(df, "empty", True) else int(len(df))
+    first = last = None
+    if n:
+        first = df.index[0].isoformat()
+        last = df.index[-1].isoformat()
+    return {
+        "policy_version": SHADOW_PASSB_VERSION,
+        "evaluator_version": SHADOW_PASSB_VERSION,
+        "execution_model": SHADOW_EXECUTION_MODEL,
+        "horizon_hours": SHADOW_HORIZON.total_seconds() / 3600.0,
+        "fetch_window_start": start.isoformat(),
+        "fetch_window_end": end.isoformat(),
+        "requested_limit": int(requested_limit),
+        "actual_bar_count": n,
+        "first_bar_time": first,
+        "last_bar_time": last,
+        "candidate_evaluated_bar_time": bar_time.isoformat(),
+        # The conservative inside-bar rule is UNCHANGED — this only records that
+        # it had to be applied, which is invisible in the outcome alone.
+        "intrabar_ambiguous": intrabar_ambiguous,
+        "dry_run": bool(dry_run),
+    }
 
 
 def _first_touch(bars: Sequence[Tuple[float, float, float, float]],
@@ -93,6 +208,10 @@ def evaluate_candidate_shadow(
     changing the helper and breaking the live rows that depend on it.)
     """
     out: Dict[str, Any] = {
+        # NOT a writable column — it rides in extra.shadow_passb. Recorded because
+        # a walk that had to break an inside-bar tie is less reliable than one that
+        # did not, and the outcome alone cannot show that. None means "no walk ran".
+        "intrabar_ambiguous": None,
         "shadow_outcome": SHADOW_UNDECIDABLE,
         "shadow_resolution_path": None,
         "shadow_resolution_reason": None,
@@ -185,8 +304,11 @@ def evaluate_candidate_shadow(
         tp1=float(tp1) if tp1 is not None else sl,
         tp2=float(tp2) if tp2 is not None else sl,
         tp3=float(tp3) if tp3 is not None else sl,
-        bars=walk_bars, execution_model="conservative",
+        bars=walk_bars, execution_model=SHADOW_EXECUTION_MODEL,
     )
+    # Surfaced, not acted on: the conservative tie-break already decided the
+    # outcome and that decision is unchanged.
+    out["intrabar_ambiguous"] = bool(res.intrabar_ambiguous)
 
     total_frac = res.realized_return_frac
     if res.remaining_share > 0:

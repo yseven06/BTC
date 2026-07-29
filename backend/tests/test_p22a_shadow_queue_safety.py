@@ -79,19 +79,34 @@ def test_m1_shadow_evaluation_works_for_aware_and_naive_frames(tz):
 
 
 def test_m1_horizon_cap_compares_matching_tz_awareness():
-    """The runner must align both sides before comparing. The previous code
-    compared a tz-aware horizon against a possibly-naive index and swallowed the
-    TypeError, so the cap silently did not apply."""
-    src = inspect.getsource(_runner().evaluate)
+    """The cap must align tz-awareness before comparing, or the comparison raises
+    and (as it once did) gets swallowed, leaving lifetime extrema in the window.
 
-    # No blanket swallow around the cap any more.
-    assert "except Exception:  # noqa: BLE001\n                    pass" not in src
-    # Both branches are present and the naive branch strips the tz.
-    assert "cutoff_ts = horizon.replace(tzinfo=None)" in src
-    assert 'if getattr(idx, "tz", None) is None:' in src
-    # And a real failure is counted and skipped, not measured around.
-    assert "except TypeError" in src
-    assert 'stats["horizon_error"]' in src
+    CP-SHADOW-PASSB-A moved the cap out of the runner into `clip_to_window`,
+    which bounds BOTH sides instead of only the upper one. Asserted behaviourally
+    now rather than by reading the runner's source — a stronger check than the
+    string match this replaced.
+    """
+    import pandas as pd
+    import numpy as np
+    from app.services.shadow_eval import SHADOW_HORIZON, clip_to_window
+
+    def _frame(tz):
+        idx = pd.DatetimeIndex([BAR + timedelta(minutes=15 * i) for i in range(400)])
+        if tz is None:
+            idx = idx.tz_localize(None)
+        n = len(idx)
+        return pd.DataFrame({"open": np.full(n, 1.0), "high": np.full(n, 1.0),
+                             "low": np.full(n, 1.0), "close": np.full(n, 1.0),
+                             "volume": np.full(n, 1.0)}, index=idx)
+
+    for tz in (timezone.utc, None):
+        out = clip_to_window(_frame(tz), BAR, "15m")
+        assert len(out) == 192, (tz, len(out))       # the cap really applied
+        lo = BAR if tz else BAR.replace(tzinfo=None)
+        hi = (BAR + SHADOW_HORIZON) if tz else (BAR + SHADOW_HORIZON).replace(tzinfo=None)
+        assert (out.index > lo).all()                 # decision bar excluded
+        assert (out.index <= hi).all()                # horizon respected
 
 
 def test_m1_naive_horizon_comparison_would_have_raised():
@@ -260,15 +275,27 @@ def test_m1b_report_mode_performs_no_write():
         assert w not in rep, f"report() must be read-only, found {w!r}"
 
     main_src = inspect.getsource(runner.main)
-    # --report skips both writing passes.
-    assert "elif not args.report:" in main_src
-    assert "retire_permanent" in main_src.split("elif not args.report:")[1]
+    # --report skips both passes entirely.
+    assert "if not args.report:" in main_src
+    body = main_src.split("if not args.report:")[1]
+    assert "retire_permanent" in body
+    assert "evaluate(" in body
 
 
 def test_m1b_limit_applies_to_each_pass_independently():
-    main_src = inspect.getsource(_runner().main)
-    assert "retire_permanent(db, args.limit)" in main_src
-    assert "evaluate(args.limit)" in main_src
+    """Both passes must be bounded by --limit, checked structurally so a change
+    to the other keyword arguments cannot break the assertion."""
+    import ast
+    import textwrap
+
+    tree = ast.parse(textwrap.dedent(inspect.getsource(_runner().main)))
+    bounded = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and getattr(node.func, "id", "") in (
+                "retire_permanent", "evaluate"):
+            args = [a for a in node.args if isinstance(a, ast.Attribute)]
+            bounded[node.func.id] = any(a.attr == "limit" for a in args)
+    assert bounded == {"retire_permanent": True, "evaluate": True}, bounded
 
 
 def test_m1b_pending_count_separates_evaluable_from_permanently_unevaluable():
@@ -318,6 +345,7 @@ class _Recorder:
     def __init__(self):
         self.statements = []
         self.commits = 0
+        self.rollbacks = 0
 
     async def __aenter__(self):
         return self
@@ -331,6 +359,11 @@ class _Recorder:
 
     async def commit(self):
         self.commits += 1
+
+    async def rollback(self):
+        # A dry-run still opens a transaction on its first SELECT; rolling it
+        # back is what keeps it off the pooler's idle-in-transaction list.
+        self.rollbacks += 1
 
 
 class _BoomCollector:
@@ -356,15 +389,33 @@ def _wire(monkeypatch, runner, argv):
 
 def test_pass_a_only_never_enters_pass_b(monkeypatch):
     """The real evaluate() is left in place — only the collector is booby-trapped
-    — so this proves the flag skips pass B rather than proving a mock was set."""
+    — so this proves the flag skips pass B rather than proving a mock was set.
+
+    `--write` is now required to reach the write path at all (CP-SHADOW-PASSB-A
+    inverted the default); the flag under test here is still --pass-a-only.
+    """
     runner = _runner()
-    rec = _wire(monkeypatch, runner, ["--pass-a-only", "--limit", "50"])
+    rec = _wire(monkeypatch, runner, ["--write", "--pass-a-only", "--limit", "50"])
 
     asyncio.run(runner.main())        # must not raise
 
     assert rec.commits == 1, "pass A must commit exactly once"
     writes = [s for s in rec.statements if str(s).strip().upper().startswith("UPDATE")]
     assert len(writes) == 1, "exactly one bounded UPDATE, and nothing from pass B"
+
+
+def test_writing_requires_the_write_flag(monkeypatch):
+    """The same run WITHOUT --write must issue no UPDATE and no commit. This is
+    the safety inversion: the destructive mode is no longer the default."""
+    runner = _runner()
+    rec = _wire(monkeypatch, runner, ["--pass-a-only", "--limit", "50"])
+
+    asyncio.run(runner.main())
+
+    assert rec.commits == 0
+    assert rec.rollbacks >= 1, "a dry-run must not leave its transaction open"
+    for stmt in rec.statements:
+        assert str(stmt).strip().upper().startswith("SELECT"), str(stmt)[:80]
 
 
 def test_without_the_flag_pass_b_still_runs(monkeypatch):

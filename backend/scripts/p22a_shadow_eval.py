@@ -12,9 +12,12 @@ SAFETY POSTURE
   * Runs in its own session. It is never imported by the scheduler, the tracker
     or any APScheduler job, so it cannot participate in — or stall — a
     production transaction.
-  * Writes shadow_* columns and nothing else. `_WRITABLE` is asserted against the
-    payload of every UPDATE, so a future edit cannot quietly widen the blast
-    radius to a decision column.
+  * Writes shadow_* columns, plus an additive merge into `extra` under the single
+    key `shadow_passb`. `_assert_write_targets` is asserted against the COMPLETE
+    value set of every UPDATE — including `extra` — so a future edit cannot
+    quietly widen the blast radius to a decision column.
+  * Dry-run is the DEFAULT. `--write` has to be passed by name before any
+    statement other than a SELECT is issued.
   * `WHERE shadow_evaluated_at IS NULL` makes a re-run idempotent: an
     already-evaluated candidate is never re-scored, and two concurrent runs
     cannot both claim the same row.
@@ -26,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
 import sys
 from collections import Counter
@@ -34,26 +38,37 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sqlalchemy import and_, case, or_, select, update  # noqa: E402
+from sqlalchemy import JSON, and_, case, func, or_, select, text, update  # noqa: E402
+from sqlalchemy.dialects.postgresql import JSONB  # noqa: E402
 
 from app.collectors.binance_collector import BinanceCollector  # noqa: E402
 from app.database import async_session_factory  # noqa: E402
 from app.models.decision_candidate import (  # noqa: E402
     EVALUABLE_DIRECTIONS,
     SHADOW_PERMANENT_REASONS,
+    SHADOW_REASON_DATA_UNAVAILABLE,
     SHADOW_REASON_NO_DIRECTION,
     SHADOW_REASON_NO_GEOMETRY,
+    SHADOW_TERMINAL_REASONS,
     SHADOW_UNDECIDABLE,
     SignalDecisionCandidate,
 )
-from app.services.shadow_eval import evaluate_candidate_shadow  # noqa: E402
+from app.services.shadow_eval import (  # noqa: E402
+    SHADOW_HORIZON,
+    clip_to_window,
+    evaluate_candidate_shadow,
+    historical_window,
+    shadow_passb_provenance,
+)
 
 logging.basicConfig(level=logging.WARNING, format="%(message)s")
 log = logging.getLogger("p22a")
 
 # A candidate needs bars AFTER it to be judgeable; signals expire at 48h, so a
-# row younger than that cannot have a settled verdict yet.
-MIN_AGE = timedelta(hours=48)
+# row younger than that cannot have a settled verdict yet. Taken from the shadow
+# module rather than restated: the maturity gate and the walk horizon are the
+# same 48 hours, and two copies could drift into measuring different windows.
+MIN_AGE = SHADOW_HORIZON
 
 # After this age a still-undecidable row is retired instead of retried forever.
 # 7 days, deliberately shorter than the 14-day observation gate: a row still
@@ -81,18 +96,95 @@ _WRITABLE = {
 }
 
 
-def _assert_write_targets(payload: dict) -> None:
-    stray = set(payload) - _WRITABLE
+# `extra` is written too, but as a MERGE expression rather than a value, so it
+# cannot live in _WRITABLE (which is compared against a payload of plain values).
+# Named separately and admitted explicitly, so the guard still sees every column
+# the UPDATE touches instead of being bypassed by a sibling keyword argument.
+_WRITABLE_EXTRA = {"extra"}
+
+
+def _assert_write_targets(payload: dict, *, allow_extra: bool = False) -> None:
+    allowed = _WRITABLE | (_WRITABLE_EXTRA if allow_extra else set())
+    stray = set(payload) - allowed
     if stray:
         raise RuntimeError(f"refusing to write non-shadow columns: {sorted(stray)}")
 
 
-async def _fetch_bars(collector, symbol: str, timeframe: str, limit: int = 300):
+async def _fetch_bars(collector, symbol: str, timeframe: str, bar_time):
+    """The candidate's OWN 48 hours, not the exchange's most recent 48.
+
+    Returns (df, requested_limit, fetch_failed). `fetch_failed` separates "the
+    call did not complete" (transient, retry) from "the exchange answered and had
+    nothing for this window" (permanent, data_unavailable) — collapsing the two
+    is what would make a delisted symbol retry forever.
+
+    An unsupported timeframe is a per-row failure, not a batch one:
+    `historical_window` raises for it, and the whole loop runs inside a single
+    transaction, so letting that escape would discard every verdict the run had
+    already computed.
+    """
     try:
-        return await collector.fetch_ohlcv(symbol, timeframe, limit=limit)
+        _start, window_end, limit = historical_window(bar_time, timeframe)
+    except ValueError as exc:
+        log.warning("  %s %s: %s", symbol, timeframe, exc)
+        return None, 0, True
+    try:
+        df = await collector.fetch_ohlcv(
+            symbol, timeframe, limit=limit,
+            # Inclusive of the bar containing it, so the horizon bar is covered.
+            end_time_ms=int(window_end.timestamp() * 1000),
+        )
+        return df, limit, False
     except Exception as exc:  # noqa: BLE001
         log.warning("  bar fetch failed for %s %s: %s", symbol, timeframe, type(exc).__name__)
-        return None
+        return None, limit, True
+
+
+def extra_merge_expression(provenance: dict):
+    """`extra || {"shadow_passb": ...}` — a MERGE, never an assignment.
+
+    `extra` already carries the F1 decision-input contract, F1-D adaptive state
+    and the engine-execution telemetry. Assigning to the column would delete all
+    of them, so the new key is concatenated onto whatever is there. Cast through
+    jsonb because the column is `json`, which has no `||` operator.
+
+    KNOWN, ACCEPTED SIDE EFFECT: the json->jsonb->json round trip re-renders the
+    whole document in jsonb's canonical form — object keys reordered, whitespace
+    dropped, numbers re-emitted (1e-05 becomes 0.00001). No key and no value is
+    lost, and every reader in the repo goes through .get(), so nothing downstream
+    depends on the text form. It is done in SQL rather than as a read-modify-write
+    in Python deliberately: the merge stays atomic, so a concurrent writer to
+    `extra` cannot be silently clobbered by a stale in-process copy.
+    """
+    return func.coalesce(
+        SignalDecisionCandidate.extra.cast(JSONB), text("'{}'::jsonb")
+    ).concat(
+        func.jsonb_build_object("shadow_passb", func.cast(json.dumps(provenance), JSONB))
+    ).cast(JSON)
+
+
+def _window_is_complete(bar_time, now) -> bool:
+    """Has the candidate's 48h actually elapsed? Until it has, an empty window is
+    'not yet', never 'never'."""
+    return (now - bar_time) >= SHADOW_HORIZON
+
+
+def _exchange_has_nothing(df, bar_time, timeframe) -> bool:
+    """True when the exchange answered but its data ends before this window opens.
+
+    The delisted case: MATICUSDT and FTMUSDT still return klines, they just stop
+    in 2024/2025. Waiting cannot fix that, so it is decided here rather than left
+    to age out of the retry window unmeasured.
+    """
+    if df is None or getattr(df, "empty", True):
+        return False                      # no answer at all -> transient, not proof
+    _start, window_end, _limit = historical_window(bar_time, timeframe)
+    last = df.index[-1]
+    ref = bar_time if getattr(df.index, "tz", None) is not None else bar_time.replace(tzinfo=None)
+    try:
+        return bool(last <= ref)
+    except TypeError:
+        return False
 
 
 def evaluable_predicate():
@@ -174,7 +266,7 @@ async def retire_permanent(db, limit: int, dry_run: bool = False) -> int:
     return result.rowcount or 0
 
 
-async def _finalise_undecidable(db, cand, reason: str) -> None:
+async def _finalise_undecidable(db, cand, reason: str, dry_run: bool = True) -> None:
     """Retire a row that can never produce a verdict.
 
     Writing `shadow_evaluated_at` is the ONLY thing that removes a row from the
@@ -193,6 +285,8 @@ async def _finalise_undecidable(db, cand, reason: str) -> None:
         "shadow_resolution_reason": reason,
     }
     _assert_write_targets(payload)
+    if dry_run:
+        return
     await db.execute(
         update(SignalDecisionCandidate)
         .where(SignalDecisionCandidate.id == cand.id)
@@ -201,7 +295,10 @@ async def _finalise_undecidable(db, cand, reason: str) -> None:
     )
 
 
-async def evaluate(limit: int) -> Counter:
+async def evaluate(limit: int, dry_run: bool = True) -> Counter:
+    """PASS B. Default is dry_run: the write path must be asked for, not defaulted
+    into. Every branch below computes exactly the same verdict either way; the
+    only difference is whether the UPDATE is issued."""
     stats: Counter = Counter()
     cutoff = datetime.now(timezone.utc) - MIN_AGE
     collector = BinanceCollector()
@@ -229,44 +326,46 @@ async def evaluate(limit: int) -> Counter:
             for cand in rows:
                 too_old = (now - cand.evaluated_bar_time) > MAX_RETRY_AGE
 
-                df = await _fetch_bars(collector, cand.symbol or "", cand.timeframe)
-                if df is None or len(df) == 0:
-                    # Transient by assumption — the next run may get bars. But a
-                    # row past MAX_RETRY_AGE has had a week of chances; keeping
-                    # it unclaimed only blocks the queue.
+                raw, requested_limit, fetch_failed = await _fetch_bars(
+                    collector, cand.symbol or "", cand.timeframe, cand.evaluated_bar_time)
+
+                if fetch_failed:
+                    # The call did not complete. That is an absence of an answer,
+                    # never an answer of absence — retry until the week is up.
                     if too_old:
-                        await _finalise_undecidable(db, cand, "no_bars_after_retry_window")
+                        await _finalise_undecidable(db, cand, "no_bars_after_retry_window",
+                                                    dry_run=dry_run)
                         stats["undecidable_terminal"] += 1
                     else:
                         stats["fetch_failed_retry"] += 1
                     continue
 
-                # The evaluator does not truncate for us — the caller owns the
-                # window. Cap it at the 48h life so a touch that happened after
-                # the trade would have closed cannot count as an entry.
-                #
-                # Both sides must agree on tz-awareness. Comparing a tz-aware
-                # horizon against a tz-naive index raises TypeError, and the
-                # previous `except: pass` swallowed it — the cap silently did
-                # not apply and lifetime extrema leaked into the measurement.
-                horizon = cand.evaluated_bar_time + MIN_AGE
-                idx = df.index
-                if getattr(idx, "tz", None) is None:
-                    cutoff_ts = horizon.replace(tzinfo=None) if horizon.tzinfo else horizon
-                else:
-                    cutoff_ts = horizon if horizon.tzinfo else horizon.replace(tzinfo=timezone.utc)
-                try:
-                    df = df[idx <= cutoff_ts]
-                except TypeError as exc:
-                    # Narrow and loud: a frame whose index is not comparable is a
-                    # real problem, not something to silently measure around.
-                    log.warning("  %s: horizon cap failed (%s) — candidate skipped",
-                                cand.id, type(exc).__name__)
-                    stats["horizon_error"] += 1
+                # The exchange answered and its data ends before this window even
+                # opens: delisted, or never listed at that time. Waiting cannot
+                # change it, so it is claimed now with its own reason instead of
+                # ageing out indistinguishable from "still coming".
+                if _exchange_has_nothing(raw, cand.evaluated_bar_time, cand.timeframe):
+                    await _finalise_undecidable(db, cand, SHADOW_REASON_DATA_UNAVAILABLE,
+                                                dry_run=dry_run)
+                    stats["data_unavailable"] += 1
                     continue
+
+                # The evaluator does not truncate for us — the caller owns the
+                # window. clip_to_window bounds it on BOTH sides: strictly after
+                # the decision bar (so the bar the call was made on is never
+                # walked) and no later than the 48h horizon (so a touch that
+                # happened after the trade would have closed cannot count as an
+                # entry). It also sorts and de-duplicates, because exchange
+                # ordering and uniqueness are not a contract.
+                df = clip_to_window(raw, cand.evaluated_bar_time, cand.timeframe)
                 if len(df) == 0:
-                    if too_old:
-                        await _finalise_undecidable(db, cand, "no_bars_in_horizon")
+                    # Empty AFTER a successful fetch. If the window has not fully
+                    # elapsed this is simply "not yet"; the SQL maturity filter
+                    # should already have excluded those, and this is the guard
+                    # for when it does not.
+                    if too_old and _window_is_complete(cand.evaluated_bar_time, now):
+                        await _finalise_undecidable(db, cand, "no_bars_in_horizon",
+                                                    dry_run=dry_run)
                         stats["undecidable_terminal"] += 1
                     else:
                         stats["empty_after_cap_retry"] += 1
@@ -291,26 +390,50 @@ async def evaluate(limit: int) -> Counter:
                 # letting it retry forever.
                 if out["shadow_outcome"] == "undecidable":
                     reason = out.get("shadow_resolution_reason") or "unknown"
-                    if reason in PERMANENT_REASONS or too_old:
-                        await _finalise_undecidable(db, cand, reason)
+                    if reason in SHADOW_TERMINAL_REASONS or too_old:
+                        await _finalise_undecidable(db, cand, reason, dry_run=dry_run)
                         stats["undecidable_terminal"] += 1
                     else:
                         stats["undecidable_retry"] += 1
                     continue
 
+                # Provenance: which window was asked for, what came back, and
+                # whether the walk had to break an inside-bar tie. Built here
+                # because only the caller knows the request; additive to `extra`
+                # and read by nothing in the decision path.
+                prov = shadow_passb_provenance(
+                    bar_time=cand.evaluated_bar_time, timeframe=cand.timeframe,
+                    requested_limit=requested_limit, df=df, dry_run=dry_run,
+                    intrabar_ambiguous=out.get("intrabar_ambiguous"),
+                )
+                if prov.get("intrabar_ambiguous"):
+                    stats["intrabar_ambiguous"] += 1
+
                 payload = {k: v for k, v in out.items() if k in _WRITABLE}
                 payload["shadow_evaluated_at"] = datetime.now(timezone.utc)
-                _assert_write_targets(payload)
+                # The guard has to see EVERY column the statement touches. Adding
+                # `extra` as a sibling keyword to .values() after asserting the
+                # payload would leave the widest column in the UPDATE outside the
+                # only thing stopping a future edit from reaching a decision column.
+                values = {**payload, "extra": extra_merge_expression(prov)}
+                _assert_write_targets(values, allow_extra=True)
 
-                await db.execute(
-                    update(SignalDecisionCandidate)
-                    .where(SignalDecisionCandidate.id == cand.id)
-                    .where(SignalDecisionCandidate.shadow_evaluated_at.is_(None))
-                    .values(**payload)
-                )
+                if not dry_run:
+                    await db.execute(
+                        update(SignalDecisionCandidate)
+                        .where(SignalDecisionCandidate.id == cand.id)
+                        .where(SignalDecisionCandidate.shadow_evaluated_at.is_(None))
+                        .values(**values)
+                    )
                 stats[out["shadow_outcome"]] += 1
 
-            await db.commit()
+            if dry_run:
+                # Nothing was issued, but roll back anyway: SQLAlchemy autobegins
+                # on the first SELECT, and leaving that transaction open is what
+                # shows up as `idle in transaction` on the pooler.
+                await db.rollback()
+            else:
+                await db.commit()
     finally:
         try:
             await collector.close()
@@ -372,8 +495,17 @@ async def report() -> None:
 async def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--report", action="store_true", help="report only, write nothing")
+    # CP-SHADOW-PASSB-A inverted the default. Writing was what you got by running
+    # the script with no flags, which makes the destructive mode the easiest thing
+    # to do by accident — including from a shell-history recall of a report run.
+    # Now the write path has to be asked for by name.
+    ap.add_argument("--write", action="store_true",
+                    help="ACTUALLY WRITE. Without this the run is a dry-run: both "
+                         "passes compute exactly the same verdicts and issue no "
+                         "UPDATE at all")
     ap.add_argument("--dry-run", action="store_true",
-                    help="count what pass A would retire; writes nothing")
+                    help="explicit no-op flag; dry-run is already the default and "
+                         "this only makes the intent visible in shell history")
     ap.add_argument("--pass-a-only", action="store_true",
                     help="retire permanently-unevaluable rows and STOP: pass B is "
                          "never called, so no bars are fetched and no evaluable "
@@ -383,18 +515,22 @@ async def main() -> None:
                          "single run can therefore touch up to 2x this many rows")
     args = ap.parse_args()
 
-    if args.dry_run:
-        async with async_session_factory() as db:
-            would = await retire_permanent(db, args.limit, dry_run=True)
-        print(f"pass A (DRY-RUN, yazim yok): {would} kalici degerlendirilemez satir emekli edilecekti")
-    elif not args.report:
+    dry_run = not args.write
+    if not args.report:
+        mode = "DRY-RUN (yazim YOK)" if dry_run else "WRITE"
+        print(f"mod: {mode}")
+
         # Pass A first: retiring the unevaluable rows costs one bounded UPDATE and
         # no network, and it keeps `shadow_evaluated_at IS NULL` meaning exactly
         # "still to be measured" for every count that follows.
         async with async_session_factory() as db:
-            retired = await retire_permanent(db, args.limit)
-            await db.commit()
-        print(f"pass A: {retired} kalici degerlendirilemez satir emekli edildi (fetch yok)")
+            retired = await retire_permanent(db, args.limit, dry_run=dry_run)
+            if dry_run:
+                await db.rollback()
+            else:
+                await db.commit()
+        verb = "emekli edilecekti" if dry_run else "emekli edildi"
+        print(f"pass A: {retired} kalici degerlendirilemez satir {verb} (fetch yok)")
 
         # The separation is structural, not a filter inside pass B: evaluate() is
         # simply never called, and BinanceCollector is constructed inside it, so
@@ -405,7 +541,7 @@ async def main() -> None:
             print("pass B: --pass-a-only verildi — hic calistirilmadi "
                   "(bar fetch yok, degerlendirilebilir adaya yazim yok)")
         else:
-            stats = await evaluate(args.limit)
+            stats = await evaluate(args.limit, dry_run=dry_run)
             print("\npass B degerlendirme:", dict(stats))
 
     await report()

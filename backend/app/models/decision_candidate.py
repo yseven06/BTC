@@ -150,6 +150,21 @@ SHADOW_REASON_NO_DIRECTION = "no_direction"
 SHADOW_REASON_NO_GEOMETRY = "no_geometry"
 SHADOW_PERMANENT_REASONS = frozenset({SHADOW_REASON_NO_DIRECTION, SHADOW_REASON_NO_GEOMETRY})
 
+# CP-SHADOW-PASSB-A. A fourth way to fail, and the one that is NOT a property of
+# the stored row: the exchange has no bars for the window this candidate needs.
+# A delisted symbol is the clear case — the row is perfectly well-formed and the
+# data will never exist, so retrying is pointless and folding it into the plain
+# "undecidable / waiting for bars" bucket would overstate how much of the queue
+# is still coming. Distinguished by REASON, not by outcome: `shadow_outcome`
+# stays `undecidable` because there genuinely is no outcome, and inventing a new
+# outcome value would change a contract downstream analysis already reads.
+SHADOW_REASON_DATA_UNAVAILABLE = "data_unavailable"
+
+# Reasons after which a row must be claimed rather than left in the queue. The
+# permanent ones can never change; data_unavailable is decided per row, only
+# once the exchange has positively answered "there is nothing here".
+SHADOW_TERMINAL_REASONS = SHADOW_PERMANENT_REASONS | {SHADOW_REASON_DATA_UNAVAILABLE}
+
 # The only directions a shadow trade can be walked from.
 EVALUABLE_DIRECTIONS = ("bullish", "bearish")
 
