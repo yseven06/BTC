@@ -47,6 +47,7 @@ from app.models.decision_candidate import (  # noqa: E402
     EVALUABLE_DIRECTIONS,
     SHADOW_PERMANENT_REASONS,
     SHADOW_REASON_DATA_UNAVAILABLE,
+    SHADOW_RETRYABLE_REASONS,
     SHADOW_REASON_NO_DIRECTION,
     SHADOW_REASON_NO_GEOMETRY,
     SHADOW_TERMINAL_REASONS,
@@ -57,6 +58,7 @@ from app.services.shadow_eval import (  # noqa: E402
     SHADOW_HORIZON,
     clip_to_window,
     evaluate_candidate_shadow,
+    expected_horizon_bars,
     historical_window,
     shadow_passb_provenance,
 )
@@ -70,12 +72,19 @@ log = logging.getLogger("p22a")
 # same 48 hours, and two copies could drift into measuring different windows.
 MIN_AGE = SHADOW_HORIZON
 
-# After this age a still-undecidable row is retired instead of retried forever.
-# 7 days, deliberately shorter than the 14-day observation gate: a row still
-# unresolved when the gate is assessed would otherwise sit in the pending count
-# at exactly the moment that count is used to decide whether P2.2-b may start.
-# Retiring at 7 leaves a clear week of margin. Bars for a live symbol are always
-# available, so reaching this bound at all means something is genuinely wrong.
+# How long a row may stay unresolved before it is worth an operator's attention.
+#
+# It NO LONGER retires anything (CP-SHADOW-PASSB-B-SAFETY, blocker 3). Age was
+# being used to promote "the fetch failed" into a permanent, irreversible
+# `shadow_evaluated_at` stamp, which recorded an absence of data that had never
+# been established: a single 429 on a batch of week-old rows would have retired
+# every one of them. The two things age cannot decide are exactly the two the
+# retryable set names — a network failure and a window that has not finished.
+# Terminal outcomes are now reached only by evidence: the exchange answering that
+# it has nothing (data_unavailable), or the row's own shape (pass A).
+#
+# Kept as a reporting threshold, and still shorter than the 14-day observation
+# gate so a stuck row surfaces well before that count is used.
 MAX_RETRY_AGE = timedelta(days=7)
 
 # Reasons that can never change on a later run: they are properties of the STORED
@@ -324,20 +333,25 @@ async def evaluate(limit: int, dry_run: bool = True) -> Counter:
             now = datetime.now(timezone.utc)
 
             for cand in rows:
-                too_old = (now - cand.evaluated_bar_time) > MAX_RETRY_AGE
+                # Reported, never acted on: a row this old that is still unresolved
+                # is an operations signal, not grounds for calling it undecidable.
+                if (now - cand.evaluated_bar_time) > MAX_RETRY_AGE:
+                    stats["stale_beyond_retry_age"] += 1
 
                 raw, requested_limit, fetch_failed = await _fetch_bars(
                     collector, cand.symbol or "", cand.timeframe, cand.evaluated_bar_time)
 
                 if fetch_failed:
-                    # The call did not complete. That is an absence of an answer,
-                    # never an answer of absence — retry until the week is up.
-                    if too_old:
-                        await _finalise_undecidable(db, cand, "no_bars_after_retry_window",
-                                                    dry_run=dry_run)
-                        stats["undecidable_terminal"] += 1
-                    else:
-                        stats["fetch_failed_retry"] += 1
+                    # The call did not complete: 429, timeout, DNS, connection
+                    # reset, 5xx. That is an absence of an answer, never an answer
+                    # of absence, and age says nothing about it — a row seven days
+                    # old whose fetch just timed out has exactly as much market
+                    # data behind it as one that is one day old. Retiring it here
+                    # (which this used to do via `too_old`) recorded "there is
+                    # nothing to find" when the truth was "we could not look",
+                    # and the stamp is irreversible. Always retryable now
+                    # (CP-SHADOW-PASSB-B-SAFETY, blocker 3).
+                    stats["transient_fetch_error_retry"] += 1
                     continue
 
                 # The exchange answered and its data ends before this window even
@@ -363,12 +377,17 @@ async def evaluate(limit: int, dry_run: bool = True) -> Counter:
                     # elapsed this is simply "not yet"; the SQL maturity filter
                     # should already have excluded those, and this is the guard
                     # for when it does not.
-                    if too_old and _window_is_complete(cand.evaluated_bar_time, now):
-                        await _finalise_undecidable(db, cand, "no_bars_in_horizon",
+                    # A completed fetch that returned data, none of it inside a
+                    # window that HAS elapsed, is the exchange saying there is
+                    # nothing there — the same statement _exchange_has_nothing
+                    # makes from the other side, so it earns the same reason
+                    # rather than a look-alike of its own.
+                    if _window_is_complete(cand.evaluated_bar_time, now):
+                        await _finalise_undecidable(db, cand, SHADOW_REASON_DATA_UNAVAILABLE,
                                                     dry_run=dry_run)
-                        stats["undecidable_terminal"] += 1
+                        stats["data_unavailable"] += 1
                     else:
-                        stats["empty_after_cap_retry"] += 1
+                        stats["window_not_elapsed_retry"] += 1
                     continue
 
                 out = evaluate_candidate_shadow(
@@ -380,19 +399,30 @@ async def evaluate(limit: int, dry_run: bool = True) -> Counter:
                     tp2=float(cand.tp2) if cand.tp2 is not None else None,
                     tp3=float(cand.tp3) if cand.tp3 is not None else None,
                     df=df, bar_time=cand.evaluated_bar_time,
+                    # Lets the evaluator refuse `expiry` and `never_entered` on a
+                    # window that never finished — both are claims about bars that
+                    # are missing (PASSB-B-SAFETY, blocker 2).
+                    timeframe=cand.timeframe,
                 )
 
                 # Only TRANSIENT undecidables can reach here — pass B's SQL filter
                 # already excluded every permanent one, and pass A retires those.
-                # The PERMANENT_REASONS arm is a DRIFT GUARD, not the primary
-                # path: if evaluable_predicate() and the evaluator's own notion of
+                # The TERMINAL arm is a DRIFT GUARD, not the primary path: if
+                # evaluable_predicate() and the evaluator's own notion of
                 # "unevaluable" ever disagree, this catches the row rather than
                 # letting it retry forever.
                 if out["shadow_outcome"] == "undecidable":
                     reason = out.get("shadow_resolution_reason") or "unknown"
-                    if reason in SHADOW_TERMINAL_REASONS or too_old:
+                    # `too_old` no longer promotes anything on its own. Age is a
+                    # fact about the market, not about whether the data exists or
+                    # the window finished, and the reasons in
+                    # SHADOW_RETRYABLE_REASONS are exactly the ones it cannot
+                    # settle. Only a genuinely terminal reason retires a row.
+                    if reason in SHADOW_TERMINAL_REASONS:
                         await _finalise_undecidable(db, cand, reason, dry_run=dry_run)
                         stats["undecidable_terminal"] += 1
+                    elif reason in SHADOW_RETRYABLE_REASONS:
+                        stats[f"{reason}_retry"] += 1
                     else:
                         stats["undecidable_retry"] += 1
                     continue
@@ -405,9 +435,15 @@ async def evaluate(limit: int, dry_run: bool = True) -> Counter:
                     bar_time=cand.evaluated_bar_time, timeframe=cand.timeframe,
                     requested_limit=requested_limit, df=df, dry_run=dry_run,
                     intrabar_ambiguous=out.get("intrabar_ambiguous"),
+                    entry_bar_walked=out.get("entry_bar_walked"),
+                    entry_bar_tp_withheld=out.get("entry_bar_tp_withheld"),
                 )
                 if prov.get("intrabar_ambiguous"):
                     stats["intrabar_ambiguous"] += 1
+                if prov.get("entry_bar_tp_withheld"):
+                    stats["entry_bar_tp_withheld"] += 1
+                if not prov.get("window_complete"):
+                    stats["resolved_on_partial_window"] += 1
 
                 payload = {k: v for k, v in out.items() if k in _WRITABLE}
                 payload["shadow_evaluated_at"] = datetime.now(timezone.utc)

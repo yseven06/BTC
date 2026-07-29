@@ -248,9 +248,11 @@ def test_data_unavailable_cannot_be_silently_folded_into_undecidable():
     assert "SHADOW_REASON_DATA_UNAVAILABLE" in names
     assert SHADOW_REASON_DATA_UNAVAILABLE not in literals, (
         "the terminal reason must come from the constant, not a duplicated literal")
-    # The transient siblings stay distinguishable from it.
-    assert "no_bars_after_retry_window" in literals
-    assert "no_bars_in_horizon" in literals
+    # Stricter since CP-SHADOW-PASSB-B-SAFETY removed the age-based retirement
+    # path: EVERY reason that retires a row now comes from a named constant, so
+    # a look-alike string cannot re-enter the terminal set by being typed out.
+    assert literals == [], f"retirement reasons must be constants, found {literals}"
+    assert set(names) <= {"SHADOW_REASON_DATA_UNAVAILABLE", "reason"}, names
 
 
 # --------------------------------------- 12-13: walk semantics unchanged

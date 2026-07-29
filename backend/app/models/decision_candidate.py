@@ -160,10 +160,25 @@ SHADOW_PERMANENT_REASONS = frozenset({SHADOW_REASON_NO_DIRECTION, SHADOW_REASON_
 # outcome value would change a contract downstream analysis already reads.
 SHADOW_REASON_DATA_UNAVAILABLE = "data_unavailable"
 
+# CP-SHADOW-PASSB-B-SAFETY. Two reasons that are explicitly NOT terminal, however
+# old the row gets. Age is evidence about the market, never about the network or
+# about a window that has not finished — retiring on it conflates "there is
+# nothing to find" with "we could not look".
+SHADOW_REASON_TRANSIENT_FETCH = "transient_fetch_error"
+SHADOW_REASON_INCOMPLETE_WINDOW = "incomplete_window"
+SHADOW_RETRYABLE_REASONS = frozenset({
+    SHADOW_REASON_TRANSIENT_FETCH, SHADOW_REASON_INCOMPLETE_WINDOW,
+})
+
 # Reasons after which a row must be claimed rather than left in the queue. The
 # permanent ones can never change; data_unavailable is decided per row, only
 # once the exchange has positively answered "there is nothing here".
 SHADOW_TERMINAL_REASONS = SHADOW_PERMANENT_REASONS | {SHADOW_REASON_DATA_UNAVAILABLE}
+
+# The two sets must never overlap: a reason is either something waiting can fix
+# or something it cannot, and a row that fell into both would be both retried and
+# retired depending on which check ran first.
+assert not (SHADOW_TERMINAL_REASONS & SHADOW_RETRYABLE_REASONS)
 
 # The only directions a shadow trade can be walked from.
 EVALUABLE_DIRECTIONS = ("bullish", "bearish")

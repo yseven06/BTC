@@ -48,6 +48,7 @@ from app.engines.ai_decision.entry_telemetry import build_entry_telemetry
 from app.models.decision_candidate import (
     SHADOW_EXPIRY,
     SHADOW_NO_FILL,
+    SHADOW_REASON_INCOMPLETE_WINDOW,
     SHADOW_STOP,
     SHADOW_TP1,
     SHADOW_TP2,
@@ -145,6 +146,8 @@ def shadow_passb_provenance(
     df: Any,
     dry_run: bool,
     intrabar_ambiguous: Optional[bool] = None,
+    entry_bar_walked: Optional[bool] = None,
+    entry_bar_tp_withheld: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """How this shadow evaluation was produced, and what the walk noticed about
     its own reliability. Additive; never read by the evaluator or by a decision.
@@ -170,6 +173,15 @@ def shadow_passb_provenance(
         # The conservative inside-bar rule is UNCHANGED — this only records that
         # it had to be applied, which is invisible in the outcome alone.
         "intrabar_ambiguous": intrabar_ambiguous,
+        # PASSB-B-SAFETY: how many bars a whole 48h holds versus how many were
+        # actually in the window, so a short window is visible in the row rather
+        # than only in whether a verdict appeared. And whether the entry bar was
+        # walked at all, or skipped because its take-profit ordering against the
+        # fill could not be established.
+        "expected_horizon_bars": expected_horizon_bars(timeframe),
+        "window_complete": bool(n >= expected_horizon_bars(timeframe)),
+        "entry_bar_walked": entry_bar_walked,
+        "entry_bar_tp_withheld": entry_bar_tp_withheld,
         "dry_run": bool(dry_run),
     }
 
@@ -187,6 +199,92 @@ def _first_touch(bars: Sequence[Tuple[float, float, float, float]],
     return None
 
 
+def _walk_start(entry_bar, entry_pos: int, entry_mid: float, sl: float,
+                is_bull: bool) -> Tuple[int, bool, bool]:
+    """Where the TP/SL walk may begin, and whether the entry bar was provable.
+
+    Returns (start_index, entry_bar_walked, tp_withheld).
+
+    THE PROBLEM. The fill instant on the entry bar is defined by that bar's LOW
+    for a long (entry_telemetry.py: `lows <= entry_level`) and by its HIGH for a
+    short. The take profits are then tested against the SAME bar's high/low.
+    OHLC carries no intra-bar ordering, so a bar that both reaches the entry and
+    reaches a TP cannot say which came first — and crediting the TP would book
+    profit on movement that may have happened before anyone was in the trade.
+    The bias is one-sided (see below), so it inflates return, R, TP-reach,
+    expectancy and PF rather than adding symmetric noise.
+
+    TWO EXCEPTIONS, BOTH PROVED RATHER THAN ASSUMED.
+
+    1. THE FILL IS CERTAIN AT THE OPEN. Long: `open <= entry_mid` means price was
+       already at or through the entry level at the bar's first tick, so the fill
+       is the open and every subsequent tick in that bar is post-fill. The whole
+       bar is then causally sound. Short mirrors it with `open >= entry_mid`.
+
+    2. THE STOP IS CERTAIN EVEN WHEN THE FILL TIME IS NOT. Long: the stop sits
+       BELOW the entry (sl < entry_mid). If the bar's low reaches the stop, then
+       price was, at that instant, below the entry level too; by continuity it
+       must have crossed the entry level on the way down, and the fill fires the
+       first time price touches it. So the fill necessarily precedes the stop.
+       This holds no matter where in the bar the low printed. Short mirrors it:
+       sl > entry_mid, and the high reaching the stop implies the entry level was
+       crossed upward first.
+
+       The same argument does NOT hold for a take profit, because a TP sits on
+       the far side of the entry from the stop: reaching it does not require
+       having crossed the entry level first. That asymmetry is the whole reason
+       fabricated losses are impossible here and fabricated wins are not.
+
+    Otherwise the entry bar is skipped entirely and the walk starts on the next
+    one. Skipping loses that bar's MFE/MAE, which is the conservative direction:
+    unattributable extrema are dropped rather than credited.
+
+    Pure and total: no I/O, no clock, and every branch returns.
+    """
+    if entry_bar is None:
+        return entry_pos, False, False
+
+    o, h, l, _c = entry_bar[0], entry_bar[1], entry_bar[2], entry_bar[3]
+
+    # Exception 1 — fill certain at the open.
+    if (o <= entry_mid) if is_bull else (o >= entry_mid):
+        return entry_pos, True, False
+
+    # Exception 2 — stop causally certain on the entry bar.
+    if (l <= sl) if is_bull else (h >= sl):
+        return entry_pos, True, False
+
+    # Neither holds: any TP on this bar is unprovable, so the bar is not walked.
+    return entry_pos + 1, False, True
+
+
+def expected_horizon_bars(timeframe: str) -> int:
+    """How many bars a complete 48h window contains for this timeframe.
+
+    Deliberately NOT the fetch limit: that carries SHADOW_FETCH_SAFETY_BARS of
+    slack so the request cannot come back short, and judging completeness against
+    a padded number would let a window that really is short look full.
+    """
+    dur = TIMEFRAME_DURATIONS.get(timeframe)
+    if dur is None:
+        raise ValueError(f"unsupported timeframe for shadow evaluation: {timeframe!r}")
+    return math.ceil(SHADOW_HORIZON / dur)
+
+
+def window_is_complete(df: Any, timeframe: str) -> bool:
+    """True when the clipped frame holds a whole 48 hours of bars.
+
+    A partial window can still settle a trade that hit its stop or a take profit
+    inside the bars we do have — the event happened, and later bars cannot unhappen
+    it. What it cannot settle is `expiry` or `never_entered`, both of which are
+    claims about the bars that are MISSING. `_terminal_needs_full_window` below is
+    where that distinction is applied.
+    """
+    if df is None or getattr(df, "empty", True):
+        return False
+    return int(len(df)) >= expected_horizon_bars(timeframe)
+
+
 def evaluate_candidate_shadow(
     *,
     direction: Optional[str],
@@ -198,6 +296,7 @@ def evaluate_candidate_shadow(
     tp3: Optional[float],
     df: Any,
     bar_time: datetime,
+    timeframe: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Evaluate one candidate against the bars that followed it.
 
@@ -212,6 +311,11 @@ def evaluate_candidate_shadow(
         # a walk that had to break an inside-bar tie is less reliable than one that
         # did not, and the outcome alone cannot show that. None means "no walk ran".
         "intrabar_ambiguous": None,
+        # CP-SHADOW-PASSB-B-SAFETY, both telemetry-only (not writable columns):
+        # whether the entry bar itself was walked, and whether a take profit on it
+        # was withheld because its ordering against the fill was unprovable.
+        "entry_bar_walked": None,
+        "entry_bar_tp_withheld": None,
         "shadow_outcome": SHADOW_UNDECIDABLE,
         "shadow_resolution_path": None,
         "shadow_resolution_reason": None,
@@ -286,17 +390,34 @@ def evaluate_candidate_shadow(
         # No walk is run — running one would book a stop on a position that was
         # never opened, which is the specific distortion this sprint exists to
         # expose.
+        #
+        # But it is a claim about bars that are ABSENT, so it needs the whole 48
+        # hours to be true. On 4 of 192 bars "price never came back to the entry"
+        # is not an observation, it is a gap (CP-SHADOW-PASSB-B-SAFETY).
+        if timeframe is not None and not window_is_complete(df, timeframe):
+            out["shadow_resolution_reason"] = SHADOW_REASON_INCOMPLETE_WINDOW
+            return out
         out["shadow_outcome"] = SHADOW_NO_FILL
         out["shadow_resolution_path"] = PATH_NO_FILL
         out["shadow_resolution_reason"] = "entry_never_reached"
         out["shadow_bars_walked"] = 0
         return out
 
-    # --- walk, from the entry bar onward --------------------------------------
+    # --- where the walk may start (CP-SHADOW-PASSB-B-SAFETY) ------------------
     entry_pos = (tel.get("bars_to_entry") or 1) - 1
-    walk_bars = bars[entry_pos:]
+    entry_bar = bars[entry_pos] if entry_pos < len(bars) else None
+    start, entry_bar_walked, ambiguity = _walk_start(
+        entry_bar, entry_pos, entry_mid, sl, is_bull)
+    out["entry_bar_walked"] = entry_bar_walked
+    out["entry_bar_tp_withheld"] = ambiguity
+
+    walk_bars = bars[start:]
     if not walk_bars:
-        out["shadow_resolution_reason"] = "no_bars_after_entry"
+        # The entry bar was skipped as unprovable and nothing followed it inside
+        # the horizon. Undecidable, not a result: the trade opened and we cannot
+        # say what happened next.
+        out["shadow_resolution_reason"] = (
+            "entry_bar_ambiguous_no_following_bars" if ambiguity else "no_bars_after_entry")
         return out
 
     res = resolve_trade_path(
@@ -312,8 +433,18 @@ def evaluate_candidate_shadow(
 
     total_frac = res.realized_return_frac
     if res.remaining_share > 0:
-        # Not fully closed within the window — book the remainder at the last
-        # close, the same convention the live tracker uses for wall-clock expiry.
+        # Still open at the end of the bars we have. "The end" is only meaningful
+        # if those bars are the whole 48 hours — otherwise the remainder is being
+        # marked to a last close that is not the last close (PASSB-B-SAFETY).
+        # A position that DID fully close needs no such guard: the stop or the
+        # take profit happened inside the bars we saw, and later bars cannot
+        # unhappen it, so a partial window still settles it honestly.
+        if timeframe is not None and not window_is_complete(df, timeframe):
+            out["shadow_resolution_reason"] = SHADOW_REASON_INCOMPLETE_WINDOW
+            out["shadow_bars_walked"] = res.bars_walked
+            return out
+        # Book the remainder at the last close, the same convention the live
+        # tracker uses for wall-clock expiry.
         last_close = walk_bars[-1][3]
         move = ((last_close - entry_mid) / entry_mid) if is_bull else ((entry_mid - last_close) / entry_mid)
         total_frac += res.remaining_share * move
