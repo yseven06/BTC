@@ -495,6 +495,40 @@ def test_the_live_decision_path_is_untouched():
     assert shadow_mod.resolve_trade_path is canonical
 
 
+def test_the_evaluator_cannot_see_todays_state():
+    """CP-SHADOW-PASSB-B parity depends on this: a verdict must be a function of
+    (levels, bars) alone. If the evaluator could reach today's coin memory, regime
+    or adaptive weights, replaying an old candidate would be look-ahead wearing a
+    parity label."""
+    import app.services.shadow_eval as se
+
+    src = inspect.getsource(se)
+    for forbidden in ("coin_memory", "detect_regime", "adaptive", "async_session_factory",
+                      "BinanceCollector", "datetime.now", "utcnow", "requests"):
+        assert forbidden not in src, forbidden
+
+    sig = inspect.signature(se.evaluate_candidate_shadow)
+    assert set(sig.parameters) == {
+        "direction", "entry_zone_low", "entry_zone_high", "stop_loss",
+        "tp1", "tp2", "tp3", "df", "bar_time", "timeframe"}
+
+    # Same inputs, twice, in either order: identical verdict.
+    df = full([[106.0, 106.5, 99.9, 100.2], [100.2, 116.0, 100.0, 115.5]])
+    a = evaluate_candidate_shadow(**LONG, df=df, bar_time=BAR, timeframe="15m")
+    b = evaluate_candidate_shadow(**LONG, df=df.copy(), bar_time=BAR, timeframe="15m")
+    assert a == b
+
+
+def test_the_cohort_marker_survives_so_the_two_can_be_kept_apart():
+    """Parity is reported per cohort; mixing a pre-F1 candidate with a
+    closed_candle_v1 one compares two different systems."""
+    from app.engines.ai_decision.signal_generator import DECISION_INPUT_VERSION
+    from app.services.candidate_log import build_candidate_values
+    assert DECISION_INPUT_VERSION == "closed_candle_v1"
+    src = inspect.getsource(build_candidate_values)
+    assert '"decision_input_version"' in src
+
+
 def test_this_checkpoint_adds_no_migration():
     migrations = sorted(p.name for p in (BACKEND / "migrations").glob("*.sql"))
     assert migrations[-1] == "0010_candidate_log_rls.sql", migrations[-1]
