@@ -53,6 +53,31 @@ def label_tr(detail: str | None) -> str:
     return LABEL_TR.get(detail, detail)
 
 
+# ── Stop-hit classification (single source; added for CMV2-B) ────────────────
+# A "stop rate" built on the coarse LOSS outcome would be wrong in both
+# directions: INVALIDATED and EXPIRED_LOSS are losses that never touched the
+# stop, and TP1_THEN_BREAKEVEN closes on a stop order that is NOT a stop-LOSS —
+# classify_resolution's own docstring notes resolved_by_sl covers "breakeven stop
+# after a TP1 scale-out". So the distinction lives here, next to the labels it
+# partitions, rather than being re-derived by each consumer.
+#
+# Read by observation code only; no resolution path branches on these.
+STOP_HIT_LABELS = frozenset({SL_HIT, CORRECT_DIR_TIGHT_SL, LIVE_SL_HIT})
+
+# Terminal labels that are definitively NOT a stop-loss hit. Kept explicit rather
+# than "everything else" so an unrecognised/new label lands in neither set and is
+# counted as unknown instead of being silently assumed non-stop.
+NON_STOP_TERMINAL_LABELS = frozenset({
+    TP1_HIT, TP2_HIT, TP3_HIT,
+    TP1_THEN_BREAKEVEN,          # closed ON a stop order, but at breakeven after banking TP1
+    EXPIRED_PROFIT, EXPIRED_LOSS, EXPIRED_FLAT,
+    INVALIDATED_REVERSAL,        # superseded by a reversal — the stop was never reached
+})
+
+# Every label this module defines, for partition tests.
+ALL_DETAIL_LABELS = frozenset(LABEL_TR)
+
+
 # ── Resolution provenance (F1-d) ────────────────────────────────────────────
 # Stamped on SignalPerformance.resolution_version by every writer path that
 # closes a performance row. ONE monotonic integer for the RESOLUTION semantics

@@ -24,6 +24,7 @@ Overfitting guards are central, not afterthoughts:
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import logging
@@ -37,7 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.backtesting import labels
 from app.backtesting.trade_path import is_legacy_contradictory_live_sl
-from app.services.trade_geometry import planned_rr
+from app.services.trade_geometry import planned_rr, safe_div
 from app.engines.ai_decision.signal_generator import BASE_ENGINE_WEIGHTS
 from app.engines.base import SignalBias
 from app.models.asset import Asset
@@ -889,6 +890,8 @@ def _empty_cm_v2() -> Dict[str, Any]:
         "recent_fold_ids": [],
         "dedupe_window": CM_V2_DEDUPE_WINDOW,
         "duplicate_folds_skipped": 0,
+        # CMV2-B: populated only by an INCLUDED fold; stays None until then.
+        CM_V2_AGG_KEY: None,
     }
 
 
@@ -907,6 +910,490 @@ def _hist(src: Any) -> Dict[str, int]:
     if not isinstance(src, dict):
         return {}
     return {str(k): _nn_int(v) for k, v in src.items() if _nn_int(v) > 0}
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# CMV2-B — forward aggregation (SHADOW-ONLY)
+# ════════════════════════════════════════════════════════════════════════════
+# Raw, additive accumulators for trade-management metrics, kept per
+# (fold rule × cohort × facet) inside the CMV2-A namespace. Forward-only: it can
+# only ever describe folds that happen after it ships, because a bulk rebuild
+# cannot reproduce a fold event (CMV2-A §rebuild).
+#
+# What it stores is SUFFICIENT STATISTICS, never derived rates:
+#   n / sum / sumsq            → mean, variance, std later
+#   pos_sum / neg_abs_sum      → profit factor later, WITHOUT dividing by zero now
+#   bounded histogram          → approximate (bucket) median later
+# Nothing here computes expectancy, PF, a rate, a reliability tier or a weight.
+# That is deliberate: a stored ratio freezes a denominator decision, and the
+# denominator contract is exactly what CP-COIN-MEMORY-V2-FORENSIC found v1 got
+# wrong (two different win-rate denominators in one cell).
+#
+# EVERY metric carries its OWN denominator. A fold that is included overall may
+# still be missing one field, and a missing field is counted as `missing`, never
+# folded in as 0 — "not measured" and "0 happened" must stay distinguishable.
+#
+# Read by NOTHING on the decision path; locked at source level in
+# tests/test_cmv2b_aggregation.py.
+
+CM_V2_AGG_KEY = "forward_aggregates"
+CM_V2_AGGREGATION_VERSION = "cm_v2_aggregation_1"
+# Bump when the MEANING of a metric changes: the stop-label partition, a
+# denominator rule, or an edge set. Separate from the aggregation version so a
+# pure container change and a semantic change are distinguishable.
+CM_V2_METRIC_RULE_VERSION = "cm_v2_metric_1"
+
+# Realized R is SIGNED, so TM_R_EDGES (0.25 … 5.0, unsigned) cannot be reused for
+# it: _bin_index maps every negative value to bucket 0, which would collapse all
+# losses into one bar and make the distribution useless. MFE/MAE are non-negative
+# magnitudes and DO reuse TM_R_EDGES — same numbers as the v1 buckets, so the two
+# stay comparable.
+CM_V2_SIGNED_R_EDGES = [-3.0, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 3.0]
+_CM_V2_SIGNED_NBINS = len(CM_V2_SIGNED_R_EDGES) + 1
+
+# Canonical, bounded facet vocabularies — taken from the enums/functions that
+# actually produce these values, not invented here:
+#   app/models/signal.py:48            Direction
+#   app/engines/market_regime/detector.py:35   MarketRegime
+#   app/backtesting/trade_path.py:45           volatility_bucket()
+# Anything outside a whitelist lands in `unknown`, so no fold can create an
+# arbitrary key and the per-cell JSON stays bounded.
+CM_V2_UNKNOWN = "unknown"
+# A facet that was never recorded is NOT the same as one measured as "unknown":
+# MarketRegime has a real UNKNOWN member, while a NULL column means the snapshot
+# was absent. Collapsing them would be the one place this design breaks its own
+# "missing is not a measured value" rule. (Production incidence today: 0 — regime,
+# direction and volatility_bucket are 0% NULL over 3112 rows. Kept separate anyway,
+# because a rate computed over a merged denominator would be wrong silently.)
+CM_V2_NOT_RECORDED = "not_recorded"
+CM_V2_DIRECTIONS = ("bullish", "bearish", "neutral")
+CM_V2_REGIMES = ("trending_bull", "trending_bear", "ranging", "volatile_high",
+                 "low_volume", "breakout", "unknown")
+CM_V2_VOLATILITY_BUCKETS = ("low", "normal", "high", "extreme")
+# SignalOutcome values (app/models/signal.py:55) — lower-case, as trade_path
+# stores `perf.outcome.value`. ACTIVE is absent on purpose: it never reaches here.
+CM_V2_OUTCOMES = ("win", "loss", "breakeven", "expired", "invalidated")
+
+# Cohort keys are bounded by construction (a fold with a missing version is
+# excluded before it gets here), but a cap makes that a guarantee rather than an
+# expectation. Overflow is counted, never silently dropped.
+CM_V2_MAX_COHORT_KEYS = 8
+
+# Outcomes whose realized return reflects OUR policy rather than the trade thesis
+# resolving in the market. Excluded from the realized-R distribution and counted
+# separately; v1's INVALIDATED=LOSS mapping is untouched (a different layer).
+#
+# MEASURED LIMIT: no signal_trade_path row carries `invalidated` today. Over 3112
+# production rows `outcome` takes exactly three values (loss 1199 / win 1126 /
+# breakeven 787), because the reversal and admin paths never write a trade-path
+# row. So this guard is defensive and structurally never fires, and
+# `outcomes.invalidated` / `outcomes.expired` stay 0. That is precisely why the
+# resolution class below is derived from `detail_label` instead: expiry IS visible
+# there (expired_loss / expired_profit / expired_flat) even though `outcome` has
+# already collapsed it into win/loss/breakeven.
+CM_V2_R_EXCLUDED_OUTCOMES = ("invalidated",)
+
+# How the trade actually ended, recovered from the canonical label rather than from
+# `outcome`. Answers "stopped / paid / timed out" — which the binary stop split and
+# the outcome counters both lose.
+CM_V2_RES_STOP = "stop"
+CM_V2_RES_TARGET = "target"
+CM_V2_RES_EXPIRY = "expiry"
+CM_V2_RES_REVERSAL = "reversal"
+CM_V2_RESOLUTION_CLASSES = (CM_V2_RES_STOP, CM_V2_RES_TARGET, CM_V2_RES_EXPIRY,
+                            CM_V2_RES_REVERSAL, CM_V2_UNKNOWN)
+
+
+def cm_v2_cohort_key(cohort: Optional[Dict[str, Any]]) -> str:
+    """Stable aggregate key for a cohort. Derived ONLY from recorded version
+    values — never from a timestamp."""
+    c = cohort or {}
+    div = str(c.get("decision_input_version", CM_V2_COHORT_UNKNOWN))
+    pol = str(c.get("policy_version", CM_V2_COHORT_UNKNOWN))
+    return f"decision_input_version={div}|policy_version={pol}"
+
+
+def _facet(value: Any, allowed: Tuple[str, ...]) -> str:
+    """Normalise a facet value onto its canonical whitelist.
+
+    Three distinct outcomes, deliberately not two:
+      • a whitelisted value            → itself
+      • absent / empty                 → `not_recorded` (never measured)
+      • present but off-whitelist      → `unknown` (measured, unrecognised)
+    """
+    if value is None:
+        return CM_V2_NOT_RECORDED
+    val = value.value if hasattr(value, "value") else value
+    val = str(val).strip().lower()
+    if not val:
+        return CM_V2_NOT_RECORDED
+    return val if val in allowed else CM_V2_UNKNOWN
+
+
+def cm_v2_resolution_class(label: Optional[str]) -> str:
+    """How the trade ended, from the canonical detail label. PURE.
+
+    Derived from `detail_label` rather than `outcome` because outcome collapses
+    expiry into win/loss/breakeven: 33 v2-eligible production rows are expiries that
+    `outcome` cannot distinguish from a target hit or a stop.
+    """
+    if label in labels.STOP_HIT_LABELS:
+        return CM_V2_RES_STOP
+    if label in (labels.TP1_HIT, labels.TP2_HIT, labels.TP3_HIT,
+                 labels.TP1_THEN_BREAKEVEN):
+        return CM_V2_RES_TARGET
+    if label in (labels.EXPIRED_PROFIT, labels.EXPIRED_LOSS, labels.EXPIRED_FLAT):
+        return CM_V2_RES_EXPIRY
+    if label == labels.INVALIDATED_REVERSAL:
+        return CM_V2_RES_REVERSAL
+    return CM_V2_UNKNOWN
+
+
+def _num(x: Any) -> Optional[float]:
+    """Finite float or None. Rejects NaN/inf so one corrupt row cannot poison a
+    running sum forever — an accumulator has no way to un-add an inf."""
+    if x is None or isinstance(x, bool):
+        return None
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return None
+    return v if math.isfinite(v) else None
+
+
+def _signed_bin_index(v: float) -> int:
+    for i, e in enumerate(CM_V2_SIGNED_R_EDGES):
+        if v < e:
+            return i
+    return len(CM_V2_SIGNED_R_EDGES)
+
+
+def _empty_dist(nbins: int, signed: bool = False) -> Dict[str, Any]:
+    d: Dict[str, Any] = {"n": 0, "sum": 0.0, "sumsq": 0.0,
+                         "hist": [0] * nbins, "missing": 0}
+    if signed:
+        d.update({"pos_n": 0, "neg_n": 0, "zero_n": 0,
+                  "pos_sum": 0.0, "neg_abs_sum": 0.0, "excluded_outcome_n": 0})
+    return d
+
+
+def _empty_scalar() -> Dict[str, Any]:
+    return {"n": 0, "sum": 0.0, "sumsq": 0.0, "missing": 0}
+
+
+def _empty_agg_bucket() -> Dict[str, Any]:
+    """One accumulator bucket.
+
+    SIGN CONVENTIONS DIFFER INSIDE THIS BUCKET, on purpose, and a reader must know:
+      • `realized_r` is SIGNED — a full stop is about -1.0 (or worse on a gap).
+      • `mfe_r` / `mae_r` are unsigned MAGNITUDES: the tracker clamps both with
+        max(0.0, …) before storing, so an adverse excursion of one risk unit is
+        mae_r = +1.0, not -1.0. Verified on production: 0 negative values in 1829
+        v2-eligible rows, and mae_r > 1.0 in 539 of them (29.5%) because the
+        excursion is measured to the bar low/high, so a gap-through overshoots.
+    Mixing the two into one mean would be meaningless, which is why they never share
+    an accumulator or an edge set.
+    """
+    return {
+        "included_fold_n": 0,
+        # signed realized R — its own edge set
+        "realized_r": _empty_dist(_CM_V2_SIGNED_NBINS, signed=True),
+        # unsigned magnitudes — reuse TM_R_EDGES so v1 and v2 stay comparable
+        "mfe_r": _empty_dist(_TM_NBINS),
+        "mae_r": _empty_dist(_TM_NBINS),
+        # additive observability in other units; names carry the unit
+        "mfe_pct": _empty_scalar(), "mae_pct": _empty_scalar(),
+        "mfe_atr": _empty_scalar(), "mae_atr": _empty_scalar(),
+        "tp_reach": {"tp1_eligible_n": 0, "tp1_n": 0,
+                     "tp2_eligible_n": 0, "tp2_n": 0,
+                     "tp3_eligible_n": 0, "tp3_n": 0,
+                     "inconsistent_n": 0},
+        # `stop_n` counts rows LABELLED as a stop hit. Honest caveat: the
+        # classifier's fallback branch (labels.py classify_resolution, last line)
+        # can return sl_hit on pnl_pct < 0 alone, with resolved_by_sl False and no
+        # stop observed — so this is "labelled a stop", not "provably touched the
+        # stop". Stored rows cannot be told apart. Fixing that means changing the
+        # classifier, which is a resolution-semantics change and out of scope here.
+        "stop": {"eligible_n": 0, "stop_n": 0, "non_stop_n": 0, "unknown_n": 0},
+        # What `outcome` cannot say: stopped / paid / timed out / reversed.
+        "resolution_class": {k: 0 for k in CM_V2_RESOLUTION_CLASSES},
+        # NAME WARNING: the stored source column is literally
+        # `bool(perf.hit_tp1) and not bool(perf.hit_tp2)` (tracker.py:112), so this
+        # is a "banked TP1 but never reached TP2" rate, NOT a measure of profit
+        # handed back from a peak. Verified identical on production: TP1&!TP2 = 580
+        # = gave_back True = 580 over the v2-eligible subset. Read it accordingly;
+        # renaming the column is a trade-path schema change, not a CMV2-B one.
+        "give_back": {"eligible_n": 0, "gave_back_n": 0,
+                      "did_not_give_back_n": 0, "unknown_n": 0},
+        "outcomes": {k: 0 for k in CM_V2_OUTCOMES + (CM_V2_UNKNOWN,)},
+    }
+
+
+def _add_dist(d: Dict[str, Any], value: Optional[float], nbins: int,
+              signed: bool, binner) -> None:
+    """Fold one observation into a distribution. A missing value increments
+    `missing` and NOTHING else — it must never look like a measured 0."""
+    if value is None:
+        d["missing"] = _nn_int(d.get("missing")) + 1
+        return
+    d["n"] = _nn_int(d.get("n")) + 1
+    d["sum"] = round(float(d.get("sum", 0.0) or 0.0) + value, 6)
+    d["sumsq"] = round(float(d.get("sumsq", 0.0) or 0.0) + value * value, 6)
+    hist = d.get("hist")
+    if not isinstance(hist, list) or len(hist) != nbins:
+        hist = [0] * nbins
+    idx = binner(value)
+    hist[idx] = _nn_int(hist[idx]) + 1
+    d["hist"] = hist
+    if signed:
+        if value > 0:
+            d["pos_n"] = _nn_int(d.get("pos_n")) + 1
+            d["pos_sum"] = round(float(d.get("pos_sum", 0.0) or 0.0) + value, 6)
+        elif value < 0:
+            d["neg_n"] = _nn_int(d.get("neg_n")) + 1
+            d["neg_abs_sum"] = round(float(d.get("neg_abs_sum", 0.0) or 0.0) + abs(value), 6)
+        else:
+            d["zero_n"] = _nn_int(d.get("zero_n")) + 1
+
+
+def _add_scalar(s: Dict[str, Any], value: Optional[float]) -> None:
+    if value is None:
+        s["missing"] = _nn_int(s.get("missing")) + 1
+        return
+    s["n"] = _nn_int(s.get("n")) + 1
+    s["sum"] = round(float(s.get("sum", 0.0) or 0.0) + value, 6)
+    s["sumsq"] = round(float(s.get("sumsq", 0.0) or 0.0) + value * value, 6)
+
+
+def cm_v2_path_metrics(path) -> Dict[str, Any]:
+    """PURE: one trade path → the metric observations CMV2-B accumulates.
+
+    Uses the CANONICAL definitions, never a re-derivation:
+      • mfe_r / mae_r are read straight off the row (computed once in
+        trade_path.py:249-250 as safe_div(excursion_pct, sl_dist_pct));
+      • realized R uses that SAME helper and that SAME denominator, so "R" means
+        one thing across the codebase — safe_div returns None when sl_dist_pct is
+        missing or zero, so there is no division-by-zero branch to get wrong here.
+
+    A field that cannot be measured comes back None, never 0.
+    """
+    sl_dist = _num(getattr(path, "sl_dist_pct", None))
+    realized_pct = _num(getattr(path, "cur_realized_return", None))
+    realized_r = _num(safe_div(realized_pct, sl_dist))
+
+    outcome = _outcome_str(path).lower()
+    label = getattr(path, "detail_label", None)
+    label = str(label) if label else None
+
+    if label in labels.STOP_HIT_LABELS:
+        stop = "stop"
+    elif label in labels.NON_STOP_TERMINAL_LABELS:
+        stop = "non_stop"
+    else:
+        stop = CM_V2_UNKNOWN
+
+    tp1 = getattr(path, "cur_reached_tp1", None)
+    tp2 = getattr(path, "cur_reached_tp2", None)
+    tp3 = getattr(path, "cur_reached_tp3", None)
+    gave_back = getattr(path, "cur_gave_back_after_tp1", None)
+
+    return {
+        "realized_r": realized_r,
+        "realized_r_excluded": outcome in CM_V2_R_EXCLUDED_OUTCOMES,
+        "mfe_r": _num(getattr(path, "mfe_r", None)),
+        "mae_r": _num(getattr(path, "mae_r", None)),
+        "mfe_pct": _num(getattr(path, "mfe_pct", None)),
+        "mae_pct": _num(getattr(path, "mae_pct", None)),
+        "mfe_atr": _num(getattr(path, "mfe_atr", None)),
+        "mae_atr": _num(getattr(path, "mae_atr", None)),
+        "tp1": None if tp1 is None else bool(tp1),
+        "tp2": None if tp2 is None else bool(tp2),
+        "tp3": None if tp3 is None else bool(tp3),
+        "gave_back": None if gave_back is None else bool(gave_back),
+        "stop": stop,
+        "resolution_class": cm_v2_resolution_class(label),
+        "outcome": outcome if outcome in CM_V2_OUTCOMES else CM_V2_UNKNOWN,
+        "facets": {
+            "direction": _facet(getattr(path, "direction", None), CM_V2_DIRECTIONS),
+            "regime": _facet(getattr(path, "regime", None), CM_V2_REGIMES),
+            "volatility": _facet(getattr(path, "volatility_bucket", None),
+                                 CM_V2_VOLATILITY_BUCKETS),
+        },
+    }
+
+
+def _fold_into_agg_bucket(b: Dict[str, Any], m: Dict[str, Any]) -> None:
+    """Fold one included observation into ONE bucket. Every metric advances only
+    its own denominator."""
+    b["included_fold_n"] = _nn_int(b.get("included_fold_n")) + 1
+
+    # ── realized R ────────────────────────────────────────────────────────────
+    r = b.setdefault("realized_r", _empty_dist(_CM_V2_SIGNED_NBINS, signed=True))
+    if m["realized_r_excluded"]:
+        # Counted, not folded: the close price reflects our reversal policy, not
+        # the thesis resolving. Mixing it in would measure policy churn as edge.
+        r["excluded_outcome_n"] = _nn_int(r.get("excluded_outcome_n")) + 1
+    else:
+        _add_dist(r, m["realized_r"], _CM_V2_SIGNED_NBINS, True, _signed_bin_index)
+
+    # ── excursions ────────────────────────────────────────────────────────────
+    _add_dist(b.setdefault("mfe_r", _empty_dist(_TM_NBINS)), m["mfe_r"],
+              _TM_NBINS, False, _bin_index)
+    _add_dist(b.setdefault("mae_r", _empty_dist(_TM_NBINS)), m["mae_r"],
+              _TM_NBINS, False, _bin_index)
+    for key in ("mfe_pct", "mae_pct", "mfe_atr", "mae_atr"):
+        _add_scalar(b.setdefault(key, _empty_scalar()), m[key])
+
+    # ── TP reach — NULL is not False; it is simply not eligible ───────────────
+    tp = b.setdefault("tp_reach", _empty_agg_bucket()["tp_reach"])
+    for n, val in (("tp1", m["tp1"]), ("tp2", m["tp2"]), ("tp3", m["tp3"])):
+        if val is None:
+            continue
+        tp[f"{n}_eligible_n"] = _nn_int(tp.get(f"{n}_eligible_n")) + 1
+        if val:
+            tp[f"{n}_n"] = _nn_int(tp.get(f"{n}_n")) + 1
+    # A deeper target reached without the shallower one is not silently repaired —
+    # it is counted so the anomaly stays visible in the data itself. Both flags must
+    # be KNOWN: `tp2=True, tp1=None` is unknown, not an inconsistency, and treating
+    # NULL as False would manufacture the very anomaly this counter reports.
+    if (m["tp2"] is True and m["tp1"] is False) or (m["tp3"] is True and m["tp2"] is False):
+        tp["inconsistent_n"] = _nn_int(tp.get("inconsistent_n")) + 1
+
+    # ── stop ─────────────────────────────────────────────────────────────────
+    st = b.setdefault("stop", _empty_agg_bucket()["stop"])
+    if m["stop"] == CM_V2_UNKNOWN:
+        st["unknown_n"] = _nn_int(st.get("unknown_n")) + 1
+    else:
+        st["eligible_n"] = _nn_int(st.get("eligible_n")) + 1
+        key = "stop_n" if m["stop"] == "stop" else "non_stop_n"
+        st[key] = _nn_int(st.get(key)) + 1
+
+    # ── give-back — eligible ONLY when TP1 was actually banked ────────────────
+    gb = b.setdefault("give_back", _empty_agg_bucket()["give_back"])
+    if m["tp1"] is not True:
+        pass                                  # never reached TP1 → not a give-back question
+    elif m["gave_back"] is None:
+        gb["unknown_n"] = _nn_int(gb.get("unknown_n")) + 1
+    else:
+        gb["eligible_n"] = _nn_int(gb.get("eligible_n")) + 1
+        key = "gave_back_n" if m["gave_back"] else "did_not_give_back_n"
+        gb[key] = _nn_int(gb.get(key)) + 1
+
+    # ── resolution class (what `outcome` cannot say) ──────────────────────────
+    rc = b.setdefault("resolution_class", _empty_agg_bucket()["resolution_class"])
+    rc[m["resolution_class"]] = _nn_int(rc.get(m["resolution_class"])) + 1
+
+    # ── outcomes (observation only; produces no rate) ─────────────────────────
+    oc = b.setdefault("outcomes", _empty_agg_bucket()["outcomes"])
+    oc[m["outcome"]] = _nn_int(oc.get(m["outcome"])) + 1
+
+
+def _agg_bucket(container: Dict[str, Any], key: str) -> Dict[str, Any]:
+    """Fetch-or-create a bucket lazily, repairing a non-dict in place. Lazy on
+    purpose: a cell that only ever sees one regime carries one regime bucket, not
+    the whole vocabulary, which is what keeps the stored JSON small."""
+    cur = container.get(key)
+    if not isinstance(cur, dict):
+        cur = _empty_agg_bucket()
+        container[key] = cur
+    return cur
+
+
+def observe_cm_v2_aggregates(
+    existing: Any,
+    path,
+    cohort: Optional[Dict[str, Any]],
+    folded_at: Optional[str],
+) -> Dict[str, Any]:
+    """PURE: previous forward-aggregate blob + one INCLUDED fold → the next blob.
+
+    The caller decides inclusion (it is CMV2-A's `included`), so this function is
+    only ever handed folds that passed every exclusion gate. Anything of the wrong
+    shape is rebuilt from the default instead of raising.
+
+    `existing` is DEEP-copied first. Shallow copies are not enough here: the value
+    being folded into is a bucket several levels down, with `hist` lists inside it,
+    so a shallow copy would leave the caller's dict aliased and the fold would
+    mutate history in place. That is not a theoretical concern — the CMV2-A purity
+    test caught exactly this on the first run.
+    """
+    src = copy.deepcopy(existing) if isinstance(existing, dict) else {}
+    by_rule_src = src.get("by_fold_rule")
+    by_rule = dict(by_rule_src) if isinstance(by_rule_src, dict) else {}
+
+    rule_node = by_rule.get(CM_V2_FOLD_RULE_VERSION)
+    rule_node = dict(rule_node) if isinstance(rule_node, dict) else {}
+
+    # The metric rule PARTITIONS the numbers, it does not merely label them. Its
+    # documented bump triggers — the stop-label partition, a denominator rule, an
+    # edge set — all change what a sum MEANS, so pre-bump and post-bump observations
+    # must not share an accumulator. A flat version field would have left old
+    # observations inside the same sum/sumsq/hist with only the new label visible,
+    # which is exactly the "geriye dönük yorumlanamaz" failure CMV2-A existed to
+    # prevent one level up.
+    by_metric_src = rule_node.get("by_metric_rule")
+    by_metric = dict(by_metric_src) if isinstance(by_metric_src, dict) else {}
+    metric_node = by_metric.get(CM_V2_METRIC_RULE_VERSION)
+    metric_node = dict(metric_node) if isinstance(metric_node, dict) else {}
+
+    by_cohort_src = metric_node.get("by_cohort")
+    by_cohort = dict(by_cohort_src) if isinstance(by_cohort_src, dict) else {}
+
+    ck = cm_v2_cohort_key(cohort)
+    dropped = _nn_int(src.get("cohort_keys_dropped"))
+    not_aggregated = _nn_int(src.get("included_not_aggregated_n"))
+    if ck not in by_cohort and len(by_cohort) >= CM_V2_MAX_COHORT_KEYS:
+        # Bounded by construction, but never silently. Counted TWICE on purpose:
+        # `cohort_keys_dropped` says the cap fired, `included_not_aggregated_n`
+        # keeps the arithmetic reconcilable against CMV2-A's `counts.included`
+        # (which has already counted this fold). Without it the two denominators
+        # would differ with nothing recording why.
+        dropped += 1
+        not_aggregated += 1
+    else:
+        cohort_node = by_cohort.get(ck)
+        cohort_node = dict(cohort_node) if isinstance(cohort_node, dict) else {}
+        m = cm_v2_path_metrics(path)
+
+        _fold_into_agg_bucket(_agg_bucket(cohort_node, "all"), m)
+        for facet_name, allowed in (("direction", CM_V2_DIRECTIONS),
+                                    ("regime", CM_V2_REGIMES),
+                                    ("volatility", CM_V2_VOLATILITY_BUCKETS)):
+            node = cohort_node.get(facet_name)
+            node = dict(node) if isinstance(node, dict) else {}
+            _fold_into_agg_bucket(_agg_bucket(node, m["facets"][facet_name]), m)
+            cohort_node[facet_name] = node
+
+        by_cohort[ck] = cohort_node
+
+    metric_node["by_cohort"] = by_cohort
+    by_metric[CM_V2_METRIC_RULE_VERSION] = metric_node
+    rule_node["by_metric_rule"] = by_metric
+    by_rule[CM_V2_FOLD_RULE_VERSION] = rule_node
+
+    sid = getattr(path, "signal_id", None)
+    resolved_at = getattr(path, "resolved_at", None)
+    return {
+        "aggregation_version": CM_V2_AGGREGATION_VERSION,
+        # The version this writer is currently on. The data itself is partitioned by
+        # it in the tree above; this field is the pointer, not the partition.
+        "metric_rule_version": CM_V2_METRIC_RULE_VERSION,
+        # Which folds these numbers describe. Stated explicitly because the same
+        # tm_stats column also carries v1 buckets over a WIDER population (every
+        # foldable row) — so a reader comparing a v1 mean with a v2 mean is
+        # comparing different denominators unless they read this.
+        "population": "cmv2a_included_only",
+        "by_fold_rule": by_rule,
+        "cohort_keys_dropped": dropped,
+        "included_not_aggregated_n": not_aggregated,
+        "last_included_fold": {
+            "signal_id": str(sid) if sid is not None else None,
+            "cohort_key": ck,
+            "resolved_at": resolved_at.isoformat() if hasattr(resolved_at, "isoformat")
+                           else (str(resolved_at) if resolved_at is not None else None),
+            "folded_at": folded_at,
+        },
+    }
 
 
 def observe_cm_v2_fold(
@@ -949,6 +1436,12 @@ def observe_cm_v2_fold(
         out["last_fold"] = {**out["last_fold"], **{
             k: v for k, v in src["last_fold"].items() if k in out["last_fold"]}}
 
+    # CMV2-B blob rides along unchanged unless an INCLUDED fold updates it below.
+    # Carried forward BEFORE the duplicate branch, so a repeat preserves history
+    # instead of dropping it.
+    prior_agg = src.get(CM_V2_AGG_KEY)
+    out[CM_V2_AGG_KEY] = prior_agg if isinstance(prior_agg, dict) else None
+
     sid = getattr(path, "signal_id", None)
     sid = str(sid) if sid is not None else None
     if sid is not None and sid in ring:
@@ -987,6 +1480,13 @@ def observe_cm_v2_fold(
     }
     if sid is not None:
         out["recent_fold_ids"] = (ring + [sid])[-CM_V2_DEDUPE_WINDOW:]
+
+    # CMV2-B: aggregate ONLY what CMV2-A accepted. One gate, one definition of
+    # "included" — a second predicate here could drift from the counters above and
+    # the two would disagree about the same fold.
+    if included:
+        out[CM_V2_AGG_KEY] = observe_cm_v2_aggregates(
+            out[CM_V2_AGG_KEY], path, coh, folded_at)
     return out
 
 
