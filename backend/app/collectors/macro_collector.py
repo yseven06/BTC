@@ -23,6 +23,13 @@ from xml.etree import ElementTree as ET
 import httpx
 
 from app.config import get_settings
+from app.services.dependency_health import (
+    EMPTY,
+    NOT_CONFIGURED,
+    OK,
+    StatusMemory,
+    classify_exception,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,18 +38,42 @@ _MACRO_CACHE_EXPIRY: Dict[str, float] = {}
 
 MACRO_CACHE_TTL = 900  # 15 minutes
 
+# CP-DEP-HEALTH-1 — remembers what produced each cached value so a cache hit can
+# say whether it is serving real data or a cached failure. Parallel to the value
+# cache above and deliberately separate from it: deleting this line would leave
+# every cache key, TTL and eviction rule byte-identical.
+_MACRO_STATUS = StatusMemory()
+
 
 class MacroCollector:
     """Public macroeconomic data collector (TCMB + FRED + KAP)."""
 
     def __init__(self) -> None:
         self.client = httpx.AsyncClient(timeout=12.0)
+        # CP-DEP-HEALTH-1 — parallel status metadata. Every fetch below records
+        # what happened here; NOTHING reads it to decide anything, no return
+        # value changes shape, and no cache key, TTL or eviction is touched.
+        # Keyed by the same cache_key the value cache uses, so the two line up.
+        self.last_status: Dict[str, Dict[str, Any]] = {}
         # Read from settings (which loads from .env). Fallback to OS env.
         settings = get_settings()
         self._fred_key = (
             getattr(settings, "FRED_API_KEY", "")
             or os.environ.get("FRED_API_KEY", "")
         ).strip()
+
+    def _note(self, key: str, status: str, *, cached: bool = False,
+              age_s: Optional[float] = None) -> None:
+        """Record one fetch outcome. Never raises — telemetry must not decide."""
+        try:
+            self.last_status[key] = {
+                "fetch_status": status, "served_from_cache": bool(cached),
+                "data_freshness_s": age_s,
+            }
+            if not cached:
+                _MACRO_STATUS.record(key, status)
+        except Exception:  # noqa: BLE001 — observability may never break a fetch
+            pass
 
     # ── TCMB (Turkish Central Bank) ──────────────────────────────────────────
 
@@ -110,12 +141,15 @@ class MacroCollector:
           • M2SL       — M2 money supply
         """
         if not self._fred_key:
+            self._note(f"fred_{series_id}", NOT_CONFIGURED)
             return None
 
         now = time.time()
         cache_key = f"fred_{series_id}"
         if cache_key in _MACRO_CACHE and now < _MACRO_CACHE_EXPIRY.get(cache_key, 0.0):
             logger.info(f"[MacroCollector] Using cached FRED series {series_id}")
+            seen = _MACRO_STATUS.lookup(cache_key)
+            self._note(cache_key, seen["status"], cached=True, age_s=seen["age_s"])
             return _MACRO_CACHE[cache_key]
 
         try:
@@ -132,21 +166,34 @@ class MacroCollector:
             r.raise_for_status()
             obs = r.json().get("observations", [])
             if not obs:
+                self._note(cache_key, EMPTY)
                 return None
             val = obs[0].get("value")
             if val in (None, ".", ""):
+                self._note(cache_key, EMPTY)
                 return None
             result_val = float(val)
             _MACRO_CACHE[cache_key] = result_val
             _MACRO_CACHE_EXPIRY[cache_key] = now + MACRO_CACHE_TTL
+            self._note(cache_key, OK)
             return result_val
         except Exception as exc:
             logger.debug("FRED %s fetch failed: %s", series_id, exc)
+            # Only the exception's TYPE (and, for an HTTP error, its numeric
+            # status) reaches the record — never `str(exc)`, which can carry a
+            # URL with the api_key query parameter in it.
+            self._note(cache_key, classify_exception(exc))
             return None
 
     async def fetch_us_macro_snapshot(self) -> Dict[str, Optional[float]]:
         """Bundle the headline US macro indicators in one call."""
         if not self._fred_key:
+            # This branch returns before any fetch_fred_series call, so nothing
+            # else would record the state. `configured: False` below already says
+            # the key is absent; this makes it legible on the same channel as
+            # every other outcome.
+            for series in ("FEDFUNDS", "CPIAUCSL", "DGS10", "DTWEXBGS"):
+                self._note(f"fred_{series}", NOT_CONFIGURED)
             return {
                 "fed_funds_rate":   None,
                 "cpi":              None,

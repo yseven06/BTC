@@ -20,6 +20,14 @@ from typing import Any, Dict, Optional
 
 import httpx
 
+from app.services.dependency_health import (
+    EMPTY,
+    OK,
+    StatusMemory,
+    classify_exception,
+    worst_status,
+)
+
 logger = logging.getLogger(__name__)
 
 _ONCHAIN_CACHE: Dict[str, Any] = {}
@@ -29,12 +37,37 @@ FNG_CACHE_TTL = 300       # 5 minutes
 BTC_NET_CACHE_TTL = 300   # 5 minutes
 GECKO_CACHE_TTL = 1800    # 30 minutes
 
+# CP-DEP-HEALTH-1 — parallel record of what produced each cached value. This
+# collector caches FAILURES (`_ONCHAIN_CACHE[key] = fallback`, 60 s) and serves
+# them back indistinguishably from real data; this is what makes that visible.
+# It touches no cache key, TTL or eviction rule.
+_ONCHAIN_STATUS = StatusMemory()
+
 
 class OnchainCollector:
     """Fetches on-chain market metrics from public sources."""
 
     def __init__(self) -> None:
         self.client = httpx.AsyncClient(timeout=10.0)
+        # Written by every fetch below, read by OnchainEngine for telemetry only.
+        self.last_status: Dict[str, Dict[str, Any]] = {}
+
+    def _note(self, key: str, status: str, *, cached: bool = False,
+              age_s: Optional[float] = None,
+              components: Optional[Dict[str, str]] = None) -> None:
+        """Record one fetch outcome. Never raises."""
+        try:
+            entry: Dict[str, Any] = {
+                "fetch_status": status, "served_from_cache": bool(cached),
+                "data_freshness_s": age_s,
+            }
+            if components:
+                entry["components"] = dict(components)
+            self.last_status[key] = entry
+            if not cached:
+                _ONCHAIN_STATUS.record(key, status)
+        except Exception:  # noqa: BLE001 — observability may never break a fetch
+            pass
 
     async def fetch_btc_network(self) -> Dict[str, Any]:
         """
@@ -45,7 +78,15 @@ class OnchainCollector:
         cache_key = "btc_network"
         if cache_key in _ONCHAIN_CACHE and now < _ONCHAIN_CACHE_EXPIRY.get(cache_key, 0.0):
             logger.info("[OnchainCollector] Using cached BTC network stats")
+            seen = _ONCHAIN_STATUS.lookup(cache_key)
+            self._note(cache_key, seen["status"], cached=True, age_s=seen["age_s"])
             return _ONCHAIN_CACHE[cache_key]
+
+        # Per-endpoint outcomes for the three-way fan-out below. This call merges
+        # whatever came back and caches the result as a success for 300 s even
+        # when two of three endpoints failed, so a single aggregate status would
+        # hide the partial case entirely.
+        endpoint_status: Dict[str, str] = {}
 
         out: Dict[str, Any] = {
             "hash_rate_ths": None,
@@ -54,19 +95,24 @@ class OnchainCollector:
             "fast_fee_sat_vb": None,
         }
 
-        async def _get(url: str) -> Optional[Any]:
+        async def _get(url: str, tag: str) -> Optional[Any]:
             try:
                 r = await self.client.get(url)
                 r.raise_for_status()
-                return r.json() if "json" in r.headers.get("content-type", "") else r.text
+                payload = r.json() if "json" in r.headers.get("content-type", "") else r.text
+                # `tag` is a fixed literal from the three call sites below — the
+                # URL itself is never recorded.
+                endpoint_status[tag] = OK if payload else EMPTY
+                return payload
             except Exception as exc:
                 logger.debug("Onchain fetch failed (%s): %s", url, exc)
+                endpoint_status[tag] = classify_exception(exc)
                 return None
 
         results = await asyncio.gather(
-            _get("https://api.blockchain.info/stats"),
-            _get("https://mempool.space/api/mempool"),
-            _get("https://mempool.space/api/v1/fees/recommended"),
+            _get("https://api.blockchain.info/stats", "stats"),
+            _get("https://mempool.space/api/mempool", "mempool"),
+            _get("https://mempool.space/api/v1/fees/recommended", "fees"),
         )
         stats, mempool, fees = results
 
@@ -86,6 +132,8 @@ class OnchainCollector:
 
         _ONCHAIN_CACHE[cache_key] = out
         _ONCHAIN_CACHE_EXPIRY[cache_key] = now + BTC_NET_CACHE_TTL
+        self._note(cache_key, worst_status(endpoint_status.values()),
+                   components=endpoint_status)
         return out
 
     async def fetch_fear_greed(self) -> Dict[str, Any]:
@@ -94,6 +142,8 @@ class OnchainCollector:
         cache_key = "fear_greed"
         if cache_key in _ONCHAIN_CACHE and now < _ONCHAIN_CACHE_EXPIRY.get(cache_key, 0.0):
             logger.info("[OnchainCollector] Using cached Fear & Greed index")
+            seen = _ONCHAIN_STATUS.lookup(cache_key)
+            self._note(cache_key, seen["status"], cached=True, age_s=seen["age_s"])
             return _ONCHAIN_CACHE[cache_key]
 
         try:
@@ -105,6 +155,7 @@ class OnchainCollector:
                 res = {"value": None, "classification": None, "delta_24h": None}
                 _ONCHAIN_CACHE[cache_key] = res
                 _ONCHAIN_CACHE_EXPIRY[cache_key] = now + FNG_CACHE_TTL
+                self._note(cache_key, EMPTY)
                 return res
             current = int(items[0]["value"])
             prev    = int(items[1]["value"]) if len(items) > 1 else current
@@ -115,6 +166,7 @@ class OnchainCollector:
             }
             _ONCHAIN_CACHE[cache_key] = res
             _ONCHAIN_CACHE_EXPIRY[cache_key] = now + FNG_CACHE_TTL
+            self._note(cache_key, OK)
             return res
         except Exception as exc:
             logger.debug("Fear & Greed fetch failed: %s", exc)
@@ -122,6 +174,10 @@ class OnchainCollector:
             # Cache brief failure state to avoid hammering on fail
             _ONCHAIN_CACHE[cache_key] = fallback
             _ONCHAIN_CACHE_EXPIRY[cache_key] = now + 60  # Cache failure for 1 minute
+            # The cached value above is a FAILURE. Recording that here is what
+            # lets the next 60 s of cache hits report `stale_cache` instead of
+            # presenting the failure as data.
+            self._note(cache_key, classify_exception(exc))
             return fallback
 
     async def fetch_coin_metadata(self, coin_id: str) -> Dict[str, Any]:
@@ -133,6 +189,8 @@ class OnchainCollector:
         cache_key = f"gecko_meta_{coin_id}"
         if cache_key in _ONCHAIN_CACHE and now < _ONCHAIN_CACHE_EXPIRY.get(cache_key, 0.0):
             logger.info(f"[OnchainCollector] Using cached CoinGecko metadata for {coin_id}")
+            seen = _ONCHAIN_STATUS.lookup(cache_key)
+            self._note(cache_key, seen["status"], cached=True, age_s=seen["age_s"])
             return _ONCHAIN_CACHE[cache_key]
 
         try:
@@ -167,6 +225,7 @@ class OnchainCollector:
             }
             _ONCHAIN_CACHE[cache_key] = res
             _ONCHAIN_CACHE_EXPIRY[cache_key] = now + GECKO_CACHE_TTL
+            self._note(cache_key, OK if res else EMPTY)
             return res
         except Exception as exc:
             logger.debug("CoinGecko metadata fetch failed for %s: %s", coin_id, exc)
@@ -174,6 +233,7 @@ class OnchainCollector:
             # Cache brief failure state to avoid hammering on fail
             _ONCHAIN_CACHE[cache_key] = fallback
             _ONCHAIN_CACHE_EXPIRY[cache_key] = now + 60
+            self._note(cache_key, classify_exception(exc))
             return fallback
 
     async def close(self) -> None:

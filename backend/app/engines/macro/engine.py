@@ -18,6 +18,13 @@ from typing import Any, Dict, List
 
 from app.engines.base import BaseEngine, EngineResult, SignalBias
 from app.collectors.macro_collector import MacroCollector
+from app.services.dependency_health import (
+    CONFIDENCE_SEMANTICS,
+    NOT_APPLICABLE,
+    NOT_CONFIGURED,
+    engine_entry,
+    worst_status,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +52,15 @@ class MacroEngine(BaseEngine):
         supporting: Dict[str, Any] = {"asset_type": asset_type}
         warnings: List[str] = []
 
+        # CP-DEP-HEALTH-1 — cleared per run so a previous scan's state can never
+        # be reported as this one's. Read only by the orchestrator, for telemetry.
+        self._dependency_health = None
+
         is_backtest = kwargs.get("is_backtest", False)
         if is_backtest:
+            self._record_health(
+                configured=None, statuses={}, components=0, expected=0,
+                fallback_reason="backtest_simulated", overall=NOT_APPLICABLE)
             return EngineResult(
                 engine_name=self.name,
                 score=50.0,
@@ -120,6 +134,24 @@ class MacroEngine(BaseEngine):
         if not findings:
             findings.append("Makro çerçeve nötr.")
 
+        # CP-DEP-HEALTH-1 — record WHY this engine ended where it did. Placed
+        # after every branch above has run and before the result is built, so it
+        # observes the finished state without being able to influence it.
+        # `components` is the same local the confidence expression above used.
+        self._record_health(
+            configured=bool(us_macro.get("configured")),
+            statuses=getattr(collector, "last_status", {}) or {},
+            components=components,
+            # Crypto consults exactly two FRED series (fed funds, 10Y). A TR
+            # asset adds the TCMB leg, which is the only other component that
+            # can increment the counter.
+            expected=3 if (asset_type == "stock" or symbol.upper().endswith(".IS")) else 2,
+            fallback_reason=(
+                "no_api_key" if not us_macro.get("configured")
+                else ("no_data" if components == 0 else None)
+            ),
+        )
+
         return EngineResult(
             engine_name=self.name,
             score=round(score, 2),
@@ -129,6 +161,38 @@ class MacroEngine(BaseEngine):
             supporting_data=supporting,
             warnings=warnings,
         )
+
+    def _record_health(self, *, configured, statuses, components, expected,
+                       fallback_reason, overall=None) -> None:
+        """Stash this run's dependency health on the instance. Never raises.
+
+        The orchestrator reads it off the engine object rather than off
+        `EngineResult`, deliberately: `decision["engine_results"]` is dumped
+        straight into `signals.engines_data` and served by `/api/reports`, so a
+        new EngineResult field would change a public payload. This channel
+        cannot reach it. A fresh `AIDecisionEngine()` — and therefore a fresh
+        engine instance — is constructed per scan, so there is no shared state.
+        """
+        try:
+            per_call = {k: v.get("fetch_status") for k, v in statuses.items()}
+            self._dependency_health = engine_entry(
+                configured=configured,
+                fetch_status=overall or (
+                    worst_status(per_call.values()) if per_call else NOT_CONFIGURED),
+                fallback_used=bool(fallback_reason),
+                fallback_reason=fallback_reason,
+                input_completeness=components,
+                input_expected=expected,
+                served_from_cache=any(v.get("served_from_cache") for v in statuses.values()),
+                data_freshness_s=max(
+                    (v.get("data_freshness_s") or 0.0) for v in statuses.values()
+                ) if statuses else None,
+                confidence_semantic_type=CONFIDENCE_SEMANTICS.get(self.name, "unknown"),
+                components=per_call or None,
+            )
+        except Exception as exc:  # noqa: BLE001 — telemetry may never decide
+            logger.debug("[MacroEngine] dependency health not recorded: %s", exc)
+            self._dependency_health = None
 
     @staticmethod
     def _score_to_bias(score: float) -> SignalBias:

@@ -30,6 +30,7 @@ from app.engines.ai_decision.signal_generator import generate_signal
 from app.engines.ai_decision.explanation_generator import generate_explanation
 from app.collectors.binance_collector import BinanceCollector
 from app.collectors.yahoo_collector import YahooCollector
+from app.services import dependency_health as dh
 from app.services.candle_window import analysis_window, closed_candles
 
 logger = logging.getLogger(__name__)
@@ -105,6 +106,30 @@ def _engine_execution_or_none(engine_count: int, failures: List[Dict[str, Any]])
         return build_engine_execution_telemetry(engine_count, failures)
     except Exception as exc:  # noqa: BLE001 — never let observability decide
         logger.warning("[EngineTelemetry] summary not built (ignored): %s", exc)
+        return None
+
+
+def _dependency_health_or_none(engines, mtf_status, engine_execution):
+    """Fail-open wrapper for the dependency record (CP-DEP-HEALTH-1).
+
+    Collects each engine's `_dependency_health` — set by the engine on itself
+    during this run, absent on engines that do not consult an external source
+    and absent on any engine that raised (that case is already covered by
+    `engine_execution_telemetry`). Same contract as the wrapper above: if
+    anything here fails, the decision proceeds untouched and the record is None.
+    """
+    try:
+        entries = {}
+        for engine in engines or ():
+            entry = getattr(engine, "_dependency_health", None)
+            if entry:
+                entries[getattr(engine, "name", "")] = entry
+        return dh.build_dependency_health(
+            engines=entries, mtf=mtf_status,
+            engine_execution_telemetry=engine_execution,
+        )
+    except Exception as exc:  # noqa: BLE001 — never let observability decide
+        logger.warning("[DepHealth] record not built (ignored): %s", exc)
         return None
 
 
@@ -277,6 +302,10 @@ class AIDecisionEngine:
 
         # Run multi-timeframe trend checks in parallel with engines
         mtf_trends = {}
+        # CP-DEP-HEALTH-1 — per-timeframe fetch outcome. Written by the live
+        # branch below; the backtest branch works off pre-loaded frames and makes
+        # no network call, so it is left empty rather than filled with a guess.
+        mtf_status: Dict[str, str] = {}
         if kwargs.get("is_backtest", False):
             # Backtesting mode: Slice pre-loaded mtf_data up to current timestamp
             mtf_dfs = kwargs.get("mtf_data", {})
@@ -301,9 +330,15 @@ class AIDecisionEngine:
                         # 15m bars when the primary is 4h, and dropping the last row
                         # blindly would discard a 4h bar that had genuinely closed.
                         tf_closed = closed_candles(df_tf, tf)
+                        mtf_status[tf] = dh.OK
                         return tf, calculate_trend_bias(tf_closed if not tf_closed.empty else df_tf)
                     except Exception as ex:
                         logger.warning(f"Failed to fetch TF {tf} trend: {str(ex)}")
+                        # CP-DEP-HEALTH-1 — this path is FAIL-OPEN: "neutral" is
+                        # skipped by the MTF layer, so a failed fetch REMOVES a
+                        # penalty instead of adding one. The returned value is
+                        # unchanged; only the reason is now recorded.
+                        mtf_status[tf] = dh.classify_exception(ex)
                         return tf, "neutral"
                 
                 tf_results = await asyncio.gather(
@@ -338,6 +373,10 @@ class AIDecisionEngine:
 
         # Generate structured explanations in TR and EN
         explanations = generate_explanation(signal_data, results, asset_type)
+
+        # Built once and shared by the two telemetry keys below, so the crash
+        # summary and the dependency record can never disagree with each other.
+        engine_execution = _engine_execution_or_none(len(active_engines), engine_failures)
 
         # Assemble full output matching our DB and schema representations
         decision_payload = {
@@ -375,8 +414,14 @@ class AIDecisionEngine:
             # the crash fallback. Observation only; nothing branches on it. Built
             # in its own try/except because a telemetry error must never be able
             # to take down a decision that has already been made.
-            "engine_execution_telemetry": _engine_execution_or_none(
-                len(active_engines), engine_failures),
+            "engine_execution_telemetry": engine_execution,
+            # CP-DEP-HEALTH-1 — which external dependency did what while this
+            # decision was being made. Observation only; nothing branches on it,
+            # and it is built in its own fail-open wrapper for the same reason
+            # the line above is. Read off the engine instances rather than off
+            # EngineResult so it cannot reach `engines_data` / `/api/reports`.
+            "dependency_health": _dependency_health_or_none(
+                self.engines, mtf_status, engine_execution),
             "explanation_tr": explanations["tr"],
             "explanation_en": explanations["en"],
             "generated_at": pd.Timestamp.now().isoformat(),

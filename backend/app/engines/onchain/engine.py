@@ -18,6 +18,13 @@ from typing import Any, Dict, List
 
 from app.engines.base import BaseEngine, EngineResult, SignalBias
 from app.collectors.onchain_collector import OnchainCollector, symbol_to_gecko_id
+from app.services.dependency_health import (
+    CONFIDENCE_SEMANTICS,
+    NOT_APPLICABLE,
+    OK,
+    engine_entry,
+    worst_status,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,8 +68,17 @@ class OnchainEngine(BaseEngine):
         # Try to extract data from kwargs
         is_backtest = kwargs.get("is_backtest", False)
 
+        # CP-DEP-HEALTH-1 — cleared per run; read only by the orchestrator.
+        self._dependency_health = None
+
         # ── Stocks: no on-chain data → neutral result ──
         if asset_type == "stock":
+            # A stock returns the SAME confidence (20.0) as a total on-chain
+            # outage. Recording the reason is the only thing that separates
+            # "not applicable" from "everything failed".
+            self._record_health(statuses={}, components=0, expected=0,
+                                fallback_reason="not_applicable_asset_type",
+                                overall=NOT_APPLICABLE)
             return EngineResult(
                 engine_name=self.name,
                 score=50.0,
@@ -74,6 +90,9 @@ class OnchainEngine(BaseEngine):
             )
 
         if is_backtest:
+            self._record_health(statuses={}, components=0, expected=0,
+                                fallback_reason="backtest_simulated",
+                                overall=NOT_APPLICABLE)
             return EngineResult(
                 engine_name=self.name,
                 score=50.0,
@@ -189,6 +208,18 @@ class OnchainEngine(BaseEngine):
         if not findings:
             findings.append("On-chain veriler nötr.")
 
+        # CP-DEP-HEALTH-1 — observed after every branch above has settled.
+        # Expected components: Fear & Greed + ATH + developer score for any coin,
+        # plus BTC hash rate and mempool fee when the symbol is BTC*. Anything
+        # below that is partial data, not a neutral market read.
+        is_btc = symbol.upper().startswith("BTC")
+        self._record_health(
+            statuses=getattr(collector, "last_status", {}) or {},
+            components=score_components,
+            expected=5 if is_btc else 3,
+            fallback_reason="no_data" if score_components == 0 else None,
+        )
+
         return EngineResult(
             engine_name=self.name,
             score=round(score, 2),
@@ -198,6 +229,37 @@ class OnchainEngine(BaseEngine):
             supporting_data=supporting,
             warnings=warnings,
         )
+
+    def _record_health(self, *, statuses, components, expected,
+                       fallback_reason, overall=None) -> None:
+        """Stash this run's dependency health on the instance. Never raises.
+
+        Kept off `EngineResult` on purpose — see MacroEngine._record_health for
+        why a new result field would leak into `signals.engines_data` and the
+        `/api/reports` payload.
+        """
+        try:
+            per_call = {k: v.get("fetch_status") for k, v in statuses.items()}
+            self._dependency_health = engine_entry(
+                # Every on-chain source is a keyless public endpoint, so there is
+                # no "configured" question to answer. None, not False: False
+                # would read as "a key is missing".
+                configured=None,
+                fetch_status=overall or (worst_status(per_call.values()) if per_call else OK),
+                fallback_used=bool(fallback_reason),
+                fallback_reason=fallback_reason,
+                input_completeness=components,
+                input_expected=expected,
+                served_from_cache=any(v.get("served_from_cache") for v in statuses.values()),
+                data_freshness_s=max(
+                    (v.get("data_freshness_s") or 0.0) for v in statuses.values()
+                ) if statuses else None,
+                confidence_semantic_type=CONFIDENCE_SEMANTICS.get(self.name, "unknown"),
+                components=per_call or None,
+            )
+        except Exception as exc:  # noqa: BLE001 — telemetry may never decide
+            logger.debug("[OnchainEngine] dependency health not recorded: %s", exc)
+            self._dependency_health = None
 
     @staticmethod
     def _score_to_bias(score: float) -> SignalBias:

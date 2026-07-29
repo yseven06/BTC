@@ -46,6 +46,7 @@ from app.models.decision_candidate import (
     SignalDecisionCandidate,
     classify_birth_shadow,
 )
+from app.services.dependency_health import DEPENDENCY_HEALTH_VERSION
 from app.services.trade_geometry import dist_pct, planned_rr
 
 logger = logging.getLogger(__name__)
@@ -359,6 +360,19 @@ def build_candidate_values(
             # neutral opinion. Handed in from the decision payload already
             # built and already redacted; nothing is recomputed here.
             "engine_execution_telemetry": decision.get("engine_execution_telemetry"),
+            # CP-DEP-HEALTH-1 — which external dependency was configured, was
+            # reached, returned partial data or was served a cached failure while
+            # this decision was made. CP-OPERATIONAL-COUPLING-FORENSIC measured
+            # that 100% of a 12 539-candidate cohort was decided with macro on
+            # its zero-component fallback, which costs 4.85 confidence points and
+            # drops 250 of 788 gate-passing candidates — and that none of it was
+            # recoverable from this row, because `engine_scores` keeps only
+            # {score, bias, confidence} and the engines' own `warnings` are never
+            # persisted. Handed in already built and already redacted (no message
+            # text, no URL, no body — only exception TYPE and HTTP status).
+            # Namespaced under its own key so it can never collide with anything
+            # above; None when the orchestrator could not build it.
+            DEPENDENCY_HEALTH_VERSION: decision.get("dependency_health"),
         }),
     }
 
