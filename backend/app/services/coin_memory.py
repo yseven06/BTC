@@ -41,6 +41,7 @@ from app.services.trade_geometry import planned_rr
 from app.engines.ai_decision.signal_generator import BASE_ENGINE_WEIGHTS
 from app.engines.base import SignalBias
 from app.models.asset import Asset
+from app.models.decision_candidate import SignalDecisionCandidate
 from app.models.intelligence import CoinMemory, SignalSnapshot, SignalTradePath
 from app.models.signal import Signal, SignalOutcome, SignalPerformance
 
@@ -764,6 +765,295 @@ def _fold_into_bucket(b: Dict[str, Any], path) -> None:
         b["tight_sl"] = int(b.get("tight_sl", 0)) + 1
 
 
+# ════════════════════════════════════════════════════════════════════════════
+# CMV2-A — data contract & versioning for the Coin Memory v2 track
+# ════════════════════════════════════════════════════════════════════════════
+# An ADDITIVE, VERSIONED namespace living beside the v1 buckets inside tm_stats.
+# Per cell it records:
+#   • which fold rule produced the numbers, counted per rule — so CMV2-B's
+#     aggregates stay interpretable after the rule is ever bumped;
+#   • the cohort MIX the cell was built from. A HISTOGRAM, not a scalar label:
+#     CP-COIN-MEMORY-V2-FORENSIC §7 measured that a cell mixes pre- and post-F1
+#     folds, and a single label here would hide exactly that;
+#   • why a fold would be INELIGIBLE for a future v2 metric, counted per reason;
+#   • an audit stamp for the last fold.
+#
+# OBSERVATION ONLY, and deliberately less than it could be: no v2 metric is
+# aggregated (CMV2-B), no recency/decay/reliability is applied (CMV2-C), no
+# adaptive behaviour changes. v1 eligibility is untouched — every row v1 folds
+# today is still folded, with the same numbers.
+#
+# NOTHING on the decision path reads this namespace; that is locked at source
+# level by tests/test_cmv2a_contract.py, not left to convention.
+
+CM_V2_NAMESPACE = "cm_v2"
+CM_V2_CONTRACT_VERSION = "cm_v2_contract_1"
+CM_V2_FOLD_RULE_VERSION = "cm_v2_fold_1"
+
+# Cohort sentinels. LEGACY is a POSITIVE finding — a candidate row exists and
+# carries no version field, so the decision provably predates the versioned
+# contract. UNKNOWN means it could not be established at all. Neither is ever
+# inferred from a timestamp: a date can suggest a cohort, it cannot record one.
+CM_V2_COHORT_LEGACY = "legacy"
+CM_V2_COHORT_UNKNOWN = "unknown"
+
+# Bounded duplicate guard: the last N fold ids for this cell, newest last. Gates
+# the v2 counters ONLY. v1 has its own, stronger guard — signal_trade_path.
+# signal_id is UNIQUE and _persist_trade_path_once returns False on a repeat, so
+# the v1 fold is never even reached twice — and it is never gated by this ring.
+CM_V2_DEDUPE_WINDOW = 32
+
+# Multi-label: a fold may fire several of these at once, so the counters are NOT
+# expected to sum to `observed`.
+CM_V2_EXCLUSION_REASONS = (
+    "active",
+    "intrabar_ambiguous",
+    "still_forming_resolution",
+    "missing_decision_input_version",
+    "missing_policy_version",
+)
+
+
+def v1_tm_buckets(tm: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """The v1 regime/`_all` buckets only, with the additive v2 namespace stripped.
+
+    The rebuild-vs-online invariant is stated over THIS rather than over the raw
+    JSON, because cm_v2 is a fold-EVENT ledger: it carries `last_fold` with a
+    wall-clock stamp, and a bulk rebuild cannot reproduce an event log. Public on
+    purpose — the F0 gate compares through it, so the v1 half of the invariant
+    keeps its full teeth instead of being loosened to accommodate the namespace.
+    """
+    return {k: v for k, v in (tm or {}).items() if k != CM_V2_NAMESPACE}
+
+
+def unknown_cohort(source: str = "candidate_missing") -> Dict[str, Any]:
+    """The cohort when nothing could be established. Explicit sentinels only —
+    an absent value must read as absent, never as a plausible default."""
+    return {
+        "decision_input_version": CM_V2_COHORT_UNKNOWN,
+        "decision_input_version_source": source,
+        "policy_version": CM_V2_COHORT_UNKNOWN,
+        "policy_version_source": "unavailable",
+    }
+
+
+def _outcome_str(path) -> str:
+    val = getattr(path, "outcome", None)
+    if val is None:
+        return ""
+    return str(val.value if hasattr(val, "value") else val)
+
+
+def cm_v2_exclusions(path, cohort: Optional[Dict[str, Any]]) -> Dict[str, bool]:
+    """Why this fold would be INELIGIBLE for a v2 metric. PURE. MULTI-LABEL.
+
+    Changes nothing about v1: this is an opinion ABOUT a fold, recorded next to
+    it, never a gate on it.
+    """
+    outcome = _outcome_str(path).lower()
+    div = (cohort or {}).get("decision_input_version")
+    pol = (cohort or {}).get("policy_version")
+    return {
+        # Defensive predicate. A signal_trade_path row is written AT resolution,
+        # so no production row carries an ACTIVE outcome and this is expected to
+        # stay 0. Kept live and tested anyway, so an unresolved row could never
+        # be silently aggregated as a resolved one.
+        "active": outcome == "active",
+        "intrabar_ambiguous": bool(getattr(path, "intrabar_ambiguous", False)),
+        "still_forming_resolution": bool(getattr(path, "still_forming_resolution", False)),
+        # No RECORDED version string → both `legacy` and `unknown` count here.
+        # The cohort histogram keeps the two distinguishable, so collapsing them
+        # into one eligibility counter loses nothing.
+        "missing_decision_input_version": div in (
+            None, "", CM_V2_COHORT_LEGACY, CM_V2_COHORT_UNKNOWN),
+        "missing_policy_version": pol in (None, "", CM_V2_COHORT_UNKNOWN),
+    }
+
+
+def _empty_cm_v2() -> Dict[str, Any]:
+    return {
+        "version": CM_V2_CONTRACT_VERSION,
+        "fold_rule_version": CM_V2_FOLD_RULE_VERSION,
+        "cohort": {"decision_input_version": {}, "policy_version": {}},
+        "counts": {
+            "observed": 0,
+            "included": 0,
+            "excluded": {r: 0 for r in CM_V2_EXCLUSION_REASONS},
+            "by_fold_rule": {},
+        },
+        "last_fold": {
+            "signal_id": None, "outcome": None, "resolved_at": None,
+            "folded_at": None, "included": None,
+            "decision_input_version": None, "policy_version": None,
+        },
+        "recent_fold_ids": [],
+        "dedupe_window": CM_V2_DEDUPE_WINDOW,
+        "duplicate_folds_skipped": 0,
+    }
+
+
+def _nn_int(v: Any) -> int:
+    """Non-negative int from untrusted JSON (bools and junk → 0)."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return 0
+    try:
+        return max(0, int(v))
+    except (ValueError, OverflowError):
+        return 0
+
+
+def _hist(src: Any) -> Dict[str, int]:
+    """Carry a {label: count} histogram forward, dropping anything malformed."""
+    if not isinstance(src, dict):
+        return {}
+    return {str(k): _nn_int(v) for k, v in src.items() if _nn_int(v) > 0}
+
+
+def observe_cm_v2_fold(
+    existing: Any,
+    path,
+    cohort: Optional[Dict[str, Any]],
+    folded_at: Optional[str],
+) -> Dict[str, Any]:
+    """PURE: previous namespace + one fold → the next namespace.
+
+    No DB, no clock (`folded_at` is passed in), no mutation of `existing` — the
+    same discipline fold_signal_into follows, for the same reason: a pure step is
+    the only one a test can pin exactly.
+
+    Duplicate-safe within CM_V2_DEDUPE_WINDOW folds of the same cell: a repeat of
+    a signal_id still in the ring bumps `duplicate_folds_skipped` and touches
+    NOTHING else. An `existing` value of the wrong shape is rebuilt from the
+    default rather than raising — a corrupt observability blob must never be able
+    to cost a fold.
+    """
+    src = existing if isinstance(existing, dict) else {}
+    counts_src = src.get("counts") if isinstance(src.get("counts"), dict) else {}
+    exc_src = counts_src.get("excluded") if isinstance(counts_src.get("excluded"), dict) else {}
+    coh_src = src.get("cohort") if isinstance(src.get("cohort"), dict) else {}
+    ring_src = src.get("recent_fold_ids")
+    ring = [str(x) for x in ring_src if isinstance(x, str)] if isinstance(ring_src, list) else []
+
+    out = _empty_cm_v2()
+    out["cohort"] = {
+        "decision_input_version": _hist(coh_src.get("decision_input_version")),
+        "policy_version": _hist(coh_src.get("policy_version")),
+    }
+    out["counts"]["observed"] = _nn_int(counts_src.get("observed"))
+    out["counts"]["included"] = _nn_int(counts_src.get("included"))
+    out["counts"]["excluded"] = {r: _nn_int(exc_src.get(r)) for r in CM_V2_EXCLUSION_REASONS}
+    out["counts"]["by_fold_rule"] = _hist(counts_src.get("by_fold_rule"))
+    out["duplicate_folds_skipped"] = _nn_int(src.get("duplicate_folds_skipped"))
+    out["recent_fold_ids"] = ring
+    if isinstance(src.get("last_fold"), dict):
+        out["last_fold"] = {**out["last_fold"], **{
+            k: v for k, v in src["last_fold"].items() if k in out["last_fold"]}}
+
+    sid = getattr(path, "signal_id", None)
+    sid = str(sid) if sid is not None else None
+    if sid is not None and sid in ring:
+        out["duplicate_folds_skipped"] += 1
+        return out                       # every other counter untouched
+
+    coh = cohort if isinstance(cohort, dict) else unknown_cohort("cohort_unavailable")
+    div = str(coh.get("decision_input_version", CM_V2_COHORT_UNKNOWN))
+    pol = str(coh.get("policy_version", CM_V2_COHORT_UNKNOWN))
+    excl = cm_v2_exclusions(path, coh)
+    included = not any(excl.values())
+
+    out["counts"]["observed"] += 1
+    if included:
+        out["counts"]["included"] += 1
+    for reason, fired in excl.items():
+        if fired:
+            out["counts"]["excluded"][reason] += 1
+    out["counts"]["by_fold_rule"][CM_V2_FOLD_RULE_VERSION] = (
+        out["counts"]["by_fold_rule"].get(CM_V2_FOLD_RULE_VERSION, 0) + 1)
+    out["cohort"]["decision_input_version"][div] = (
+        out["cohort"]["decision_input_version"].get(div, 0) + 1)
+    out["cohort"]["policy_version"][pol] = (
+        out["cohort"]["policy_version"].get(pol, 0) + 1)
+
+    resolved_at = getattr(path, "resolved_at", None)
+    out["last_fold"] = {
+        "signal_id": sid,
+        "outcome": _outcome_str(path) or None,
+        "resolved_at": resolved_at.isoformat() if hasattr(resolved_at, "isoformat")
+                       else (str(resolved_at) if resolved_at is not None else None),
+        "folded_at": folded_at,
+        "included": included,
+        "decision_input_version": div,
+        "policy_version": pol,
+    }
+    if sid is not None:
+        out["recent_fold_ids"] = (ring + [sid])[-CM_V2_DEDUPE_WINDOW:]
+    return out
+
+
+async def _resolve_fold_cohort(db: AsyncSession, path) -> Dict[str, Any]:
+    """Resolve this fold's cohort from RECORDED decision-time provenance.
+
+    Chain, most reliable first — no step guesses:
+      1. the candidate row's `extra.decision_input_version` (the string the
+         decision itself stamped) plus its `policy_version` COLUMN;
+      2. a candidate row whose `extra` has NO version key → `legacy`. Positive
+         evidence: candidate logging was live, the version field did not exist yet;
+      3. the key present but empty/null → `unknown` with its own source marker.
+         The field existed and was not populated — a defect, not a cohort;
+      4. no candidate row, or the lookup failed → `unknown`.
+
+    Deliberately NOT in the chain: comparing `resolved_at` against the F1 deploy
+    time. That was the forensic's whole point — inferred provenance must not be
+    stored as recorded fact.
+
+    ONE lookup on an indexed column, LIMIT 1 → no N+1 and no scan; folds run at
+    resolution time (~10²/day), so this is not on any hot path. Never raises: any
+    failure degrades to `unknown` with the reason recorded.
+
+    Honest scope note: `policy_version` here is the CANDIDATE-LOG policy version
+    (the only policy version the system records). It is provenance for the
+    decision log, NOT an adaptive-weight policy version — no such version exists
+    yet, and CMV2-C/F will have to introduce one.
+    """
+    sid = getattr(path, "signal_id", None)
+    if sid is None:
+        return unknown_cohort("no_signal_id")
+    try:
+        row = (await db.execute(
+            select(SignalDecisionCandidate.extra, SignalDecisionCandidate.policy_version)
+            .where(SignalDecisionCandidate.signal_id == sid)
+            .order_by(SignalDecisionCandidate.evaluated_at.asc())
+            .limit(1)
+        )).first()
+    except Exception as exc:  # noqa: BLE001 — provenance lookup may never break a fold
+        logger.warning("[CoinMemory] cm_v2 cohort lookup failed for signal %s: %s", sid, exc)
+        return unknown_cohort("lookup_failed")
+
+    if row is None:
+        return unknown_cohort("candidate_missing")
+
+    extra, policy_version = row[0], row[1]
+    out = unknown_cohort("candidate_row_without_version")
+    if isinstance(policy_version, int) and not isinstance(policy_version, bool):
+        out["policy_version"] = policy_version
+        out["policy_version_source"] = "candidate_policy_version_column"
+
+    if not isinstance(extra, dict) or "decision_input_version" not in extra:
+        # The row predates the version field → provably legacy.
+        out["decision_input_version"] = CM_V2_COHORT_LEGACY
+        out["decision_input_version_source"] = "candidate_row_without_version"
+        return out
+
+    raw = extra.get("decision_input_version")
+    if isinstance(raw, str) and raw.strip():
+        out["decision_input_version"] = raw.strip()
+        out["decision_input_version_source"] = "candidate_extra"
+    else:
+        out["decision_input_version"] = CM_V2_COHORT_UNKNOWN
+        out["decision_input_version_source"] = "candidate_version_null"
+    return out
+
+
 async def update_trade_mgmt_stats(db: AsyncSession, path) -> None:
     """Fold a SignalTradePath row into its coin_memory cell's tm_stats. Regime
     is a sub-key plus an "_all" aggregate. Caller wraps this so any failure is
@@ -807,6 +1097,21 @@ async def update_trade_mgmt_stats(db: AsyncSession, path) -> None:
     mem.tm_stats = tm
     mem.tm_sample_count = int(mem.tm_sample_count or 0) + 1
 
+    # ── CMV2-A: additive data contract, assigned AFTER v1 is already committed
+    # above. The ordering is the safety property: if anything in here raises, the
+    # caller's fail-open envelope catches it and the v1 fold that landed a moment
+    # ago still stands. Observability that can cost a fold is not observability.
+    try:
+        cohort = await _resolve_fold_cohort(db, path)
+        namespace = observe_cm_v2_fold(
+            tm.get(CM_V2_NAMESPACE), path, cohort,
+            datetime.now(timezone.utc).isoformat(),
+        )
+        mem.tm_stats = {**tm, CM_V2_NAMESPACE: namespace}
+    except Exception as exc:  # noqa: BLE001 — never let the contract reach the fold
+        logger.warning("[CoinMemory] cm_v2 observation skipped for %s %s: %s",
+                       symbol, timeframe, exc)
+
 
 def _aggregate_tm_stats(
     paths: List[Any],
@@ -847,7 +1152,17 @@ async def rebuild_tm_stats(db: AsyncSession) -> Dict[str, int]:
     updated = created = 0
     for key, mem in existing.items():
         tm = cells.get(key)
-        mem.tm_stats = tm if tm else None
+        # CMV2-A: the additive namespace is a fold-EVENT ledger, not a derivable
+        # aggregate — a bulk rebuild cannot reproduce `last_fold`/`folded_at`. So it
+        # is carried forward UNTOUCHED: dropping it would silently destroy the audit
+        # trail this checkpoint exists to create, and recomputing it would fabricate
+        # fold timestamps. The v1 buckets are still rebuilt from scratch.
+        preserved = (mem.tm_stats or {}).get(CM_V2_NAMESPACE) \
+            if isinstance(mem.tm_stats, dict) else None
+        rebuilt = dict(tm) if tm else {}
+        if preserved is not None:
+            rebuilt[CM_V2_NAMESPACE] = preserved
+        mem.tm_stats = rebuilt or None
         mem.tm_sample_count = counts.get(key, 0)
         updated += 1
     for key, tm in cells.items():
@@ -890,7 +1205,12 @@ def compute_coin_tm_summary(mem, regime: Optional[str] = None) -> Dict[str, Any]
     and below the per-cell sample threshold ONLY raw counts (no rates/averages).
     Never raises: returns has_data=False when the cache is missing/empty, so a
     caller can surface it best-effort without ever affecting signal generation."""
-    tm = (getattr(mem, "tm_stats", None) or {}) if mem is not None else {}
+    # CMV2-A: read through v1_tm_buckets so the additive contract namespace is
+    # structurally invisible here. Without it a caller passing regime="cm_v2" would
+    # be served the contract blob as though it were trade statistics. Unreachable
+    # in production (regimes come from the regime detector), but the isolation
+    # claim should hold by construction, not by which strings happen to occur.
+    tm = v1_tm_buckets((getattr(mem, "tm_stats", None) or {}) if mem is not None else {})
     key = regime if (regime and regime in tm) else "_all"
     bucket = tm.get(key) or {}
     n = int(bucket.get("n", 0) or 0)

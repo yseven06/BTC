@@ -28,9 +28,17 @@ from app.models.intelligence import CoinMemory
 from app.models.price_data import Timeframe
 from app.models.signal import SignalOutcome
 from app.services.coin_memory import (
-    _aggregate_tm_stats, _fold_key, _reset_base_facets, fold_signal_into,
-    update_trade_mgmt_stats,
+    CM_V2_NAMESPACE, _aggregate_tm_stats, _fold_key, _reset_base_facets,
+    fold_signal_into, update_trade_mgmt_stats, v1_tm_buckets,
 )
+
+# CMV2-A: the online fold also writes an additive `cm_v2` namespace beside the v1
+# buckets — a fold-EVENT ledger (it stamps wall-clock `folded_at`), which a bulk
+# rebuild cannot reproduce and does not try to. So the invariant is stated over
+# v1_tm_buckets(): still bucket-for-bucket and value-for-value, just scoped to the
+# half both derivations actually own. test_b_the_comparison_has_teeth proves the
+# scoping did not cost the comparison its bite, and
+# test_b_online_adds_only_the_cm_v2_key proves nothing ELSE can slip in behind it.
 
 
 # ── Doubles ─────────────────────────────────────────────────────────────────
@@ -91,16 +99,27 @@ def test_b_online_and_rebuild_agree_on_every_bucket():
     key = ("BTC", "4h")
     assert skipped == 0
     assert counts[key] == online.tm_sample_count == len(paths)
-    assert cells[key] == online.tm_stats                 # bucket-for-bucket, value-for-value
+    assert cells[key] == v1_tm_buckets(online.tm_stats)   # bucket-for-bucket, value-for-value
 
 
 def test_b_the_comparison_has_teeth():
     """One extra fold on one side must break it — otherwise the test above proves
-    nothing (F0-K's lesson, applied to its own check)."""
+    nothing (F0-K's lesson, applied to its own check). Compared through
+    v1_tm_buckets so it fails for the REAL reason (a bucket differs), not merely
+    because the online side carries an extra namespace key."""
     paths = _paths()
     online = _online_fold(paths + [_path()])             # one more
     cells, _, _ = _aggregate_tm_stats(paths)
-    assert cells[("BTC", "4h")] != online.tm_stats
+    assert cells[("BTC", "4h")] != v1_tm_buckets(online.tm_stats)
+
+
+def test_b_online_adds_only_the_cm_v2_key():
+    """The scoping above is safe ONLY while cm_v2 is the single extra key. Locks
+    that: any future namespace must be added to the invariant deliberately, not
+    hidden by v1_tm_buckets()."""
+    online = _online_fold(_paths())
+    extra = set(online.tm_stats) - set(v1_tm_buckets(online.tm_stats))
+    assert extra == {CM_V2_NAMESPACE}, f"unexpected extra tm_stats keys: {extra}"
 
 
 def test_b_agrees_on_the_skip_filter_too():
@@ -117,7 +136,7 @@ def test_b_agrees_on_the_skip_filter_too():
 
     assert skipped == 1                                  # …rebuild skips it too
     assert counts[("BTC", "4h")] == online.tm_sample_count == 6
-    assert cells[("BTC", "4h")] == online.tm_stats
+    assert cells[("BTC", "4h")] == v1_tm_buckets(online.tm_stats)
 
 
 def test_b_is_order_insensitive():
@@ -136,7 +155,7 @@ def test_b_regimeless_rows_land_in_the_unknown_bucket_on_both_paths():
     cells, _, _ = _aggregate_tm_stats(paths)
 
     assert "unknown" in online.tm_stats and "_all" in online.tm_stats
-    assert cells[("BTC", "4h")] == online.tm_stats
+    assert cells[("BTC", "4h")] == v1_tm_buckets(online.tm_stats)
 
 
 # ── The two derivations must not clobber each other ─────────────────────────
