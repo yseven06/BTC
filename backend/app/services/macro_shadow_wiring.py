@@ -34,6 +34,7 @@ from typing import Any, Dict, Mapping, Optional, Sequence
 from app.services.macro_shadow import (
     COMPONENTS_EXPECTED_CRYPTO,
     EXCEPTION,
+    FETCH_DISABLED,
     MACRO_SHADOW_VERSION,
     NOT_CONFIGURED,
     build_disabled_macro_shadow,
@@ -52,6 +53,18 @@ MACRO_ENGINE_NAME = "macro_analysis"
 # missing engine indistinguishable from a present one.
 MACRO_ENGINE_MISSING = "macro_engine_missing"
 DECISION_UNREADABLE = "decision_unreadable"
+
+# The engine reports a fetch that actually RAN as `configured=True`. While the
+# kill-switch is shut that cannot happen — but if it ever does, a payload saying
+# `executed=False` would be a false record, so it is flagged instead.
+FETCH_RAN_UNEXPECTEDLY = "fetch_ran_but_shadow_disabled"
+
+# Where key presence is read from. `dependency_health` is already IN the decision
+# (engine.py:423), so the shadow learns this without importing settings, the
+# collector or os — the import set stays exactly four modules and an AST test
+# pins it. It is also the better source: this is what the engine OBSERVED when
+# the decision was made, not what the environment happens to say afterwards.
+DEPENDENCY_HEALTH_KEY = "dependency_health"
 
 
 def _macro_reading(decision: Any) -> Optional[Mapping[str, Any]]:
@@ -72,6 +85,41 @@ def _macro_reading(decision: Any) -> Optional[Mapping[str, Any]]:
     return None
 
 
+def _macro_health(decision: Any) -> Mapping[str, Any]:
+    """The macro engine's `dependency_health` entry from the decision, or {}.
+
+    READ-ONLY, and defensive at every level: this runs inside a telemetry helper
+    that may not raise, and `dependency_health` is itself fail-open upstream
+    (`_dependency_health_or_none`), so None is an expected input.
+    """
+    if not isinstance(decision, Mapping):
+        return {}
+    health = decision.get(DEPENDENCY_HEALTH_KEY)
+    if not isinstance(health, Mapping):
+        return {}
+    engines = health.get("engines")
+    if not isinstance(engines, Mapping):
+        return {}
+    entry = engines.get(MACRO_ENGINE_NAME)
+    return entry if isinstance(entry, Mapping) else {}
+
+
+def _key_present(health: Mapping[str, Any]) -> bool:
+    """Was the credential configured when this decision was made?
+
+    `fetch_disabled` is written by the macro engine ONLY when the collector saw a
+    key and the kill-switch refused it (engine.py:153-160, via
+    `collector.fred_key_present`). So this one string is exactly the presence
+    signal — and it is a BOOLEAN out, never the value, never a length or prefix.
+
+    The literal is not duplicated: `FETCH_DISABLED` here and
+    `macro_collector.FRED_FETCH_DISABLED_REASON` there are pinned equal by a test,
+    because importing the collector would give this module the very dependency it
+    is forbidden to have.
+    """
+    return health.get("fallback_reason") == FETCH_DISABLED
+
+
 def build_candidate_macro_shadow(
     *,
     decision: Any,
@@ -87,8 +135,12 @@ def build_candidate_macro_shadow(
     """
     try:
         reading = _macro_reading(decision)
+        health = _macro_health(decision)
         payload = build_disabled_macro_shadow(
             decision_time=decision_time,
+            # The ONE fact about the credential that crosses this boundary: a
+            # boolean. Never the value, never its length, prefix or a digest.
+            key_present=_key_present(health),
             # Passed RAW. `build_disabled_macro_shadow` coerces each of the three
             # at its own boundary (`_finite` / `_text`), so there is exactly one
             # place that decides what a non-finite score or a non-string bias
@@ -99,15 +151,24 @@ def build_candidate_macro_shadow(
             production_publish_verdict=verdict,
             components_expected=COMPONENTS_EXPECTED_CRYPTO,
         )
+        errors: list = []
         if reading is None:
             # The payload stays structurally valid and the three production fields
             # stay null; the reason goes in `errors` so a null is never mistaken
             # for "macro scored nothing".
-            payload["errors"] = [{
+            errors.append({
                 "error": MACRO_ENGINE_MISSING if isinstance(decision, Mapping)
                 else DECISION_UNREADABLE,
                 "engine_name": MACRO_ENGINE_NAME,
-            }]
+            })
+        if health.get("configured") is True:
+            # A fetch actually ran. `executed=False` would then be a falsehood, so
+            # it is recorded rather than emitted quietly. Unreachable while the
+            # kill-switch is shut; CP-...-BOUNDED-FETCH is what makes it reachable.
+            errors.append({"error": FETCH_RAN_UNEXPECTEDLY,
+                           "engine_name": MACRO_ENGINE_NAME})
+        if errors:
+            payload["errors"] = errors
         return payload
     except Exception as exc:  # noqa: BLE001 — telemetry must never lose a candidate
         logger.warning("[MacroShadow] payload not built (fail-open, ignored): %s",

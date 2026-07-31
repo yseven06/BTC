@@ -374,14 +374,31 @@ def build_disabled_macro_shadow(
     production_macro_confidence: Any,
     production_publish_verdict: Optional[str] = None,
     components_expected: int = COMPONENTS_EXPECTED_CRYPTO,
-    fetch_status: str = NOT_CONFIGURED,
-    fallback_reason: str = NO_API_KEY,
+    key_present: bool = False,
+    fetch_status: Optional[str] = None,
+    fallback_reason: Optional[str] = None,
 ) -> Dict[str, Any]:
     """The payload when no shadow computation ran — today's permanent state.
 
     Production macro values are ARGUMENTS, never constants: the payload records what
     production actually produced, so a future change to the engine shows up here
     instead of being masked by a hard-coded 50/neutral/25.
+
+    `key_present` is the ONE fact this builder learns about the credential — a
+    boolean, never the value, never its length or shape. It separates two states
+    that used to be one:
+
+        key_present=False → configured=False, not_configured, no_api_key
+        key_present=True  → configured=True,  disabled,       fetch_disabled
+
+    `configured` here means "the credential is configured", not "a fetch ran" —
+    `executed` stays False either way, which is what says nothing was fetched.
+    Recording `no_api_key` once a key IS stored would be a false record, and this
+    payload lands on ~7 200 rows a day.
+
+    `fetch_status` and `fallback_reason` default to None meaning "derive from
+    key_present"; an explicit value still wins, and an unrecognised one still
+    degrades to the derived pair rather than to a fixed constant.
 
     `series` is deliberately EMPTY here — see EXAMINED_SERIES_ONLY. The snapshot
     builder still emits the full map, so the enabled path is unaffected.
@@ -394,9 +411,14 @@ def build_disabled_macro_shadow(
         production_publish_verdict=production_publish_verdict,
         components_expected=components_expected,
     )
-    out["fetch_status"] = fetch_status if fetch_status in FETCH_STATUSES else NOT_CONFIGURED
-    out["fallback_reason"] = fallback_reason if fallback_reason in FALLBACK_REASONS else NO_API_KEY
-    out["configured"] = False
+    derived_status = DISABLED if key_present else NOT_CONFIGURED
+    derived_reason = FETCH_DISABLED if key_present else NO_API_KEY
+    status = derived_status if fetch_status is None else fetch_status
+    reason = derived_reason if fallback_reason is None else fallback_reason
+    out["fetch_status"] = status if status in FETCH_STATUSES else derived_status
+    out["fallback_reason"] = reason if reason in FALLBACK_REASONS else derived_reason
+    out["configured"] = bool(key_present)
+    # Never conditional on the key: a credential being stored is not a fetch.
     out["executed"] = False
     out["series"] = {}
     return out
