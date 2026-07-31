@@ -1,0 +1,366 @@
+"""The ONE place a shadow FRED request is made. Stage 4 of the macro restore.
+
+WHY IT IS NOT `MacroCollector`
+    `MacroCollector` is what the production MacroEngine constructs on every
+    candidate (engine.py:79). Reusing it would mean the shadow and the live
+    decision share a client, a cache and — fatally — a kill-switch: opening one
+    would open the other, reconnecting the decision to FRED and moving the
+    publish gate by a measured +5.0 confidence. So this module owns its own
+    client, its own cache namespace and its own flag, and the production one
+    stays off.
+
+WHAT IT GUARANTEES
+    * At most ONE outbound request cycle per TTL, shared by every candidate and
+      every overlapping job. Not "one per scan" — stronger: the TTL is the scan
+      cadence, so 15m/1h/4h/1d sweeps all reuse the same snapshot.
+    * Bounded. One `asyncio.timeout` covers both series; the ceiling is a small
+      fraction of the 45 s per-asset budget, and a near-deadline call declines to
+      start at all rather than relying on that ceiling.
+    * No retry. The next natural scan is the retry — a retry loop here would
+      multiply the request count the TTL exists to bound.
+    * Fail-silent. It cannot raise, so it cannot cost a candidate or a scan. A
+      failure becomes a snapshot that says what failed.
+    * Immutable. Every caller gets a deep copy, so one candidate cannot mutate
+      what the next one reads.
+    * No secret anywhere. The key reaches exactly one expression — the request's
+      query parameters — and nothing else: not a log line, not an exception, not
+      a status, not the returned snapshot.
+
+WHAT IT MUST NOT DO — enforced by tests
+    Touch `_MACRO_CACHE`, construct a `MacroCollector`, build an `EngineResult`,
+    reach `engine_results`, retry, raise, cache a failure, or return a shared
+    mutable.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import copy
+import logging
+import time
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional, Tuple
+
+import httpx
+
+from app.config import get_settings
+from app.services import job_guard
+from app.services.macro_shadow import (
+    AUTH_FAILED,
+    BUDGET_GUARD,
+    EMPTY,
+    FETCH_FAILED,
+    HTTP_429,
+    HTTP_4XX,
+    INTERNAL_ERROR,
+    NETWORK_ERROR,
+    OK,
+    PARSE_ERROR,
+    SCORED_SERIES,
+    STALE_CACHE,
+    TIMEOUT,
+)
+
+logger = logging.getLogger(__name__)
+
+FRED_OBSERVATIONS_URL = "https://api.stlouisfed.org/fred/series/observations"
+
+# One `asyncio.timeout` covers BOTH series, which run concurrently. Six seconds
+# against a 45 s per-asset budget (job_guard.PER_ASSET_BUDGET_SECONDS) is 13% of
+# one asset's bound, and only the asset that refreshes the cache pays it.
+SHADOW_FETCH_TIMEOUT_SECONDS = 6.0
+
+# The 15m scan cadence. FEDFUNDS is published monthly and DGS10 daily, so a
+# 15-minute window is already far fresher than anything the source can change;
+# a shorter TTL would buy no freshness and multiply requests. Setting it EQUAL to
+# the cadence is what makes "at most one request per scan" hold across the
+# overlapping 15m/1h/4h/1d sweeps rather than per-job.
+SHADOW_CACHE_TTL_SECONDS = 900.0
+
+# How old a snapshot may be and still be served when a fetch FAILS. An hour of
+# staleness on a monthly/daily series is harmless; the alternative is discarding
+# a good observation because one request timed out. Always labelled `stale`.
+SHADOW_STALE_MAX_AGE_SECONDS = 3600.0
+
+# Decline to start when less than this remains of the job's budget. The timeout
+# above bounds the request; this bounds the DECISION to make one at all, so a
+# job already near its deadline is never pushed over by optional telemetry.
+SHADOW_BUDGET_MARGIN_SECONDS = 4.0
+
+# Separate from `macro_collector._MACRO_CACHE` by construction, not by
+# convention: a different dict in a different module, keyed by a namespace that
+# names the contract it serves.
+SHADOW_CACHE_NAMESPACE = "macro_shadow_v1"
+_SHADOW_CACHE: Dict[str, Dict[str, Any]] = {}
+
+CACHE_HIT = "hit"
+CACHE_MISS = "miss"
+CACHE_STALE = "stale"
+
+
+def cache_key() -> str:
+    """Namespace + the exact series set. A future stage that fetches a different
+    set gets a different key rather than silently reading this one's snapshot."""
+    return f"{SHADOW_CACHE_NAMESPACE}|{'+'.join(SCORED_SERIES)}"
+
+
+def reset_cache_for_tests() -> None:
+    _SHADOW_CACHE.clear()
+
+
+def _now() -> float:
+    return time.monotonic()
+
+
+def _iso_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _classify(exc: BaseException) -> Tuple[str, str]:
+    """(fetch_status, error_class) for a failed request.
+
+    Only the exception's TYPE NAME is ever returned. `str(exc)` is never touched:
+    httpx puts the request URL in its message, and that URL carries the api_key
+    query parameter.
+    """
+    name = type(exc).__name__
+    if isinstance(exc, (asyncio.TimeoutError, httpx.TimeoutException)):
+        return TIMEOUT, name
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code
+        if code == 429:
+            return HTTP_429, name
+        if code in (401, 403):
+            return HTTP_4XX, name
+        if 400 <= code < 500:
+            return HTTP_4XX, name
+        return NETWORK_ERROR, name
+    if isinstance(exc, (httpx.TransportError, httpx.NetworkError, OSError)):
+        return NETWORK_ERROR, name
+    if isinstance(exc, (ValueError, KeyError, TypeError)):
+        return PARSE_ERROR, name
+    return INTERNAL_ERROR, name
+
+
+def _reason_for(status: str, code: Optional[int]) -> Optional[str]:
+    """The fetcher's OWN word on why, where it knows more than the status does.
+
+    A 401/403 is `auth_failed`; any other 4xx is not — a 400 is a malformed
+    request, and calling that an auth failure would send the next reader looking
+    at the wrong thing. The contract's status→reason map cannot make that
+    distinction because both are `http_4xx`.
+    """
+    if status == HTTP_429:
+        return None                              # the map already says rate_limited
+    if status == HTTP_4XX:
+        return AUTH_FAILED if code in (401, 403) else FETCH_FAILED
+    return None
+
+
+def _series_entry(*, status: str, value=None, observation_date=None,
+                  latency_ms=None, error_class=None,
+                  cache_status: str = CACHE_MISS,
+                  cache_age_s: Optional[float] = None) -> Dict[str, Any]:
+    return {
+        "value": value,
+        "observation_date": observation_date,
+        "fetch_status": status,
+        "retrieved_at": _iso_now(),
+        "cache_status": cache_status,
+        "cache_age_s": cache_age_s,
+        "latency_ms": latency_ms,
+        "error_class": error_class,
+    }
+
+
+async def _fetch_one(client: httpx.AsyncClient, series_id: str,
+                     api_key: str) -> Tuple[Dict[str, Any], Optional[int]]:
+    """One series. Never raises; returns (entry, http_status_code_or_None)."""
+    started = time.perf_counter()
+    try:
+        response = await client.get(
+            FRED_OBSERVATIONS_URL,
+            params={"series_id": series_id, "api_key": api_key,
+                    "file_type": "json", "sort_order": "desc", "limit": 1},
+        )
+        latency = round((time.perf_counter() - started) * 1000.0, 2)
+        response.raise_for_status()
+        observations = response.json().get("observations", [])
+        if not observations:
+            return _series_entry(status=EMPTY, latency_ms=latency), response.status_code
+        raw_value = observations[0].get("value")
+        if raw_value in (None, ".", ""):
+            return _series_entry(status=EMPTY, latency_ms=latency), response.status_code
+        return _series_entry(
+            status=OK, value=float(raw_value),
+            observation_date=observations[0].get("date"),
+            latency_ms=latency,
+        ), response.status_code
+    except asyncio.CancelledError:
+        # NOT swallowed. `asyncio.timeout` above and the scheduler's own shutdown
+        # both cancel cooperatively, and a handler that catches this would fight
+        # its own bound — the request would be "cancelled" while this coroutine
+        # kept running to build a tidy result. Re-raised so the timeout is real.
+        raise
+    except BaseException as exc:  # noqa: BLE001 — a shadow may never raise upward
+        latency = round((time.perf_counter() - started) * 1000.0, 2)
+        status, error_class = _classify(exc)
+        code = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
+        # Only the class name and, for an HTTP error, the numeric status. Never
+        # `str(exc)` — httpx embeds the request URL, and the URL holds the key.
+        logger.debug("[MacroShadowFetch] %s -> %s (%s)", series_id, status, error_class)
+        return _series_entry(status=status, latency_ms=latency,
+                             error_class=error_class), code
+
+
+def _snapshot(*, configured: bool, fetch_status: str, series: Dict[str, Any],
+              cache_status: str, cache_age_s: Optional[float] = None,
+              request_latency_ms: Optional[float] = None,
+              fallback_reason: Optional[str] = None) -> Dict[str, Any]:
+    out: Dict[str, Any] = {
+        "configured": configured,
+        "fetch_status": fetch_status,
+        "cache_status": cache_status,
+        "cache_age_s": cache_age_s,
+        "request_latency_ms": request_latency_ms,
+        # No ALFRED/vintage endpoint is used, so there is no separate observation
+        # TIME to report beyond each series' own observation DATE. Left None
+        # rather than filled with the retrieval clock, which would be a different
+        # fact wearing this field's name.
+        "observation_time": None,
+        "series": series,
+    }
+    if fallback_reason is not None:
+        out["fallback_reason"] = fallback_reason
+    return out
+
+
+def _failure_snapshot(status: str, *, series: Optional[Dict[str, Any]] = None,
+                      fallback_reason: Optional[str] = None,
+                      request_latency_ms: Optional[float] = None) -> Dict[str, Any]:
+    series = series if series is not None else {
+        sid: _series_entry(status=status) for sid in SCORED_SERIES}
+    return _snapshot(configured=True, fetch_status=status, series=series,
+                     cache_status=CACHE_MISS, fallback_reason=fallback_reason,
+                     request_latency_ms=request_latency_ms)
+
+
+def _cached(now: float) -> Optional[Tuple[Dict[str, Any], float]]:
+    entry = _SHADOW_CACHE.get(cache_key())
+    if not entry:
+        return None
+    return entry["snapshot"], now - entry["stored_at"]
+
+
+async def get_shadow_macro_snapshot(*, job_id: Optional[str] = None
+                                    ) -> Optional[Dict[str, Any]]:
+    """An immutable FRED snapshot for the shadow, or None to keep it disabled.
+
+    None means "do not run the observation path" — the flag is off or there is no
+    credential. A dict means the path runs, INCLUDING when the fetch failed: the
+    failure is then part of the record rather than an absence.
+
+    Never raises.
+    """
+    try:
+        settings = get_settings()
+        if not bool(getattr(settings, "MACRO_SHADOW_FETCH_ENABLED", False)):
+            return None
+        api_key = (getattr(settings, "FRED_API_KEY", "") or "").strip()
+        if not api_key:
+            # A flag without a credential is not an error; it is the same
+            # "nothing to fetch" the disabled path already describes correctly.
+            return None
+
+        now = _now()
+        cached = _cached(now)
+        if cached is not None and cached[1] < SHADOW_CACHE_TTL_SECONDS:
+            snapshot, age = cached
+            fresh = copy.deepcopy(snapshot)
+            fresh["cache_status"] = CACHE_HIT
+            fresh["cache_age_s"] = round(age, 3)
+            return fresh
+
+        if job_id:
+            remaining = job_guard.remaining_budget(job_id)
+            if (remaining is not None
+                    and remaining < SHADOW_FETCH_TIMEOUT_SECONDS
+                    + SHADOW_BUDGET_MARGIN_SECONDS):
+                return _failure_snapshot(BUDGET_GUARD, fallback_reason=BUDGET_GUARD)
+
+        return await _fetch_fresh(api_key, now, cached)
+    except BaseException as exc:  # noqa: BLE001 — telemetry may never break a scan
+        logger.warning("[MacroShadowFetch] snapshot unavailable (ignored): %s",
+                       type(exc).__name__)
+        return None
+
+
+async def _fetch_fresh(api_key: str, now: float,
+                       cached: Optional[Tuple[Dict[str, Any], float]]
+                       ) -> Dict[str, Any]:
+    """One bounded request cycle. No retry — the next scan is the retry."""
+    started = time.perf_counter()
+    series: Dict[str, Any] = {}
+    codes: Dict[str, Optional[int]] = {}
+    try:
+        async with httpx.AsyncClient(timeout=SHADOW_FETCH_TIMEOUT_SECONDS) as client:
+            async with asyncio.timeout(SHADOW_FETCH_TIMEOUT_SECONDS):
+                results = await asyncio.gather(
+                    *(_fetch_one(client, sid, api_key) for sid in SCORED_SERIES))
+        for sid, (entry, code) in zip(SCORED_SERIES, results):
+            series[sid] = entry
+            codes[sid] = code
+    except BaseException as exc:  # noqa: BLE001
+        status, error_class = _classify(exc)
+        latency = round((time.perf_counter() - started) * 1000.0, 2)
+        stale = _serve_stale(cached, status)
+        if stale is not None:
+            return stale
+        return _failure_snapshot(
+            status, request_latency_ms=latency,
+            series={sid: _series_entry(status=status, error_class=error_class)
+                    for sid in SCORED_SERIES})
+
+    latency = round((time.perf_counter() - started) * 1000.0, 2)
+    ok_count = sum(1 for e in series.values() if e["fetch_status"] == OK)
+    worst = next((e["fetch_status"] for e in series.values()
+                  if e["fetch_status"] != OK), OK)
+    overall = OK if ok_count == len(SCORED_SERIES) else worst
+    reason = _reason_for(overall, next((codes[s] for s in SCORED_SERIES
+                                        if series[s]["fetch_status"] == overall), None))
+
+    if ok_count == 0:
+        # Nothing usable arrived. A stale-but-real observation beats an empty
+        # one, and a failure is NEVER cached — so the next scan retries for free.
+        stale = _serve_stale(cached, overall)
+        if stale is not None:
+            return stale
+        return _failure_snapshot(overall, series=series, fallback_reason=reason,
+                                 request_latency_ms=latency)
+
+    snapshot = _snapshot(configured=True, fetch_status=overall, series=series,
+                         cache_status=CACHE_MISS, request_latency_ms=latency,
+                         fallback_reason=reason)
+    _SHADOW_CACHE[cache_key()] = {"snapshot": copy.deepcopy(snapshot),
+                                  "stored_at": now}
+    return snapshot
+
+
+def _serve_stale(cached: Optional[Tuple[Dict[str, Any], float]],
+                 failed_status: str) -> Optional[Dict[str, Any]]:
+    """A previous good snapshot, if one is recent enough to still mean something.
+
+    Labelled `stale_cache` on both channels so no reader mistakes it for a live
+    read, and the age is carried so they can judge it themselves.
+    """
+    if cached is None:
+        return None
+    snapshot, age = cached
+    if age > SHADOW_STALE_MAX_AGE_SECONDS:
+        return None
+    out = copy.deepcopy(snapshot)
+    out["cache_status"] = CACHE_STALE
+    out["cache_age_s"] = round(age, 3)
+    out["fetch_status"] = STALE_CACHE
+    logger.debug("[MacroShadowFetch] serving stale snapshot after %s", failed_status)
+    return out

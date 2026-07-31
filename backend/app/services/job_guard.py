@@ -313,6 +313,20 @@ def _running_seconds(e: _Liveness) -> Optional[float]:
     return round(time.monotonic() - e.running_since_monotonic, 1)
 
 
+def remaining_budget(job_id: str) -> Optional[float]:
+    """Seconds left in this job's budget, or None if it is not running.
+
+    CP-MACRO-SHADOW-RESTORE-BOUNDED-FETCH — a READ. It starts nothing, cancels
+    nothing and changes no counter; it exists so an optional side task can decline
+    to start when the job is already near its bound, instead of that task's own
+    timeout being the only thing between it and the deadline.
+    """
+    e = _STATE.get(job_id)
+    if e is None or not e.running or e.running_since_monotonic is None:
+        return None
+    return budget_for(job_id) - (time.monotonic() - e.running_since_monotonic)
+
+
 def _is_stale(job_id: str, e: _Liveness) -> bool:
     """Has a critical job gone too long without succeeding?
 

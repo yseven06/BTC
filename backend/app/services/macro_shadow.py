@@ -108,6 +108,27 @@ FALLBACK_REASONS: Tuple[str, ...] = (
     PARTIAL_DATA, LOOKAHEAD_VIOLATION, EXCEPTION, BUDGET_GUARD,
 )
 
+# How a transport-level outcome becomes a REASON. Without this a 401 would land
+# as `no_data` — technically true (zero components arrived) and useless, because
+# "the key was rejected" and "FRED had nothing to say" need entirely different
+# responses. The fetcher may still name the reason itself; this is the fallback
+# when it only reports a status.
+#
+# `parse_error` and `network_error` both collapse to `fetch_failed`: the reason
+# vocabulary describes what the SHADOW could not do, and the finer distinction is
+# already preserved in `fetch_status`. `stale_cache` is deliberately absent —
+# data IS present on that path, so the component count decides the reason.
+FETCH_STATUS_FALLBACK_REASONS: Dict[str, str] = {
+    HTTP_4XX: AUTH_FAILED,
+    HTTP_429: RATE_LIMITED,
+    TIMEOUT: FETCH_FAILED,
+    NETWORK_ERROR: FETCH_FAILED,
+    PARSE_ERROR: FETCH_FAILED,
+    EMPTY: NO_DATA,
+    BUDGET_GUARD: BUDGET_GUARD,
+    INTERNAL_ERROR: EXCEPTION,
+}
+
 # No ALFRED/vintage endpoint is used, so every value is "whatever FRED served at
 # retrieval time". FEDFUNDS and DGS10 are both revised, so a stored observation
 # cannot be re-fetched identically later — the payload says so rather than
@@ -528,8 +549,23 @@ def build_macro_shadow_from_snapshot(
     else:
         out["fetch_status"] = EMPTY
 
+    # Reason precedence, most specific first. The fetcher's own word wins: it is
+    # the only layer that saw the transport, so it can tell a rejected key from
+    # an empty series. Then the status→reason map. Only after both does the
+    # component count decide — which on a 401 would otherwise report `no_data`,
+    # true but useless, since "the key was rejected" and "FRED had nothing"
+    # demand different responses.
+    snap_reason = snapshot.get("fallback_reason")
+    mapped = FETCH_STATUS_FALLBACK_REASONS.get(out["fetch_status"])
     if any(e.get("error") == LOOKAHEAD_VIOLATION for e in errors):
         out["fallback_reason"] = LOOKAHEAD_VIOLATION
+    elif snap_reason in FALLBACK_REASONS:
+        out["fallback_reason"] = snap_reason
+    elif mapped is not None and components_used == 0:
+        # Only when NOTHING arrived. A partial result that also carried a failure
+        # status is still partial data, and saying otherwise would hide the half
+        # that worked.
+        out["fallback_reason"] = mapped
     elif components_used == 0:
         out["fallback_reason"] = NO_DATA
     elif components_used < len(SCORED_SERIES):

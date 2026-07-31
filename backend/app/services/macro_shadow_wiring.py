@@ -38,6 +38,7 @@ from app.services.macro_shadow import (
     MACRO_SHADOW_VERSION,
     NOT_CONFIGURED,
     build_disabled_macro_shadow,
+    build_macro_shadow_from_snapshot,
 )
 
 logger = logging.getLogger(__name__)
@@ -120,11 +121,31 @@ def _key_present(health: Mapping[str, Any]) -> bool:
     return health.get("fallback_reason") == FETCH_DISABLED
 
 
+def _confidence(decision: Any) -> Any:
+    return decision.get("confidence_score") if isinstance(decision, Mapping) else None
+
+
+def _engine_count(decision: Any) -> int:
+    """The confidence mean's DIVISOR, read from the decision rather than assumed.
+
+    `signal_generator.py:318` averages over `len(engine_results)`. A literal 9
+    here would silently drift the day an engine is added or removed, and the
+    delta it feeds is the whole point of the counterfactual.
+    """
+    if not isinstance(decision, Mapping):
+        return 0
+    results = decision.get("engine_results")
+    return len(results) if isinstance(results, Sequence) and not isinstance(
+        results, (str, bytes)) else 0
+
+
 def build_candidate_macro_shadow(
     *,
     decision: Any,
     decision_time: Any,
     verdict: Optional[str] = None,
+    snapshot: Optional[Mapping[str, Any]] = None,
+    publish_threshold: Any = None,
 ) -> Optional[Dict[str, Any]]:
     """The disabled `macro_shadow_v1` payload for one candidate. Never raises.
 
@@ -136,6 +157,31 @@ def build_candidate_macro_shadow(
     try:
         reading = _macro_reading(decision)
         health = _macro_health(decision)
+        if isinstance(snapshot, Mapping):
+            # The OBSERVATION path. `build_macro_shadow_from_snapshot` has existed
+            # and been tested since Implementation-A without ever being called —
+            # partial series, look-ahead rejection, the score/confidence/direction
+            # counterfactual, clamp flagging and the gate-only publish scope are
+            # all already in it. This stage feeds it; it does not reimplement it.
+            payload = build_macro_shadow_from_snapshot(
+                decision_time=decision_time,
+                snapshot=snapshot,
+                production_macro_score=(reading or {}).get("score"),
+                production_macro_bias=(reading or {}).get("bias"),
+                production_macro_confidence=(reading or {}).get("confidence"),
+                production_total_confidence=_confidence(decision),
+                engine_count=_engine_count(decision),
+                publish_threshold=publish_threshold,
+                production_publish_verdict=verdict,
+                components_expected=COMPONENTS_EXPECTED_CRYPTO,
+            )
+            if reading is None:
+                payload["errors"] = list(payload.get("errors") or []) + [{
+                    "error": MACRO_ENGINE_MISSING if isinstance(decision, Mapping)
+                    else DECISION_UNREADABLE,
+                    "engine_name": MACRO_ENGINE_NAME,
+                }]
+            return payload
         payload = build_disabled_macro_shadow(
             decision_time=decision_time,
             # The ONE fact about the credential that crosses this boundary: a

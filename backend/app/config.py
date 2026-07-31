@@ -89,6 +89,20 @@ class Settings(BaseSettings):
     # `get_settings` is lru_cached, so changing it requires a container recreate.
     MACRO_FRED_FETCH_ENABLED: bool = False
 
+    # CP-MACRO-SHADOW-RESTORE-BOUNDED-FETCH — the SHADOW's own switch, and a
+    # deliberately SEPARATE one.
+    #
+    # `MACRO_FRED_FETCH_ENABLED` above gates `MacroCollector`, which the
+    # production MacroEngine constructs on every candidate (engine.py:79).
+    # Turning THAT on would reconnect the live decision to FRED and move the
+    # publish gate. This flag gates only `macro_shadow_fetch`, a separate client
+    # with a separate cache whose output reaches nothing but
+    # `candidate.extra.macro_shadow_v1`.
+    #
+    # So the two are not interchangeable: this one may be turned on while the
+    # one above stays off forever, which is the whole point of the shadow.
+    MACRO_SHADOW_FETCH_ENABLED: bool = False
+
     # --- Finnhub (optional — company news + earnings calendar for stocks).
     # Free tier: 60 calls/min, get a key at finnhub.io/register. Leave blank
     # to fall back to baseline/synthetic fundamentals. ---

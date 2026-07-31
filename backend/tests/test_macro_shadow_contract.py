@@ -735,19 +735,38 @@ def _py_files(root: Path):
 # is that the reachable surface stays known and small. A fourth file turns this red.
 ALLOWED_SHADOW_REFERENCES = {
     "app/services/macro_shadow_wiring.py",   # the one adapter
+    "app/services/macro_shadow_fetch.py",    # the one place a request is made
     "app/services/candidate_log.py",         # merges the namespace into `extra`
-    "app/services/scheduler.py",             # the three mutually exclusive sites
+    "app/services/scheduler.py",             # the three sites + one snapshot await
+    "app/config.py",                         # MACRO_SHADOW_FETCH_ENABLED lives here
 }
 
 
 def test_only_the_wiring_surface_mentions_the_shadow():
+    """Scanned on CODE and CASE-INSENSITIVELY.
+
+    Code-only because several modules' comments legitimately explain the shadow;
+    prose is documentation, not reach. Case-insensitive so the SETTING name
+    `MACRO_SHADOW_FETCH_ENABLED` is caught too — excluding config.py on the
+    accident of it being uppercase would be passing on a technicality, and the
+    flag genuinely is a shadow surface worth listing.
+    """
     importers = set()
     for p in _py_files(BACKEND / "app"):
         if p.name == "macro_shadow.py":
             continue
-        if "macro_shadow" in p.read_text(encoding="utf-8"):
+        if "macro_shadow" in _code_only_source(p).lower():
             importers.add(p.relative_to(BACKEND).as_posix())
     assert importers == ALLOWED_SHADOW_REFERENCES, importers ^ ALLOWED_SHADOW_REFERENCES
+
+
+def _code_only_source(path: Path) -> str:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef,
+                             ast.ClassDef)) and ast.get_docstring(node):
+            node.body = node.body[1:]
+    return ast.unparse(tree)
 
 
 def test_no_engine_or_decision_module_mentions_the_shadow():

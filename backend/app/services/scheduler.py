@@ -40,6 +40,7 @@ from app.services.coin_memory import load_effective_weights_meta, update_coin_me
 from app.services.lifecycle_log import make_event
 from app.services.candidate_log import record_candidate
 from app.services.macro_shadow_wiring import build_candidate_macro_shadow
+from app.services.macro_shadow_fetch import get_shadow_macro_snapshot
 from app.models.decision_candidate import (
     REASON_CONFIDENCE_GATE,
     REASON_DUPLICATE_OR_EXISTING,
@@ -332,6 +333,17 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
 
     db_tf = TF_ENUM.get(timeframe, DBTimeframe.H1)
 
+    # CP-MACRO-SHADOW-BOUNDED-FETCH — the shadow's own FRED snapshot, fetched
+    # AFTER `decision` is final so it cannot reach any input the decision read.
+    # It goes on to `record_candidate` as telemetry and nowhere else.
+    #
+    # Once per TTL, not once per asset: the snapshot is cached for the 15m scan
+    # cadence, so every candidate in every overlapping sweep reuses one request.
+    # Returns None while the shadow flag is off, which keeps the disabled path
+    # byte-identical. It cannot raise and cannot outlast its own timeout, and it
+    # declines to start when the job is already near its budget.
+    macro_snapshot = await get_shadow_macro_snapshot(job_id=f"signals_{timeframe}")
+
     async with async_session_factory() as db:
         try:
             # Lookup asset
@@ -508,7 +520,9 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                     adaptive_snapshot=adaptive_snapshot,
                     last_close=last_close,
                     macro_shadow=build_candidate_macro_shadow(
-                        decision=decision, decision_time=now, verdict=VERDICT_SKIPPED),
+                        decision=decision, decision_time=now, verdict=VERDICT_SKIPPED,
+                        snapshot=macro_snapshot,
+                        publish_threshold=MIN_ACTIONABLE_CONFIDENCE),
                 )
                 await db.commit()
                 return
@@ -555,7 +569,9 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                     adaptive_snapshot=adaptive_snapshot,
                     last_close=last_close,
                     macro_shadow=build_candidate_macro_shadow(
-                        decision=decision, decision_time=now, verdict=VERDICT_DROPPED),
+                        decision=decision, decision_time=now, verdict=VERDICT_DROPPED,
+                        snapshot=macro_snapshot,
+                        publish_threshold=MIN_ACTIONABLE_CONFIDENCE),
                 )
                 await db.commit()
                 logger.info("[Scheduler] %s %s scan resulted in HOLD — not persisted.", symbol, timeframe)
@@ -622,7 +638,9 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 adaptive_snapshot=adaptive_snapshot,
                 last_close=last_close, signal_id=new_sig.id,
                 macro_shadow=build_candidate_macro_shadow(
-                    decision=decision, decision_time=now, verdict=VERDICT_PUBLISHED),
+                    decision=decision, decision_time=now, verdict=VERDICT_PUBLISHED,
+                    snapshot=macro_snapshot,
+                    publish_threshold=MIN_ACTIONABLE_CONFIDENCE),
             )
 
             # Capture an immutable snapshot of the conditions this signal was
