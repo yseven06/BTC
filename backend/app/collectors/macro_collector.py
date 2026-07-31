@@ -22,6 +22,7 @@ from xml.etree import ElementTree as ET
 
 import httpx
 
+from app import log_redaction
 from app.config import get_settings
 from app.services.dependency_health import (
     EMPTY,
@@ -178,6 +179,15 @@ class MacroCollector:
             seen = _MACRO_STATUS.lookup(cache_key)
             self._note(cache_key, seen["status"], cached=True, age_s=seen["age_s"])
             return _MACRO_CACHE[cache_key]
+
+        # CP-MACRO-SHADOW-FETCH-SECRET-REDACTION — the SAME latent leak lives
+        # here: httpx logs this request's full URL at INFO, and the URL below
+        # carries `api_key`. The shadow path proved it in production on
+        # 2026-07-31; this path has simply never been switched on. Armed before
+        # the request rather than relying on `app.main` having run, because a
+        # script that imports this collector directly is exactly the case that
+        # would otherwise be unprotected. Idempotent.
+        log_redaction.install()
 
         try:
             r = await self.client.get(

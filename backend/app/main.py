@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+from app import log_redaction
 from app.api.router import api_router
 from app.config import get_settings
 from app.database import init_db, close_db
@@ -28,6 +29,13 @@ logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+
+# CP-MACRO-SHADOW-FETCH-SECRET-REDACTION — immediately after basicConfig, so no
+# record can be emitted before the redaction is armed. httpx logs every request's
+# full URL at INFO and puts it in HTTPStatusError's message too; on 2026-07-31
+# that wrote a live API key into the container log. See app/log_redaction.py.
+log_redaction.install()
+
 logger = logging.getLogger(__name__)
 
 # --- Error monitoring (Sentry) — env-gated; a no-op when SENTRY_DSN is unset,

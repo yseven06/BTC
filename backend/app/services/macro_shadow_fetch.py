@@ -43,6 +43,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import httpx
 
+from app import log_redaction
 from app.config import get_settings
 from app.services import job_guard
 from app.services.macro_shadow import (
@@ -191,6 +192,13 @@ async def _fetch_one(client: httpx.AsyncClient, series_id: str,
         raw_value = observations[0].get("value")
         if raw_value in (None, ".", ""):
             return _series_entry(status=EMPTY, latency_ms=latency), response.status_code
+        # Our OWN request line: method, host, path, status, latency. No query
+        # string at any point — this is the record httpx's own line is silenced
+        # in favour of, and it cannot carry a credential because it never holds
+        # one to begin with.
+        logger.info("[MacroShadowFetch] GET %s%s -> %s in %sms",
+                    response.request.url.host, response.request.url.path,
+                    response.status_code, latency)
         return _series_entry(
             status=OK, value=float(raw_value),
             observation_date=observations[0].get("date"),
@@ -299,6 +307,12 @@ async def _fetch_fresh(api_key: str, now: float,
                        cached: Optional[Tuple[Dict[str, Any], float]]
                        ) -> Dict[str, Any]:
     """One bounded request cycle. No retry — the next scan is the retry."""
+    # Armed BEFORE the first request, not only from `app.main`. A worker, a
+    # script or a test that reaches this module without importing the FastAPI
+    # entrypoint must still be covered — the leak happened in the library, so the
+    # guard has to be present wherever the library can be called. Idempotent.
+    log_redaction.install()
+
     started = time.perf_counter()
     series: Dict[str, Any] = {}
     codes: Dict[str, Optional[int]] = {}

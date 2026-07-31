@@ -76,6 +76,19 @@ ALL_SERIES: Tuple[str, ...] = SCORED_SERIES + UNSCORED_SERIES
 
 NOT_READ_BY_ENGINE = "not_read_by_engine"
 
+# The status for a series that was deliberately never asked for. Distinct from
+# every failure: `internal_error` on a series nobody requested is a false record,
+# and it was one — the enabled path emitted exactly that for CPIAUCSL and
+# DTWEXBGS on 114 live rows, alongside `requested=false`,
+# `excluded_from_score_reason=not_read_by_engine` and a null `error_class`. A row
+# cannot both have not been asked and have failed internally.
+#
+# Its own word rather than reusing `disabled`: at the payload level `disabled`
+# means "the fetch switch is off", and a series skipped while the fetch RAN is a
+# different fact. Conflating them would make "we never read this series" and "we
+# read nothing at all" indistinguishable.
+NOT_REQUESTED = "not_requested"
+
 # Crypto consults exactly the two scored series (engine.py:148 → expected=2).
 COMPONENTS_EXPECTED_CRYPTO = 2
 
@@ -89,8 +102,9 @@ HTTP_429 = "http_429"
 BUDGET_GUARD = "budget_guard"
 
 FETCH_STATUSES: Tuple[str, ...] = (
-    NOT_CONFIGURED, DISABLED, OK, PARTIAL, EMPTY, HTTP_4XX, HTTP_429, TIMEOUT,
-    NETWORK_ERROR, PARSE_ERROR, STALE_CACHE, INTERNAL_ERROR, BUDGET_GUARD,
+    NOT_CONFIGURED, DISABLED, NOT_REQUESTED, OK, PARTIAL, EMPTY, HTTP_4XX,
+    HTTP_429, TIMEOUT, NETWORK_ERROR, PARSE_ERROR, STALE_CACHE, INTERNAL_ERROR,
+    BUDGET_GUARD,
 )
 
 NO_API_KEY = "no_api_key"
@@ -266,7 +280,14 @@ def _series_entry(
     value = _finite(raw.get("value"))
     fetch_status = raw.get("fetch_status")
     if fetch_status not in FETCH_STATUSES:
-        fetch_status = NOT_CONFIGURED if not configured else INTERNAL_ERROR
+        if not scored:
+            # Never asked for — the engine does not read this series and the
+            # fetcher never requests it. Must not look like a failure.
+            fetch_status = NOT_REQUESTED
+        elif not configured:
+            fetch_status = NOT_CONFIGURED
+        else:
+            fetch_status = INTERNAL_ERROR
 
     # A malformed date is NOT silently treated as "fine"; it is unusable, so the
     # series cannot be look-ahead-safe.
