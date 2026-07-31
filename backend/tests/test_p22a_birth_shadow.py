@@ -13,7 +13,10 @@ What this must NOT do: touch the decision. verdict, demotion_reason, confidence,
 composite, direction, geometry and lifecycle are all final before the logger is
 called, and nothing here writes back to them.
 """
+import ast
 import inspect
+import re
+import textwrap
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -244,7 +247,28 @@ def test_16_live_gates_and_thresholds_are_unchanged():
     assert sch.count("await record_candidate(") == 3
     # The classifier must not have leaked into the decision file.
     assert "classify_birth_shadow" not in sch
-    assert "shadow_" not in sch
+    # Nor may any Pass A / Pass B COLUMN be written from it. This was a blanket
+    # `"shadow_" not in sch`, which CP-MACRO-SHADOW-B's additive `macro_shadow=`
+    # keyword trips without touching a single one of those fields. Spelling the
+    # columns out is strictly stronger than the substring it replaces: the old
+    # form would have missed a column added under a different prefix, and it
+    # could not distinguish "writes a shadow column" from "mentions the word".
+    for col in ("shadow_outcome", "shadow_resolution_reason", "shadow_evaluated_at",
+                "shadow_resolution_path", "shadow_resolved_at", "shadow_detail_label",
+                "shadow_return_pct", "shadow_r_multiple", "shadow_mfe_pct",
+                "shadow_mae_pct", "shadow_bars_walked", "shadow_entry_reached",
+                "shadow_entry_reached_at", "shadow_bars_to_entry",
+                "shadow_never_entered", "shadow_max_zone_penetration_pct",
+                "shadow_zone_far_edge_reached", "shadow_stop_before_valid_entry",
+                "shadow_invalidated_before_entry"):
+        assert col not in sch, col
+    # And the shadow-shaped identifiers that ARE allowed in the decision file are
+    # exactly these two — the additive telemetry argument and its builder. Scanned
+    # on CODE: `ast.unparse` drops comments, so prose that merely says "shadow"
+    # cannot fail this, and only real identifiers can.
+    code = ast.unparse(ast.parse(textwrap.dedent(sch)))
+    shadowish = {t for t in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", code) if "shadow" in t}
+    assert shadowish == {"macro_shadow", "build_candidate_macro_shadow"}, shadowish
 
 
 def test_16b_classification_does_not_read_or_alter_the_decision():

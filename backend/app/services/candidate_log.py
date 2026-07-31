@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Mapping, Optional
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -47,6 +47,7 @@ from app.models.decision_candidate import (
     classify_birth_shadow,
 )
 from app.services.dependency_health import DEPENDENCY_HEALTH_VERSION
+from app.services.macro_shadow import MACRO_SHADOW_VERSION
 from app.services.trade_geometry import dist_pct, planned_rr
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,42 @@ logger = logging.getLogger(__name__)
 # Engines whose supporting_data carries the geometry-side volume reading. Kept
 # as a constant so the "which volume_ratio" question has exactly one answer here.
 _VOLUME_ENGINE = "volume_analysis"
+
+
+def merge_additive_namespace(extra: Any, namespace: str, payload: Any) -> Any:
+    """Attach `payload` under `extra[namespace]` WITHOUT touching anything else.
+
+    Additive means additive: every existing key — named, unknown, or belonging to
+    a namespace this module has never heard of — survives byte-for-byte. A new
+    dict is returned rather than the input being mutated, because the caller's
+    dict is reused across a sweep and an in-place write would let one row change
+    what another recorded.
+
+    Four inputs it must survive, all of them tested:
+      * `None`            → treated as an empty object, namespace attached;
+      * a non-mapping     → returned UNCHANGED and the namespace skipped. Whatever
+                            that value is, it is production data this function did
+                            not write and has no license to destroy; losing the
+                            telemetry is strictly better than losing the row's
+                            contents;
+      * `payload is None` → returned unchanged. An absent namespace is honest;
+                            a null one would read as "the shadow ran and produced
+                            nothing";
+      * the namespace already present → overwritten by the new payload, so a
+                            retry is idempotent instead of nesting or appending.
+    """
+    if payload is None:
+        return extra
+    if extra is None:
+        return {namespace: payload}
+    if not isinstance(extra, Mapping):
+        logger.warning("[CandidateLog] extra is %s, not a mapping — %s namespace "
+                       "skipped, existing value left intact", type(extra).__name__,
+                       namespace)
+        return extra
+    out = dict(extra)
+    out[namespace] = payload
+    return out
 
 
 def _json_safe(value: Any, _depth: int = 0) -> Any:
@@ -206,6 +243,7 @@ def build_candidate_values(
     signal_id=None,
     source: str = SOURCE_SCHEDULER,
     capture_status: str = CAPTURE_FULL,
+    macro_shadow: Optional[Dict[str, Any]] = None,
 ) -> Optional[Dict[str, Any]]:
     """Assemble the column values for one candidate row.
 
@@ -306,7 +344,12 @@ def build_candidate_values(
         "mtf_trends": _json_safe(decision.get("mtf_trends")),
         "adaptive_active": adaptive_active,
 
-        "extra": _json_safe({
+        # The shadow namespace is merged ADDITIVELY over the literal below and the
+        # whole thing then goes through `_json_safe`, so the new payload gets the
+        # same NaN/numpy/datetime coercion as every other field instead of a
+        # second, parallel sanitisation rule. Handed in already built by
+        # macro_shadow_wiring; nothing is computed here.
+        "extra": _json_safe(merge_additive_namespace({
             # `demotion_reason` above is the TERMINAL reason and later scheduler
             # sites overwrite it on purpose. This is the FIRST one that fired, so
             # a candidate rejected by the confidence gate that then also met an
@@ -373,7 +416,7 @@ def build_candidate_values(
             # Namespaced under its own key so it can never collide with anything
             # above; None when the orchestrator could not build it.
             DEPENDENCY_HEALTH_VERSION: decision.get("dependency_health"),
-        }),
+        }, MACRO_SHADOW_VERSION, macro_shadow)),
     }
 
     # Birth-time shadow classification. Whether this row can EVER be

@@ -152,10 +152,64 @@ def test_disabled_payload_does_not_hard_code_production_values():
     assert "50.0" not in src and "25.0" not in src
 
 
-def test_disabled_payload_series_map_is_complete_but_unrequested():
+def test_disabled_payload_carries_no_series_map():
+    """EXAMINED_SERIES_ONLY: an entry exists only for a series actually examined.
+
+    Stage 2 wires this payload onto ~7 200 candidate rows a day. A placeholder map
+    is a CONSTANT when nothing was fetched — four entries of configured=False,
+    requested=False, not_configured and seventeen nulls — so writing it would cost
+    1 883 bytes per row for zero per-row information (measured 3 061 B → 1 178 B).
+    """
+    assert ms.EXAMINED_SERIES_ONLY is True
     p = ms.build_disabled_macro_shadow(decision_time=DT, **PROD)
+    assert p["series"] == {}
+    assert ms.validate_macro_shadow(p) == []
+    assert len(json.dumps(p)) < 1400, "disabled payload grew — re-check the size budget"
+
+
+def test_no_snapshot_also_carries_no_series_map():
+    """The other never-examined path must agree — one rule, not two."""
+    assert _build(snapshot=None)["series"] == {}
+
+
+@pytest.mark.parametrize("bias,expected", [
+    ("bullish", "bullish"),
+    (SignalBias.STRONG_BEARISH, "strong_bearish"),
+    (None, None),
+    (object(), None),                       # not a bias — never `str(object)`
+    (42, None),
+    ({"a": 1}, None),
+    ([1, 2], None),
+    (float("nan"), None),
+])
+def test_the_bias_field_is_coerced_at_the_boundary(bias, expected):
+    """`bias` is the one non-numeric production value the payload carries; every
+    number already goes through `_finite`. Without a matching guard a
+    non-serialisable bias reached `json.dumps` — found by driving the wiring with
+    a hostile decision, not by reading the code."""
+    p = ms.build_disabled_macro_shadow(
+        decision_time=DT, production_macro_score=50.0,
+        production_macro_bias=bias, production_macro_confidence=25.0)
+    assert p["production_macro_bias"] == expected
+    json.dumps(p)                                    # must not raise
+    assert "object at 0x" not in json.dumps(p)       # no memory address, ever
+
+
+def test_a_str_enum_bias_never_round_trips_as_its_repr():
+    p = ms.build_disabled_macro_shadow(
+        decision_time=DT, production_macro_score=50.0,
+        production_macro_bias=SignalBias.NEUTRAL, production_macro_confidence=25.0)
+    assert p["production_macro_bias"] == "neutral"
+    assert "SignalBias" not in json.dumps(p)
+
+
+def test_the_enabled_path_still_emits_the_full_series_map():
+    """The saving is scoped to payloads that examined nothing. A real snapshot
+    must still record every series, or the omission would have silently become a
+    permanent loss of the enabled contract."""
+    p = _build()
     assert set(p["series"]) == set(ms.ALL_SERIES)
-    assert all(e["requested"] is False for e in p["series"].values())
+    assert all(set(e) == set(ms.REQUIRED_SERIES_FIELDS) for e in p["series"].values())
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -635,11 +689,35 @@ def test_shadow_namespace_does_not_collide_with_passb():
     assert "shadow_passb" in src
 
 
-def test_passa_passb_sources_do_not_reference_the_shadow_module():
-    for rel in ("app/services/shadow_eval.py", "app/services/scheduler.py"):
-        text = (BACKEND / rel).read_text(encoding="utf-8")
-        for banned in ("macro_shadow", "macro_shadow_v1", "build_macro_shadow"):
-            assert banned not in text, f"{rel}: {banned}"
+def test_passa_passb_source_does_not_reference_the_shadow_module():
+    text = (BACKEND / "app" / "services" / "shadow_eval.py").read_text(encoding="utf-8")
+    for banned in ("macro_shadow", "macro_shadow_v1", "build_macro_shadow"):
+        assert banned not in text, banned
+
+
+def test_the_scheduler_touches_the_shadow_only_inside_signal_generation():
+    """Stage 2 gives scheduler.py exactly one reason to know the shadow exists.
+
+    Asserted structurally, not by counting lines: every CALL to the wiring helper
+    must sit inside `_generate_signal`. A call from the shadow-eval job, from
+    startup, or from any other coroutine would be a second, unreviewed path — and
+    grep alone could not tell the difference.
+    """
+    tree = ast.parse((BACKEND / "app" / "services" / "scheduler.py")
+                     .read_text(encoding="utf-8"))
+    inside, outside = 0, []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        for call in ast.walk(node):
+            if (isinstance(call, ast.Call)
+                    and getattr(call.func, "id", None) == "build_candidate_macro_shadow"):
+                if node.name == "_generate_signal":
+                    inside += 1
+                else:
+                    outside.append(node.name)
+    assert outside == [], outside
+    assert inside == 3, f"expected the three mutually exclusive sites, found {inside}"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -651,16 +729,36 @@ def _py_files(root: Path):
             yield p
 
 
-def test_no_production_module_imports_the_shadow():
-    """Stage 1 ships no call site. Deployed as-is, it cannot produce behaviour."""
-    importers = []
+# Stage 2 (CP-MACRO-SHADOW-B) wires the DISABLED payload in. These three files —
+# and only these three — may mention the shadow. Kept as an exact allowlist rather
+# than a "no importers" assertion: the point was never that nothing imports it, it
+# is that the reachable surface stays known and small. A fourth file turns this red.
+ALLOWED_SHADOW_REFERENCES = {
+    "app/services/macro_shadow_wiring.py",   # the one adapter
+    "app/services/candidate_log.py",         # merges the namespace into `extra`
+    "app/services/scheduler.py",             # the three mutually exclusive sites
+}
+
+
+def test_only_the_wiring_surface_mentions_the_shadow():
+    importers = set()
     for p in _py_files(BACKEND / "app"):
         if p.name == "macro_shadow.py":
             continue
-        text = p.read_text(encoding="utf-8")
-        if "macro_shadow" in text:
-            importers.append(str(p.relative_to(BACKEND)))
-    assert importers == [], importers
+        if "macro_shadow" in p.read_text(encoding="utf-8"):
+            importers.add(p.relative_to(BACKEND).as_posix())
+    assert importers == ALLOWED_SHADOW_REFERENCES, importers ^ ALLOWED_SHADOW_REFERENCES
+
+
+def test_no_engine_or_decision_module_mentions_the_shadow():
+    """The isolation that matters: nothing that COMPUTES a decision may see it."""
+    for sub in ("engines", "api", "backtesting", "models", "collectors"):
+        root = BACKEND / "app" / sub
+        if not root.exists():
+            continue
+        for p in _py_files(root):
+            assert "macro_shadow" not in p.read_text(encoding="utf-8"), \
+                p.relative_to(BACKEND).as_posix()
 
 
 def test_api_layer_never_mentions_the_shadow_or_candidate_extra():

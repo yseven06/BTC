@@ -140,6 +140,23 @@ def _finite(x: Any) -> Optional[float]:
     return v if math.isfinite(v) else None
 
 
+def _text(x: Any) -> Optional[str]:
+    """A JSON-safe string, or None.
+
+    `bias` is the ONE non-numeric production value the payload carries, and every
+    number already goes through `_finite` — this closes the matching hole on the
+    string side. `SignalBias` is a `str` subclass whose member would round-trip as
+    `SignalBias.NEUTRAL` through any reader that stringifies it, so `.value` is
+    taken here, once. Anything that is neither a string nor an enum with a string
+    value is NOT a bias: it degrades to None rather than to `str(object)`, which
+    would write a memory address into ~7 200 rows a day and never repeat.
+    """
+    if x is None:
+        return None
+    value = getattr(x, "value", x)
+    return value if isinstance(value, str) else None
+
+
 def macro_score_from_components(
     fed_funds_rate: Optional[float], ten_year_yield: Optional[float]
 ) -> Tuple[float, int]:
@@ -275,12 +292,22 @@ def _series_entry(
     }
 
 
-def _empty_series_map(*, configured: bool) -> Dict[str, Any]:
-    return {
-        sid: _series_entry(sid, None, decision_time=None, configured=configured,
-                           scored=sid in SCORED_SERIES)
-        for sid in ALL_SERIES
-    }
+# ONE rule for `series`: an entry exists only for a series that was actually
+# examined. Nothing examined → `series` is `{}`.
+#
+# The alternative — a full map of placeholder entries — is a CONSTANT when nothing
+# was fetched: configured=False, requested=False, fetch_status=not_configured and
+# seventeen nulls, byte-identical on every row. Storing it would write 1 883 bytes
+# of that constant onto ~7 200 candidate rows a day (measured: 3 061 B with the
+# map, 1 178 B without; +63.0% vs +24.3% against a 4 856 B average `extra`).
+# Nothing per-row is lost: which series exist is in SCORED_SERIES/UNSCORED_SERIES,
+# how many were expected is `components_expected`, and `executed=False` already
+# says none was read.
+#
+# NOT a version bump. No row has ever carried `macro_shadow_v1` (verified 0 on
+# production before wiring) and no reader exists, so there is no earlier shape for
+# this to be incompatible with. A bump would falsely imply v1 data is out there.
+EXAMINED_SERIES_ONLY = True
 
 
 # ── Payload builders ─────────────────────────────────────────────────────────
@@ -315,7 +342,7 @@ def _base_payload(
         "bias_if_restored": None,
         "confidence_if_restored": None,
         "production_macro_score": _finite(production_macro_score),
-        "production_macro_bias": production_macro_bias,
+        "production_macro_bias": _text(production_macro_bias),
         "production_macro_confidence": _finite(production_macro_confidence),
         "delta_score": None,
         "delta_confidence": None,
@@ -355,6 +382,9 @@ def build_disabled_macro_shadow(
     Production macro values are ARGUMENTS, never constants: the payload records what
     production actually produced, so a future change to the engine shows up here
     instead of being masked by a hard-coded 50/neutral/25.
+
+    `series` is deliberately EMPTY here — see EXAMINED_SERIES_ONLY. The snapshot
+    builder still emits the full map, so the enabled path is unaffected.
     """
     out = _base_payload(
         decision_time=decision_time,
@@ -368,7 +398,7 @@ def build_disabled_macro_shadow(
     out["fallback_reason"] = fallback_reason if fallback_reason in FALLBACK_REASONS else NO_API_KEY
     out["configured"] = False
     out["executed"] = False
-    out["series"] = _empty_series_map(configured=False)
+    out["series"] = {}
     return out
 
 
@@ -410,7 +440,7 @@ def build_macro_shadow_from_snapshot(
     if not isinstance(snapshot, Mapping):
         out["fetch_status"] = DISABLED
         out["fallback_reason"] = FETCH_DISABLED
-        out["series"] = _empty_series_map(configured=False)
+        out["series"] = {}          # nothing was examined — EXAMINED_SERIES_ONLY
         out["errors"] = errors
         return out
 

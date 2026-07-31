@@ -39,6 +39,7 @@ from app.services import job_guard
 from app.services.coin_memory import load_effective_weights_meta, update_coin_memory
 from app.services.lifecycle_log import make_event
 from app.services.candidate_log import record_candidate
+from app.services.macro_shadow_wiring import build_candidate_macro_shadow
 from app.models.decision_candidate import (
     REASON_CONFIDENCE_GATE,
     REASON_DUPLICATE_OR_EXISTING,
@@ -489,6 +490,13 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
             if skip_new_signal:
                 # CANDIDATE LOG (P2.2-a) — call site 1 of 3. The verdict above is
                 # already final; this records it and returns nothing anyone reads.
+                #
+                # CP-MACRO-SHADOW-B: the DISABLED macro shadow namespace, additive
+                # telemetry on the candidate row and nothing else. Reads the
+                # finished decision, fetches nothing, computes nothing and cannot
+                # raise. The three sites here are mutually exclusive — sites 1 and
+                # 2 return — so it is built exactly once per candidate. The version
+                # string is deliberately not repeated here; it has one home.
                 await record_candidate(
                     db, asset_id=asset.id, symbol=symbol, timeframe=timeframe,
                     decision=decision, df=df_closed, evaluated_at=now,
@@ -499,6 +507,8 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                     engine_weights=engine_weights, adaptive_active=adaptive_active,
                     adaptive_snapshot=adaptive_snapshot,
                     last_close=last_close,
+                    macro_shadow=build_candidate_macro_shadow(
+                        decision=decision, decision_time=now, verdict=VERDICT_SKIPPED),
                 )
                 await db.commit()
                 return
@@ -544,6 +554,8 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                     engine_weights=engine_weights, adaptive_active=adaptive_active,
                     adaptive_snapshot=adaptive_snapshot,
                     last_close=last_close,
+                    macro_shadow=build_candidate_macro_shadow(
+                        decision=decision, decision_time=now, verdict=VERDICT_DROPPED),
                 )
                 await db.commit()
                 logger.info("[Scheduler] %s %s scan resulted in HOLD — not persisted.", symbol, timeframe)
@@ -609,6 +621,8 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 engine_weights=engine_weights, adaptive_active=adaptive_active,
                 adaptive_snapshot=adaptive_snapshot,
                 last_close=last_close, signal_id=new_sig.id,
+                macro_shadow=build_candidate_macro_shadow(
+                    decision=decision, decision_time=now, verdict=VERDICT_PUBLISHED),
             )
 
             # Capture an immutable snapshot of the conditions this signal was
