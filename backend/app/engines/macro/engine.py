@@ -17,7 +17,9 @@ import logging
 from typing import Any, Dict, List
 
 from app.engines.base import BaseEngine, EngineResult, SignalBias
-from app.collectors.macro_collector import MacroCollector
+from app.collectors.macro_collector import (
+    FRED_FETCH_DISABLED_REASON, MacroCollector,
+)
 from app.services.dependency_health import (
     CONFIDENCE_SEMANTICS,
     NOT_APPLICABLE,
@@ -146,8 +148,14 @@ class MacroEngine(BaseEngine):
             # asset adds the TCMB leg, which is the only other component that
             # can increment the counter.
             expected=3 if (asset_type == "stock" or symbol.upper().endswith(".IS")) else 2,
+            # CP-MACRO-FRED-FETCH-KILLSWITCH: once a key can be stored while the
+            # fetch stays off, "no_api_key" would be a FALSE record. The decision
+            # is unaffected either way — this is `fallback_reason`, which lives on
+            # the instance channel and never enters EngineResult.
             fallback_reason=(
-                "no_api_key" if not us_macro.get("configured")
+                (FRED_FETCH_DISABLED_REASON
+                 if getattr(collector, "fred_key_present", False)
+                 else "no_api_key") if not us_macro.get("configured")
                 else ("no_data" if components == 0 else None)
             ),
         )

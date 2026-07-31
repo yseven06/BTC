@@ -74,6 +74,21 @@ class Settings(BaseSettings):
     # --- FRED (optional — required for US macro indicators) ---
     FRED_API_KEY: str = ""
 
+    # CP-MACRO-FRED-FETCH-KILLSWITCH — the gate between "a key exists" and "FRED
+    # is called". Until this existed, `FRED_API_KEY` was BOTH the credential and
+    # the on-switch: the collector's only guard was `if not self._fred_key`, so
+    # merely adding the key to .env.production would have restarted real FRED
+    # traffic on every candidate. Measured on 7 239 live candidates (2026-07-31),
+    # that lifts macro's confidence from 25.0 to 70.0 — exactly +5.0 on the
+    # unweighted nine-engine mean — and carries 2 964 candidates over the 65
+    # publish gate (33.1% → 74.0%), of which 121 are engine-actionable and 26 a
+    # day would become newly published signals. That is a gate move, and a gate
+    # move has to be a decision, not a side effect of storing a credential.
+    #
+    # Default OFF, and it stays OFF until a checkpoint turns it on deliberately.
+    # `get_settings` is lru_cached, so changing it requires a container recreate.
+    MACRO_FRED_FETCH_ENABLED: bool = False
+
     # --- Finnhub (optional — company news + earnings calendar for stocks).
     # Free tier: 60 calls/min, get a key at finnhub.io/register. Leave blank
     # to fall back to baseline/synthetic fundamentals. ---

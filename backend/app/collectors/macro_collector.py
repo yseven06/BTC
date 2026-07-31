@@ -38,6 +38,14 @@ _MACRO_CACHE_EXPIRY: Dict[str, float] = {}
 
 MACRO_CACHE_TTL = 900  # 15 minutes
 
+# CP-MACRO-FRED-FETCH-KILLSWITCH — the `fallback_reason` for "a key exists but
+# the fetch is switched off". Distinct from `no_api_key`, which would be a false
+# record once a key is stored. `fallback_reason` is free-form in
+# dependency_health.engine_entry, and this is NOT a `fetch_status`: adding a
+# status would enter `worst_status`'s fixed precedence, and severity ordering is
+# not what this describes.
+FRED_FETCH_DISABLED_REASON = "fetch_disabled"
+
 # CP-DEP-HEALTH-1 — remembers what produced each cached value so a cache hit can
 # say whether it is serving real data or a cached failure. Parallel to the value
 # cache above and deliberately separate from it: deleting this line would leave
@@ -57,10 +65,29 @@ class MacroCollector:
         self.last_status: Dict[str, Dict[str, Any]] = {}
         # Read from settings (which loads from .env). Fallback to OS env.
         settings = get_settings()
-        self._fred_key = (
+        raw_key = (
             getattr(settings, "FRED_API_KEY", "")
             or os.environ.get("FRED_API_KEY", "")
         ).strip()
+
+        # CP-MACRO-FRED-FETCH-KILLSWITCH. Two facts that used to be one.
+        #
+        # `fred_key_present` is INSTANCE STATE and is never returned from any
+        # method: `GET /api/v1/macro/snapshot` serves `fetch_us_macro_snapshot()`'s
+        # dict verbatim (api/routes/macro.py:28-33), so a field there would
+        # publish secret-configuration state on a public surface. Same channel
+        # discipline as CP-DEP-HEALTH-1, and for the same reason.
+        self.fred_key_present = bool(raw_key)
+        self.fred_fetch_enabled = bool(
+            getattr(settings, "MACRO_FRED_FETCH_ENABLED", False))
+
+        # THE GATE. Neutralising the key rather than adding a second condition to
+        # every call site is deliberate: `if not self._fred_key` already guards
+        # `fetch_fred_series` and `fetch_us_macro_snapshot`, so a disabled fetch
+        # takes byte-identical code paths to an absent key — including the
+        # `_note(NOT_CONFIGURED)` calls and `configured: False` — and there is no
+        # third state for a future edit to get wrong.
+        self._fred_key = raw_key if self.fred_fetch_enabled else ""
 
     def _note(self, key: str, status: str, *, cached: bool = False,
               age_s: Optional[float] = None) -> None:
