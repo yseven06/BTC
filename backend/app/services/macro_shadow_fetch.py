@@ -94,6 +94,11 @@ SHADOW_BUDGET_MARGIN_SECONDS = 4.0
 SHADOW_CACHE_NAMESPACE = "macro_shadow_v1"
 _SHADOW_CACHE: Dict[str, Dict[str, Any]] = {}
 
+# Single-flight state, declared here with the rest of the module state; the
+# mechanism and the reasoning live next to `_lock_for` further down.
+_SHADOW_LOCKS: Dict[str, Tuple[Any, asyncio.Lock]] = {}
+_SHADOW_CYCLES: Dict[str, Dict[str, Any]] = {}
+
 CACHE_HIT = "hit"
 CACHE_MISS = "miss"
 CACHE_STALE = "stale"
@@ -107,6 +112,15 @@ def cache_key() -> str:
 
 def reset_cache_for_tests() -> None:
     _SHADOW_CACHE.clear()
+    # The single-flight state too. DEFENSIVE, not load-bearing: a sabotage run
+    # proved that deleting these two lines changes no behaviour, because
+    # `_lock_for` already replaces a lock whose loop has been retired and the
+    # cycle counter is only ever compared RELATIVELY. Kept so state cannot grow
+    # unbounded across a long run and so a reader is never asked to hold that
+    # reasoning in their head — and described accurately here rather than
+    # credited with a protection it does not provide.
+    _SHADOW_LOCKS.clear()
+    _SHADOW_CYCLES.clear()
 
 
 def _now() -> float:
@@ -304,6 +318,96 @@ def _cached(now: float) -> Optional[Tuple[Dict[str, Any], float]]:
     return entry["snapshot"], now - entry["stored_at"]
 
 
+def _from_cache(cached: Tuple[Dict[str, Any], float]) -> Dict[str, Any]:
+    """A caller's own copy of a cached snapshot, marked as the hit it is."""
+    snapshot, age = cached
+    fresh = copy.deepcopy(snapshot)
+    fresh["cache_status"] = CACHE_HIT
+    fresh["cache_age_s"] = round(age, 3)
+    return fresh
+
+
+# ── Single flight ────────────────────────────────────────────────────────────
+# The cache is written AFTER a cycle completes, so concurrent callers that arrive
+# while it is cold all miss and all fetch. Measured in production on 2026-08-01:
+# the 15m and 4h sweeps started 1.0 s apart on a cold container and produced FOUR
+# requests in 64 ms — two cycles, not one. The TTL bounds the steady state; it
+# never bounded the cold start, and the module's "shared by every overlapping
+# job" guarantee only ever held once the cache was warm.
+
+# `_SHADOW_LOCKS` holds one lock per cache key per running loop; `_SHADOW_CYCLES`
+# holds the last COMPLETED cycle per key with a counter that ticks once per
+# cycle. The latter is NOT a second cache — see `_share_completed_cycle` for who
+# may read it and why a later caller never can.
+
+
+def _lock_for(key: str) -> asyncio.Lock:
+    """The lock for one cache key on the running loop.
+
+    NOT a single global lock: a later stage that fetches a different series set
+    gets a different key and must not queue behind this one.
+
+    The loop is part of the identity because `asyncio.Lock` binds itself to the
+    loop it first CONTENDS on and raises "bound to a different event loop"
+    afterwards. Production has one loop for the process lifetime so this never
+    fires there; `asyncio.run` creates a fresh loop per call, so without this the
+    guard would work in production and explode under a test that drives it twice.
+
+    Never awaits, so two coroutines cannot interleave inside it and both build a
+    lock for the same key.
+    """
+    loop = asyncio.get_running_loop()
+    entry = _SHADOW_LOCKS.get(key)
+    if entry is None or entry[0] is not loop:
+        entry = (loop, asyncio.Lock())
+        _SHADOW_LOCKS[key] = entry
+    return entry[1]
+
+
+def _cycle_seq(key: str) -> int:
+    entry = _SHADOW_CYCLES.get(key)
+    return int(entry["seq"]) if entry else 0
+
+
+def _record_cycle(key: str, snapshot: Dict[str, Any]) -> None:
+    _SHADOW_CYCLES[key] = {"seq": _cycle_seq(key) + 1,
+                           "snapshot": copy.deepcopy(snapshot)}
+
+
+def _share_completed_cycle(key: str, seq_before: int) -> Optional[Dict[str, Any]]:
+    """The result of a cycle that finished WHILE THIS CALLER WAS QUEUEING, if
+    there was one and it left the cache cold — otherwise None.
+
+    WHY THIS EXISTS
+        A failed cycle is deliberately never cached, so the second check above
+        cannot see it. Without this, a lock alone would make failure strictly
+        WORSE than no lock: today a hundred concurrent callers meeting a dead
+        upstream run a hundred cycles CONCURRENTLY and are done in one timeout;
+        serialised behind a lock they would run a hundred cycles END TO END and
+        burn every job budget in the process. The lock must not buy correctness
+        on the happy path by paying for it with a ten-minute stall on the sad
+        one.
+
+        It is also what "no retry — the next natural scan is the retry" already
+        says. A caller that queued behind a cycle and then repeated it the
+        instant it failed IS a retry, just one wearing a different hat.
+
+    WHY IT IS NOT A SECOND CACHE
+        The only caller that can read it is one whose `seq_before` predates the
+        recorded cycle — i.e. one that was already waiting when that cycle ran.
+        A caller arriving afterwards reads the CURRENT seq, sees no change, and
+        fetches for itself. So a failure is shared across one in-flight window
+        and never served again, which is exactly the difference between sharing
+        a result and caching one.
+    """
+    if _cycle_seq(key) == seq_before:
+        return None
+    entry = _SHADOW_CYCLES.get(key)
+    if not entry:
+        return None
+    return copy.deepcopy(entry["snapshot"])
+
+
 async def get_shadow_macro_snapshot(*, job_id: Optional[str] = None
                                     ) -> Optional[Dict[str, Any]]:
     """An immutable FRED snapshot for the shadow, or None to keep it disabled.
@@ -327,12 +431,11 @@ async def get_shadow_macro_snapshot(*, job_id: Optional[str] = None
         now = _now()
         cached = _cached(now)
         if cached is not None and cached[1] < SHADOW_CACHE_TTL_SECONDS:
-            snapshot, age = cached
-            fresh = copy.deepcopy(snapshot)
-            fresh["cache_status"] = CACHE_HIT
-            fresh["cache_age_s"] = round(age, 3)
-            return fresh
+            return _from_cache(cached)
 
+        # Budget is checked BEFORE queueing, exactly as before. A caller already
+        # near its deadline declines to start rather than spending what is left
+        # waiting for someone else's request.
         if job_id:
             remaining = job_guard.remaining_budget(job_id)
             if (remaining is not None
@@ -340,7 +443,31 @@ async def get_shadow_macro_snapshot(*, job_id: Optional[str] = None
                     + SHADOW_BUDGET_MARGIN_SECONDS):
                 return _failure_snapshot(BUDGET_GUARD, fallback_reason=BUDGET_GUARD)
 
-        return await _fetch_fresh(api_key, now, cached)
+        key = cache_key()
+        # Read BEFORE queueing. If this number has moved by the time the lock is
+        # ours, a full cycle ran while we waited — see below.
+        seq_before = _cycle_seq(key)
+
+        # `async with` releases on return, on exception, on timeout and on
+        # cancellation. Nothing here catches CancelledError: a caller cancelled
+        # while queueing must stay cancelled, and it leaves nothing behind
+        # because it never entered the body.
+        async with _lock_for(key):
+            now = _now()
+            cached = _cached(now)
+            # THE SECOND CHECK. The holder may have completed a cycle and filled
+            # the cache while we queued; without this, every waiter would fetch
+            # again the moment it woke and the lock would buy nothing.
+            if cached is not None and cached[1] < SHADOW_CACHE_TTL_SECONDS:
+                return _from_cache(cached)
+
+            shared = _share_completed_cycle(key, seq_before)
+            if shared is not None:
+                return shared
+
+            snapshot = await _fetch_fresh(api_key, now, cached)
+            _record_cycle(key, snapshot)
+            return snapshot
     except BaseException as exc:  # noqa: BLE001 — telemetry may never break a scan
         logger.warning("[MacroShadowFetch] snapshot unavailable (ignored): %s",
                        type(exc).__name__)
