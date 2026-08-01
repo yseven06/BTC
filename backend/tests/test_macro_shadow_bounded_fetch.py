@@ -243,16 +243,39 @@ def test_a_hanging_upstream_is_actually_cut_off(monkeypatch):
 def test_a_cancelled_fetch_is_not_swallowed(monkeypatch):
     """`_fetch_one` catches BaseException so a shadow can never raise upward —
     but CancelledError must still propagate, or the timeout above and the
-    scheduler's shutdown would both be fighting a handler that keeps running."""
+    scheduler's shutdown would both be fighting a handler that keeps running.
+
+    The drive below used to cancel a bare `asyncio.sleep`, which exercised the
+    event loop and nothing in this module — so it passed the whole time
+    `_fetch_fresh` was catching that same re-raise one frame up and turning it
+    into `internal_error`. It now cancels a REAL in-flight fetch. Full coverage
+    of both boundaries is in `test_macro_shadow_cancellation.py`.
+    """
     src = inspect.getsource(msf._fetch_one)
     assert "except asyncio.CancelledError:" in src
     assert src.index("except asyncio.CancelledError:") < src.index("except BaseException")
 
+    started = asyncio.Event()
+
+    async def _hang(request):
+        started.set()
+        await asyncio.sleep(3600)
+        return httpx.Response(200, json={"observations": []})
+
+    _install(monkeypatch, _Transport({"*": lambda r: _hang(r)}))
+
     async def _drive():
-        task = asyncio.ensure_future(asyncio.sleep(10))
+        task = asyncio.create_task(msf.get_shadow_macro_snapshot())
+        for _ in range(200):
+            if started.is_set():
+                break
+            await asyncio.sleep(0.005)
+        assert started.is_set(), "the fetch never started — nothing was measured"
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
+        assert task.cancelled(), "the cancel was converted into a snapshot"
+
     asyncio.run(_drive())
 
 

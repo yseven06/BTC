@@ -343,12 +343,10 @@ def test_cancelling_a_waiter_leaves_the_lock_usable():
         waiter = asyncio.create_task(msf.get_shadow_macro_snapshot())
         await asyncio.sleep(0.02)             # let it reach the lock
         waiter.cancel()
-        # NOTE: this does NOT raise. `get_shadow_macro_snapshot`'s outer
-        # `except BaseException` predates this checkpoint and turns cancellation
-        # into None — see `test_the_outer_boundary_still_swallows_cancellation`.
-        # What this test owns is the state left behind.
-        result = await waiter
-        assert result is None, "a cancelled caller must not receive a snapshot"
+        # It stays cancelled — see `test_the_outer_boundary_propagates_cancellation`.
+        # What THIS test owns is the state left behind afterwards.
+        with pytest.raises(asyncio.CancelledError):
+            await waiter
 
         t.release()
         assert await asyncio.wait_for(leader, timeout=5) is not None
@@ -374,10 +372,9 @@ def test_cancelling_the_leader_leaves_the_lock_usable():
                 break
             await asyncio.sleep(0.005)
         leader.cancel()
-        try:
+        with pytest.raises(asyncio.CancelledError):
             await leader
-        except asyncio.CancelledError:
-            pass
+        assert leader.cancelled(), "the leader's cancellation was absorbed"
         t.release()
         await asyncio.sleep(0)
         lock = msf._lock_for(msf.cache_key())
@@ -386,19 +383,18 @@ def test_cancelling_the_leader_leaves_the_lock_usable():
     asyncio.run(_with_settings(_run, t))
 
 
-def test_the_outer_boundary_still_swallows_cancellation():
-    """PINS A PRE-EXISTING BEHAVIOUR THIS CHECKPOINT DID NOT CHANGE.
+def test_the_outer_boundary_propagates_cancellation():
+    """THE CONTRACT, corrected in CP-MACRO-SHADOW-CANCELLATION-PROPAGATION.
 
-    `get_shadow_macro_snapshot` wraps everything in `except BaseException` and
-    returns None, so a cancelled caller receives None instead of staying
-    cancelled. That predates single-flight and contradicts the module's own
-    stated principle — `_fetch_one` re-raises `CancelledError` precisely because
-    "a handler that catches this would fight its own bound".
+    This test previously pinned the OPPOSITE: `get_shadow_macro_snapshot`
+    wrapped everything in `except BaseException` and returned None, so a
+    cancelled caller did not stay cancelled. A forensic pass established that
+    absorbing it let `_generate_signal` walk on into its database block — a scan
+    the guard had already given up on could still write a candidate, which is
+    the opposite of what `run_asset_with_deadline` documents.
 
-    It is pinned rather than fixed because changing it alters what every caller
-    of this function sees when a scan is torn down, which is a scheduler-visible
-    change and outside a single-flight checkpoint. If the pin fails, someone
-    changed the boundary — decide deliberately, do not just update the test.
+    Kept and inverted rather than deleted, so the coverage the pin bought is not
+    lost when the behaviour it described stops being true.
     """
     t = _Barrier()
 
@@ -411,12 +407,11 @@ def test_the_outer_boundary_still_swallows_cancellation():
             await asyncio.sleep(0.005)
         waiter = asyncio.create_task(msf.get_shadow_macro_snapshot())
         await asyncio.sleep(0.02)
+        assert not waiter.done(), "precondition: it really is queueing on the lock"
         waiter.cancel()
-        result = await waiter
-        assert result is None
-        assert not waiter.cancelled(), (
-            "the outer boundary no longer swallows cancellation — this is a "
-            "deliberate decision to make, not a test to update")
+        with pytest.raises(asyncio.CancelledError):
+            await waiter
+        assert waiter.cancelled(), "cancellation was converted into a result"
         t.release()
         await asyncio.wait_for(leader, timeout=5)
 

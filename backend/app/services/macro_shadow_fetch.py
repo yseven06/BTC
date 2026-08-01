@@ -468,6 +468,16 @@ async def get_shadow_macro_snapshot(*, job_id: Optional[str] = None
             snapshot = await _fetch_fresh(api_key, now, cached)
             _record_cycle(key, snapshot)
             return snapshot
+    except asyncio.CancelledError:
+        # NOT swallowed. A cancellation is not a failure to be reported — it is
+        # the caller being torn down, and the only correct answer is to stop.
+        # Absorbing it here returned None and let `_generate_signal` walk on into
+        # its database block, so a scan the guard had already given up on could
+        # still write a candidate — the opposite of what
+        # `run_asset_with_deadline` documents ("no candidate is written and
+        # nothing is fabricated"). This mirrors `_fetch_one`, which re-raises for
+        # the same reason one frame down.
+        raise
     except BaseException as exc:  # noqa: BLE001 — telemetry may never break a scan
         logger.warning("[MacroShadowFetch] snapshot unavailable (ignored): %s",
                        type(exc).__name__)
@@ -495,6 +505,17 @@ async def _fetch_fresh(api_key: str, now: float,
         for sid, (entry, code) in zip(SCORED_SERIES, results):
             series[sid] = entry
             codes[sid] = code
+    except asyncio.CancelledError:
+        # NOT swallowed, and this is the frame that actually mattered.
+        # `_fetch_one` already re-raises, but this handler caught it one frame
+        # up and `_classify` labelled it `internal_error` / `CancelledError` on
+        # BOTH series — an internal failure that never happened, written to a
+        # candidate. Cancellation is control flow, not telemetry.
+        #
+        # The 6 s bound is UNAFFECTED: `asyncio.timeout` converts its OWN expiry
+        # to `TimeoutError` before it leaves the block, so that path still lands
+        # in `_classify` as `timeout` and never reaches this clause.
+        raise
     except BaseException as exc:  # noqa: BLE001
         status, error_class = _classify(exc)
         latency = round((time.perf_counter() - started) * 1000.0, 2)
