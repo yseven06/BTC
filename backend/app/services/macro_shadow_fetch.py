@@ -39,7 +39,7 @@ import copy
 import logging
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Mapping, Optional, Tuple
 
 import httpx
 
@@ -221,6 +221,52 @@ async def _fetch_one(client: httpx.AsyncClient, series_id: str,
                              error_class=error_class), code
 
 
+def _snapshot_observation_time(series: Mapping[str, Any]) -> Optional[str]:
+    """The STALEST observation date present, exactly as FRED reported it.
+
+    WHY THE STALEST, NOT THE NEWEST
+        A snapshot is only as fresh as its stalest input. FEDFUNDS is monthly and
+        DGS10 is daily, so reporting the newest would let a two-day-old DGS10
+        stand in front of a two-month-old FEDFUNDS — the opposite of what a
+        freshness field is for. Per-series `observation_date` still carries the
+        breakdown for anyone who needs it.
+
+    WHY A DAY STRING AND NOT A TIMESTAMP
+        The `series/observations` endpoint has DAY granularity. Widening
+        "2026-06-01" to "2026-06-01T00:00:00+00:00" here would claim a precision
+        we never received. `_as_dt` in the contract already anchors a date-only
+        string at midnight UTC (macro_shadow.py:252-254), so `observation_lag_s`
+        is derived from a convention that is written down rather than invented at
+        this call site.
+
+    This replaces a hardcoded `None`. That was not an oversight — the earlier
+    reasoning was that no ALFRED/vintage endpoint is used, so there is no
+    observation TIME distinct from each series' observation DATE, and filling the
+    field with the retrieval clock would have been a different fact wearing this
+    field's name. That still holds: the retrieval clock is NOT what goes here.
+    What was missed is that the observation DATE is itself a legitimate answer,
+    and leaving the field null made snapshot-level staleness unreadable while the
+    data to compute it was sitting one level down.
+    """
+    oldest_key: Optional[datetime] = None
+    oldest_raw: Optional[str] = None
+    for entry in series.values():
+        if not isinstance(entry, Mapping):
+            continue
+        raw = entry.get("observation_date")
+        if not isinstance(raw, str) or not raw.strip():
+            continue
+        try:
+            key = datetime.fromisoformat(raw.strip())
+        except ValueError:
+            continue                      # unparseable date is not a freshness claim
+        if key.tzinfo is None:
+            key = key.replace(tzinfo=timezone.utc)
+        if oldest_key is None or key < oldest_key:
+            oldest_key, oldest_raw = key, raw.strip()
+    return oldest_raw
+
+
 def _snapshot(*, configured: bool, fetch_status: str, series: Dict[str, Any],
               cache_status: str, cache_age_s: Optional[float] = None,
               request_latency_ms: Optional[float] = None,
@@ -231,11 +277,9 @@ def _snapshot(*, configured: bool, fetch_status: str, series: Dict[str, Any],
         "cache_status": cache_status,
         "cache_age_s": cache_age_s,
         "request_latency_ms": request_latency_ms,
-        # No ALFRED/vintage endpoint is used, so there is no separate observation
-        # TIME to report beyond each series' own observation DATE. Left None
-        # rather than filled with the retrieval clock, which would be a different
-        # fact wearing this field's name.
-        "observation_time": None,
+        # The stalest observation date among the series — see
+        # `_snapshot_observation_time`. Still never the retrieval clock.
+        "observation_time": _snapshot_observation_time(series),
         "series": series,
     }
     if fallback_reason is not None:
