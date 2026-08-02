@@ -20,6 +20,11 @@ from app.database import get_db
 from app.models.asset import Asset
 from app.models.signal import Signal, SignalOutcome, SignalPerformance
 from app.models.intelligence import SignalTradePath
+from app.services.entry_validity import (
+    classify_entry_validity,
+    compute_entry_validity_report,
+    select_trade_path_row,
+)
 from app.services.tpsl_analytics import compute_tpsl_quality, compute_risk_scale_audit
 from app.subscriptions.gating import (
     SubscriptionTier, get_user_tier_optional,
@@ -301,3 +306,81 @@ async def risk_scale_audit(
     res = await db.execute(select(Signal.risk_score, Signal.risk_level))
     pairs = [(r[0], r[1]) for r in res.all()]
     return compute_risk_scale_audit(pairs)
+
+
+def _enum_value(value: Any) -> Optional[str]:
+    """Enum -> its ``.value``, everything else unchanged (None stays None)."""
+    if value is None:
+        return None
+    return getattr(value, "value", value)
+
+
+def _float_or_none(value: Any) -> Optional[float]:
+    return None if value is None else float(value)
+
+
+@router.get(
+    "/entry-validity",
+    summary="Entry validity cohorts (read-only; raw_all is preserved as legacy_raw)",
+)
+async def entry_validity(
+    db: AsyncSession = Depends(get_db),
+    tier: SubscriptionTier = Depends(get_user_tier_optional),
+) -> Dict[str, Any]:
+    """Read-only cohort report over the PASSIVE entry telemetry.
+
+    Splits every signal into exactly three canonical cohorts — reached /
+    not_reached / unknown — and reports performance separately for each. The
+    number production reports today is preserved verbatim as ``raw_all`` and
+    labelled ``legacy_raw``; nothing here rewrites a stored metric, and no
+    signal, lifecycle or learning behaviour is changed by reading it.
+    """
+    if tier == SubscriptionTier.FREE:
+        return {"locked": True}
+
+    res = await db.execute(
+        select(Signal, SignalPerformance, SignalTradePath, Asset.symbol)
+        .outerjoin(SignalPerformance, SignalPerformance.signal_id == Signal.id)
+        .outerjoin(SignalTradePath, SignalTradePath.signal_id == Signal.id)
+        .outerjoin(Asset, Asset.id == Signal.asset_id)
+    )
+
+    # A signal may (in principle) fan out to several trade_path rows — collapse
+    # deterministically rather than letting join order decide the statistic.
+    grouped: Dict[Any, Dict[str, Any]] = {}
+    for sig, perf, path, symbol in res.all():
+        slot = grouped.setdefault(sig.id, {"sig": sig, "perf": perf, "symbol": symbol, "paths": []})
+        if perf is not None and slot["perf"] is None:
+            slot["perf"] = perf
+        if path is not None:
+            slot["paths"].append(path)
+
+    records: List[Dict[str, Any]] = []
+    for slot in grouped.values():
+        sig, perf = slot["sig"], slot["perf"]
+        path = select_trade_path_row(slot["paths"])
+        extra = getattr(path, "extra", None) if path is not None else None
+        entry_block = extra.get("entry") if isinstance(extra, dict) else None
+        records.append(
+            {
+                "signal_id": str(sig.id),
+                "symbol": slot["symbol"],
+                "timeframe": _enum_value(sig.timeframe),
+                "direction": _enum_value(sig.direction),
+                "risk_level": _enum_value(sig.risk_level),
+                "confidence": _float_or_none(sig.confidence_score),
+                "regime": getattr(path, "regime", None) if path is not None else None,
+                "outcome": _enum_value(perf.outcome) if perf is not None else None,
+                "return_pct": _float_or_none(perf.actual_return) if perf is not None else None,
+                "mfe_pct": _float_or_none(perf.mfe_pct) if perf is not None else None,
+                "mae_pct": _float_or_none(perf.max_drawdown) if perf is not None else None,
+                "hit_tp1": bool(perf.hit_tp1) if perf is not None else None,
+                "hit_tp2": bool(perf.hit_tp2) if perf is not None else None,
+                "hit_tp3": bool(perf.hit_tp3) if perf is not None else None,
+                "entry_validity": classify_entry_validity(
+                    entry_block, has_trade_path=path is not None
+                ),
+            }
+        )
+
+    return compute_entry_validity_report(records)

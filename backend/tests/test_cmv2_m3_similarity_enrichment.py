@@ -561,9 +561,19 @@ def test_the_route_adds_no_query_for_the_enrichment():
         "the enrichment is not served as a SIBLING key"
     assert "similar = build_similarity_coin_memory_enrichment" not in src, \
         "the similarity payload is being rebound instead of left alone"
-    # Exactly the pre-existing selects: Signal, SignalSnapshot, CoinMemory.
-    assert src.count("await db.execute") == 3, \
+    # The enrichment itself must add NONE. The route's total is pinned so that
+    # any new query has to be justified here rather than appearing silently:
+    #   1-3  Signal, SignalSnapshot, CoinMemory  — pre-existing
+    #   4    SignalTradePath                     — CP-ENTRY-VALIDITY-TELEMETRY-
+    #        SURFACE, a separately approved checkpoint; an indexed lookup on the
+    #        unique signal_id, and NOT attributable to the enrichment.
+    assert src.count("await db.execute") == 4, \
         "the intelligence route gained or lost a query"
+    assert "build_similarity_coin_memory_enrichment" in src.split("return {")[0]
+    # …and the enrichment still stands between no awaits of its own.
+    enrich = src.split("from app.services.coin_memory import build_similarity")[1]
+    assert "await db.execute" not in enrich.split("# Canonical entry validity")[0], \
+        "the enrichment itself now issues a query"
 
 
 def test_the_similarity_payload_reaches_the_response_unrebound():

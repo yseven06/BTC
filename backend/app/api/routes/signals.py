@@ -19,7 +19,7 @@ from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models.asset import Asset, AssetType
 from app.models.signal import Signal, SignalOutcome, SignalPerformance, SignalType, Direction, RiskLevel
-from app.models.intelligence import SignalSnapshot, CoinMemory, SignalStatusHistory
+from app.models.intelligence import SignalSnapshot, CoinMemory, SignalStatusHistory, SignalTradePath
 from app.models.user import User
 from app.backtesting import labels as outcome_labels
 from app.backtesting import lifecycle
@@ -726,6 +726,25 @@ async def signal_intelligence(
     except Exception:
         similar_coin_memory = {"coin_memory_enrichment_applied": False}
 
+    # Canonical entry validity — did price provably reach the assumed entry?
+    # The tracker has recorded this passively since 2026-07-11 and nothing has
+    # ever read it back. Additive sibling key; classification only, and the
+    # three cohorts are closed (reached / not_reached / unknown), so a signal
+    # whose entry was never measured is reported as unknown, NEVER as reached.
+    from app.services.entry_validity import classify_entry_validity, select_trade_path_row
+    try:
+        paths = (await db.execute(
+            select(SignalTradePath).where(SignalTradePath.signal_id == signal_id)
+        )).scalars().all()
+        chosen = select_trade_path_row(paths)
+        extra = getattr(chosen, "extra", None) if chosen is not None else None
+        entry_validity = classify_entry_validity(
+            extra.get("entry") if isinstance(extra, dict) else None,
+            has_trade_path=chosen is not None,
+        )
+    except Exception:
+        entry_validity = classify_entry_validity(None, has_trade_path=False)
+
     return {
         "signal_id": str(signal_id),
         "symbol": symbol,
@@ -755,6 +774,7 @@ async def signal_intelligence(
         "trade_mgmt": trade_mgmt,
         "similar_setups": similar,
         "similar_setups_coin_memory": similar_coin_memory,
+        "entry_validity": entry_validity,
         "outcome": perf.outcome.value if perf else None,
         "detail_label": perf.detail_label if perf else None,
         "detail_label_tr": outcome_labels.label_tr(perf.detail_label) if perf and perf.detail_label else None,
