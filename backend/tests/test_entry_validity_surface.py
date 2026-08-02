@@ -356,6 +356,50 @@ def test_win_rate_denominator_excludes_breakeven_expired_and_active():
     assert stats["win_rate"] == 50.0    # 1 / (1 WIN + 1 LOSS)
 
 
+def test_outcome_matching_is_immune_to_the_enum_spelling():
+    """``SignalOutcome.WIN.value`` is ``"win"``; the stored column holds ``"WIN"``.
+
+    A surface that hard-codes one spelling reports zero wins, zero losses and a
+    null win rate — no exception, just a plausible table of zeroes. The first
+    production run of this endpoint did exactly that, and the tests missed it
+    because every fixture here typed the uppercase form by hand. So this test
+    takes the spellings FROM THE MODEL and asserts the three agree.
+    """
+    from app.models.signal import SignalOutcome
+
+    # Pinned from the enum itself — if these ever change, the surface must know.
+    assert SignalOutcome.WIN.value == "win"
+    assert SignalOutcome.ACTIVE.value == "active"
+
+    def cohort(win, loss, active):
+        return summarize_cohort([
+            rec(classify_entry_validity(block()), outcome=win, ret=2.0),
+            rec(classify_entry_validity(block()), outcome=loss, ret=-1.0),
+            rec(classify_entry_validity(block()), outcome=active, ret=None),
+        ])
+
+    stored = cohort("WIN", "LOSS", "ACTIVE")                 # column spelling
+    valued = cohort(SignalOutcome.WIN.value, SignalOutcome.LOSS.value,
+                    SignalOutcome.ACTIVE.value)              # .value spelling
+    member = cohort(SignalOutcome.WIN, SignalOutcome.LOSS, SignalOutcome.ACTIVE)
+
+    for name, stats in (("stored", stored), ("valued", valued), ("member", member)):
+        assert stats["outcomes"]["win"] == 1, name
+        assert stats["outcomes"]["loss"] == 1, name
+        assert stats["n_terminal"] == 2, name       # ACTIVE excluded in every spelling
+        assert stats["n_active"] == 1, name
+        assert stats["win_rate"] == 50.0, name
+        assert stats["profit_factor"] == 2.0, name
+
+
+def test_a_record_with_no_outcome_is_not_counted_as_resolved():
+    stats = summarize_cohort([rec(classify_entry_validity(block()), outcome=None, ret=None)])
+    assert stats["n"] == 1
+    assert stats["n_terminal"] == 0
+    assert stats["n_active"] == 1
+    assert stats["win_rate"] is None
+
+
 def test_win_rate_is_none_not_zero_when_nothing_resolved():
     stats = summarize_cohort([rec(classify_entry_validity(block()), outcome="ACTIVE", ret=None)])
     assert stats["win_rate"] is None

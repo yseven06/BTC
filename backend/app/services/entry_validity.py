@@ -89,6 +89,11 @@ COHORT_VALID_ENTRY_ONLY = "valid_entry_only"
 COHORT_NOT_REACHED = "not_reached"
 COHORT_UNKNOWN = "unknown"
 
+# The outcome arrives spelled two different ways depending on the path it came
+# down: ``SignalOutcome.WIN.value`` is ``"win"``, while the stored column holds
+# the member NAME, ``"WIN"``. Comparing against a single spelling silently
+# reports zero of every outcome — no error, no empty result, just a plausible
+# table of zeroes. Normalise once, here, and pin both spellings in the tests.
 _TERMINAL_EXCLUDED = "ACTIVE"
 
 
@@ -277,6 +282,21 @@ def _rate(hits: int, total: int) -> Optional[float]:
     return round(100.0 * hits / total, 2) if total else None
 
 
+def _outcome(record: Mapping[str, Any]) -> Optional[str]:
+    """The record's outcome as a canonical UPPERCASE token, or None.
+
+    Accepts the enum member, its lowercase ``.value`` and the stored uppercase
+    name interchangeably — see the note above ``_TERMINAL_EXCLUDED``. A record
+    with no outcome is not resolved, so it is neither terminal nor an outcome.
+    """
+    raw = record.get("outcome")
+    if raw is None:
+        return None
+    raw = getattr(raw, "value", raw)
+    text = str(raw).strip()
+    return text.upper() if text else None
+
+
 def summarize_cohort(records: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
     """Aggregate performance over one cohort of records.
 
@@ -289,11 +309,11 @@ def summarize_cohort(records: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
       * every rate carries ``reliable``, false below ``MIN_RELIABLE_SAMPLE``.
     """
     n = len(records)
-    terminal = [r for r in records if (r.get("outcome") or _TERMINAL_EXCLUDED) != _TERMINAL_EXCLUDED]
+    terminal = [r for r in records if _outcome(r) not in (None, _TERMINAL_EXCLUDED)]
     n_term = len(terminal)
 
     def count(outcome: str) -> int:
-        return sum(1 for r in terminal if r.get("outcome") == outcome)
+        return sum(1 for r in terminal if _outcome(r) == outcome)
 
     wins, losses = count("WIN"), count("LOSS")
     returns = [v for v in (_num(r.get("return_pct")) for r in terminal) if v is not None]
