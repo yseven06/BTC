@@ -707,6 +707,25 @@ async def signal_intelligence(
     except Exception:
         trade_mgmt = {"has_data": False, "n": 0}
 
+    # Coin Memory v2 M3 — the trade-management roll-up that accompanies the
+    # similarity verdict. Similarity says how setups like this RESOLVED; this
+    # says how they were MANAGED once open, which it has never been able to
+    # answer (it reads snapshots and performance, never trade paths).
+    #
+    # A SIBLING key, deliberately: `similar_setups` is typed and rendered by the
+    # frontend (api.ts:402, IntelligencePanel.tsx:211-226), while `trade_mgmt`
+    # has zero references there. Adding to the consumed object would make "the
+    # similarity payload is unchanged" depend on the consumer reading only five
+    # keys; a sibling makes it structural — `similar` is not touched at all.
+    #
+    # `mem` and `regime` are already loaded above, so this costs no extra query
+    # and issues no write.
+    from app.services.coin_memory import build_similarity_coin_memory_enrichment
+    try:
+        similar_coin_memory = build_similarity_coin_memory_enrichment(similar, mem, regime)
+    except Exception:
+        similar_coin_memory = {"coin_memory_enrichment_applied": False}
+
     return {
         "signal_id": str(signal_id),
         "symbol": symbol,
@@ -735,6 +754,7 @@ async def signal_intelligence(
         "coin_memory": coin,
         "trade_mgmt": trade_mgmt,
         "similar_setups": similar,
+        "similar_setups_coin_memory": similar_coin_memory,
         "outcome": perf.outcome.value if perf else None,
         "detail_label": perf.detail_label if perf else None,
         "detail_label_tr": outcome_labels.label_tr(perf.detail_label) if perf and perf.detail_label else None,

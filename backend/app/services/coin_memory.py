@@ -31,7 +31,7 @@ import logging
 import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1697,6 +1697,222 @@ def _std(total: float, sumsq: float, n: int) -> Optional[float]:
 
 def _pct(num: int, den: int) -> Optional[float]:
     return round(num / den * 100.0, 1) if den else None
+
+
+# ── CM v2 M3: similarity enrichment ──────────────────────────────────────────
+# Similarity answers "how did setups that LOOKED like this one resolve?". It has
+# never read trade paths (app/services/similarity.py reads SignalSnapshot +
+# SignalPerformance only), so the question it cannot answer is "and how did the
+# trade MANAGE once it was open?". That answer already exists in tm_stats.
+#
+# This attaches the second answer to the first WITHOUT touching the matcher: the
+# distance function, the candidate pool and MIN_SIMILAR_MATCHES are untouched,
+# and `app/services/similarity.py` is not modified at all. Enrichment hangs off
+# the OUTPUT, which is the lowest-risk of the integrations considered in the
+# P0.7 analysis.
+SIMILARITY_ENRICHMENT_VERSION = "coin_memory_similarity_v1"
+
+# Regime buckets this enrichment may read — an ALLOWLIST, not "whichever bucket
+# exists". Measured in production on 2026-08-02 over 705 filled cells:
+#   _all 103 above threshold · trending_bull 44 · low_volume 37 ·
+#   trending_bear 29 · ranging 21 · volatile_high 0
+# `volatile_high` cannot clear the per-cell gate at all (17 cells, 17 samples
+# total), and a bucket that never clears it produces nothing but a
+# confident-looking empty. `ranging` is excluded by checkpoint scope rather than
+# by its data — recorded here so the reason is not lost.
+ENRICHMENT_REGIME_BUCKETS: Tuple[str, ...] = (
+    "trending_bull", "low_volume", "trending_bear",
+)
+ENRICHMENT_ALL_BUCKET = "_all"
+
+# The slice of `metrics` surfaced next to a similarity verdict. Deliberately not
+# the whole dict: the rest is already on the same response under `trade_mgmt`,
+# and repeating it here would make two copies that can disagree after an edit.
+ENRICHMENT_FIELDS: Tuple[str, ...] = (
+    "tp1_rate", "tp2_rate", "tp3_rate", "give_back_rate", "tight_sl_rate",
+    "avg_mfe_r", "avg_mae_r", "avg_realized", "avg_bars_to_tp1",
+)
+
+# `fallback_reason` vocabulary. Every non-enriched outcome names itself; absence
+# is never reported as a bare False.
+ENRICH_NO_SIMILARITY = "no_similarity_payload"
+ENRICH_NO_MEMORY = "no_coin_memory"
+ENRICH_NO_TM_CACHE = "no_tm_cache"
+ENRICH_REGIME_NOT_ALLOWED = "regime_not_in_allowlist"
+ENRICH_REGIME_BELOW_GATE = "regime_bucket_below_cell_threshold"
+ENRICH_ALL_BELOW_GATE = "all_bucket_below_cell_threshold"
+ENRICH_NO_BUCKET = "no_usable_bucket"
+ENRICH_INTERNAL = "internal_error"
+
+# `cache_status` vocabulary for the tm_stats rollup.
+CACHE_ABSENT = "absent"        # no CoinMemory row for this (symbol, timeframe)
+CACHE_EMPTY = "empty"          # row exists, tm_stats never folded
+CACHE_PRESENT = "present"      # v1 buckets readable
+
+
+def _enrichment_telemetry(**over: Any) -> Dict[str, Any]:
+    """The full telemetry block, with every key ALWAYS present.
+
+    A reader must never have to distinguish "this run did not set the field"
+    from "the field does not apply" — an absent key reads as both.
+    """
+    base: Dict[str, Any] = {
+        "version": SIMILARITY_ENRICHMENT_VERSION,
+        "coin_memory_enrichment_applied": False,
+        "selected_bucket": None,
+        "selected_regime": None,
+        "cell_sample_count": 0,
+        "cell_threshold": MIN_TM_SAMPLES,
+        "fallback_reason": None,
+        "legacy_fallback_used": False,
+        "enrichment_fields_available": 0,
+        "enrichment_fields_used": 0,
+        "cache_status": CACHE_ABSENT,
+        "cache_age_s": None,
+        "graceful_degradation_verified": True,
+    }
+    base.update(over)
+    return base
+
+
+def _cache_age_seconds(mem) -> Optional[float]:
+    """Age of the rollup in seconds, or None when it cannot be established.
+
+    `tm_stats` has no TTL and no version stamp — `last_updated_at` (onupdate on
+    the model) is the only clock the cell carries, so age is reported from it
+    and NOT dressed up as a freshness guarantee.
+    """
+    stamp = getattr(mem, "last_updated_at", None)
+    if not isinstance(stamp, datetime):
+        return None
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=timezone.utc)
+    return round((datetime.now(timezone.utc) - stamp).total_seconds(), 3)
+
+
+def build_similarity_coin_memory_enrichment(
+    similar: Optional[Dict[str, Any]],
+    mem=None,
+    regime: Optional[str] = None,
+) -> Dict[str, Any]:
+    """The trade-management roll-up that ACCOMPANIES a similarity verdict.
+
+    WHY IT RETURNS A SIBLING AND NOT A WRAPPED `similar`
+        The two coin-memory-derived blocks already on this response are consumed
+        very differently, and it is measurable rather than a matter of taste:
+        `trade_mgmt` has ZERO references anywhere in the frontend, while
+        `similar_setups` is typed (frontend/src/lib/api.ts:402) and rendered
+        (frontend/src/components/ui/IntelligencePanel.tsx:211-226), where the
+        component narrows on `has_data`/`win_rate` and destructures four more
+        fields. Putting the roll-up INSIDE `similar_setups` would make "the
+        similarity payload is unchanged" rest on the consumer happening to read
+        only five keys. Returning a sibling makes it structural: `similar` is
+        read for one telemetry flag and otherwise not touched at all.
+
+    CONTRACT
+        * Returns ONLY the enrichment block. `similar` is never copied, wrapped
+          or mutated, and neither is any bucket inside `mem.tm_stats`.
+        * Produces NO decision, score, ranking or recommendation. It does not
+          feed the publish gate, confidence, direction, risk or TP/SL.
+        * Never raises. Every failure degrades to a named `fallback_reason`.
+        * Reads only. No DB write, no migration, no cache mutation.
+
+    THE FALLBACK CHAIN, in order:
+        1. the signal's own regime bucket, if it is on the allowlist and clears
+           the per-cell gate
+        2. the `_all` bucket, if it clears the gate
+        3. legacy: no tm rollup, but the pre-CM2 CoinMemory aggregate exists —
+           flagged via `legacy_fallback_used` so the caller falls back to the
+           `coin_memory` block already on the response. Nothing is copied here;
+           two copies of one number is how they start disagreeing.
+        4. nothing, with the reason named
+
+    THE PER-CELL GATE is `MIN_TM_SAMPLES`, the same constant
+    `compute_coin_tm_summary` enforces. It is applied to the SELECTED bucket's
+    own `n`, not to `tm_sample_count`: a coin with 60 paths overall can still
+    have 3 in `trending_bear`, and reporting rates off 3 is exactly what the
+    gate exists to prevent.
+    """
+    try:
+        if not isinstance(similar, Mapping):
+            return _enrichment_telemetry(fallback_reason=ENRICH_NO_SIMILARITY)
+
+        if mem is None:
+            return _enrichment_telemetry(
+                selected_regime=regime, fallback_reason=ENRICH_NO_MEMORY,
+                cache_status=CACHE_ABSENT)
+
+        age = _cache_age_seconds(mem)
+        buckets = v1_tm_buckets(getattr(mem, "tm_stats", None) or {})
+        has_legacy_record = int(getattr(mem, "total_signals", 0) or 0) > 0
+
+        if not buckets:
+            return _enrichment_telemetry(
+                selected_regime=regime, fallback_reason=ENRICH_NO_TM_CACHE,
+                legacy_fallback_used=has_legacy_record,
+                cache_status=CACHE_EMPTY, cache_age_s=age)
+
+        def _n(key: str) -> int:
+            return int(((buckets.get(key) or {}).get("n", 0)) or 0)
+
+        # --- 1) the signal's own regime bucket -------------------------------
+        selected: Optional[str] = None
+        reason: Optional[str] = None
+        if regime:
+            if regime not in ENRICHMENT_REGIME_BUCKETS:
+                reason = ENRICH_REGIME_NOT_ALLOWED
+            elif _n(regime) >= MIN_TM_SAMPLES:
+                selected = regime
+            else:
+                reason = ENRICH_REGIME_BELOW_GATE
+
+        # --- 2) the `_all` bucket -------------------------------------------
+        if selected is None:
+            if _n(ENRICHMENT_ALL_BUCKET) >= MIN_TM_SAMPLES:
+                selected = ENRICHMENT_ALL_BUCKET
+            else:
+                reason = ENRICH_ALL_BELOW_GATE if reason is None else reason
+
+        # --- 3/4) nothing usable --------------------------------------------
+        if selected is None:
+            return _enrichment_telemetry(
+                selected_regime=regime,
+                cell_sample_count=_n(regime) if regime else _n(ENRICHMENT_ALL_BUCKET),
+                fallback_reason=reason or ENRICH_NO_BUCKET,
+                legacy_fallback_used=has_legacy_record,
+                cache_status=CACHE_PRESENT, cache_age_s=age)
+
+        # --- enrich ----------------------------------------------------------
+        # Routed through `compute_coin_tm_summary` rather than reading the
+        # bucket directly, so the gate and the metric arithmetic have exactly
+        # ONE implementation. A second copy here would drift the first time
+        # either changes.
+        summary = compute_coin_tm_summary(mem, selected)
+        metrics = (summary or {}).get("metrics") or {}
+        available = sum(1 for v in metrics.values() if v is not None)
+        fields = {k: metrics[k] for k in ENRICHMENT_FIELDS
+                  if metrics.get(k) is not None}
+
+        return _enrichment_telemetry(
+            coin_memory_enrichment_applied=True,
+            selected_bucket=selected,
+            selected_regime=regime,
+            cell_sample_count=int((summary or {}).get("n", 0) or 0),
+            fallback_reason=reason,          # why the regime bucket was not used
+            legacy_fallback_used=False,
+            enrichment_fields_available=available,
+            enrichment_fields_used=len(fields),
+            cache_status=CACHE_PRESENT,
+            cache_age_s=age,
+            counts=(summary or {}).get("counts"),
+            fields=fields,
+        )
+
+    except Exception:  # noqa: BLE001 — enrichment may never break a response
+        logger.debug("[CoinMemory] similarity enrichment unavailable", exc_info=True)
+        return _enrichment_telemetry(
+            selected_regime=regime, fallback_reason=ENRICH_INTERNAL,
+            graceful_degradation_verified=False)
 
 
 def compute_coin_tm_summary(mem, regime: Optional[str] = None) -> Dict[str, Any]:
