@@ -45,6 +45,20 @@ from app.services.coin_memory import (
 E9 = list(BASE_ENGINE_WEIGHTS)
 BACKEND = Path(__file__).resolve().parents[1]
 
+# The EXTERNAL contract value of the namespace key, written out independently of
+# the implementation. Deliberately NOT `CM_V2_NAMESPACE` — a test that takes its
+# expectation from the constant it is guarding moves with it, and then a rename
+# passes. That is not hypothetical: a sabotage run in CP-CMV2-M3 renamed
+# `CM_V2_NAMESPACE` and this entire suite stayed green, because the contract
+# family pinned the two VERSION strings as literals (see
+# `test_contract_namespace_is_created_on_a_fresh_cell`) but checked the namespace
+# with `in` — symbol presence, not value.
+#
+# It is an external contract because it is a persisted JSON key: every
+# `coin_memory.tm_stats` row already on disk carries it, and renaming it makes
+# every one of them unreadable by the reader that expects it.
+EXPECTED_CM_V2_NAMESPACE = "cm_v2"
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Doubles
@@ -136,6 +150,59 @@ def test_contract_namespace_is_created_on_a_fresh_cell():
     assert ns["fold_rule_version"] == CM_V2_FOLD_RULE_VERSION == "cm_v2_fold_1"
     assert ns["counts"]["observed"] == 1
     assert ns["counts"]["by_fold_rule"] == {CM_V2_FOLD_RULE_VERSION: 1}
+
+
+def test_contract_namespace_key_is_pinned_to_its_external_literal():
+    """The namespace KEY is pinned by value, not by symbol.
+
+    `test_contract_namespace_is_created_on_a_fresh_cell` asserts
+    `CM_V2_NAMESPACE in mem.tm_stats`, which passes for ANY value the constant
+    happens to hold. This asserts the value itself, against a literal this file
+    owns, so a rename fails here and nowhere else has to notice.
+    """
+    assert CM_V2_NAMESPACE == EXPECTED_CM_V2_NAMESPACE
+    assert cm.CM_V2_NAMESPACE == EXPECTED_CM_V2_NAMESPACE
+
+
+def test_contract_namespace_key_appears_literally_in_a_produced_payload():
+    """The pin has to hold on the ARTEFACT, not only on the constant. A fold
+    writes the key into `tm_stats`; that is the byte a stored row carries and
+    the byte a reader looks for."""
+    mem = _fold(NS(tm_stats=None, tm_sample_count=0))
+    assert EXPECTED_CM_V2_NAMESPACE in mem.tm_stats, \
+        f"the fold did not write the {EXPECTED_CM_V2_NAMESPACE!r} key"
+    # And it survives serialisation — this is a persisted JSON column.
+    assert f'"{EXPECTED_CM_V2_NAMESPACE}"' in json.dumps(mem.tm_stats)
+    # The v1 reader must strip exactly this key and no other.
+    assert EXPECTED_CM_V2_NAMESPACE not in v1_tm_buckets(mem.tm_stats)
+    assert v1_tm_buckets({EXPECTED_CM_V2_NAMESPACE: {"x": 1}, "_all": {"n": 3}}) \
+        == {"_all": {"n": 3}}
+
+
+def test_contract_namespace_literal_is_defined_exactly_once_in_code():
+    """One definition, no scattered copies — the same rule the two version
+    strings already follow.
+
+    Walks the AST rather than counting text: the literal also occurs inside a
+    COMMENT in `coin_memory.py` (a note about a caller passing regime="cm_v2"),
+    and a raw `src.count(...)` would read that as a second definition and fail
+    for a reason that has nothing to do with the contract.
+    """
+    import ast
+    tree = ast.parse(inspect.getsource(cm))
+    literals = [n for n in ast.walk(tree)
+                if isinstance(n, ast.Constant) and n.value == EXPECTED_CM_V2_NAMESPACE]
+    assert len(literals) == 1, \
+        f"the namespace literal is written {len(literals)} times in code"
+
+    # …and that one occurrence is the constant's own definition.
+    defs = [n for n in ast.walk(tree)
+            if isinstance(n, ast.Assign)
+            and any(isinstance(t, ast.Name) and t.id == "CM_V2_NAMESPACE"
+                    for t in n.targets)]
+    assert len(defs) == 1, "CM_V2_NAMESPACE is assigned more than once"
+    assert isinstance(defs[0].value, ast.Constant)
+    assert defs[0].value.value == EXPECTED_CM_V2_NAMESPACE
 
 
 def test_contract_versions_come_from_one_source_not_scattered_literals():
