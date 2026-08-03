@@ -32,12 +32,12 @@ from app.notifications.service import notify_lifecycle, LIFECYCLE_ALERT_STATES
 from app.backtesting.trade_path import compute_trade_path
 from app.engines.ai_decision.entry_telemetry import build_entry_telemetry
 from app.services.entry_activation import (
-    entry_activation, entry_level, walk_start,
+    apply_monotonic_latch, entry_activation, entry_level, walk_start,
     STATUS_REACHED, STATUS_NOT_REACHED,
 )
 from app.services.entry_flags import entry_activation_enabled, effective_walk_start
 from app.backtesting.resolution_core import resolve_trade_path
-from app.models.intelligence import SignalSnapshot, SignalTradePath
+from app.models.intelligence import SignalSnapshot, SignalStatusHistory, SignalTradePath
 
 
 async def _persist_trade_path_once(db, row) -> bool:
@@ -365,8 +365,18 @@ def _post_signal_bars(signal, df):
         # signal arrow sitting after the only candle that ever
         # touched TP1). Collapse high/low to the live close here so
         # only confirmed since-the-signal price action can trigger a
-        # hit; once the candle closes, the next pass resumes normal
-        # high/low checks on it as a completed bar.
+        # hit.
+        #
+        # CORRECTION (CP-ENTRY-FILL-MONOTONICITY): this used to claim that
+        # "once the candle closes, the next pass resumes normal high/low
+        # checks on it as a completed bar". It does not, and lines above say
+        # so: the strict `> sig_time` filter drops the birth candle for good,
+        # so once it closes it leaves the frame entirely and its real wick is
+        # never examined. test_f01h_live_sl_ordering.py:162-172 pins that.
+        # The consequence is that while the birth candle is alive the frame
+        # holds ONE collapsed row, and the entry gate's whole verdict is a
+        # single instantaneous price sample — which is how a proven fill came
+        # to be un-proven two minutes later.
         still_forming = df.iloc[[-1]].copy()
         still_forming["high"] = still_forming["close"]
         still_forming["low"] = still_forming["close"]
@@ -594,6 +604,35 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
     if not active_signals:
         logger.info("No active signals found in the database")
         return {"processed": 0, "resolved": 0, "details": []}
+
+    # CP-ENTRY-FILL-MONOTONICITY — signals whose entry the gate has ALREADY
+    # proven, read once per pass (one query, no N+1).
+    #
+    # entry_activation() is pure and memoryless, and its verdict is written
+    # nowhere: every pass re-derives "did it fill?" from the current window.
+    # While a signal's birth candle is still forming that window holds exactly
+    # ONE row — the compensating bar whose high and low are collapsed to the
+    # live close (_post_signal_bars). So the gate's entire evidence is a single
+    # instantaneous price sample, and it flips as price moves: BNBUSDT filled
+    # at 16:42:02, was pushed back to waiting_entry at 16:44:02, filled again
+    # at 17:02:03. The promotion was right each time; the DEMOTION was wrong.
+    #
+    # A fill is a historical fact — it cannot become un-true. The persistent
+    # record of it is the `waiting_entry -> active` row, which nothing deletes.
+    # Reading it here makes the proof survive restarts without a migration, and
+    # it is deliberately NOT `live_status != waiting_entry`: a legacy signal
+    # that was born active and has never been gated must still be demotable on
+    # its first pass, or the phantom-fill cohort this gate exists to catch
+    # would slip straight through.
+    proven_entry_ids: set = set()
+    if entry_activation_enabled():
+        proven_entry_ids = set((await db.execute(
+            select(SignalStatusHistory.signal_id)
+            .where(SignalStatusHistory.signal_id.in_([s.id for s in active_signals]))
+            .where(SignalStatusHistory.from_status == lifecycle.WAITING_ENTRY)
+            .where(SignalStatusHistory.to_status == lifecycle.ACTIVE)
+            .distinct()
+        )).scalars().all())
 
     # Instantiate collectors (crypto-only: Binance is the sole data source).
     binance = BinanceCollector()
@@ -875,6 +914,23 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                 # promotion row and the expiry row must be orderable against
                 # each other, not against three separate now() calls.
                 _gate_now = datetime.now(timezone.utc)
+                # MONOTONICITY LATCH. A fill already proven for this signal is a
+                # historical fact; a later window that cannot re-derive it is
+                # missing evidence, not counter-evidence. Without this the gate
+                # un-fills a real position, and a signal superseded while wearing
+                # that wrong state is written off permanently as
+                # `invalidated_before_entry` with NULL P&L — a trade that
+                # happened, recorded as one that never opened.
+                #
+                # Walking from bar 0 here is safe precisely BECAUSE this branch
+                # can only be reached while the evidence was the collapsed
+                # birth-candle row: that candle is excluded from every window by
+                # the strict `> generated_at` filter, so every bar the walk can
+                # see opened after the fill. A fill seen in a REAL candle keeps
+                # being seen (the candle stays in the frame), so it never lands
+                # here.
+                _gate = apply_monotonic_latch(
+                    _gate, already_proven=signal.id in proven_entry_ids)
                 if _gate["status"] != STATUS_REACHED:
                     # No proven fill: nothing may be booked. A "never reached"
                     # verdict needs a COMPLETE window because it is a claim about

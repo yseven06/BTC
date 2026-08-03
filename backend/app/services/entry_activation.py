@@ -88,6 +88,31 @@ def _gapped(is_bull: bool, level: float, open_: Optional[float]) -> Optional[boo
     return (open_ < level) if is_bull else (open_ > level)
 
 
+def apply_monotonic_latch(gate: dict, *, already_proven: bool) -> dict:
+    """Hold a fill that was already proven for this signal — CP-ENTRY-FILL-MONOTONICITY.
+
+    `entry_activation` is pure and memoryless: every pass re-derives "did it
+    fill?" from the window it is handed, and the verdict is persisted nowhere.
+    While a signal's birth candle is still forming, that window holds exactly
+    ONE row whose high and low are collapsed to the live close, so the entire
+    verdict is a single instantaneous price sample — and it flips as price
+    moves. Measured in production: BNBUSDT H1 filled at 16:42:02, was pushed
+    back to waiting_entry at 16:44:02, filled again at 17:02:03. Three verdicts,
+    one trade.
+
+    Each PROMOTION was correct — price really was at the entry level. The
+    DEMOTION was not: a fill is a historical fact, and a window that can no
+    longer re-derive it is missing evidence, not counter-evidence. So this only
+    ever turns not-reached INTO reached, never the reverse; a signal whose entry
+    was never proven keeps being evaluated exactly as before.
+
+    Returns a NEW dict — the caller's verdict is never mutated in place.
+    """
+    if already_proven and gate.get("status") != STATUS_REACHED:
+        return dict(gate, status=STATUS_REACHED, entry_pos=None, monotonic_latch=True)
+    return gate
+
+
 def _positional(seq: Any) -> Any:
     """Return something indexable BY POSITION, without importing pandas.
 
