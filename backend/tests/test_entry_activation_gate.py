@@ -354,9 +354,22 @@ def test_H_a_second_pass_over_a_waiting_signal_keeps_the_same_state():
 
 
 def test_H_closing_without_fill_is_deterministic():
+    """Everything EXCEPT the wall-clock stamp must be identical between calls.
+
+    `detected_at` is `datetime.now()` by design — it records when we wrote the
+    row, so two calls genuinely differ. Comparing it makes the test's result
+    depend on the platform's clock resolution: on Windows both calls land inside
+    the same ~15ms tick and it passes, on Linux they are microseconds apart and
+    it fails. This test did exactly that — green locally, red in CI — so the
+    stamp is now excluded explicitly and checked for what actually matters.
+    """
     a_sig, a_perf = _closed_no_fill()
     b_sig, b_perf = _closed_no_fill()
-    assert vars(a_perf) == vars(b_perf) and a_sig.is_active == b_sig.is_active
+    a, b = dict(vars(a_perf)), dict(vars(b_perf))
+    for stamped in (a.pop("detected_at"), b.pop("detected_at")):
+        assert stamped is not None and stamped.tzinfo is not None
+    assert a == b, "the no-fill write is not deterministic apart from the clock"
+    assert a_sig.is_active is b_sig.is_active is False
 
 
 def test_H_the_no_fill_closer_writes_no_trade_path_row():
