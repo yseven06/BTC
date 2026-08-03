@@ -27,7 +27,7 @@ from app.backtesting import lifecycle
 from app.engines.market_regime import detect_regime
 from app.engines.market_structure.structure import analyse_market_structure
 from app.services.coin_memory import update_coin_memory, update_trade_mgmt_stats
-from app.services.lifecycle_log import make_event
+from app.services.lifecycle_log import apply_live_status, make_event
 from app.notifications.service import notify_lifecycle, LIFECYCLE_ALERT_STATES
 from app.backtesting.trade_path import compute_trade_path
 from app.engines.ai_decision.entry_telemetry import build_entry_telemetry
@@ -135,7 +135,7 @@ async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, t
 
 
 def _close_without_fill(signal, perf, *, outcome, detail_label, resolution_source,
-                        closed_at, is_expired: bool):
+                        closed_at, is_expired: bool, at=None):
     """Terminate a signal that never provably filled — CP-ENTRY-ACTIVATION-GATE.
 
     Every realised quantity stays NULL, never 0.0. That is the whole point: MAE
@@ -147,13 +147,26 @@ def _close_without_fill(signal, perf, *, outcome, detail_label, resolution_sourc
     No SignalTradePath row is written. A trade path describes a trade, and there
     was no trade; the performance row carries the label and the NULLs, and it is
     what the learning fold and the reporting surfaces read.
+
+    Returns the resolution history row (caller adds it). Every other terminal
+    path logs one — tracker.py:682, tracker.py:1011, scheduler.py:508 — and
+    this one did not, so a no-fill expiry closed the signal while its lifecycle
+    timeline just stopped mid-sentence.
+
+    `at` is the caller's wall clock, shared with the gate's other rows. It is a
+    PARAMETER, not a read-back of the detection stamp this function writes:
+    those stamps are write-only telemetry (F0-1a asserts nothing under app/
+    reads them), so reading one here to date the history row would have made
+    this the first reader in the codebase.
     """
+    prev_status = signal.live_status
+    at = at or datetime.now(timezone.utc)
     perf.outcome = outcome
     perf.detail_label = detail_label
     perf.resolution_source = resolution_source
     perf.resolution_version = labels.resolution_version_for(True)
     perf.closed_at = closed_at
-    perf.detected_at = datetime.now(timezone.utc)
+    perf.detected_at = at
     perf.is_expired = is_expired
     # Unmeasured — NOT zero.
     perf.actual_return = None
@@ -166,7 +179,16 @@ def _close_without_fill(signal, perf, *, outcome, detail_label, resolution_sourc
     perf.hit_tp1 = perf.hit_tp2 = perf.hit_tp3 = False
     signal.is_active = False
     signal.live_status = lifecycle.WAITING_ENTRY
-    signal.status_reason = "Giris seviyesine hic ulasilmadi"
+    signal.status_reason = lifecycle.REASON_NEVER_ENTERED
+    return make_event(
+        signal_id=signal.id,
+        from_status=prev_status,
+        to_status="closed",
+        kind="resolution",
+        reason=labels.label_tr(detail_label),
+        outcome=outcome.value,
+        created_at=at,
+    )
 
 
 async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, live_price,
@@ -849,45 +871,61 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                     highs=highs, lows=lows, opens=opens,
                     window_complete=_window_reaches_generation(signal, df),
                 )
+                # One clock for the whole gate decision: the waiting row, the
+                # promotion row and the expiry row must be orderable against
+                # each other, not against three separate now() calls.
+                _gate_now = datetime.now(timezone.utc)
                 if _gate["status"] != STATUS_REACHED:
                     # No proven fill: nothing may be booked. A "never reached"
                     # verdict needs a COMPLETE window because it is a claim about
                     # bars we do not have; entry_activation already refuses to make
                     # it otherwise, so an incomplete window arrives here as
                     # `unknown` and simply keeps waiting.
-                    _now_utc = datetime.now(timezone.utc)
+                    #
+                    # Record the waiting phase FIRST, whether we go on to expire
+                    # the signal or keep waiting. That is what lets the expiry
+                    # row below read `waiting_entry` as its origin instead of
+                    # inventing an `active` the signal never had.
+                    # evaluate_lifecycle is NOT reached from here — _SEVERITY has
+                    # no waiting_entry key and would read it as severity 0.
+                    _wev = apply_live_status(
+                        signal, to_status=lifecycle.WAITING_ENTRY,
+                        reason=lifecycle.REASON_WAITING_ENTRY, at=_gate_now,
+                    )
+                    if _wev is not None:
+                        db.add(_wev)
                     _expires = (signal.expires_at.replace(tzinfo=timezone.utc)
                                 if signal.expires_at else None)
                     if (_gate["status"] == STATUS_NOT_REACHED
-                            and _expires and _now_utc >= _expires):
-                        _close_without_fill(
+                            and _expires and _gate_now >= _expires):
+                        db.add(_close_without_fill(
                             signal, perf,
                             outcome=SignalOutcome.EXPIRED,
                             detail_label=labels.EXPIRED_WITHOUT_ENTRY,
                             resolution_source=labels.RES_SRC_EXPIRY_NO_FILL,
                             closed_at=_aware(times[-1]), is_expired=True,
-                        )
+                            at=_gate_now,
+                        ))
                         resolved_count += 1
                         try:
                             await update_coin_memory(db, signal, perf, symbol.upper())
                         except Exception as mem_exc:
                             logger.warning("CoinMemory update failed for %s: %s", symbol, mem_exc)
-                    else:
-                        # Still waiting. evaluate_lifecycle is NOT reached from
-                        # here — _SEVERITY has no waiting_entry key and would read
-                        # it as severity 0.
-                        if signal.live_status != lifecycle.WAITING_ENTRY:
-                            signal.live_status = lifecycle.WAITING_ENTRY
-                            signal.live_status_since = datetime.now(timezone.utc)
-                        signal.status_reason = "Giris seviyesi henuz gorulmedi"
-                        signal.status_updated_at = datetime.now(timezone.utc)
                     continue
 
                 # Filled. Promote out of waiting_entry BEFORE the lifecycle
-                # evaluator can ever see it as prev_status.
+                # evaluator can ever see it as prev_status — and log the move,
+                # which the hand-rolled promotion never did: it left prev_status
+                # already equal to `active`, so the evaluator's own change test
+                # was false and the fill vanished from the timeline.
                 if signal.live_status == lifecycle.WAITING_ENTRY:
-                    signal.live_status = lifecycle.ACTIVE
-                    signal.live_status_since = datetime.now(timezone.utc)
+                    _pev = apply_live_status(
+                        signal, to_status=lifecycle.ACTIVE,
+                        reason=lifecycle.REASON_ENTRY_TOUCHED, at=_gate_now,
+                        price=float(closes[-1]) if len(closes) else None,
+                    )
+                    if _pev is not None:
+                        db.add(_pev)
 
                 # The trade starts where it filled, not at birth. FLAG_2 decides
                 # only whether the ENTRY BAR itself is walked.
@@ -1116,32 +1154,29 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                     seconds_in_state=seconds_in_state,
                     min_state_seconds=min_state_seconds,
                 )
-                signal.live_status = lc.status
-                signal.status_reason = lc.reason
-                signal.status_updated_at = now_eval
-
                 # Observability: a guard blocked a real candidate change → bump
                 # the prevented-flip-flop counter (no history row for these).
                 if lc.suppressed:
                     signal.flipflop_prevented_count = (signal.flipflop_prevented_count or 0) + 1
 
                 # Real transition (incl. first-ever) → advance since + log ONE
-                # history row. A pass with no change writes nothing.
-                if prev_status != lc.status or signal.live_status_since is None:
-                    signal.live_status_since = now_eval
-                    db.add(make_event(
-                        signal_id=signal.id,
-                        from_status=prev_status,
-                        to_status=lc.status,
-                        kind="birth" if prev_status is None else "transition",
-                        reason=lc.reason,
-                        regime=cur_regime,
-                        price=float(closes[-1]),
-                        retrace_to_sl=lc.retrace_to_sl,
-                        progress_to_tp=lc.progress_to_tp,
-                        structure_event=structure_event,
-                        momentum_dir=momentum_dir,
-                    ))
+                # history row. A pass with no change writes nothing. Same helper
+                # the entry gate uses, so "did the phase change?" is answered in
+                # exactly one place for both.
+                _lev = apply_live_status(
+                    signal,
+                    to_status=lc.status,
+                    reason=lc.reason,
+                    at=now_eval,
+                    regime=cur_regime,
+                    price=float(closes[-1]),
+                    retrace_to_sl=lc.retrace_to_sl,
+                    progress_to_tp=lc.progress_to_tp,
+                    structure_event=structure_event,
+                    momentum_dir=momentum_dir,
+                )
+                if _lev is not None:
+                    db.add(_lev)
 
                     # P1.2: queue a proactive alert for a REAL transition (not birth)
                     # INTO an alert state. Opt-in users only; dispatched after commit.

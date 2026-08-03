@@ -1,23 +1,45 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, TrendingUp, Activity, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, TrendingUp, Activity, AlertTriangle, Clock, HelpCircle } from 'lucide-react';
 import { cn, formatRelativeTime } from '@/lib/utils';
 
+export type StatusMeta = { label: string; cls: string; bg: string; Icon: React.ElementType };
+
 // ─── Live lifecycle vocabulary (single source of truth) ──────────────────────
-// The backend lifecycle state-machine (active / approaching_tp / weakening /
-// invalidating) is surfaced here as label + colour + icon. Consumed by both the
-// signals-table phase badge AND the detail IntelligencePanel banner so the two
-// never drift. Unknown / missing states fall back to `active`.
-export const LIVE_STATUS_META: Record<
-  string,
-  { label: string; cls: string; bg: string; Icon: React.ElementType }
-> = {
+// The backend lifecycle state-machine (waiting_entry / active / approaching_tp /
+// weakening / invalidating) is surfaced here as label + colour + icon. Consumed
+// by the signals-table phase badge, the detail IntelligencePanel banner, the
+// lifecycle timeline and the landing proof strip, so the surfaces never drift.
+//
+// `waiting_entry` is the published-but-not-yet-filled phase (CP-ENTRY-ACTIVATION
+// -GATE). It is deliberately NEUTRAL, not green: nothing has been entered, so
+// showing the bullish "Aktif" treatment asserted a position the user never had.
+// The muted token trio is the one SignalTable already uses for its expired chip
+// — no new visual language.
+export const LIVE_STATUS_META: Record<string, StatusMeta> = {
+  waiting_entry:  { label: 'Giriş Bekleniyor', cls: 'text-text-secondary', bg: 'bg-text-muted/15 border-text-muted/30',         Icon: Clock },
   active:         { label: 'Aktif',            cls: 'text-bullish',        bg: 'bg-bullish/10 border-bullish/30',               Icon: CheckCircle2 },
   approaching_tp: { label: "TP'ye Yaklaşıyor", cls: 'text-accent-primary', bg: 'bg-accent-primary/10 border-accent-primary/30', Icon: TrendingUp },
   weakening:      { label: 'Zayıflıyor',       cls: 'text-amber',          bg: 'bg-amber/10 border-amber/30',                   Icon: Activity },
   invalidating:   { label: 'Geçersizleşiyor',  cls: 'text-bearish',        bg: 'bg-bearish/10 border-bearish/30',               Icon: AlertTriangle },
 };
+
+// Unknown / missing phase. Every surface used to fall back to `active`, which is
+// how a brand-new backend status (waiting_entry) rendered as a green "Aktif"
+// across the product without a single error. A fallback must never claim a
+// state; it must admit it does not know one.
+export const UNKNOWN_STATUS_META: StatusMeta = {
+  label: 'Durum bilinmiyor', cls: 'text-text-muted', bg: 'bg-text-muted/15 border-text-muted/30', Icon: HelpCircle,
+};
+
+/** Resolve a backend live_status to its presentation. The ONLY safe lookup —
+ *  raw `LIVE_STATUS_META[x]` returns undefined for unknown values, and every
+ *  caller that then reached for `.active` or printed the raw string is what
+ *  this replaces. */
+export function statusMeta(status?: string | null): StatusMeta {
+  return (status && LIVE_STATUS_META[status]) || UNKNOWN_STATUS_META;
+}
 
 interface LiveStatusBadgeProps {
   /** Backend live_status value: active | approaching_tp | weakening | invalidating. */
@@ -112,8 +134,8 @@ export function LiveStatusBadge({
     return () => clearTimeout(t);
   }, [outgoing]);
 
-  const meta = LIVE_STATUS_META[current.status] ?? LIVE_STATUS_META.active;
-  const outMeta = outgoing ? (LIVE_STATUS_META[outgoing.status] ?? LIVE_STATUS_META.active) : null;
+  const meta = statusMeta(current.status);
+  const outMeta = outgoing ? statusMeta(outgoing.status) : null;
 
   const tip = [meta.label];
   if (since) tip.push(formatRelativeTime(since));

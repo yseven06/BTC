@@ -140,6 +140,66 @@ for (const f of files) {
   });
 }
 
+// ─── gate-7: canlı yaşam-döngüsü sözlüğü sözleşmesi (DoD=0 · --strict BLOKLAR) ──
+// Backend `waiting_entry` durumunu üretmeye başladığında hiçbir şey hata vermedi:
+// haritada anahtar yoktu, her yüzey sessizce `active`'e düştü ve dolmamış sinyal
+// kullanıcıya yeşil "Aktif" göründü. Bu kapı bunun TEKRARINI imkânsız kılar —
+// eksik eşleme veya `active`'e düşen bir fallback CI'ı kırar.
+const gate7Report = [];
+const g7 = (cond, msg) => { if (!cond) gate7Report.push(`  [gate-7] ${msg}`); };
+const stripComments = (s) => s
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .split(/\r?\n/).map((l) => l.replace(/(^|[^:])\/\/.*$/, '$1')).join('\n');
+
+const BADGE_REL = ['src', 'components', 'ui', 'LiveStatusBadge.tsx'].join(sep);
+const badgeFile = files.find((f) => relative(ROOT, f).endsWith(BADGE_REL));
+if (!badgeFile) {
+  gate7Report.push('  [gate-7] LiveStatusBadge.tsx bulunamadı — durum sözlüğünün tek kaynağı');
+} else {
+  const b = stripComments(readFileSync(badgeFile, 'utf8'));
+  g7(/\bwaiting_entry\s*:\s*\{/.test(b),
+     "LIVE_STATUS_META'da `waiting_entry` yok — backend bu durumu üretiyor");
+  g7(/label:\s*['"]Giriş Bekleniyor['"]/.test(b),
+     "`waiting_entry` etiketi kanonik değil (beklenen: 'Giriş Bekleniyor')");
+  g7(/export const UNKNOWN_STATUS_META/.test(b),
+     'UNKNOWN_STATUS_META yok — bilinmeyen durumun gidecek güvenli yeri kalmaz');
+  g7(/export function statusMeta/.test(b),
+     'statusMeta() yok — tek güvenli çözümleme yolu');
+  const wRow = b.split(/\r?\n/).find((l) => /\bwaiting_entry\s*:\s*\{/.test(l)) || '';
+  g7(!/bullish/.test(wRow),
+     '`waiting_entry` bullish/yeşil token kullanıyor — açılmamış pozisyonu açık gösterir');
+}
+
+for (const f of files) {
+  const rel = relative(ROOT, f);
+  const s = stripComments(readFileSync(f, 'utf8'));
+  if (/LIVE_STATUS_META\s*\.\s*active/.test(s)) {
+    gate7Report.push(`  [gate-7] ${rel}  bilinmeyen durum \`active\`'e düşürülüyor → statusMeta() kullan`);
+  }
+  if (/LIVE_STATUS_META\s*\[[^\]]*\]\s*\??\.\s*(label|cls|bg|Icon)/.test(s)) {
+    gate7Report.push(`  [gate-7] ${rel}  ham LIVE_STATUS_META[...] okuması (bilinmeyen değerde undefined) → statusMeta()`);
+  }
+  if (/\|\|\s*['"]Aktif['"]/.test(s)) {
+    gate7Report.push(`  [gate-7] ${rel}  metin fallback'i 'Aktif' — bilinmeyen durumu aktif ilan ediyor`);
+  }
+  if (/\?\?\s*(s|status)\s*[;,)]/.test(s)) {
+    gate7Report.push(`  [gate-7] ${rel}  ham durum dizesi kullanıcıya sızıyor (\`?? s\`) → statusMeta()`);
+  }
+}
+
+const journalFile = files.find((f) => relative(ROOT, f).endsWith(['LifecycleJourney.tsx'].join(sep)));
+if (journalFile) {
+  const j = stripComments(readFileSync(journalFile, 'utf8'));
+  g7(/PHASE_DOT[\s\S]{0,240}?waiting_entry\s*:/.test(j),
+     "LifecycleJourney PHASE_DOT'ta `waiting_entry` yok — zaman çizelgesinde renksiz kalır");
+}
+const bandFile = files.find((f) => relative(ROOT, f).endsWith(['DurumBandi.tsx'].join(sep)));
+if (bandFile) {
+  const d = stripComments(readFileSync(bandFile, 'utf8'));
+  g7(/const census\s*=\s*\(\[[^\]]*['"]waiting_entry['"]/.test(d),
+     "DurumBandı sayımı `waiting_entry` içermiyor — dolmamış sinyaller sayımdan düşer");
+}
+
 console.log('— TradeMinds design-gates (CSS-dışı) —');
 console.log(`taranan: ${files.length} dosya · izin-listesi hex: ${allowedHex} (senkron-envanteri, WARN değil)`);
 // gate-1/gate-4 (DoD=0) — --strict'te commit-BLOKLAR.
@@ -165,4 +225,10 @@ console.log(`gate-6/TSX transition-all — violations: ${gate6Report.length} (Do
 gate6Report.forEach((r) => console.log(r));
 if (gate6Fail) console.log('  transition-all is forbidden (MO-01). Declare only the properties that actually change, e.g. transition-colors or transition-[width,background-color].');
 
-process.exit(STRICT && (report.length || gate6Fail) ? 1 : 0);
+// gate-7 — DoD=0, her ihlal bloklar.
+const gate7Fail = gate7Report.length > 0;
+console.log(`gate-7 canlı-durum sözlüğü — violations: ${gate7Report.length} (DoD=0)`);
+gate7Report.forEach((r) => console.log(r));
+if (gate7Fail) console.log('  Every live_status must resolve through statusMeta(); an unknown status may never render as "Aktif" and the raw token may never reach the user.');
+
+process.exit(STRICT && (report.length || gate6Fail || gate7Fail) ? 1 : 0);

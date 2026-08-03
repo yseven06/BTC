@@ -21,6 +21,7 @@ from app.models.asset import Asset, AssetType
 from app.models.signal import Signal, SignalOutcome, SignalPerformance, SignalType, Direction, RiskLevel
 from app.models.intelligence import SignalSnapshot, CoinMemory, SignalStatusHistory, SignalTradePath
 from app.services.entry_flags import entry_activation_enabled
+from app.services.lifecycle_log import birth_event
 from app.models.user import User
 from app.backtesting import labels as outcome_labels
 from app.backtesting import lifecycle
@@ -1013,7 +1014,12 @@ async def generate_signal(
         outcome=SignalOutcome.ACTIVE,
     )
     db.add(perf)
-    
+
+    # Observability parity: the scheduler has opened a lifecycle timeline at
+    # birth since SL-b, this path never did — a manually generated signal had
+    # no birth row at all, so its journey began at its first transition.
+    db.add(birth_event(new_signal, reason="Sinyal üretildi"))
+
     await db.commit()
 
     logger.info(

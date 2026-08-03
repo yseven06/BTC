@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { InvestmentDisclaimer } from '@/components/legal/InvestmentDisclaimer';
-import { LIVE_STATUS_META } from '@/components/ui/LiveStatusBadge';
+import { statusMeta } from '@/components/ui/LiveStatusBadge';
 import {
   fetchSignalHistory, fetchPlans, fetchLandingProof,
   type ApiSignal, type Plan, type LandingProof,
@@ -163,7 +163,7 @@ function CanliMasa({ proof }: { proof: LandingProof | null }) {
                   {t.direction === 'bullish' ? 'LONG' : 'SHORT'}
                 </span>
                 <span className="text-micro text-text-muted tabular-nums">
-                  {(t.liveStatus && LIVE_STATUS_META[t.liveStatus as keyof typeof LIVE_STATUS_META]?.label) || 'Aktif'}
+                  {statusMeta(t.liveStatus).label}
                 </span>
               </div>
             ))}

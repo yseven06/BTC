@@ -22,6 +22,7 @@ from __future__ import annotations
 import inspect
 import random
 import re
+import uuid
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -209,7 +210,11 @@ def test_C_the_gate_runs_before_the_ambiguity_tie_break():
 def _closed_no_fill():
     from app.backtesting.tracker import _close_without_fill
     from app.models.signal import SignalOutcome
-    sig = SimpleNamespace(is_active=True, live_status="active", status_reason=None)
+    # CP-ENTRY-WAITING-STATE-SURFACE: the closer now also RETURNS the resolution
+    # history row every other terminal path already wrote, so the fake signal
+    # needs the id that row references. The perf assertions below are unchanged.
+    sig = SimpleNamespace(id=uuid.uuid4(), is_active=True, live_status="active",
+                          status_reason=None)
     perf = SimpleNamespace()
     _close_without_fill(sig, perf, outcome=SignalOutcome.EXPIRED,
                         detail_label=L.EXPIRED_WITHOUT_ENTRY,
@@ -348,9 +353,25 @@ def test_H_the_gate_does_not_mutate_its_inputs():
 
 
 def test_H_a_second_pass_over_a_waiting_signal_keeps_the_same_state():
-    trk = _src(TRACKER)
-    assert "if signal.live_status != lifecycle.WAITING_ENTRY:" in trk, \
-        "live_status_since must not be rewritten on every pass"
+    """live_status_since must not be rewritten on every pass.
+
+    CP-ENTRY-WAITING-STATE-SURFACE moved the inline `if signal.live_status !=
+    lifecycle.WAITING_ENTRY:` guard into lifecycle_log.apply_live_status, which
+    is now the single place that answers "did the phase change?" for both the
+    gate and the evaluator. The old assertion pinned the inline TEXT; this one
+    exercises the property, so it also covers the evaluator's path and survives
+    the next refactor.
+    """
+    import datetime as _dt
+    from app.services.lifecycle_log import apply_live_status
+    t0 = _dt.datetime(2026, 8, 3, 14, 22, 21, tzinfo=_dt.timezone.utc)
+    sig = SimpleNamespace(id=uuid.uuid4(), live_status=lifecycle.WAITING_ENTRY,
+                          live_status_since=t0, status_reason=None,
+                          status_updated_at=None)
+    second = apply_live_status(sig, to_status=lifecycle.WAITING_ENTRY,
+                               reason="r", at=t0 + _dt.timedelta(minutes=2))
+    assert second is None, "a repeat pass must not emit a history row"
+    assert sig.live_status_since == t0, "the waiting clock must not restart"
 
 
 def test_H_closing_without_fill_is_deterministic():
@@ -390,8 +411,14 @@ def test_I1_evaluate_lifecycle_never_sees_waiting_entry():
     assert lifecycle.WAITING_ENTRY not in lifecycle._SEVERITY
     block = _gate_block()
     assert "continue" in block, "the waiting branch must not fall through to the evaluator"
-    assert "signal.live_status = lifecycle.ACTIVE" in block, \
+    # The promotion moved from a bare `signal.live_status = lifecycle.ACTIVE`
+    # into apply_live_status (CP-ENTRY-WAITING-STATE-SURFACE) — the bare form
+    # left prev_status already equal to `active`, so the evaluator's own change
+    # test was false and the fill never reached the timeline. It still happens
+    # HERE, inside the gate block, i.e. before the evaluator runs.
+    assert "to_status=lifecycle.ACTIVE" in block, \
         "a filled signal must leave waiting_entry BEFORE the evaluator runs"
+    assert "db.add(_pev)" in block, "and the promotion must be logged"
 
 
 def test_I2_both_birth_sites_write_the_same_state():

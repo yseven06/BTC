@@ -5,7 +5,7 @@ import { History, ChevronDown, ChevronUp, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetchSignalTransitions, type SignalTransition } from '@/lib/api';
 import { buildJourney, humanizeDelta, type JourneyNode } from '@/lib/lifecycle-journey';
-import { LIVE_STATUS_META } from './LiveStatusBadge';
+import { LIVE_STATUS_META, statusMeta } from './LiveStatusBadge';
 
 // Resolution rows carry to_status="closed" (NOT a live phase) — render them from
 // the outcome instead of LIVE_STATUS_META so a "closed" event never falls back
@@ -21,18 +21,24 @@ const OUTCOME_META: Record<string, { label: string; text: string; dot: string }>
 // Solid dot colour per live phase (LIVE_STATUS_META carries the /10 tint used for
 // pills; the timeline wants the solid token).
 const PHASE_DOT: Record<string, string> = {
+  waiting_entry: 'bg-text-muted',
   active: 'bg-bullish',
   approaching_tp: 'bg-accent-primary',
   weakening: 'bg-amber',
   invalidating: 'bg-bearish',
 };
 
-const phaseLabel = (s: string) => LIVE_STATUS_META[s]?.label ?? s;
-const phaseText = (s: string) => LIVE_STATUS_META[s]?.cls ?? 'text-text-secondary';
+// `?? s` used to print the raw backend token — a signal opening in
+// `waiting_entry` rendered the literal string "waiting_entry" into the
+// timeline. statusMeta always returns a human phrase.
+const phaseLabel = (s: string) => statusMeta(s).label;
+const phaseText = (s: string) => statusMeta(s).cls;
 const asPct = (v: number | null) => (v == null ? null : `%${Math.round(v * 100)}`);
 
 function oscillationLabel(states: string[], count: number): string {
-  const named = states.filter((s) => LIVE_STATUS_META[s]).map((s) => LIVE_STATUS_META[s].label);
+  // Filter first (an unknown phase must fall to the generic "N ara faz" wording
+  // rather than being named), then label through the canonical resolver.
+  const named = states.filter((s) => LIVE_STATUS_META[s]).map((s) => statusMeta(s).label);
   if (named.length === 2) return `${count}× ${named[0]}↔${named[1]} salınımı`;
   return `${count} ara faz değişimi`;
 }

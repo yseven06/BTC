@@ -6,7 +6,7 @@ import { Skeleton } from './Skeleton';
 import { cn, formatRelativeTime, formatPercentage, formatNumber } from '@/lib/utils';
 import { fetchSignalIntelligence, type SignalIntelligence } from '@/lib/api';
 import { Brain, History, Gauge } from 'lucide-react';
-import { LIVE_STATUS_META } from './LiveStatusBadge';
+import { statusMeta } from './LiveStatusBadge';
 import { LifecycleJourney } from './LifecycleJourney';
 import { ProvenanceReceipt } from './Tooltip';
 
@@ -108,7 +108,7 @@ export function IntelligencePanel({ signalId, compact }: Props) {
     );
   }
 
-  const status = data.live_status && LIVE_STATUS_META[data.live_status] ? LIVE_STATUS_META[data.live_status] : LIVE_STATUS_META.active;
+  const status = statusMeta(data.live_status);
   const StatusIcon = status.Icon;
   const coin = data.coin_memory;
 

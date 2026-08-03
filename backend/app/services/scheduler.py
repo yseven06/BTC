@@ -40,7 +40,7 @@ from app.services.candle_window import analysis_window
 from app.services.intelligence import build_snapshot
 from app.services import job_guard
 from app.services.coin_memory import load_effective_weights_meta, update_coin_memory
-from app.services.lifecycle_log import make_event
+from app.services.lifecycle_log import birth_event, make_event
 from app.services.candidate_log import record_candidate
 from app.services.macro_shadow_wiring import build_candidate_macro_shadow
 from app.services.macro_shadow_fetch import get_shadow_macro_snapshot
@@ -646,10 +646,11 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
             db.add(new_sig)
             await db.flush()
             db.add(SignalPerformance(signal_id=new_sig.id, outcome=SignalOutcome.ACTIVE))
-            # Observability: birth event opens the lifecycle timeline.
-            db.add(make_event(
-                signal_id=new_sig.id, from_status=None, to_status="active",
-                kind="birth", reason="Sinyal üretildi", regime=regime_label,
+            # Observability: birth event opens the lifecycle timeline. to_status
+            # is READ BACK off new_sig — hardcoding "active" here silently
+            # contradicted the live_status=WAITING_ENTRY set 13 lines above.
+            db.add(birth_event(
+                new_sig, reason="Sinyal üretildi", regime=regime_label,
             ))
 
             # CANDIDATE LOG (P2.2-a) — call site 3 of 3. Placed AFTER the flush

@@ -45,6 +45,15 @@ STATUS_TR = {
     INVALIDATING: "Geçersizleşiyor",
 }
 
+# Canonical entry-gate status_reason strings. These reach the user (badge
+# tooltip + lifecycle timeline), so they are written once, here, in real
+# Turkish — the gate first shipped them as diacritic-stripped ASCII inline
+# literals ("Giris seviyesi henuz gorulmedi") and that is what the tooltip
+# rendered.
+REASON_WAITING_ENTRY = "Giriş seviyesi henüz görülmedi"
+REASON_ENTRY_TOUCHED = "Giriş seviyesi görüldü; işlem açıldı"
+REASON_NEVER_ENTERED = "Giriş seviyesine hiç ulaşılmadı"
+
 
 def status_tr(status: Optional[str]) -> str:
     if not status:

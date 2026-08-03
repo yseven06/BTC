@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { LIVE_STATUS_META } from '@/components/ui/LiveStatusBadge';
+import { statusMeta } from '@/components/ui/LiveStatusBadge';
 import { cn, formatPercentage } from '@/lib/utils';
 
 interface DurumBandiProps {
@@ -84,8 +84,11 @@ export function DurumBandi({
   // voice. "active" is intentionally excluded (activeCount is already shown in
   // the bridge below → would duplicate); only non-zero phases render, labels
   // come from the single LIVE_STATUS_META source (no invented status).
-  const census = (['approaching_tp', 'weakening', 'invalidating'] as const)
-    .map((k) => ({ k, n: lifecycleCounts?.[k] ?? 0, meta: LIVE_STATUS_META[k] }))
+  // waiting_entry leads: it is the phase BEFORE the trade opens, and leaving it
+  // out hid every published-but-unfilled signal from the census while the
+  // "aktif" headline still counted it.
+  const census = (['waiting_entry', 'approaching_tp', 'weakening', 'invalidating'] as const)
+    .map((k) => ({ k, n: lifecycleCounts?.[k] ?? 0, meta: statusMeta(k) }))
     .filter((c) => c.n > 0);
 
   return (
