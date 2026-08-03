@@ -35,6 +35,7 @@ from app.services.candle_window import (
     timeframe_duration,
 )
 from app.services.trade_geometry import planned_rr
+from app.services.entry_activation import entry_level
 
 logger = logging.getLogger(__name__)
 
@@ -552,7 +553,7 @@ class BacktestEngine:
                         # faithful mirror of live (a valid BP2 gate). No look-ahead: the
                         # midpoint + levels come from data up to bar i (the closed bar);
                         # only the post-signal bars (i+1 onward) drive resolution.
-                        entry_mid = (float(decision["entry_zone_low"]) + float(decision["entry_zone_high"])) / 2.0
+                        entry_mid = entry_level(float(decision["entry_zone_low"]), float(decision["entry_zone_high"]))
 
                         # Position size from the risk engine recommendation.
                         pos_pct = 5.0  # default fallback

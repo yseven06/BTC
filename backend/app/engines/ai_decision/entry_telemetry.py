@@ -31,6 +31,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 import pandas as pd
+from app.services.entry_activation import entry_level as canonical_entry_level
 
 ENTRY_TELEMETRY_VERSION = 1
 
@@ -49,7 +50,7 @@ def build_entry_telemetry(signal, df: Optional["pd.DataFrame"]) -> Optional[Dict
 
     ez_low = float(ez_low)
     ez_high = float(ez_high)
-    entry_level = (ez_low + ez_high) / 2.0           # Reading A: midpoint = tracker fill ref (D2)
+    entry_level = canonical_entry_level(ez_low, ez_high)   # Reading A (D2) — one derivation, repo-wide
     is_long = getattr(signal.direction, "value", signal.direction) == "bullish"
     zone_span = ez_high - ez_low
 

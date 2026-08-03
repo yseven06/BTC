@@ -103,6 +103,43 @@ class Settings(BaseSettings):
     # one above stays off forever, which is the whole point of the shadow.
     MACRO_SHADOW_FETCH_ENABLED: bool = False
 
+    # ── CP-ENTRY-ACTIVATION-GATE ────────────────────────────────────────────
+    # Three switches, all default OFF, all INDEPENDENT: turning one on never
+    # turns another on. `get_settings` is lru_cached, so any change needs a
+    # container recreate, not a restart.
+    #
+    # Why the entry gate exists at all: the tracker books a trade as open at the
+    # entry-zone midpoint from the first bar after birth, whether or not price
+    # ever came back to that level. Measured on production, 141 signals resolved
+    # without price ever reaching the entry — 133 wins, ZERO losses, MAE exactly
+    # 0.0000, +242.47% of fictional return. A loss is arithmetically impossible
+    # for that cohort: MAE is measured FROM the entry, so a trade that never
+    # filled has no adverse excursion to record.
+    #
+    # 1) The gate itself: waiting_entry state machine, no outcome/return/MFE/MAE/R
+    #    before a proven fill, no-fill terminal labels, lifecycle held until fill,
+    #    learning-pool isolation, per-record resolution semantics v2, additive
+    #    entry telemetry.
+    ENTRY_ACTIVATION_ENABLED: bool = False
+
+    # 2) Entry-BAR walk semantics, deliberately separate because it has a
+    #    different blast radius: it restates numbers on signals that DID fill.
+    #    OFF  → the entry bar is walked as today; a TP on it still counts.
+    #    ON   → shadow_eval's proved `walk_start` rule applies: the entry bar is
+    #           walked only when the fill is certain at the open or the stop is
+    #           causally certain, otherwise the walk starts at entry_pos + 1 and
+    #           the entry bar's TP is withheld.
+    #    Withholding is the TARGET policy, not the first safe rollout — which is
+    #    why it ships off and needs its own approval.
+    ENTRY_WALK_START_ENABLED: bool = False
+
+    # 3) Execution-occupancy vs pending-duplicate split. RESERVED, INERT here:
+    #    no production code path reads it in this checkpoint, so setting it true
+    #    changes nothing. Its measurement needs reliable forward waiting_entry
+    #    data, which only exists once (1) has been on for a while — so the work
+    #    lives in the successor checkpoint, CP-ENTRY-OCCUPANCY-SHADOW.
+    ENTRY_PENDING_OCCUPANCY_ENABLED: bool = False
+
     # --- Finnhub (optional — company news + earnings calendar for stocks).
     # Free tier: 60 calls/min, get a key at finnhub.io/register. Leave blank
     # to fall back to baseline/synthetic fundamentals. ---

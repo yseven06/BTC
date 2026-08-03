@@ -363,7 +363,9 @@ async def invalidate_signal(
         # F1-d: who resolved it, under which semantics. Telemetry only — until
         # now this row was indistinguishable from a HOLD expiry on its own.
         perf.resolution_source = labels.RES_SRC_ADMIN_INVALIDATE
-        perf.resolution_version = labels.RESOLUTION_SEMANTICS_VERSION
+        # Admin closes the row without running the booking math, so the
+        # entry-gated semantics never governed it: always v1.
+        perf.resolution_version = labels.resolution_version_for(False)
 
     await _log_audit(db, admin, "signal.invalidate", "signal", str(signal_id),
                       {"symbol": signal.asset.symbol if signal.asset else None})
@@ -425,7 +427,7 @@ async def bulk_clean_signals(
             s.performance.closed_at = now
             # F1-d: who resolved it, under which semantics. Telemetry only.
             s.performance.resolution_source = labels.RES_SRC_ADMIN_BULK_CLEAN
-            s.performance.resolution_version = labels.RESOLUTION_SEMANTICS_VERSION
+            s.performance.resolution_version = labels.resolution_version_for(False)
 
     await _log_audit(db, admin, "signal.bulk_clean", "signal", None,
                       {"count": len(signals), "min_confidence": payload.min_confidence, "market": payload.market})

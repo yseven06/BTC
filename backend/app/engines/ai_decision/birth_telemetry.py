@@ -13,6 +13,7 @@ See docs/TELEMETRY-TRADE-PATH.md.
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
+from app.services.entry_activation import entry_level
 
 from app.services.trade_geometry import dist_pct, planned_rr
 
@@ -58,7 +59,7 @@ def build_birth_telemetry(
     entry_mid = None
     entry_zone_width_pct = None
     if entry_zone_low is not None and entry_zone_high is not None:
-        entry_mid = (entry_zone_low + entry_zone_high) / 2.0
+        entry_mid = entry_level(entry_zone_low, entry_zone_high)
         if current_price:
             entry_zone_width_pct = round(abs(entry_zone_high - entry_zone_low) / current_price * 100.0, 4)
 

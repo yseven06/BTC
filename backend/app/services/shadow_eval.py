@@ -44,6 +44,7 @@ from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from app.backtesting.resolution_core import resolve_trade_path
+from app.services.entry_activation import entry_level, walk_start
 from app.engines.ai_decision.entry_telemetry import build_entry_telemetry
 from app.models.decision_candidate import (
     SHADOW_EXPIRY,
@@ -199,63 +200,11 @@ def _first_touch(bars: Sequence[Tuple[float, float, float, float]],
     return None
 
 
-def _walk_start(entry_bar, entry_pos: int, entry_mid: float, sl: float,
-                is_bull: bool) -> Tuple[int, bool, bool]:
-    """Where the TP/SL walk may begin, and whether the entry bar was provable.
-
-    Returns (start_index, entry_bar_walked, tp_withheld).
-
-    THE PROBLEM. The fill instant on the entry bar is defined by that bar's LOW
-    for a long (entry_telemetry.py: `lows <= entry_level`) and by its HIGH for a
-    short. The take profits are then tested against the SAME bar's high/low.
-    OHLC carries no intra-bar ordering, so a bar that both reaches the entry and
-    reaches a TP cannot say which came first — and crediting the TP would book
-    profit on movement that may have happened before anyone was in the trade.
-    The bias is one-sided (see below), so it inflates return, R, TP-reach,
-    expectancy and PF rather than adding symmetric noise.
-
-    TWO EXCEPTIONS, BOTH PROVED RATHER THAN ASSUMED.
-
-    1. THE FILL IS CERTAIN AT THE OPEN. Long: `open <= entry_mid` means price was
-       already at or through the entry level at the bar's first tick, so the fill
-       is the open and every subsequent tick in that bar is post-fill. The whole
-       bar is then causally sound. Short mirrors it with `open >= entry_mid`.
-
-    2. THE STOP IS CERTAIN EVEN WHEN THE FILL TIME IS NOT. Long: the stop sits
-       BELOW the entry (sl < entry_mid). If the bar's low reaches the stop, then
-       price was, at that instant, below the entry level too; by continuity it
-       must have crossed the entry level on the way down, and the fill fires the
-       first time price touches it. So the fill necessarily precedes the stop.
-       This holds no matter where in the bar the low printed. Short mirrors it:
-       sl > entry_mid, and the high reaching the stop implies the entry level was
-       crossed upward first.
-
-       The same argument does NOT hold for a take profit, because a TP sits on
-       the far side of the entry from the stop: reaching it does not require
-       having crossed the entry level first. That asymmetry is the whole reason
-       fabricated losses are impossible here and fabricated wins are not.
-
-    Otherwise the entry bar is skipped entirely and the walk starts on the next
-    one. Skipping loses that bar's MFE/MAE, which is the conservative direction:
-    unattributable extrema are dropped rather than credited.
-
-    Pure and total: no I/O, no clock, and every branch returns.
-    """
-    if entry_bar is None:
-        return entry_pos, False, False
-
-    o, h, l, _c = entry_bar[0], entry_bar[1], entry_bar[2], entry_bar[3]
-
-    # Exception 1 — fill certain at the open.
-    if (o <= entry_mid) if is_bull else (o >= entry_mid):
-        return entry_pos, True, False
-
-    # Exception 2 — stop causally certain on the entry bar.
-    if (l <= sl) if is_bull else (h >= sl):
-        return entry_pos, True, False
-
-    # Neither holds: any TP on this bar is unprovable, so the bar is not walked.
-    return entry_pos + 1, False, True
+# `_walk_start` used to live here. It was PROMOTED verbatim to
+# app/services/entry_activation.walk_start so the live tracker and this
+# evaluator consume ONE implementation of the entry-bar rule instead of two
+# copies that can drift. The reasoning (the two proved exceptions and why the
+# same argument fails for a take profit) travelled with it.
 
 
 def expected_horizon_bars(timeframe: str) -> int:
@@ -343,7 +292,7 @@ def evaluate_candidate_shadow(
 
     ez_low, ez_high = float(entry_zone_low), float(entry_zone_high)
     sl = float(stop_loss)
-    entry_mid = (ez_low + ez_high) / 2.0
+    entry_mid = entry_level(ez_low, ez_high)
     is_bull = direction == "bullish"
 
     # --- entry gate: reuse the existing detector, do not write a second one ----
@@ -406,7 +355,7 @@ def evaluate_candidate_shadow(
     # --- where the walk may start (CP-SHADOW-PASSB-B-SAFETY) ------------------
     entry_pos = (tel.get("bars_to_entry") or 1) - 1
     entry_bar = bars[entry_pos] if entry_pos < len(bars) else None
-    start, entry_bar_walked, ambiguity = _walk_start(
+    start, entry_bar_walked, ambiguity = walk_start(
         entry_bar, entry_pos, entry_mid, sl, is_bull)
     out["entry_bar_walked"] = entry_bar_walked
     out["entry_bar_tp_withheld"] = ambiguity

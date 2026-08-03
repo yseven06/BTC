@@ -282,6 +282,19 @@ def _rate(hits: int, total: int) -> Optional[float]:
     return round(100.0 * hits / total, 2) if total else None
 
 
+# CP-ENTRY-ACTIVATION-GATE: terminal labels that mean no position ever opened.
+# The coarse outcome column still says EXPIRED / INVALIDATED for these rows, so
+# a reader keying only off `outcome` would count invalidated_before_entry as a
+# loss. The reporting surface has to exclude them explicitly — the fold guard
+# in coin_memory covers the learning pool, not this.
+NO_FILL_DETAIL_LABELS = frozenset({"expired_without_entry", "invalidated_before_entry"})
+
+
+def is_no_fill(record: Mapping[str, Any]) -> bool:
+    """True when this row terminated without a proven entry."""
+    return str(record.get("detail_label") or "") in NO_FILL_DETAIL_LABELS
+
+
 def _outcome(record: Mapping[str, Any]) -> Optional[str]:
     """The record's outcome as a canonical UPPERCASE token, or None.
 

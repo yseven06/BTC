@@ -31,6 +31,11 @@ from app.services.lifecycle_log import make_event
 from app.notifications.service import notify_lifecycle, LIFECYCLE_ALERT_STATES
 from app.backtesting.trade_path import compute_trade_path
 from app.engines.ai_decision.entry_telemetry import build_entry_telemetry
+from app.services.entry_activation import (
+    entry_activation, entry_level, walk_start,
+    STATUS_REACHED, STATUS_NOT_REACHED,
+)
+from app.services.entry_flags import entry_activation_enabled, effective_walk_start
 from app.backtesting.resolution_core import resolve_trade_path
 from app.models.intelligence import SignalSnapshot, SignalTradePath
 
@@ -127,6 +132,41 @@ async def _write_trade_path_failopen(db, signal, perf, *, entry, sl, tp1, tp2, t
     except Exception as tp_exc:
         logger.warning("TradePath instrumentation failed for %s (fail-open, ignored): %s",
                        getattr(signal, "id", "?"), tp_exc)
+
+
+def _close_without_fill(signal, perf, *, outcome, detail_label, resolution_source,
+                        closed_at, is_expired: bool):
+    """Terminate a signal that never provably filled — CP-ENTRY-ACTIVATION-GATE.
+
+    Every realised quantity stays NULL, never 0.0. That is the whole point: MAE
+    is measured FROM the entry, so a trade that never opened has no adverse
+    excursion, and writing 0.0 turns "not measured" into "measured as perfect".
+    On production that artefact produced 141 signals with 133 wins, ZERO losses
+    and MAE exactly 0.0000.
+
+    No SignalTradePath row is written. A trade path describes a trade, and there
+    was no trade; the performance row carries the label and the NULLs, and it is
+    what the learning fold and the reporting surfaces read.
+    """
+    perf.outcome = outcome
+    perf.detail_label = detail_label
+    perf.resolution_source = resolution_source
+    perf.resolution_version = labels.resolution_version_for(True)
+    perf.closed_at = closed_at
+    perf.detected_at = datetime.now(timezone.utc)
+    perf.is_expired = is_expired
+    # Unmeasured — NOT zero.
+    perf.actual_return = None
+    perf.max_drawdown = None
+    perf.mfe_pct = None
+    perf.bars_to_outcome = None
+    perf.hit_time = None
+    perf.tp1_hit_at = perf.tp2_hit_at = perf.tp3_hit_at = None
+    # NOT NULL columns; False is a fact here, not a stand-in for "unmeasured".
+    perf.hit_tp1 = perf.hit_tp2 = perf.hit_tp3 = False
+    signal.is_active = False
+    signal.live_status = lifecycle.WAITING_ENTRY
+    signal.status_reason = "Giris seviyesine hic ulasilmadi"
 
 
 async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, live_price,
@@ -371,7 +411,7 @@ def _live_ladder_walk(signal, df):
         return None
     if signal.entry_zone_low is None or signal.entry_zone_high is None:
         return None
-    entry = float(signal.entry_zone_high + signal.entry_zone_low) / 2.0
+    entry = entry_level(signal.entry_zone_low, signal.entry_zone_high)
     if entry <= 0:
         return None
     try:
@@ -586,7 +626,7 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
             # ── Live SL hit shortcut: anlık fiyat zaten SL'yi geçti ──
             live_hit = live_hit_by_sig.get(signal.id)
             if live_hit:
-                entry = float(signal.entry_zone_high + signal.entry_zone_low) / 2.0
+                entry = entry_level(signal.entry_zone_low, signal.entry_zone_high)
                 perf = signal.performance
                 if not perf:
                     perf = SignalPerformance(signal_id=signal.id, outcome=SignalOutcome.ACTIVE)
@@ -630,7 +670,11 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                 perf.detail_label = labels.LIVE_SL_HIT
                 # F1-d: who resolved it, under which semantics. Telemetry only.
                 perf.resolution_source = labels.RES_SRC_LIVE_SL
-                perf.resolution_version = labels.RESOLUTION_SEMANTICS_VERSION
+                # A live stop breach is itself the entry proof: the stop sits
+                # BEYOND the entry, so price reaching it must have crossed the
+                # entry level first. The gate therefore governs this row too.
+                perf.resolution_version = labels.resolution_version_for(
+                    entry_activation_enabled())
                 try:
                     await update_coin_memory(db, signal, perf, symbol.upper())
                 except Exception as mem_exc:
@@ -672,7 +716,7 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
             if signal.signal_type.value == "HOLD" or signal.entry_zone_high is None or signal.entry_zone_low is None:
                 entry = 0.0
             else:
-                entry = float(signal.entry_zone_high + signal.entry_zone_low) / 2.0
+                entry = entry_level(signal.entry_zone_low, signal.entry_zone_high)
             if signal.signal_type.value == "HOLD" or entry <= 0:
                 # Silently handle expiration/deactivation for HOLD signals
                 now_utc = datetime.now(timezone.utc)
@@ -691,7 +735,9 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                         # only — the EXPIRED-enum-with-NULL-label shape this path
                         # shares with the admin paths is now distinguishable.
                         perf.resolution_source = labels.RES_SRC_HOLD_EXPIRY
-                        perf.resolution_version = labels.RESOLUTION_SEMANTICS_VERSION
+                        # HOLD has no entry zone, so the gate never applies:
+                        # this row is v1 semantics whatever the flag says.
+                        perf.resolution_version = labels.resolution_version_for(False)
                     resolved_count += 1
                 continue
 
@@ -730,7 +776,7 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
             tp1 = float(signal.tp1)
             tp2 = float(signal.tp2)
             tp3 = float(signal.tp3)
-            entry = float(signal.entry_zone_high + signal.entry_zone_low) / 2.0  # approximate entry
+            entry = entry_level(signal.entry_zone_low, signal.entry_zone_high)
             
             # Check performance properties
             perf = signal.performance
@@ -789,6 +835,77 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
             lows = df_after["low"].values
             closes = df_after["close"].values
             times = df_after.index.tolist()
+
+            # ── CP-ENTRY-ACTIVATION-GATE ────────────────────────────────────
+            # While the gate is off, everything below is byte-identical to before:
+            # the walk starts at bar 0 with the position assumed already open.
+            _gate = None
+            _entry_bar_walked = None
+            _entry_bar_tp_withheld = None
+            if entry_activation_enabled():
+                _is_bull = signal.direction.value == "bullish"
+                _gate = entry_activation(
+                    is_bull=_is_bull, level=entry,
+                    highs=highs, lows=lows, opens=opens,
+                    window_complete=_window_reaches_generation(signal, df),
+                )
+                if _gate["status"] != STATUS_REACHED:
+                    # No proven fill: nothing may be booked. A "never reached"
+                    # verdict needs a COMPLETE window because it is a claim about
+                    # bars we do not have; entry_activation already refuses to make
+                    # it otherwise, so an incomplete window arrives here as
+                    # `unknown` and simply keeps waiting.
+                    _now_utc = datetime.now(timezone.utc)
+                    _expires = (signal.expires_at.replace(tzinfo=timezone.utc)
+                                if signal.expires_at else None)
+                    if (_gate["status"] == STATUS_NOT_REACHED
+                            and _expires and _now_utc >= _expires):
+                        _close_without_fill(
+                            signal, perf,
+                            outcome=SignalOutcome.EXPIRED,
+                            detail_label=labels.EXPIRED_WITHOUT_ENTRY,
+                            resolution_source=labels.RES_SRC_EXPIRY_NO_FILL,
+                            closed_at=_aware(times[-1]), is_expired=True,
+                        )
+                        resolved_count += 1
+                        try:
+                            await update_coin_memory(db, signal, perf, symbol.upper())
+                        except Exception as mem_exc:
+                            logger.warning("CoinMemory update failed for %s: %s", symbol, mem_exc)
+                    else:
+                        # Still waiting. evaluate_lifecycle is NOT reached from
+                        # here — _SEVERITY has no waiting_entry key and would read
+                        # it as severity 0.
+                        if signal.live_status != lifecycle.WAITING_ENTRY:
+                            signal.live_status = lifecycle.WAITING_ENTRY
+                            signal.live_status_since = datetime.now(timezone.utc)
+                        signal.status_reason = "Giris seviyesi henuz gorulmedi"
+                        signal.status_updated_at = datetime.now(timezone.utc)
+                    continue
+
+                # Filled. Promote out of waiting_entry BEFORE the lifecycle
+                # evaluator can ever see it as prev_status.
+                if signal.live_status == lifecycle.WAITING_ENTRY:
+                    signal.live_status = lifecycle.ACTIVE
+                    signal.live_status_since = datetime.now(timezone.utc)
+
+                # The trade starts where it filled, not at birth. FLAG_2 decides
+                # only whether the ENTRY BAR itself is walked.
+                _pos = _gate["entry_pos"] or 0
+                _start = _pos
+                _entry_bar_walked, _entry_bar_tp_withheld = True, False
+                if effective_walk_start():
+                    _bar = (float(opens[_pos]), float(highs[_pos]),
+                            float(lows[_pos]), float(closes[_pos]))
+                    _start, _entry_bar_walked, _entry_bar_tp_withheld = walk_start(
+                        _bar, _pos, entry, stop_loss, _is_bull)
+                if _start > 0:
+                    opens, highs, lows = opens[_start:], highs[_start:], lows[_start:]
+                    closes, times = closes[_start:], times[_start:]
+                if len(times) == 0:
+                    # Filled on the last bar and that bar was withheld — there is
+                    # nothing to walk yet. Wait for the next pass.
+                    continue
 
             # Single-source resolution (byte-identical to the prior inline bar-walk —
             # locked by tests/test_resolution_equivalence.py + test_resolution_mapping).
@@ -884,7 +1001,7 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                 # on the source of truth (trade-path writes are fail-open).
                 perf.resolution_source = (labels.RES_SRC_EXPIRY if is_expired_flag
                                           else labels.RES_SRC_BAR_WALK)
-                perf.resolution_version = labels.RESOLUTION_SEMANTICS_VERSION
+                perf.resolution_version = labels.resolution_version_for(_gate is not None)
                 # Fold this resolution into the coin's learned memory.
                 try:
                     await update_coin_memory(db, signal, perf, symbol.upper())
@@ -1107,7 +1224,7 @@ async def _check_live_sl_hit(
     # at BE, never as a full original-stop loss. TP1-not-hit → original stop (unchanged).
     perf = signal.performance
     if perf and perf.hit_tp1 and signal.entry_zone_low is not None and signal.entry_zone_high is not None:
-        effective_sl = float(signal.entry_zone_high + signal.entry_zone_low) / 2.0  # breakeven = entry
+        effective_sl = entry_level(signal.entry_zone_low, signal.entry_zone_high)  # breakeven = entry
     else:
         effective_sl = float(signal.stop_loss)
     # LONG: anlık fiyat etkin-SL'nin altındaysa stop kırıldı; SHORT: üstündeyse.
@@ -1129,7 +1246,7 @@ async def _fetch_market_data_for_signal(
     # touching the values at all.
     if signal.signal_type.value == "HOLD" or signal.entry_zone_high is None or signal.entry_zone_low is None:
         return signal.id, None
-    entry = float(signal.entry_zone_high + signal.entry_zone_low) / 2.0
+    entry = entry_level(signal.entry_zone_low, signal.entry_zone_high)
     if entry <= 0:
         return signal.id, None
 

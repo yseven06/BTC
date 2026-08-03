@@ -149,6 +149,14 @@ async def health_check():
         body["scheduler"] = job_guard.snapshot()
     except Exception:  # noqa: BLE001 — telemetry must never break liveness
         logger.debug("scheduler liveness snapshot unavailable", exc_info=True)
+    # CP-ENTRY-ACTIVATION-GATE: raw next to effective, so a dependent switch left
+    # on without its parent is visible here instead of only in the logs. Same
+    # fail-open envelope as the block above — diagnostics never break liveness.
+    try:
+        from app.services.entry_flags import flag_diagnostics
+        body["entry_flags"] = flag_diagnostics()
+    except Exception:  # noqa: BLE001
+        logger.debug("entry flag diagnostics unavailable", exc_info=True)
     return body
 
 

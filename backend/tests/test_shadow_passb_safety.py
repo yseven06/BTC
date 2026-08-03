@@ -40,7 +40,12 @@ from app.models.decision_candidate import (SHADOW_PERMANENT_REASONS,
                                            SHADOW_TERMINAL_REASONS,
                                            SHADOW_UNDECIDABLE)
 from app.services.candle_window import TIMEFRAME_DURATIONS
-from app.services.shadow_eval import (SHADOW_HORIZON, _walk_start,
+# CP-ENTRY-ACTIVATION-GATE: `_walk_start` was PROMOTED out of shadow_eval into
+# the shared entry_activation module so the live tracker and the shadow
+# evaluator consume ONE implementation. Imported under the old local name so
+# the behavioural assertions below keep testing the same function.
+from app.services.entry_activation import walk_start as _walk_start
+from app.services.shadow_eval import (SHADOW_HORIZON,
                                       evaluate_candidate_shadow,
                                       expected_horizon_bars,
                                       shadow_passb_provenance,
@@ -194,6 +199,20 @@ def test_walk_start_is_symmetric_between_directions():
         a = _walk_start(lo, 0, 100.0, 95.0, True)
         b = _walk_start(sh, 0, 100.0, 105.0, False)
         assert a == b, (lo, sh, a, b)
+
+
+def test_walk_start_has_exactly_one_implementation():
+    """The promotion must REMOVE the copy, not add a second one.
+
+    Two functions with the same rule is how the live path and the shadow drift
+    apart silently — each stays self-consistent while disagreeing with the other.
+    """
+    import app.services.shadow_eval as se
+    import app.services.entry_activation as ea
+
+    assert "def _walk_start(" not in inspect.getsource(se),         "shadow_eval still defines its own copy of the entry-bar rule"
+    assert se.walk_start is ea.walk_start, "shadow_eval is not consuming the shared one"
+    assert "def walk_start(" in inspect.getsource(ea)
 
 
 def test_walk_start_is_total_and_pure():
@@ -539,3 +558,38 @@ def test_an_unsupported_timeframe_still_fails_one_row_only():
         expected_horizon_bars("30m")
     src = textwrap.dedent(inspect.getsource(runner._fetch_bars))
     assert "except ValueError as exc:" in src
+
+
+def test_walk_start_promotion_is_behaviourally_identical_to_the_original():
+    """Differential proof that the PROMOTION changed nothing.
+
+    The original body is transcribed BY HAND below — deliberately not imported,
+    so a change to the shared implementation cannot silently redefine what
+    "unchanged" means. Exhaustive random inputs across both directions, including
+    the boundary cases where each proved exception flips.
+    """
+    import random
+
+    def original(entry_bar, entry_pos, entry_mid, sl, is_bull):
+        if entry_bar is None:
+            return entry_pos, False, False
+        o, h, l, _c = entry_bar[0], entry_bar[1], entry_bar[2], entry_bar[3]
+        if (o <= entry_mid) if is_bull else (o >= entry_mid):
+            return entry_pos, True, False
+        if (l <= sl) if is_bull else (h >= sl):
+            return entry_pos, True, False
+        return entry_pos + 1, False, True
+
+    rnd = random.Random(20260803)
+    for _ in range(200_000):
+        mid = rnd.uniform(1.0, 1000.0)
+        is_bull = rnd.random() < 0.5
+        sl = mid * (0.97 if is_bull else 1.03)
+        # Draw around the two decision boundaries so the branches are all hit.
+        o = rnd.choice([mid, sl, mid * rnd.uniform(0.95, 1.05)])
+        h = max(o, mid * rnd.uniform(1.0, 1.06))
+        l = min(o, mid * rnd.uniform(0.94, 1.0))
+        pos = rnd.randrange(0, 50)
+        assert _walk_start((o, h, l, o), pos, mid, sl, is_bull) == \
+            original((o, h, l, o), pos, mid, sl, is_bull), (o, h, l, mid, sl, is_bull)
+    assert _walk_start(None, 3, 100.0, 95.0, True) == original(None, 3, 100.0, 95.0, True)

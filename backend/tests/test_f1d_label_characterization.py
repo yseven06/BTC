@@ -61,6 +61,11 @@ VOCAB = {
     "EXPIRED_LOSS": "expired_loss",
     "EXPIRED_FLAT": "expired_flat",
     "INVALIDATED_REVERSAL": "invalidated_reversal",
+    # CP-ENTRY-ACTIVATION-GATE — the two no-fill terminals. Typed out by hand
+    # like every other entry here: these strings are STORED, so a rename is a
+    # data-compatibility break, not a refactor.
+    "EXPIRED_WITHOUT_ENTRY": "expired_without_entry",
+    "INVALIDATED_BEFORE_ENTRY": "invalidated_before_entry",
 }
 
 
@@ -174,12 +179,17 @@ def test_label_writer_topology():
     """Exactly three writer paths stamp detail_label; the other three
     (HOLD-expiry, admin invalidate, admin bulk-clean) leave it NULL."""
     tracker, sched, admin = _src(TRACKER), _src(SCHEDULER), _src(ADMIN)
-    # tracker: live-SL constant + bar-walk classifier — and nothing else.
-    assert len(re.findall(r"perf\.detail_label\s*=", tracker)) == 2
+    # tracker: live-SL constant + bar-walk classifier + the no-fill closer.
+    # The third writer is new (CP-ENTRY-ACTIVATION-GATE) and is deliberate: a
+    # signal that never filled cannot be classified by the resolution classifier,
+    # because that classifier reasons about a trade that opened.
+    assert len(re.findall(r"perf\.detail_label\s*=", tracker)) == 3
     assert tracker.count("perf.detail_label = labels.LIVE_SL_HIT") == 1
     assert tracker.count("labels.classify_resolution(") == 1  # single production caller
-    # scheduler: exactly one label write (the reversal literal).
-    assert len(re.findall(r"\.detail_label\s*=", sched)) == 1
+    assert tracker.count("perf.detail_label = detail_label") == 1  # the no-fill closer
+    # scheduler: two label writes now — the reversal literal and its no-fill sibling.
+    assert len(re.findall(r"\.detail_label\s*=", sched)) == 2
+    assert sched.count("labels.INVALIDATED_BEFORE_ENTRY") == 1
     # admin: never touches detail_label — its EXPIRED rows carry a NULL label.
     assert "detail_label" not in admin
 
@@ -193,7 +203,10 @@ def test_expired_enum_topology_is_disjoint_from_expired_labels():
     The two populations are disjoint sets with different meanings; a fidelity
     design must not assume they align."""
     tracker, sched, admin = _src(TRACKER), _src(SCHEDULER), _src(ADMIN)
-    assert _enum_assigns(tracker, "EXPIRED") == 1       # HOLD path only
+    # CP-ENTRY-ACTIVATION-GATE: a second EXPIRED site — the no-fill closer. It
+    # keeps the SAME enum member on purpose (no migration, no frontend union
+    # change); only the detail label distinguishes it from a HOLD expiry.
+    assert _enum_assigns(tracker, "EXPIRED") == 2       # HOLD path + no-fill closer
     assert _enum_assigns(admin, "EXPIRED") == 2         # invalidate + bulk-clean
     assert _enum_assigns(sched, "EXPIRED") == 0
     assert _enum_assigns(sched, "INVALIDATED") == 1     # reversal writes INVALIDATED

@@ -20,6 +20,7 @@ from app.database import get_db
 from app.models.asset import Asset, AssetType
 from app.models.signal import Signal, SignalOutcome, SignalPerformance, SignalType, Direction, RiskLevel
 from app.models.intelligence import SignalSnapshot, CoinMemory, SignalStatusHistory, SignalTradePath
+from app.services.entry_flags import entry_activation_enabled
 from app.models.user import User
 from app.backtesting import labels as outcome_labels
 from app.backtesting import lifecycle
@@ -992,6 +993,13 @@ async def generate_signal(
         explanation_tr=decision["explanation_tr"],
         explanation_en=decision["explanation_en"],
         is_active=True,
+        # CP-ENTRY-ACTIVATION-GATE: the two creation sites disagreed — the
+        # scheduler wrote live_status="active" at birth and this one wrote
+        # nothing (NULL). Both now start in the same state, or the machine has
+        # two different entry points.
+        live_status=(lifecycle.WAITING_ENTRY if entry_activation_enabled()
+                     else lifecycle.ACTIVE),
+        live_status_since=generated_at,
         timeframe=db_tf,
         generated_at=generated_at,
         expires_at=expires_at,

@@ -26,12 +26,19 @@ from typing import NamedTuple, Optional, Tuple
 import pandas as pd
 
 # Status constants.
+# CP-ENTRY-ACTIVATION-GATE: the published-but-not-yet-filled state. It is
+# deliberately NOT on the {active, weakening, invalidating} severity axis —
+# _SEVERITY below has no key for it, and evaluate_lifecycle must never be called
+# with it as prev_status (a missing key silently reads as severity 0, which would
+# let a de-escalation decide from a state it does not model).
+WAITING_ENTRY = "waiting_entry"
 ACTIVE = "active"
 APPROACHING_TP = "approaching_tp"
 WEAKENING = "weakening"
 INVALIDATING = "invalidating"
 
 STATUS_TR = {
+    WAITING_ENTRY: "Giriş bekleniyor",
     ACTIVE: "Aktif",
     APPROACHING_TP: "TP'ye yaklaşıyor",
     WEAKENING: "Zayıflıyor",

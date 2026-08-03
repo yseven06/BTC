@@ -49,6 +49,7 @@ from app.models.decision_candidate import (
 from app.services.dependency_health import DEPENDENCY_HEALTH_VERSION
 from app.services.macro_shadow import MACRO_SHADOW_VERSION
 from app.services.trade_geometry import dist_pct, planned_rr
+from app.services.entry_activation import entry_level
 
 logger = logging.getLogger(__name__)
 
@@ -263,7 +264,7 @@ def build_candidate_values(
     entry_high = _f(decision.get("entry_zone_high"))
     stop = _f(decision.get("stop_loss"))
     tp1 = _f(decision.get("tp1"))
-    entry_mid = ((entry_low + entry_high) / 2.0) if (entry_low is not None and entry_high is not None) else None
+    entry_mid = entry_level(entry_low, entry_high) if (entry_low is not None and entry_high is not None) else None
 
     # Regime-side context. getattr rather than dict access: regime_result is a
     # dataclass-ish object, and a missing attribute must degrade to None instead

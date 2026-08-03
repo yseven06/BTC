@@ -29,6 +29,14 @@ EXPIRED_PROFIT = "expired_profit"
 EXPIRED_LOSS = "expired_loss"
 EXPIRED_FLAT = "expired_flat"
 INVALIDATED_REVERSAL = "invalidated_reversal"
+# CP-ENTRY-ACTIVATION-GATE — terminal states a signal can only reach when price
+# never provably touched the entry. Additive DETAIL labels: the coarse outcome
+# column keeps its existing value (EXPIRED / INVALIDATED), so no enum member and
+# no migration. They are also the ONLY discriminator the learning fold can see —
+# fold_signal_into is pure and never receives the trade path, so the exclusion in
+# coin_memory keys off these strings.
+EXPIRED_WITHOUT_ENTRY = "expired_without_entry"
+INVALIDATED_BEFORE_ENTRY = "invalidated_before_entry"
 
 # Human-readable Turkish labels for the UI / explanations.
 LABEL_TR = {
@@ -43,6 +51,8 @@ LABEL_TR = {
     EXPIRED_LOSS: "Süre doldu (zararda)",
     EXPIRED_FLAT: "Süre doldu (yatay)",
     INVALIDATED_REVERSAL: "Ters sinyalle geçersiz oldu",
+    EXPIRED_WITHOUT_ENTRY: "Süre doldu (giriş gerçekleşmedi)",
+    INVALIDATED_BEFORE_ENTRY: "Giriş öncesi geçersiz oldu",
 }
 
 
@@ -72,6 +82,8 @@ NON_STOP_TERMINAL_LABELS = frozenset({
     TP1_THEN_BREAKEVEN,          # closed ON a stop order, but at breakeven after banking TP1
     EXPIRED_PROFIT, EXPIRED_LOSS, EXPIRED_FLAT,
     INVALIDATED_REVERSAL,        # superseded by a reversal — the stop was never reached
+    EXPIRED_WITHOUT_ENTRY,       # no position ever opened, so no stop could be hit
+    INVALIDATED_BEFORE_ENTRY,    # same — superseded while still unfilled
 })
 
 # Every label this module defines, for partition tests.
@@ -94,6 +106,28 @@ ALL_DETAIL_LABELS = frozenset(LABEL_TR)
 #      from this pass's bars, hit_time/detected_at split recorded.
 RESOLUTION_SEMANTICS_VERSION = 1
 
+# v2 = the entry-gated era: a trade is booked only from a PROVEN fill, and a
+#      signal that never filled carries NULL return/MFE/MAE/R instead of numbers
+#      measured from a price nobody paid.
+#
+# Deliberately NOT a global bump of the constant above. While
+# ENTRY_ACTIVATION_ENABLED is off, rows are resolved by the old booking math and
+# must keep saying so — stamping them v2 would mislabel them. The stamp is chosen
+# PER RECORD by `resolution_version_for`, which is why the six writer sites call
+# it instead of reading a module constant.
+RESOLUTION_SEMANTICS_VERSION_ENTRY_GATED = 2
+
+
+def resolution_version_for(entry_gated: bool) -> int:
+    """Which resolution semantics actually produced THIS row's numbers.
+
+    `entry_gated` must mean "the entry-activation gate governed this resolution",
+    not merely "the flag is on somewhere". The admin writer paths pass False:
+    they close a row without running the booking math at all, so the v2 semantics
+    never applied to them.
+    """
+    return RESOLUTION_SEMANTICS_VERSION_ENTRY_GATED if entry_gated else RESOLUTION_SEMANTICS_VERSION
+
 # Writer-path identities for SignalPerformance.resolution_source — WHICH of
 # the seven paths closed the row. Deliberately the same name and value family
 # as trade_path.extra["resolution_source"] (bar_walk | live_sl | expiry), but
@@ -106,6 +140,10 @@ RES_SRC_HOLD_EXPIRY = "hold_expiry"
 RES_SRC_REVERSAL = "reversal"
 RES_SRC_ADMIN_INVALIDATE = "admin_invalidate"
 RES_SRC_ADMIN_BULK_CLEAN = "admin_bulk_clean"
+# CP-ENTRY-ACTIVATION-GATE: the two no-fill closers. Same name family as the
+# seven above; they identify WHICH path closed a row that never opened.
+RES_SRC_EXPIRY_NO_FILL = "expiry_no_fill"
+RES_SRC_REVERSAL_NO_FILL = "reversal_no_fill"
 
 
 # Fraction of the entry→TP1 distance price must travel in our favour for a

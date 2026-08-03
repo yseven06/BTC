@@ -381,6 +381,13 @@ def _recompute_adaptive_weights(engine_stats: Dict[str, Any]) -> Optional[Dict[s
 FOLDABLE_OUTCOMES = (SignalOutcome.WIN, SignalOutcome.LOSS, SignalOutcome.BREAKEVEN,
                      SignalOutcome.EXPIRED, SignalOutcome.INVALIDATED)
 
+# Terminal labels that mean "no position ever opened". NULL metrics alone do
+# NOT keep a row out of the fold — EXPIRED and INVALIDATED are both foldable
+# above — so the exclusion has to be explicit.
+NO_FILL_DETAIL_LABELS = frozenset({
+    labels.EXPIRED_WITHOUT_ENTRY, labels.INVALIDATED_BEFORE_ENTRY,
+})
+
 
 def fold_signal_into(mem: CoinMemory, signal: Signal, perf: SignalPerformance,
                      snap: Optional[SignalSnapshot]) -> bool:
@@ -398,6 +405,21 @@ def fold_signal_into(mem: CoinMemory, signal: Signal, perf: SignalPerformance,
     """
     outcome = perf.outcome
     if outcome not in FOLDABLE_OUTCOMES:
+        return False
+
+    # CP-ENTRY-ACTIVATION-GATE: a signal that never filled is not a lesson about
+    # trading — it is a lesson about the entry zone, and it belongs to a different
+    # question. Excluded HERE, before any counter moves.
+    #
+    # It has to key off detail_label: this function is pure and never receives the
+    # trade path, so extra["entry"] is invisible to it. Under the gate a no-fill
+    # signal can only terminate with one of these two labels, which makes the label
+    # a complete forward discriminator.
+    #
+    # NOTE the position — BEFORE `is_loss` below. That line counts every
+    # INVALIDATED as a loss, and it is deliberately left alone: changing it would
+    # silently restate every reversal-invalidated row that DID fill.
+    if perf.detail_label in NO_FILL_DETAIL_LABELS:
         return False
 
     is_win = outcome == SignalOutcome.WIN

@@ -220,23 +220,49 @@ async def test_unresolved_and_failed_fetch_stamp_nothing(loop_env):
 # ── reversal + admin: no loop harness — lock the stamps at source level ─────
 
 def test_reversal_stamp_sits_beside_the_label_write():
+    """CP-ENTRY-ACTIVATION-GATE: the reversal path now has TWO branches — a
+    signal superseded while still waiting never filled, so it gets its own label
+    and NULL P&L. Both branches must still stamp source AND version."""
     sched = _src("services/scheduler.py")
     assert "old_perf.resolution_source = labels.RES_SRC_REVERSAL" in sched
-    assert "old_perf.resolution_version = labels.RESOLUTION_SEMANTICS_VERSION" in sched
+    assert "old_perf.resolution_source = labels.RES_SRC_REVERSAL_NO_FILL" in sched
+    # Every stamp goes through the per-record selector; the raw constant is gone.
+    assert sched.count("old_perf.resolution_version = labels.resolution_version_for") == 2
+    assert "resolution_version = labels.RESOLUTION_SEMANTICS_VERSION" not in sched
 
 
 def test_admin_paths_stamp_their_distinct_identities():
     admin = _src("api/routes/admin.py")
     assert admin.count("resolution_source = labels.RES_SRC_ADMIN_INVALIDATE") == 1
     assert admin.count("resolution_source = labels.RES_SRC_ADMIN_BULK_CLEAN") == 1
-    assert admin.count("resolution_version = labels.RESOLUTION_SEMANTICS_VERSION") == 2
+    # Admin closes a row WITHOUT running the booking math, so the entry-gated
+    # semantics never governed it: both sites pass False, whatever the flag says.
+    assert admin.count("resolution_version = labels.resolution_version_for(False)") == 2
+    assert "resolution_version = labels.RESOLUTION_SEMANTICS_VERSION" not in admin
+
+
+def test_the_version_selector_is_per_record_not_a_global_bump():
+    """The expected values are written out BY HAND here.
+
+    Reusing the implementation's own constants as the expectation would make this
+    test agree with any future redefinition of them — which is precisely the
+    mistake it exists to catch. A global bump to 2 must fail this.
+    """
+    from app.backtesting import labels as L
+    assert L.RESOLUTION_SEMANTICS_VERSION == 1, "the v1 constant must NOT be bumped"
+    assert L.resolution_version_for(False) == 1
+    assert L.resolution_version_for(True) == 2
 
 
 def test_tracker_stamp_sites_use_the_constants():
     """Three stamp sites in the tracker (the shared bar-walk/expiry block picks
     by is_expired_flag), all through the labels constants — no raw literals."""
     trk = _src("backtesting/tracker.py")
-    assert trk.count("perf.resolution_version = labels.RESOLUTION_SEMANTICS_VERSION") == 3
+    # CP-ENTRY-ACTIVATION-GATE: four stamp sites now (live-SL, HOLD-expiry, the
+    # shared bar-walk/expiry block, and the no-fill closer), every one through the
+    # per-record selector rather than a module constant.
+    assert trk.count("resolution_version = labels.resolution_version_for(") == 4
+    assert "resolution_version = labels.RESOLUTION_SEMANTICS_VERSION" not in trk
     assert "perf.resolution_source = labels.RES_SRC_LIVE_SL" in trk
     assert "perf.resolution_source = labels.RES_SRC_HOLD_EXPIRY" in trk
     assert "labels.RES_SRC_EXPIRY if is_expired_flag" in trk

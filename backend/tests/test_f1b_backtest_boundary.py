@@ -30,6 +30,7 @@ R3  Deliberately NOT changed: the price proxy stays close[i]. Measured on 24k
     bar pairs, open[i+1] differs by a median 0.02 %. Recorded in metadata.
 """
 import inspect
+import random
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
@@ -45,6 +46,7 @@ from app.backtesting.engine import (
     BacktestEngine,
     BacktestReport,
 )
+from app.services.entry_activation import entry_level
 from app.services.candle_window import (
     CLOSE_TIME_COLUMN,
     TIMEFRAME_DURATIONS,
@@ -199,8 +201,28 @@ def test_15_long_and_short_paths_are_symmetric():
     src = inspect.getsource(BacktestEngine.run_backtest)
     assert 'sig_type in ["STRONG_BUY", "BUY", "SELL", "STRONG_SELL"]' in src, \
         "both directions enter through one branch — no asymmetric handling"
-    # Entry/levels come from the decision for both directions alike.
-    assert 'entry_mid = (float(decision["entry_zone_low"]) + float(decision["entry_zone_high"])) / 2.0' in src
+    # Entry/levels come from the decision for both directions alike. The midpoint
+    # is now derived by the canonical helper (CP-ENTRY-ACTIVATION-GATE) instead of
+    # being spelled out here, so this asserts the two properties the old literal
+    # was standing in for — and NOT the new spelling, which would be a blind pin.
+    #
+    # (a) SYMMETRY: one derivation, fed by both zone bounds from the same
+    #     `decision` dict, so neither direction gets its own entry rule.
+    assert "entry_mid = entry_level(" in src
+    assert 'decision["entry_zone_low"]' in src and 'decision["entry_zone_high"]' in src
+    assert "if is_bull" not in src.split("entry_mid =")[1].split("\n")[0], \
+        "the midpoint derivation must not branch on direction"
+
+    # (b) VALUE IDENTITY: the helper must return exactly what the previous
+    #     expression returned. The old expression is written out BY HAND here —
+    #     it is deliberately not imported from the implementation, so a change to
+    #     the helper cannot silently redefine what "unchanged" means.
+    rnd = random.Random(20260803)
+    for _ in range(20_000):
+        lo = round(rnd.uniform(1e-4, 90_000.0), 8)
+        hi = lo + round(rnd.uniform(1e-7, 500.0), 8)
+        legacy = (float(lo) + float(hi)) / 2.0          # the pre-centralisation literal
+        assert entry_level(lo, hi) == legacy, (lo, hi)
 
 
 # ── 16-20 · R1: timeframe safety ───────────────────────────────────────────

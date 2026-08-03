@@ -30,6 +30,9 @@ from app.models.price_data import Timeframe as DBTimeframe
 from app.collectors.binance_collector import BinanceCollector
 from app.engines.ai_decision.engine import AIDecisionEngine
 from app.backtesting import labels
+from app.backtesting import lifecycle
+from app.services.entry_activation import entry_level
+from app.services.entry_flags import entry_activation_enabled
 from app.backtesting.tracker import track_and_resolve_active_signals
 from app.notifications.service import notify_signal
 from app.engines.market_regime import detect_regime
@@ -457,21 +460,41 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                     old.is_active = False
                     old_perf.outcome = SignalOutcome.INVALIDATED
                     old_perf.closed_at = now
-                    # F1-d hygiene: the constant, not a drifting literal copy.
-                    old_perf.detail_label = labels.INVALIDATED_REVERSAL
-                    # F1-d: who resolved it, under which semantics. Telemetry only.
-                    old_perf.resolution_source = labels.RES_SRC_REVERSAL
-                    old_perf.resolution_version = labels.RESOLUTION_SEMANTICS_VERSION
                     just_reversed = True
-                    if last_close is not None and old.entry_zone_low and old.entry_zone_high:
-                        entry = float(old.entry_zone_high + old.entry_zone_low) / 2.0
-                        if entry > 0:
-                            ret = (
-                                (last_close - entry) / entry
-                                if old.direction == Direction.BULLISH
-                                else (entry - last_close) / entry
-                            )
-                            old_perf.actual_return = round(ret * 100.0, 4)
+                    # CP-ENTRY-ACTIVATION-GATE: a signal superseded while it was
+                    # still WAITING for its entry never opened, so there is no
+                    # position to mark to market. The outcome enum is unchanged
+                    # (no migration, no frontend union change); only the detail
+                    # label and the NULL P&L distinguish it.
+                    _never_filled = (
+                        entry_activation_enabled()
+                        and old.live_status == lifecycle.WAITING_ENTRY
+                    )
+                    if _never_filled:
+                        old_perf.detail_label = labels.INVALIDATED_BEFORE_ENTRY
+                        old_perf.resolution_source = labels.RES_SRC_REVERSAL_NO_FILL
+                        old_perf.resolution_version = labels.resolution_version_for(True)
+                        # Unmeasured — NOT zero.
+                        old_perf.actual_return = None
+                        old_perf.max_drawdown = None
+                        old_perf.mfe_pct = None
+                        old_perf.bars_to_outcome = None
+                    else:
+                        # F1-d hygiene: the constant, not a drifting literal copy.
+                        old_perf.detail_label = labels.INVALIDATED_REVERSAL
+                        # F1-d: who resolved it, under which semantics. Telemetry only.
+                        old_perf.resolution_source = labels.RES_SRC_REVERSAL
+                        old_perf.resolution_version = labels.resolution_version_for(
+                            entry_activation_enabled())
+                        if last_close is not None and old.entry_zone_low and old.entry_zone_high:
+                            entry = entry_level(old.entry_zone_low, old.entry_zone_high)
+                            if entry > 0:
+                                ret = (
+                                    (last_close - entry) / entry
+                                    if old.direction == Direction.BULLISH
+                                    else (entry - last_close) / entry
+                                )
+                                old_perf.actual_return = round(ret * 100.0, 4)
                     logger.info(
                         "[Scheduler] %s %s signal INVALIDATED by reversal from %s scan.",
                         symbol, old.timeframe, timeframe,
@@ -608,7 +631,12 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 explanation_tr=decision["explanation_tr"],
                 explanation_en=decision["explanation_en"],
                 is_active=True,
-                live_status="active",
+                # CP-ENTRY-ACTIVATION-GATE: a signal is born WAITING for its
+                # entry, not already in a trade. Measured on production, 136 of
+                # the 141 signals that never filled were showing as
+                # `approaching_tp` — the mislabelling starts here, at birth.
+                live_status=(lifecycle.WAITING_ENTRY if entry_activation_enabled()
+                             else lifecycle.ACTIVE),
                 status_updated_at=now,
                 live_status_since=now,
                 timeframe=db_tf,
