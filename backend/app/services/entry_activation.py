@@ -88,6 +88,21 @@ def _gapped(is_bull: bool, level: float, open_: Optional[float]) -> Optional[boo
     return (open_ < level) if is_bull else (open_ > level)
 
 
+def _positional(seq: Any) -> Any:
+    """Return something indexable BY POSITION, without importing pandas.
+
+    A pandas Series answers ``len()`` correctly but indexes by LABEL. The
+    tracker's frames carry a DatetimeIndex, so ``series[0]`` is the deprecated
+    positional fallback — pandas warns today and removes it later. ``.to_numpy()``
+    is the documented conversion and exists only on pandas objects, so this
+    duck-type check leaves list, tuple and ndarray exactly as they were and
+    costs nothing for them.
+    """
+    if seq is not None and hasattr(seq, "to_numpy"):
+        return seq.to_numpy()
+    return seq
+
+
 def entry_activation(
     *,
     is_bull: bool,
@@ -132,7 +147,30 @@ def entry_activation(
         out["proof"] = PROOF_LIVE_STOP
         return out
 
-    if not highs or not lows or len(highs) != len(lows):
+    # One normalisation, before any indexing — see _positional.
+    highs, lows, opens = _positional(highs), _positional(lows), _positional(opens)
+
+    # Explicit checks, never truthiness. The production caller passes
+    # ``df_after["high"].values`` — a numpy ndarray — and `not <ndarray>` is not
+    # one bug but three, each failing differently:
+    #
+    #   multi-element ndarray  ValueError: "the truth value of an array with more
+    #                          than one element is ambiguous" — this crashed the
+    #                          perf_tracking sweep on every run.
+    #   empty ndarray          no error today, but numpy emits a DeprecationWarning
+    #                          saying it WILL become an error.
+    #   single-element ndarray  no error and no warning — it just evaluates the
+    #                          element. `not np.array([0.0])` is True, so one
+    #                          legitimate bar whose high is 0.0 would be read as
+    #                          "no bars at all". Silent, and the worst of the three.
+    #
+    # A pandas Series raises on the multi-element case too, so the same guard
+    # covers it. Length is compared with len(), which every one of list, tuple,
+    # ndarray and Series answers identically.
+    if highs is None or lows is None:
+        out["unknown_reason"] = UNKNOWN_NO_BARS
+        return out
+    if len(highs) == 0 or len(lows) == 0 or len(highs) != len(lows):
         out["unknown_reason"] = UNKNOWN_NO_BARS
         return out
 

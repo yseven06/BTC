@@ -900,3 +900,192 @@ def test_S21_coin_memory_is_loss_changed_globally():
     assert "is_loss = outcome in (SignalOutcome.LOSS, SignalOutcome.INVALIDATED)" in src
     folded, mem = _fold("invalidated_reversal", "INVALIDATED")
     assert folded is True and mem.losses == 1
+
+
+# ==============================================================================
+# T - REAL PRODUCTION TYPES - CP-ENTRY-ACTIVATION-NDARRAY-HOTFIX (19)
+#
+# The gate shipped correct and crashed in production anyway: every test above
+# hands it a Python list, while the tracker hands it df_after["high"].values, a
+# numpy ndarray, and `not <ndarray>` raises. The suite could not have caught it,
+# because the fixtures were choosing the input TYPE the assertions then checked.
+#
+# `not <collection>` is not one bug but three, each failing differently:
+#   multi-element ndarray   ValueError - the production crash
+#   empty ndarray           no error, but a DeprecationWarning: it WILL become one
+#   single-element ndarray  no error, no warning - it evaluates the ELEMENT, so
+#                           `not np.array([0.0])` is True and one legitimate bar
+#                           whose high is 0.0 reads as "no bars at all"
+# So these use real frames, not hand-built lists.
+# ==============================================================================
+import numpy as np
+import pandas as pd
+
+
+def _frame(rows):
+    """A DataFrame shaped exactly like the tracker's post-birth frame."""
+    idx = pd.date_range("2026-08-01", periods=len(rows), freq="15min")
+    return pd.DataFrame(
+        {"open": [r[0] for r in rows], "high": [r[1] for r in rows],
+         "low": [r[2] for r in rows], "close": [r[3] for r in rows]},
+        index=idx,
+    )
+
+
+def _gate_from(df, *, is_bull=True, level=100.0, window_complete=True):
+    """Call the gate the way tracker.py:833-836 does - .values, not lists."""
+    return entry_activation(
+        is_bull=is_bull, level=level,
+        highs=df["high"].values, lows=df["low"].values, opens=df["open"].values,
+        window_complete=window_complete,
+    )
+
+
+ROWS_HIT = [(103.0, 104.0, 101.0, 103.0), (102.0, 103.0, 99.0, 100.0)]
+ROWS_MISS = [(103.0, 104.0, 101.0, 103.0), (104.0, 105.0, 102.0, 104.0)]
+
+
+def test_T01_multi_element_ndarray_does_not_raise():
+    """The exact production crash: .values on a 2+ row frame is what broke."""
+    out = _gate_from(_frame(ROWS_HIT))
+    assert out["status"] == STATUS_REACHED and out["bars_to_entry"] == 2
+
+
+def test_T02_empty_ndarray_is_unknown_not_a_crash():
+    empty = _frame(ROWS_HIT).iloc[0:0]
+    assert empty["high"].values.size == 0
+    out = _gate_from(empty)
+    assert out["status"] == STATUS_UNKNOWN and out["unknown_reason"] == EA.UNKNOWN_NO_BARS
+
+
+def test_T03_single_element_ndarray_is_evaluated_not_truthiness_tested():
+    """A one-bar frame whose high is 0.0: truthiness would call this "no bars"."""
+    df = _frame([(0.0, 0.0, 0.0, 0.0)])
+    out = entry_activation(is_bull=True, level=0.0, highs=df["high"].values,
+                           lows=df["low"].values, opens=df["open"].values,
+                           window_complete=True)
+    assert out["status"] == STATUS_REACHED, "a real bar was discarded as falsy"
+    assert out["bars_to_entry"] == 1
+
+
+def test_T04_multi_element_pandas_series_does_not_raise():
+    df = _frame(ROWS_HIT)
+    out = entry_activation(is_bull=True, level=100.0, highs=df["high"], lows=df["low"],
+                           opens=df["open"], window_complete=True)
+    assert out["status"] == STATUS_REACHED and out["bars_to_entry"] == 2
+
+
+def test_T05_empty_pandas_series_is_unknown():
+    empty = _frame(ROWS_HIT).iloc[0:0]
+    out = entry_activation(is_bull=True, level=100.0, highs=empty["high"],
+                           lows=empty["low"], opens=empty["open"], window_complete=True)
+    assert out["status"] == STATUS_UNKNOWN and out["unknown_reason"] == EA.UNKNOWN_NO_BARS
+
+
+def test_T06_python_list_still_works():
+    out = gate(ROWS_HIT)
+    assert out["status"] == STATUS_REACHED and out["bars_to_entry"] == 2
+
+
+def test_T07_tuple_works():
+    o, h, l, _c = bars(*ROWS_HIT)
+    out = entry_activation(is_bull=True, level=100.0, highs=tuple(h), lows=tuple(l),
+                           opens=tuple(o), window_complete=True)
+    assert out["status"] == STATUS_REACHED and out["bars_to_entry"] == 2
+
+
+def test_T08_highs_none_is_unknown():
+    df = _frame(ROWS_HIT)
+    out = entry_activation(is_bull=True, level=100.0, highs=None,
+                           lows=df["low"].values, window_complete=True)
+    assert out["status"] == STATUS_UNKNOWN and out["unknown_reason"] == EA.UNKNOWN_NO_BARS
+
+
+def test_T09_lows_none_is_unknown():
+    df = _frame(ROWS_HIT)
+    out = entry_activation(is_bull=True, level=100.0, highs=df["high"].values,
+                           lows=None, window_complete=True)
+    assert out["status"] == STATUS_UNKNOWN and out["unknown_reason"] == EA.UNKNOWN_NO_BARS
+
+
+def test_T10_length_mismatch_is_unknown_for_every_type():
+    df = _frame(ROWS_HIT)
+    for hi, lo in ((df["high"].values, df["low"].values[:1]),
+                   (df["high"], df["low"].iloc[:1]),
+                   (list(df["high"]), list(df["low"])[:1])):
+        out = entry_activation(is_bull=True, level=100.0, highs=hi, lows=lo,
+                               window_complete=True)
+        assert out["status"] == STATUS_UNKNOWN
+        assert out["unknown_reason"] == EA.UNKNOWN_NO_BARS
+
+
+def test_T11_long_zone_touch_from_a_real_frame():
+    out = _gate_from(_frame([(101.0, 102.0, 99.5, 100.2)]))
+    assert out["status"] == STATUS_REACHED and out["proof"] == EA.PROOF_BAR
+
+
+def test_T12_short_zone_touch_from_a_real_frame():
+    out = _gate_from(_frame([(99.0, 100.5, 98.0, 99.5)]), is_bull=False)
+    assert out["status"] == STATUS_REACHED and out["proof"] == EA.PROOF_BAR
+
+
+def test_T13_reached_reports_position_and_bar_count():
+    out = _gate_from(_frame(ROWS_HIT))
+    assert (out["entry_pos"], out["bars_to_entry"]) == (1, 2)
+
+
+def test_T14_not_reached_over_a_complete_real_window():
+    out = _gate_from(_frame(ROWS_MISS))
+    assert out["status"] == STATUS_NOT_REACHED and out["gapped_entry"] is False
+
+
+def test_T15_gap_through_from_a_real_frame():
+    out = _gate_from(_frame([(95.0, 96.0, 94.0, 95.0)]))
+    assert out["status"] == STATUS_REACHED and out["gapped_entry"] is True
+    assert out["proof"] == EA.PROOF_OPEN_GAP
+
+
+def test_T16_incomplete_real_window_without_a_touch_is_unknown():
+    out = _gate_from(_frame(ROWS_MISS), window_complete=False)
+    assert out["status"] == STATUS_UNKNOWN
+    assert out["unknown_reason"] == EA.UNKNOWN_WINDOW_INCOMPLETE
+
+
+@pytest.mark.parametrize("rows,is_bull,complete", [
+    (ROWS_HIT, True, True), (ROWS_MISS, True, True), (ROWS_MISS, True, False),
+    (ROWS_HIT, False, True), ([(95.0, 96.0, 94.0, 95.0)], True, True),
+])
+def test_T17_list_ndarray_and_series_agree_exactly(rows, is_bull, complete):
+    """The whole point: the same window must not depend on its container type."""
+    df = _frame(rows)
+    o, h, l, _c = bars(*rows)
+    as_list = entry_activation(is_bull=is_bull, level=100.0, highs=h, lows=l, opens=o,
+                               window_complete=complete)
+    as_ndarray = entry_activation(is_bull=is_bull, level=100.0, highs=df["high"].values,
+                                  lows=df["low"].values, opens=df["open"].values,
+                                  window_complete=complete)
+    as_series = entry_activation(is_bull=is_bull, level=100.0, highs=df["high"],
+                                 lows=df["low"], opens=df["open"],
+                                 window_complete=complete)
+    assert as_list == as_ndarray == as_series
+
+
+def test_T18_no_truthiness_is_applied_to_a_collection():
+    """Source-level backstop for the pattern itself. The behavioural tests above
+    are the real proof; this catches a reintroduction that happens to be masked."""
+    src = inspect.getsource(EA.entry_activation)
+    for banned in ("if not highs", "if not lows", "if not opens",
+                   "not highs or", "not lows or"):
+        assert banned not in src, f"truthiness on a collection is back: {banned!r}"
+    assert "highs is None or lows is None" in src
+    assert "len(highs) == 0" in src and "len(lows) == 0" in src
+
+
+def test_T19_the_normaliser_leaves_plain_containers_untouched():
+    lst, tpl, arr = [1.0, 2.0], (1.0, 2.0), np.array([1.0, 2.0])
+    assert EA._positional(lst) is lst
+    assert EA._positional(tpl) is tpl
+    assert EA._positional(arr) is arr
+    assert EA._positional(None) is None
+    ser = pd.Series([1.0, 2.0], index=pd.date_range("2026-08-01", periods=2, freq="15min"))
+    assert isinstance(EA._positional(ser), np.ndarray)
