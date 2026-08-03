@@ -33,6 +33,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.engines.base import SignalBias
 from app.models.intelligence import SignalSnapshot
 from app.models.signal import Signal, SignalOutcome, SignalPerformance
+# The canonical no-fill classification. entry_validity imports nothing from
+# app (typing only), so this direction cannot cycle.
+from app.services.entry_validity import is_no_fill_label
 
 # Need at least this many similar matches before reporting a win rate.
 MIN_SIMILAR_MATCHES = 8
@@ -108,6 +111,25 @@ def summarize_similar(
     scored = []
     for c in candidates:
         if c.direction != q_direction:
+            continue
+        # CP-ENTRY-SIMILARITY-NOFILL-ISOLATION — drop rows where no position ever
+        # opened, BEFORE anything is derived from them.
+        #
+        # These rows keep the coarse outcome of a real trade: expired_without_entry
+        # is stored as EXPIRED and invalidated_before_entry as INVALIDATED, so the
+        # pool filter below admits both, and `losses` counts every INVALIDATED as a
+        # loss. A setup that was superseded while still waiting would therefore be
+        # reported to the user as a loss it never took, and its label could become
+        # `most_common_outcome` — "the typical way this setup ends".
+        #
+        # The exclusion sits HERE, ahead of `_distance`, so it precedes scored,
+        # nearest, match_count, wins, losses, win_rate and the label census alike.
+        # Putting it in the caller was considered and rejected: a filter a caller
+        # can forget is a filter that will be forgotten.
+        #
+        # `is_no_fill_label` is imported, never re-spelled. A second copy of the
+        # label list is how two modules end up disagreeing about the same row.
+        if is_no_fill_label(c.detail_label):
             continue
         dist = _distance(q_regime, q_confidence, q_volatility_ratio, q_fingerprint, c)
         if dist <= MAX_DISTANCE:

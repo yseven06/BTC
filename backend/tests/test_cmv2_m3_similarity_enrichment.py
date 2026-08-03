@@ -441,15 +441,22 @@ def test_the_enrichment_never_reports_similaritys_verdict():
 
 
 def test_similarity_module_source_is_untouched():
-    """A structural pin, not a style rule: this checkpoint's parity claim rests
-    on `similarity.py` not being edited. If this fails, the claim needs
-    re-deriving — do not just update the hash."""
+    """A structural pin, not a style rule. CMV2-M3's parity claim rested on
+    `similarity.py` not being edited, and it held until
+    CP-ENTRY-SIMILARITY-NOFILL-ISOLATION had to change it: the no-fill exclusion
+    could not live anywhere else, because `find_similar_setups` builds its own
+    candidate pool and accepts no filter argument.
+
+    What CMV2-M3 actually needed is still true and is what this now asserts —
+    the enrichment stays a SIBLING key and the similarity payload keeps its exact
+    shape. The hash moved once, deliberately; if it moves again, re-derive the
+    claim rather than pasting the new value."""
     import hashlib
     import inspect
     from app.services import similarity as sim
     src = inspect.getsource(sim).encode("utf-8").replace(b"\r\n", b"\n")
     assert hashlib.sha256(src).hexdigest() == (
-        "01acf804b2b9243619ac5cabb58f6c2637a808e9af0144b53581a38c034b0440"), \
+        "dfb29e3b56113de50b9d3001c4e8ff34d4c75f4ec9ba76f6c53feaa5d84904af"), \
         "similarity.py changed — re-derive the parity claim before updating this"
 
 

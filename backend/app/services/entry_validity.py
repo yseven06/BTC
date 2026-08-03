@@ -290,9 +290,24 @@ def _rate(hits: int, total: int) -> Optional[float]:
 NO_FILL_DETAIL_LABELS = frozenset({"expired_without_entry", "invalidated_before_entry"})
 
 
+def is_no_fill_label(detail_label: Optional[str]) -> bool:
+    """True when this DETAIL LABEL means the position never opened.
+
+    The scalar form. Consumers that hold an ORM row or a dataclass — Similarity's
+    candidate pool, for one — have the label itself, not a mapping, and building a
+    throwaway dict per candidate just to ask this question is both wasteful and an
+    invitation to inline the label list instead. One frozenset, two ergonomics.
+
+    A NULL label is NOT a no-fill row. Legacy rows predate these labels entirely,
+    and "we do not know" must never be silently promoted to "it never filled" —
+    that is the same coercion this whole checkpoint exists to remove.
+    """
+    return str(detail_label or "") in NO_FILL_DETAIL_LABELS
+
+
 def is_no_fill(record: Mapping[str, Any]) -> bool:
     """True when this row terminated without a proven entry."""
-    return str(record.get("detail_label") or "") in NO_FILL_DETAIL_LABELS
+    return is_no_fill_label(record.get("detail_label"))
 
 
 def _outcome(record: Mapping[str, Any]) -> Optional[str]:

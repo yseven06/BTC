@@ -489,16 +489,31 @@ def test_J_a_filled_invalidated_row_is_still_counted_as_a_loss():
     assert folded is True and mem.losses == 1
 
 
-def test_J_similarity_module_is_byte_identical():
+def test_J_similarity_module_source_is_pinned():
+    """Newlines normalised on purpose: git stores LF and a Windows checkout gets
+    CRLF, so hashing raw bytes would make this test's verdict depend on the
+    developer's OS rather than on the file. This suite has already been bitten
+    once by a platform-dependent assertion.
+
+    The hash moved with CP-ENTRY-SIMILARITY-NOFILL-ISOLATION, which had to add
+    the no-fill exclusion inside similarity's own candidate pool."""
     import hashlib
-    import pathlib
-    sha = hashlib.sha256(pathlib.Path("app/services/similarity.py").read_bytes()).hexdigest()
-    assert sha == "01acf804b2b9243619ac5cabb58f6c2637a808e9af0144b53581a38c034b0440"
+    import inspect
+    from app.services import similarity as sim
+    src = inspect.getsource(sim).encode("utf-8").replace(b"\r\n", b"\n")
+    assert hashlib.sha256(src).hexdigest() == "dfb29e3b56113de50b9d3001c4e8ff34d4c75f4ec9ba76f6c53feaa5d84904af"
 
 
-def test_J_the_exclusion_is_not_inside_similarity():
+def test_J_the_exclusion_is_inside_similarity_by_necessity():
+    """Inverted by CP-ENTRY-SIMILARITY-NOFILL-ISOLATION. The original rule —
+    "the exclusion must live in the caller" — was unimplementable: the caller
+    (`signals.py`) receives an already-aggregated summary and cannot un-count
+    anything. What still holds is that similarity must not gain entry-gate
+    machinery or its own copy of the label list."""
     sim = _src("app/services/similarity.py")
-    assert "entry_activation" not in sim and "without_entry" not in sim
+    assert "is_no_fill_label" in sim
+    assert "entry_activation" not in sim, "the gate itself leaked into similarity"
+    assert "ENTRY_ACTIVATION_ENABLED" not in sim, "similarity now reads a flag"
 
 
 def test_J_reporting_surface_knows_the_no_fill_labels():
@@ -836,11 +851,20 @@ def test_S12_exclusion_placed_after_is_loss():
     assert folded is False and mem.losses == 0
 
 
-def test_S13_exclusion_written_into_similarity():
-    import hashlib
-    import pathlib
-    assert hashlib.sha256(pathlib.Path("app/services/similarity.py").read_bytes()).hexdigest() \
-        == "01acf804b2b9243619ac5cabb58f6c2637a808e9af0144b53581a38c034b0440"
+def test_S13_the_exclusion_lives_in_similarity_and_uses_the_canonical_helper():
+    """This started life as "similarity must not be touched". The pre-enable
+    audit proved that stance was the bug: `find_similar_setups` builds its own
+    pool and takes no filter, so an exclusion in the caller was impossible, and
+    no-fill rows were reaching the user's verdict as losses.
+
+    The sabotage it now guards is the one that remains real — re-spelling the
+    label list inside similarity instead of importing the canonical one."""
+    import inspect
+    from app.services import similarity as sim
+    src = inspect.getsource(sim)
+    assert "is_no_fill_label" in src
+    assert '"expired_without_entry"' not in src
+    assert '"invalidated_before_entry"' not in src
 
 
 def test_S14_entry_level_value_drift():
