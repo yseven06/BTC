@@ -192,7 +192,8 @@ def _close_without_fill(signal, perf, *, outcome, detail_label, resolution_sourc
 
 
 async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, live_price,
-                                             realized_return, gave_back_after_tp1=None, df=None):
+                                             realized_return, gave_back_after_tp1=None, df=None,
+                                             entry_telemetry=None):
     """Fail-open trade-path write for the LIVE-SL shortcut (mid-candle stop).
     No bar-walk here, so most path metrics are genuinely UNMEASURED → kept NULL
     (never 0), so the learning layer can tell 'not measured' from '0 happened'.
@@ -213,8 +214,14 @@ async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, liv
             adverse = (entry - live_price) / entry * 100.0 if signal.direction.value == "bullish" \
                 else (live_price - entry) / entry * 100.0
             mae_pct = round(max(0.0, adverse), 4)
-        # CP-1 PASSIVE entry-detection telemetry (fail-open envelope; read by NOTHING).
-        entry_tel = build_entry_telemetry(signal, df)
+        # CP-1 PASSIVE entry-detection telemetry (fail-open envelope).
+        # CP-ENTRY-LIVESL-PROMOTION: no longer "read by NOTHING" — the caller
+        # now decides the waiting_entry -> active promotion from this very
+        # verdict and passes it in. Recomputing it here would open the door to
+        # two different answers for one signal, so the passed value wins and the
+        # local call is only the fallback for callers that have none.
+        entry_tel = entry_telemetry if entry_telemetry is not None \
+            else build_entry_telemetry(signal, df)
         row = compute_trade_path(
             signal_id=signal.id, asset_id=signal.asset_id,
             symbol=(signal.asset.symbol if signal.asset else None),
@@ -692,6 +699,59 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                 if not perf:
                     perf = SignalPerformance(signal_id=signal.id, outcome=SignalOutcome.ACTIVE)
                     db.add(perf)
+
+                # ── CP-ENTRY-LIVESL-PROMOTION ────────────────────────────────
+                # This branch `continue`s ~80 lines below, i.e. BEFORE the entry
+                # activation gate — the only place that writes
+                # `waiting_entry -> active`. A signal whose stop was already
+                # broken when the pass began is therefore consumed here and
+                # never reaches the gate, so a trade that really did fill gets
+                # closed straight out of `waiting_entry`.
+                #
+                # Production, 2026-08-06: ONTUSDT M15 filled at 00:15 (passive
+                # telemetry: entry_reached=true, zone penetration 100%) and was
+                # closed at 00:30 with a correct -0.2813% BREAKEVEN — but its
+                # history read `waiting_entry -> closed` and the API served
+                # "Giriş seviyesi henüz görülmedi" beside that very result.
+                # MAVUSDT, born 14 minutes later, reached the gate in the same
+                # pass family and was promoted normally: 83 of 84 live-SL closes
+                # were fine, so this is a race in the ordering, not a bypass.
+                #
+                # ⚠️ THE PROOF IS THE OBSERVATION, NOT THE STOP. It is tempting
+                # to argue "the stop sits beyond the entry, so price must have
+                # crossed the entry first" — that inference is exactly what the
+                # entry gate exists to refuse. `proven_entry_ids` cannot help
+                # either: a signal that never got promoted is by definition
+                # absent from it. So the authority here is the same passive
+                # detector the trade path already records — computed ONCE and
+                # handed to the writer below, so the verdict that promotes and
+                # the verdict that gets stored can never disagree.
+                #
+                # Fail-open: a telemetry failure must never stop a real stop
+                # loss from being booked, so an unusable verdict simply means
+                # "no promotion" and the resolution continues untouched.
+                try:
+                    _live_entry_tel = build_entry_telemetry(
+                        signal, dfs_by_signal_id.get(signal.id))
+                except Exception as _tel_exc:      # pragma: no cover - defensive
+                    logger.warning("Entry telemetry failed for %s (fail-open): %s",
+                                   signal.id, _tel_exc)
+                    _live_entry_tel = None
+                if (entry_activation_enabled()
+                        and signal.live_status == lifecycle.WAITING_ENTRY
+                        and isinstance(_live_entry_tel, dict)
+                        and _live_entry_tel.get("entry_reached") is True):
+                    # apply_live_status is the single writer of a phase change:
+                    # it returns None when the phase is unchanged, which is what
+                    # makes a replay idempotent without a second guard here.
+                    _lev = apply_live_status(
+                        signal, to_status=lifecycle.ACTIVE,
+                        reason=lifecycle.REASON_ENTRY_TOUCHED,
+                        at=datetime.now(timezone.utc),
+                        price=live_hit["live_price"],
+                    )
+                    if _lev is not None:
+                        db.add(_lev)
                 # KEY1-d: honor the TP1/TP2 scale-out. A TP1-banked trade closes
                 # its REMAINING share at breakeven (entry), not the full position at the
                 # original stop (BUG-6/7/8). TP1-not-hit is UNCHANGED (full original-stop
@@ -752,6 +812,10 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                     db, signal, perf, entry=entry, sl=effective_sl,
                     live_price=live_hit["live_price"], realized_return=pnl_pct,
                     gave_back_after_tp1=gave_back, df=dfs_by_signal_id.get(signal.id),
+                    # Same verdict that decided the promotion above — passed in
+                    # rather than recomputed, so the row cannot record an entry
+                    # story different from the one the lifecycle acted on.
+                    entry_telemetry=_live_entry_tel,
                 )
                 resolved_count += 1
                 details.append({

@@ -325,9 +325,25 @@ def test_E5_gate_uses_one_clock_for_the_whole_decision():
 
 
 def test_E6_lifecycle_block_shares_the_same_helper():
+    """Every phase change in the tracker goes through ONE writer.
+
+    The number is not the point — routing is. It was 3 (waiting-entry,
+    gate promotion, lifecycle evaluator) until CP-ENTRY-LIVESL-PROMOTION added
+    the fourth: the live-SL shortcut `continue`s before the gate, so a signal
+    whose stop was already broken never reached the promotion above and got
+    closed straight out of `waiting_entry` (production: ONTUSDT 2026-08-06).
+    That site had to promote too — and it does it with this helper rather than
+    a hand-rolled assignment, which is exactly what this guard protects.
+    """
     src = _src(TRACKER)
-    assert src.count("apply_live_status(") == 3, (
-        "waiting-entry, promotion and lifecycle must all route through one helper")
+    assert src.count("apply_live_status(") == 4, (
+        "waiting-entry, gate promotion, live-SL promotion and lifecycle must "
+        "all route through one helper")
+    # The live-SL site specifically: helper, canonical status, persisted row.
+    live_blk = src.split("# ── CP-ENTRY-LIVESL-PROMOTION")[1].split("# KEY1-d:")[0]
+    assert "apply_live_status(" in live_blk
+    assert "to_status=lifecycle.ACTIVE" in live_blk
+    assert "db.add(" in live_blk, "the promotion row must actually be persisted"
 
 
 def test_E7_expiry_without_fill_persists_its_row():
