@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 import pandas as pd
@@ -189,6 +189,22 @@ def _close_without_fill(signal, perf, *, outcome, detail_label, resolution_sourc
         outcome=outcome.value,
         created_at=at,
     )
+
+
+# ── ORDERING TICK ────────────────────────────────────────────────────────────
+# `signal_status_history` has no ordering column that a reader uses: the API
+# sorts on `created_at` ALONE (api/routes/signals.py:806). So two rows written
+# in one pass are only orderable if their timestamps genuinely differ — an
+# equal pair leaves the sequence undefined at the reader, and a promotion that
+# shares its instant with the close it precedes is exactly such a pair.
+#
+# 1µs is the resolution of both `timestamptz` and `datetime`, i.e. the smallest
+# representable difference. The promotion is placed one tick BEFORE the pass
+# clock rather than the close one tick after it, so `history.created_at` for the
+# resolution stays byte-equal to `perf.closed_at` — a reader joining the two
+# tables must not see them disagree. The direction is also the causally true
+# one: the fill happened before the breach that closed it.
+_PROMOTION_TICK = timedelta(microseconds=1)
 
 
 async def _write_trade_path_live_sl_failopen(db, signal, perf, *, entry, sl, live_price,
@@ -700,6 +716,19 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                     perf = SignalPerformance(signal_id=signal.id, outcome=SignalOutcome.ACTIVE)
                     db.add(perf)
 
+                # ONE CLOCK for this whole live-SL decision — the same rule the
+                # gate block states for itself ("three separate now() calls
+                # cannot be ordered against each other", pinned by
+                # test_waiting_state_surface::E5). The promotion, `perf.closed_at`
+                # and the resolution history row all derive from this single
+                # reading, so nothing here is ordered against a clock it did not
+                # come from. Crucially that includes the DATABASE clock: leaving
+                # the resolution row to `server_default=func.now()` made it carry
+                # PostgreSQL's TRANSACTION-START time — a different machine's
+                # clock, read before this loop even began — which would have put
+                # the close BEFORE the promotion it follows.
+                _live_now = datetime.now(timezone.utc)
+
                 # ── CP-ENTRY-LIVESL-PROMOTION ────────────────────────────────
                 # This branch `continue`s ~80 lines below, i.e. BEFORE the entry
                 # activation gate — the only place that writes
@@ -747,7 +776,7 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                     _lev = apply_live_status(
                         signal, to_status=lifecycle.ACTIVE,
                         reason=lifecycle.REASON_ENTRY_TOUCHED,
-                        at=datetime.now(timezone.utc),
+                        at=_live_now - _PROMOTION_TICK,
                         price=live_hit["live_price"],
                     )
                     if _lev is not None:
@@ -778,7 +807,7 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                 else:
                     perf.outcome = SignalOutcome.BREAKEVEN
                 perf.actual_return = pnl_pct
-                perf.closed_at = datetime.now(timezone.utc)
+                perf.closed_at = _live_now
                 # F0-1A: closed_at above is the WALL CLOCK on this path — the ticker
                 # says the stop is broken now, and after a gap "now" can be hours
                 # after the break. Record the split beside it: hit_time is the bar
@@ -805,6 +834,13 @@ async def _track_and_resolve_active_signals_impl(db: AsyncSession) -> Dict[str, 
                     to_status="closed", kind="resolution",
                     reason=labels.label_tr(perf.detail_label), outcome=perf.outcome.value,
                     price=live_hit["live_price"],
+                    # Explicit, from the pass clock. The server_default would be
+                    # PostgreSQL's TRANSACTION-START time — another machine's
+                    # clock, read before this loop began — which can land BEFORE
+                    # the promotion this row follows. Passing it also makes the
+                    # value assertable in-process, so the ordering invariant is
+                    # tested on real timestamps rather than on insertion order.
+                    created_at=_live_now,
                 ))
                 # Trade-path instrumentation for the live-SL path (fail-open;
                 # unmeasured metrics stay NULL — see helper).

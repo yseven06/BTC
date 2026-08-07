@@ -200,6 +200,16 @@ def _transitions(added):
             if isinstance(r, SignalStatusHistory)]
 
 
+def _rows(added):
+    return [r for r in added if isinstance(r, SignalStatusHistory)]
+
+
+def _row(added, frm, to):
+    hits = [r for r in _rows(added) if (r.from_status, r.to_status) == (frm, to)]
+    assert len(hits) == 1, f"expected exactly one {frm}->{to} row, got {len(hits)}"
+    return hits[0]
+
+
 # ── TEST 1 · the ONTUSDT regression ──────────────────────────────────────────
 @pytest.mark.asyncio
 async def test_1_live_sl_with_entry_proof_promotes_before_closing(promo_env):
@@ -239,6 +249,68 @@ async def test_1b_the_trade_result_itself_is_untouched(promo_env):
     assert perf.actual_return == pytest.approx(expected, abs=1e-9)
     assert perf.actual_return == pytest.approx(-0.2813, abs=5e-4)   # the real record
     assert sig.is_active is False
+
+
+# ── TEST 1c · the ORDER is in the timestamps, not in the insertion order ─────
+@pytest.mark.asyncio
+async def test_1c_promotion_created_at_is_strictly_before_the_close(promo_env):
+    """`created_at` must order the pair — the reader has nothing else.
+
+    api/routes/signals.py:806 sorts the timeline by `created_at` ALONE: no id,
+    no sequence, no tiebreaker. Two rows sharing an instant therefore have an
+    UNDEFINED order at the reader, and asserting on `db.add` call order would
+    only test this test's own harness.
+
+    The first version of this fix left the resolution row to the column's
+    `server_default=func.now()`, which is PostgreSQL's TRANSACTION-START time —
+    a different machine's clock, read before the tracking loop began — while the
+    promotion carried a Python clock read mid-loop. That pair could invert.
+    Both rows now come from one pass clock.
+    """
+    sig = _ont_signal()
+    binance = FakeCollector(df=_bars_entry_touched(sig), ticker=ONT_LIVE_BREACH)
+    await promo_env([sig], binance)
+
+    promo = _row(promo_env.added, lifecycle.WAITING_ENTRY, lifecycle.ACTIVE)
+    close = _row(promo_env.added, lifecycle.ACTIVE, "closed")
+
+    assert promo.created_at is not None, "promotion must not rely on a server default"
+    assert close.created_at is not None, "resolution must not rely on a server default"
+    assert promo.created_at < close.created_at, (
+        f"promotion {promo.created_at} is not strictly before close {close.created_at}")
+    # Same instant, same source: the offset is the minimum representable tick,
+    # not a wall-clock wait.
+    assert close.created_at - promo.created_at == tracker._PROMOTION_TICK
+    # A reader joining history to the performance row must not see them disagree.
+    assert close.created_at == sig.performance.closed_at
+    # And the phase column agrees with the row that moved it.
+    assert sig.live_status_since == promo.created_at
+
+
+# ── TEST 1d · adversarial: promotion and close in the SAME pass ──────────────
+@pytest.mark.asyncio
+async def test_1d_same_pass_ordering_is_deterministic_over_repeats(promo_env):
+    """Both events are produced as close together as the code allows.
+
+    Run the whole thing repeatedly: the ordering must hold every time, not on
+    average. A frozen clock would make this vacuous, so the real clock is used
+    and only the RELATION is asserted.
+    """
+    for _ in range(25):
+        sig = _ont_signal()
+        binance = FakeCollector(df=_bars_entry_touched(sig), ticker=ONT_LIVE_BREACH)
+        promo_env.added.clear()
+        await promo_env([sig], binance)
+
+        promo = _row(promo_env.added, lifecycle.WAITING_ENTRY, lifecycle.ACTIVE)
+        close = _row(promo_env.added, lifecycle.ACTIVE, "closed")
+        assert promo.created_at < close.created_at
+        # Ordering by created_at alone must reproduce the causal sequence.
+        ordered = sorted(_rows(promo_env.added), key=lambda r: r.created_at)
+        assert [(r.from_status, r.to_status) for r in ordered] == [
+            (lifecycle.WAITING_ENTRY, lifecycle.ACTIVE),
+            (lifecycle.ACTIVE, "closed"),
+        ]
 
 
 # ── TEST 2 · the normal gate path still promotes exactly once ────────────────
