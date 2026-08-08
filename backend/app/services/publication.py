@@ -56,9 +56,14 @@ including one that closed without ever filling.
 
 from __future__ import annotations
 
-from typing import Optional
+from datetime import datetime
+from typing import Dict, Iterable, Optional
+from uuid import UUID
+
+from sqlalchemy import func, select
 
 from app.backtesting import lifecycle
+from app.models.intelligence import SignalStatusHistory
 
 # The post-activation live states. `waiting_entry` is absent BY DESIGN — it is
 # the one state that means "no position exists yet".
@@ -86,3 +91,56 @@ def is_publishable(*, is_active: bool, live_status: Optional[str]) -> bool:
     if not is_active:
         return True
     return is_public_live_status(live_status)
+
+
+# ── PUBLIC AGE ───────────────────────────────────────────────────────────────
+# Since only post-activation signals are published, the age a user reads must be
+# measured from ACTIVATION, not from candidate birth. Measured on production the
+# two disagree by up to an order of magnitude on individual rows — COMPUSDT read
+# 18.5h old while the trade had been open 1.8h; XRPUSDT read 39.6h against 23.1h.
+#
+# WHY NOT `signals.live_status_since`. It is re-stamped on EVERY phase change
+# (lifecycle_log.apply_live_status:123-126 assigns it unconditionally once the
+# phase differs), so it measures how long the CURRENT phase has lasted, not how
+# long the signal has been live. Same production rows: ETHUSDT's
+# live_status_since was 0.3h old against a true 13.6h activation age, ALICEUSDT
+# 0.2h against 31.4h. It is the right input for the status badge's "since" — and
+# the wrong one for age. No new column is needed; the transition is already
+# recorded.
+
+
+def public_since(activated_at: Optional[datetime],
+                 generated_at: Optional[datetime]) -> Optional[datetime]:
+    """When this signal became publicly visible.
+
+    Falls back to `generated_at` for a signal born directly ACTIVE — before the
+    entry gate was enabled that was the normal path (scheduler.py:638-641), and
+    for those rows birth IS activation, so the fallback is the true answer
+    rather than an approximation. 3880 of the 4159 post-activation signals in
+    production are that shape; every one of the 25 currently public rows takes
+    the history path instead.
+    """
+    return activated_at or generated_at
+
+
+async def activation_times(db, signal_ids: Iterable[UUID]) -> Dict[UUID, datetime]:
+    """EARLIEST waiting_entry -> active transition per signal. ONE query.
+
+    Grouped rather than per-row: a 300-row page must not become 300 round trips.
+    `min()` because the transition can legitimately appear more than once — a
+    signal may be demoted back to waiting_entry and re-promoted (2 signals in
+    production carry two rows today). The FIRST promotion is when it became
+    public, so a later one must not reset the age.
+    """
+    ids = [i for i in signal_ids if i is not None]
+    if not ids:
+        return {}
+    rows = await db.execute(
+        select(SignalStatusHistory.signal_id,
+               func.min(SignalStatusHistory.created_at))
+        .where(SignalStatusHistory.signal_id.in_(ids),
+               SignalStatusHistory.from_status == lifecycle.WAITING_ENTRY,
+               SignalStatusHistory.to_status == lifecycle.ACTIVE)
+        .group_by(SignalStatusHistory.signal_id)
+    )
+    return {sid: ts for sid, ts in rows.all()}

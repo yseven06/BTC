@@ -566,9 +566,20 @@ export const SignalDetailSection: React.FC<SignalDetailSectionProps> = ({ signal
                 <DirIcon className={compact ? 'w-4 h-4' : 'w-7 h-7'} />
                 {direction.label}
               </div>
+              {/* İKİ AYRI KAVRAM, İKİSİ DE ETİKETLİ (liste/detay parity):
+                  "Üretildi" adayın doğduğu an, "Aktif oldu" işlemin açıldığı an.
+                  Liste yaşı aktivasyondan sayıyor; burada ikisi de görünür ki
+                  kullanıcı 18 sa/2 sa farkını okuyabilsin. Aktivasyon satırı
+                  yalnız gerçekten farklıysa çizilir — kapanmış/geçmiş sinyalde
+                  activated_at gelmez ve tek satır kalır. */}
               <p className={cn('text-text-muted mt-1', compact ? 'text-micro' : 'text-micro mt-1.5')}>
                 Üretildi: {formatAbsoluteTimeTR(signal.generated_at)} (TR) · {formatRelativeTime(signal.generated_at)}
               </p>
+              {signal.activated_at && signal.activated_at !== signal.generated_at && (
+                <p className={cn('text-text-muted', compact ? 'text-micro' : 'text-micro')}>
+                  Aktif oldu: {formatAbsoluteTimeTR(signal.activated_at)} (TR) · {formatRelativeTime(signal.activated_at)}
+                </p>
+              )}
             </div>
           </div>
 

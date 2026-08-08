@@ -187,7 +187,15 @@ export interface ApiSignal {
   outcome?: 'active' | 'win' | 'loss' | 'breakeven' | 'expired' | 'invalidated';
   // Live lifecycle state (Adaptive Signal Intelligence) — mirrors backend Signal model.
   live_status?: string | null;
+  /** How long the CURRENT phase has lasted — re-stamped on every lifecycle
+   *  transition. Feeds LiveStatusBadge's `since`. NOT the signal's age. */
   live_status_since?: string | null;
+  /** When the signal became PUBLIC: its first waiting_entry -> active
+   *  transition (birth for a signal born directly active). Backend-derived —
+   *  see app/services/publication.py. Use THIS for user-facing age; the public
+   *  feed only carries post-activation signals, so `generated_at` overstates
+   *  how long the trade has been open. */
+  activated_at?: string | null;
   status_reason?: string | null;
   status_updated_at?: string | null;
   actual_return?: number | null;

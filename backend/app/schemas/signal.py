@@ -52,9 +52,16 @@ class SignalResponse(BaseModel):
     expires_at: Optional[datetime] = None
     # Live lifecycle state (Adaptive Signal Intelligence) — see Signal model.
     live_status: Optional[str] = None
+    # How long the CURRENT phase has lasted — re-stamped on every transition.
+    # This is the status badge's input, NOT the signal's age; see `activated_at`.
     live_status_since: Optional[datetime] = None
     status_reason: Optional[str] = None
     status_updated_at: Optional[datetime] = None
+    # When the signal became PUBLIC: its first waiting_entry -> active
+    # transition, falling back to `generated_at` for a signal born directly
+    # active. Derived, never stored — see app/services/publication.py. Only the
+    # public list/detail populate it; history responses leave it None.
+    activated_at: Optional[datetime] = None
     outcome: Optional[str] = None  # active / win / loss / breakeven / expired
     detail_label: Optional[str] = None  # detailed outcome reason (tp1_hit, correct_dir_tight_sl, ...)
     actual_return: Optional[float] = None
@@ -100,6 +107,8 @@ class SignalDetailResponse(BaseModel):
     live_status: Optional[str] = None
     status_reason: Optional[str] = None
     status_updated_at: Optional[datetime] = None
+    # Same semantics as SignalResponse.activated_at — see publication.py.
+    activated_at: Optional[datetime] = None
     performance: Optional["SignalPerformanceResponse"] = None
 
     model_config = {"from_attributes": True}

@@ -116,6 +116,29 @@ export function formatDateTR(input: string | number | Date): string {
  * Format relative time. Compares two epoch moments — timezone independent
  * since getTime() returns UTC ms. Sub-day labels still mean what users expect.
  */
+/**
+ * The timestamp a PUBLIC signal's age must be measured from.
+ *
+ * The public feed carries only post-activation signals (see the backend's
+ * publication allow-list), so "how old is this?" means "how long has the trade
+ * been open?", not "when was the candidate born". `activated_at` is derived by
+ * the API from the first waiting_entry -> active transition; it falls back to
+ * `generated_at` there for a signal born directly active, and this falls back
+ * again so a response that predates the field still renders.
+ *
+ * Deliberately NOT `live_status_since`: that is re-stamped on every lifecycle
+ * transition, so it measures the CURRENT phase's age (it is the right input for
+ * LiveStatusBadge and the wrong one here).
+ *
+ * Structural parameter type on purpose — no ApiSignal import, so this stays a
+ * pure formatting helper.
+ */
+export function publicSince(
+  s: { activated_at?: string | null; generated_at: string },
+): string {
+  return s.activated_at ?? s.generated_at;
+}
+
 export function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();

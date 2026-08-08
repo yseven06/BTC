@@ -22,7 +22,8 @@ from app.models.signal import Signal, SignalOutcome, SignalPerformance, SignalTy
 from app.models.intelligence import SignalSnapshot, CoinMemory, SignalStatusHistory, SignalTradePath
 from app.services.entry_flags import entry_activation_enabled
 from app.services.lifecycle_log import birth_event
-from app.services.publication import PUBLIC_LIVE_STATUSES, is_publishable
+from app.services.publication import (PUBLIC_LIVE_STATUSES, activation_times,
+                                       is_publishable, public_since)
 from app.models.user import User
 from app.backtesting import labels as outcome_labels
 from app.backtesting import lifecycle
@@ -125,8 +126,14 @@ async def list_signals(
 
     total_pages = max(1, (total + page_size - 1) // page_size)
 
+    # PUBLIC AGE. Only post-activation signals are served here, so the age the
+    # user reads must run from activation, not from candidate birth. ONE grouped
+    # query for the whole page — see publication.activation_times.
+    activated = await activation_times(db, [s.id for s in signals])
+
     def _to_resp(s: Signal) -> SignalResponse:
         d = SignalResponse.model_validate(s)
+        d.activated_at = public_since(activated.get(s.id), s.generated_at)
         perf = s.performance
         d.outcome = perf.outcome.value if perf else "active"
         if perf:
@@ -853,7 +860,12 @@ async def get_signal(
             detail="Signal not found.",
         )
 
-    return SignalDetailResponse.model_validate(signal)
+    resp = SignalDetailResponse.model_validate(signal)
+    # Same public-age contract as the list, so the two cannot disagree.
+    resp.activated_at = public_since(
+        (await activation_times(db, [signal.id])).get(signal.id),
+        signal.generated_at)
+    return resp
 
 
 @router.post(

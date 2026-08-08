@@ -305,10 +305,23 @@ def test_T13_T17_no_decision_path_file_mentions_the_publication_boundary():
 
 
 def test_the_boundary_never_writes():
-    """Visibility only — the module must not mutate anything."""
-    src = _src("app/services/publication.py")
-    for forbidden in ("db.", "session", "commit", "update(", "delete(", "insert("):
-        assert forbidden not in src, forbidden
+    """Visibility only — the module must not MUTATE anything.
+
+    It reads: CP-PUBLICATION-TIMESTAMP-DEBT added a grouped SELECT for the
+    activation timestamp. So the assertion is about mutation, not about the
+    string "db." — the earlier form banned the substring and would have failed
+    on a perfectly legitimate read. Parsed, not grepped, so the module's own
+    prose cannot trip it either.
+    """
+    tree = ast.parse(_src("app/services/publication.py"))
+    called = {n.func.attr for n in ast.walk(tree)
+              if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
+    for forbidden in ("commit", "rollback", "add", "add_all", "delete",
+                      "merge", "flush", "execute_many"):
+        assert forbidden not in called, forbidden
+    names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+    for forbidden in ("insert", "update", "delete"):
+        assert forbidden not in names, forbidden
 
 
 def test_no_migration_was_added_by_this_checkpoint():

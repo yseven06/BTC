@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Eye, TrendingUp, TrendingDown } from 'lucide-react';
 import { type ApiSignal } from '@/lib/api';
 import { type LivePrice } from '@/hooks/useLivePrices';
-import { cn, formatAbsoluteTimeTR, formatRelativeTime, formatPrice, formatPercentage } from '@/lib/utils';
+import { cn, formatAbsoluteTimeTR, formatRelativeTime, formatPrice, formatPercentage, publicSince } from '@/lib/utils';
 import { PriceSkeleton } from '@/components/ui/PriceSkeleton';
 import { LiveStatusBadge } from '@/components/ui/LiveStatusBadge';
 
@@ -18,7 +18,11 @@ import { LiveStatusBadge } from '@/components/ui/LiveStatusBadge';
 // dusurur (squeeze/taşma yerine). Tabanlar gercek icerik-genisliginden turetildi.
 const GRID_TEMPLATE =
   'minmax(180px,2fr) minmax(92px,1fr) minmax(104px,1.2fr) minmax(150px,1.5fr) minmax(116px,1.3fr) minmax(120px,1.5fr) auto';
-const COLUMNS = ['SEMBOL · TF', 'YÖN', 'ANLIK FİYAT', 'KALİTE SKORU', 'DURUM', 'ÜRETİLDİ', 'ANALİZ'] as const;
+// "AKTİF OLDU", not "ÜRETİLDİ": the public feed carries only post-activation
+// signals, so the column measures how long the trade has been open. Calling an
+// activation time "üretildi" would be false — candidate birth can precede it by
+// hours (COMPUSDT: born 18.5h ago, active for 1.8h).
+const COLUMNS = ['SEMBOL · TF', 'YÖN', 'ANLIK FİYAT', 'KALİTE SKORU', 'DURUM', 'AKTİF OLDU', 'ANALİZ'] as const;
 
 // ─── Density ──────────────────────────────────────────────────────────────────
 // User-controlled row density. Drives the per-row vertical padding via the
@@ -355,10 +359,13 @@ export function SignalTableRow({
         )}
       </div>
 
-      {/* Generation time — PV-D3a: kompakt göreli zaman (satır gürültüsü ↓);
-          tam damga title/hover'da (formatAbsoluteTimeTR yalnız title, utils değişmez). */}
-      <div className="text-micro font-mono text-text-secondary" title={formatAbsoluteTimeTR(sig.generated_at)}>
-        {formatRelativeTime(sig.generated_at)}
+      {/* Activation time — PV-D3a: kompakt göreli zaman (satır gürültüsü ↓);
+          tam damga title/hover'da. Yayınlanan her sinyal aktive olmuştur, bu
+          yüzden gösterilen yaş AKTİVASYONDAN sayılır; üretim damgası title'da
+          ikinci satır olarak korunur (iki kavram, ikisi de etiketli). */}
+      <div className="text-micro font-mono text-text-secondary"
+           title={`Aktif oldu: ${formatAbsoluteTimeTR(publicSince(sig))}\nÜretildi: ${formatAbsoluteTimeTR(sig.generated_at)}`}>
+        {formatRelativeTime(publicSince(sig))}
       </div>
 
       {/* Action */}
@@ -451,8 +458,9 @@ export function SignalCardRow({
           ) : (
             <OutcomeBadge outcome={outcome} />
           )}
-          <span className="text-micro font-mono text-text-secondary truncate" title={formatAbsoluteTimeTR(sig.generated_at)}>
-            {formatRelativeTime(sig.generated_at)}
+          <span className="text-micro font-mono text-text-secondary truncate"
+                title={`Aktif oldu: ${formatAbsoluteTimeTR(publicSince(sig))}\nÜretildi: ${formatAbsoluteTimeTR(sig.generated_at)}`}>
+            {formatRelativeTime(publicSince(sig))}
           </span>
         </div>
         <button
