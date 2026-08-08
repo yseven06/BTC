@@ -22,6 +22,7 @@ from app.models.signal import Signal, SignalOutcome, SignalPerformance, SignalTy
 from app.models.intelligence import SignalSnapshot, CoinMemory, SignalStatusHistory, SignalTradePath
 from app.services.entry_flags import entry_activation_enabled
 from app.services.lifecycle_log import birth_event
+from app.services.publication import PUBLIC_LIVE_STATUSES, is_publishable
 from app.models.user import User
 from app.backtesting import labels as outcome_labels
 from app.backtesting import lifecycle
@@ -75,8 +76,17 @@ async def list_signals(
         # Cap how many they can ask for and how many we surface in total.
         page_size = min(page_size, free_cap)
     # Crypto-only ürün (2026-07): BIST/hisse kaldırıldı — sinyaller yalnız kripto.
+    #
+    # PUBLICATION BOUNDARY. `is_active` alone was the whole filter, so
+    # `waiting_entry` rows — signals whose entry zone price has NOT been seen,
+    # i.e. no position exists — were served to the public feed beside genuinely
+    # open trades. See app/services/publication.py for why this is an allow-list
+    # of post-activation states rather than `!= waiting_entry`, and why it is
+    # not keyed on activation HISTORY. Visibility only: nothing about how the
+    # signal was generated, activated or resolved changes.
     query = select(Signal).where(
         Signal.is_active == True,
+        Signal.live_status.in_(PUBLIC_LIVE_STATUSES),
         Signal.asset.has(Asset.asset_type == AssetType.CRYPTO),
     )
 
@@ -653,7 +663,10 @@ async def signal_intelligence(
         .where(Signal.id == signal_id)
     )
     signal = res.unique().scalar_one_or_none()
-    if signal is None:
+    # Publication boundary — the intelligence panel is a public detail surface,
+    # so it answers for exactly the signals the detail endpoint answers for.
+    if signal is None or not is_publishable(is_active=signal.is_active,
+                                            live_status=signal.live_status):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signal not found.")
 
     symbol = signal.asset.symbol if signal.asset else None
@@ -828,7 +841,13 @@ async def get_signal(
     result = await db.execute(query)
     signal = result.unique().scalar_one_or_none()
 
-    if signal is None:
+    # Same publication boundary as the list. A LIVE signal that has not reached a
+    # post-activation state is indistinguishable from "not found" on a public
+    # surface — otherwise hiding it from the feed would only mean it takes one
+    # more request to read. A CLOSED signal is history and stays visible,
+    # including one that never filled.
+    if signal is None or not is_publishable(is_active=signal.is_active,
+                                            live_status=signal.live_status):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Signal not found.",
