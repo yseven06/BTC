@@ -463,8 +463,23 @@ def test_the_fetch_window_from_passb_a_is_unbroken():
     from app.services.shadow_eval import historical_window
     assert {tf: historical_window(BAR, tf)[2]
             for tf in ("15m", "1h", "4h", "1d")} == {"15m": 212, "1h": 68, "4h": 32, "1d": 22}
-    src = textwrap.dedent(inspect.getsource(runner._fetch_bars))
-    assert "end_time_ms=int(window_end.timestamp() * 1000)" in src
+    # BEHAVIOURAL, not a source-substring match. The old form asserted the
+    # literal text `end_time_ms=int(window_end.timestamp() * 1000)` appeared in
+    # the function body, so hoisting that expression into a local broke the guard
+    # while the behaviour was identical — and, worse, a comment containing the
+    # string would have satisfied it. Assert what the collector actually receives.
+    import asyncio as _asyncio
+
+    seen = {}
+
+    class _Spy:
+        async def fetch_ohlcv(self, symbol, timeframe, limit=100, end_time_ms=None):
+            seen.update(end_time_ms=end_time_ms, limit=limit)
+            return bars([[100.0, 100.1, 99.9, 100.0]] * 5)
+
+    _asyncio.run(runner._fetch_bars(_Spy(), "BTCUSDT", "15m", BAR))
+    assert seen["limit"] == 212
+    assert seen["end_time_ms"] == int((BAR + SHADOW_HORIZON).timestamp() * 1000)
 
 
 def test_the_provenance_exposes_the_new_gates_and_leaks_nothing():

@@ -106,9 +106,10 @@ async def test_the_fetch_passes_end_time_ms_for_the_candidates_own_window():
                         end_time_ms=end_time_ms)
             return frame(BAR_TIME, 10, timeframe)
 
-    df, requested, failed = await runner._fetch_bars(
+    df, requested, failed, kind = await runner._fetch_bars(
         Collector(), "BTCUSDT", "15m", BAR_TIME)
     assert failed is False
+    assert kind is None, "a clean fetch carries no failure kind"
     assert requested == 212
     assert seen["limit"] == 212
     assert seen["end_time_ms"] is not None
@@ -137,8 +138,10 @@ async def test_a_failed_fetch_is_reported_as_failure_not_as_emptiness():
         async def fetch_ohlcv(self, *a, **kw):
             raise RuntimeError("boom")
 
-    df, requested, failed = await runner._fetch_bars(Broken(), "BTCUSDT", "15m", BAR_TIME)
+    df, requested, failed, kind = await runner._fetch_bars(
+        Broken(), "BTCUSDT", "15m", BAR_TIME, retries=0)
     assert df is None and failed is True and requested == 212
+    assert kind == "error", "a raised exception is an error, never a timeout"
 
 
 # ------------------------------------------- 3-4, 20: causality of the clip
@@ -482,6 +485,7 @@ async def test_pass_b_issues_no_update_in_dry_run(monkeypatch):
             self.statements = []
             self.commits = 0
             self.rollbacks = 0
+            self.expunges = 0
 
         async def __aenter__(self):
             return self
@@ -498,6 +502,12 @@ async def test_pass_b_issues_no_update_in_dry_run(monkeypatch):
 
         async def rollback(self):
             self.rollbacks += 1
+
+        def expunge_all(self):
+            # The real AsyncSession expires every instance on rollback, so pass B
+            # detaches the batch first. The fake has to model that call or it
+            # would pass while the real run dies with MissingGreenlet.
+            self.expunges += 1
 
     db = DB()
 
@@ -522,7 +532,14 @@ async def test_pass_b_issues_no_update_in_dry_run(monkeypatch):
     # reached and this test would pass vacuously.
     assert sum(stats[k] for k in ("tp1", "tp2", "tp3", "stop", "expiry")) == 1, dict(stats)
     assert db.commits == 0
-    assert db.rollbacks == 1
+    # TWO rollbacks, and the count is exact on purpose. The first releases the
+    # read transaction immediately after the batch SELECT — database.py sets
+    # idle_in_transaction_session_timeout=180000 and a dry-run issues no SQL
+    # across the fetch loop, so holding it would have Postgres kill the session
+    # mid-batch. The second is the original closing rollback. If either
+    # disappears this must fail rather than silently regress.
+    assert db.rollbacks == 2, (
+        "expected the pre-loop transaction release plus the closing rollback")
     for stmt in db.statements:
         assert str(stmt).strip().upper().startswith("SELECT"), str(stmt)[:100]
 
@@ -538,6 +555,8 @@ async def test_pass_b_does_issue_the_update_when_writing(monkeypatch):
         def __init__(self):
             self.statements = []
             self.commits = 0
+            self.rollbacks = 0
+            self.expunges = 0
 
         async def __aenter__(self):
             return self
@@ -623,9 +642,12 @@ async def test_an_unsupported_timeframe_fails_one_row_not_the_batch():
         async def fetch_ohlcv(self, *a, **kw):
             raise AssertionError("must not reach the network for a bad timeframe")
 
-    df, requested, failed = await runner._fetch_bars(
+    df, requested, failed, kind = await runner._fetch_bars(
         Collector(), "BTCUSDT", "30m", BAR_TIME)
     assert df is None and failed is True and requested == 0
+    # Its own kind: a bad timeframe is a property of the STORED row, not a
+    # network condition, so it must not be reported as a transient fetch error.
+    assert kind == "unsupported_timeframe"
 
 
 def test_the_maturity_gate_and_the_walk_horizon_are_the_same_48_hours():
