@@ -324,8 +324,91 @@ def test_the_boundary_never_writes():
         assert forbidden not in names, forbidden
 
 
+# The migration set the publication checkpoint was written against, by NAME.
+CHECKPOINT_MIGRATIONS = frozenset({
+    "0001_consent_log.sql", "0002_stripe_subscription.sql",
+    "0003_per_user_notifications.sql", "0004_signal_snapshot_extra.sql",
+    "0005_notify_lifecycle.sql", "0006_enable_rls.sql",
+    "0007_rls_revoke_data_api.sql", "0008_signal_performance_times.sql",
+    "0009_resolution_provenance.sql", "0010_candidate_log_rls.sql",
+})
+
+# The two tables publication actually reads: the signal row it serves and the
+# transition history it derives `activated_at` from.
+GUARDED_TABLES = frozenset({"signals", "signal_status_history"})
+
+_SQL_COMMENT = re.compile(r"--[^\n]*|/\*.*?\*/", re.S)
+_DDL_TABLE = re.compile(
+    r"\b(?:create|alter|drop)\s+table\s+(?:if\s+(?:not\s+)?exists\s+)?"
+    r'"?(?:public\.)?"?([a-z_][a-z0-9_]*)', re.I)
+
+
+def _ddl_targets(sql: str) -> set:
+    """Tables a migration CREATEs, ALTERs or DROPs, comments stripped first."""
+    return {m.group(1).lower()
+            for m in _DDL_TABLE.finditer(_SQL_COMMENT.sub(" ", sql))}
+
+
 def test_no_migration_was_added_by_this_checkpoint():
-    names = sorted(p.name for p in (BACKEND / "migrations").glob("*.sql"))
-    assert "0011_ohlcv_shadow.sql" not in names, (
-        "the OHLCV branch must not be mixed into this one")
-    assert names[-1] == "0010_candidate_log_rls.sql", names
+    """This checkpoint added no migration — proven LOCALLY.
+
+    The old form asserted `"0011_ohlcv_shadow.sql" not in names` with the
+    message "the OHLCV branch must not be mixed into this one". That intent was
+    right and is preserved below, but the ASSERTION was a permanent veto on
+    another checkpoint's legitimate file: once CP-OHLCV-A1 lands 0011 through
+    its own gates, publication is no more "mixed into" it than it is into 0009.
+    A filename ban cannot tell entanglement from coexistence.
+
+    What actually has to stay true is that publication does not DEPEND on OHLCV,
+    and that is asserted directly in
+    `test_publication_never_couples_to_the_ohlcv_store`.
+    """
+    mig = BACKEND / "migrations"
+    present = {p.name for p in mig.glob("*.sql")}
+    assert {n for n in present if n[:4] <= "0010"} == CHECKPOINT_MIGRATIONS, (
+        f"the migration set this checkpoint pinned moved; found {sorted(present)}")
+    for p in sorted(mig.glob("*.sql")):
+        if p.name in CHECKPOINT_MIGRATIONS:
+            continue
+        hit = _ddl_targets(p.read_text(encoding="utf-8")) & GUARDED_TABLES
+        assert not hit, (
+            f"{p.name} moves {sorted(hit)} — publication's own tables. THIS is "
+            f"what 'must not be mixed into this one' was protecting.")
+
+
+def test_publication_never_couples_to_the_ohlcv_store():
+    """The real content of the old 0011 prohibition, as a semantic assertion.
+
+    Fails the moment publication imports, reads, writes or otherwise depends on
+    the OHLCV shadow store — which is what "must not be mixed" meant — while
+    staying silent about that store merely existing.
+    """
+    surfaces = ("app/services/publication.py", "app/api/routes/signals.py")
+    for rel in surfaces:
+        src = _src(rel)
+        tree = ast.parse(src)
+
+        imported = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported.update(a.name for a in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                imported.add(node.module or "")
+                imported.update(a.name for a in node.names)
+        assert not any("ohlcv" in n.lower() for n in imported), (
+            f"{rel} imports the OHLCV store: {sorted(imported)}")
+
+        # Names actually referenced in CODE — docstrings and comments stripped,
+        # so a note explaining the decoupling cannot trip its own guard.
+        code = re.sub(r"#[^\n]*", " ", src)
+        code = re.sub(r'"""(?:.|\n)*?"""', " ", code)
+        code = re.sub(r"'''(?:.|\n)*?'''", " ", code)
+        for token in ("OhlcvBar", "ohlcv_bars", "ohlcv_shadow"):
+            assert token not in code, f"{rel} references {token}"
+
+    # And the dependency must not arrive through the back door either: nothing
+    # publication imports may itself reach the store.
+    from app.services import publication
+    assert not any("ohlcv" in m.lower()
+                   for m in getattr(publication, "__dict__", {})), (
+        "an OHLCV symbol reached the publication module namespace")

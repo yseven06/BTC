@@ -19,6 +19,7 @@ from app.models.admin_audit import AdminAuditLog
 from app.models.consent_log import ConsentLog
 from app.models.intelligence import SignalSnapshot, CoinMemory, SignalStatusHistory, SignalTradePath
 from app.models.decision_candidate import SignalDecisionCandidate
+from app.models.ohlcv_bar import OhlcvBar
 
 __all__ = [
     "User",
@@ -41,4 +42,5 @@ __all__ = [
     "SignalStatusHistory",
     "SignalTradePath",
     "SignalDecisionCandidate",
+    "OhlcvBar",
 ]

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+import re
 import textwrap
 
 import numpy as np
@@ -543,12 +544,64 @@ def test_the_two_directions_use_the_same_numeric_bar():
 
 
 # ------------------------------------------------- 29-31: no schema/state moves
+
+# The migration set this checkpoint was written against, pinned by NAME.
+#
+# This guard used to read `migrations[-1] == "0010_candidate_log_rls.sql"`, and
+# its own failure message named the scope correctly — "CP-FUND-VOTE-1 must not
+# add a migration". But the assertion did not test that. It tested a GLOBAL
+# fact, that nothing has been added to the repo since, which any LATER
+# checkpoint's migration falsifies while CP-FUND-VOTE-1 stays innocent.
+# scripts/migrate.py is built to apply exactly such new files ("only NEW
+# migrations run"), so the old form had a guaranteed expiry date.
+CHECKPOINT_MIGRATIONS = frozenset({
+    "0001_consent_log.sql", "0002_stripe_subscription.sql",
+    "0003_per_user_notifications.sql", "0004_signal_snapshot_extra.sql",
+    "0005_notify_lifecycle.sql", "0006_enable_rls.sql",
+    "0007_rls_revoke_data_api.sql", "0008_signal_performance_times.sql",
+    "0009_resolution_provenance.sql", "0010_candidate_log_rls.sql",
+})
+
+# Dropping the constant fundamental vote is a pure policy change: it moves a
+# number in the consensus pool and nothing else. The two tables whose shape
+# this checkpoint's claims rest on are the decision log it asserts is
+# unmoved (signal_decision_candidates, schema/policy version 1/1) and the
+# adaptive-weight store its F1-D contract test pins (coin_memory). DDL against
+# either would mean this checkpoint became a schema change after all.
+GUARDED_TABLES = frozenset({"signal_decision_candidates", "coin_memory"})
+
+_SQL_COMMENT = re.compile(r"--[^\n]*|/\*.*?\*/", re.S)
+_DDL_TABLE = re.compile(
+    r"\b(?:create|alter|drop)\s+table\s+(?:if\s+(?:not\s+)?exists\s+)?"
+    r'"?(?:public\.)?"?([a-z_][a-z0-9_]*)', re.I)
+
+
+def _ddl_targets(sql: str) -> set:
+    """Tables a migration CREATEs, ALTERs or DROPs.
+
+    Comments are stripped first — 0001 carries the words "ALTER TABLE" inside a
+    warning comment, and a guard that reads prose as DDL reports a schema move
+    that never happened.
+    """
+    return {m.group(1).lower()
+            for m in _DDL_TABLE.finditer(_SQL_COMMENT.sub(" ", sql))}
+
+
 def test_this_checkpoint_adds_no_migration():
     import pathlib
-    migrations = sorted(p.name for p in
-                        (pathlib.Path(__file__).parent.parent / "migrations").glob("*.sql"))
-    assert migrations[-1] == "0010_candidate_log_rls.sql", (
-        f"CP-FUND-VOTE-1 must not add a migration; found {migrations[-1]}")
+    mig = pathlib.Path(__file__).resolve().parent.parent / "migrations"
+    present = {p.name for p in mig.glob("*.sql")}
+    # Nothing this checkpoint was written against was removed, renamed, or had
+    # a file renumbered into the middle of it.
+    assert {n for n in present if n[:4] <= "0010"} == CHECKPOINT_MIGRATIONS, (
+        f"CP-FUND-VOTE-1's migration set moved; found {sorted(present)}")
+    # And no migration added SINCE touches the schema this checkpoint's claims
+    # rest on. Somebody else's unrelated table is not this test's business.
+    for p in sorted(mig.glob("*.sql")):
+        if p.name in CHECKPOINT_MIGRATIONS:
+            continue
+        hit = _ddl_targets(p.read_text(encoding="utf-8")) & GUARDED_TABLES
+        assert not hit, f"CP-FUND-VOTE-1 must not add a migration; {p.name} moves {sorted(hit)}"
 
 
 def test_the_f1d_adaptive_telemetry_contract_is_untouched():

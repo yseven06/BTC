@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 
 import numpy as np
 import pandas as pd
@@ -402,12 +403,65 @@ def test_an_absent_summary_records_null_rather_than_a_guess():
 
 
 # -------------------------------------------------------------- guards
+
+# The migration set this checkpoint was written against, pinned by NAME.
+#
+# This guard used to read `migrations[-1] == "0010_candidate_log_rls.sql"`. Its
+# failure message scoped the claim correctly — "CP-OBS-ENGINE-ERR must not add
+# a migration" — but the assertion tested a GLOBAL fact instead: that nothing
+# has been added to the repo since. Any LATER checkpoint's migration falsifies
+# that while this one stays innocent, and scripts/migrate.py exists to apply
+# exactly such files ("only NEW migrations run").
+CHECKPOINT_MIGRATIONS = frozenset({
+    "0001_consent_log.sql", "0002_stripe_subscription.sql",
+    "0003_per_user_notifications.sql", "0004_signal_snapshot_extra.sql",
+    "0005_notify_lifecycle.sql", "0006_enable_rls.sql",
+    "0007_rls_revoke_data_api.sql", "0008_signal_performance_times.sql",
+    "0009_resolution_provenance.sql", "0010_candidate_log_rls.sql",
+})
+
+# This checkpoint's whole schema claim, stated in test_the_candidate_schema_
+# did_not_move: the new telemetry rides in the candidate row's existing JSON
+# `extra`, so `engine_execution_telemetry` is NOT a column. A migration that
+# reaches the candidate table, or that names the field at all, is that promise
+# broken.
+GUARDED_TABLES = frozenset({"signal_decision_candidates"})
+GUARDED_MARKER = "engine_execution_telemetry"
+
+_SQL_COMMENT = re.compile(r"--[^\n]*|/\*.*?\*/", re.S)
+_DDL_TABLE = re.compile(
+    r"\b(?:create|alter|drop)\s+table\s+(?:if\s+(?:not\s+)?exists\s+)?"
+    r'"?(?:public\.)?"?([a-z_][a-z0-9_]*)', re.I)
+
+
+def _ddl_targets(sql: str) -> set:
+    """Tables a migration CREATEs, ALTERs or DROPs.
+
+    Comments are stripped first — 0001 carries the words "ALTER TABLE" inside a
+    warning comment, and a guard that reads prose as DDL reports a schema move
+    that never happened.
+    """
+    return {m.group(1).lower()
+            for m in _DDL_TABLE.finditer(_SQL_COMMENT.sub(" ", sql))}
+
+
 def test_this_checkpoint_adds_no_migration():
     import pathlib
-    migrations = sorted(p.name for p in
-                        (pathlib.Path(__file__).parent.parent / "migrations").glob("*.sql"))
-    assert migrations[-1] == "0010_candidate_log_rls.sql", (
-        f"CP-OBS-ENGINE-ERR must not add a migration; found {migrations[-1]}")
+    mig = pathlib.Path(__file__).resolve().parent.parent / "migrations"
+    present = {p.name for p in mig.glob("*.sql")}
+    # Nothing this checkpoint was written against was removed, renamed, or had
+    # a file renumbered into the middle of it.
+    assert {n for n in present if n[:4] <= "0010"} == CHECKPOINT_MIGRATIONS, (
+        f"CP-OBS-ENGINE-ERR's migration set moved; found {sorted(present)}")
+    for p in sorted(mig.glob("*.sql")):
+        sql = p.read_text(encoding="utf-8")
+        # The field is never schema, in any migration, ever.
+        assert GUARDED_MARKER not in sql.lower(), p.name
+        if p.name in CHECKPOINT_MIGRATIONS:
+            continue
+        hit = _ddl_targets(sql) & GUARDED_TABLES
+        assert not hit, (
+            f"CP-OBS-ENGINE-ERR must not add a migration; {p.name} moves {sorted(hit)}")
 
 
 def test_the_candidate_schema_did_not_move():

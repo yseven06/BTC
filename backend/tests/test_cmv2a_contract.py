@@ -776,12 +776,60 @@ def test_no_new_column_was_added_to_coin_memory():
     assert {c.name for c in CoinMemory.__table__.columns} == FROZEN_COIN_MEMORY_COLUMNS
 
 
+# The migration set this checkpoint was written against, pinned by NAME.
+#
+# This guard used to read `len(files) == 10 and files[-1] == "0010_..."`. That
+# proved a LOCAL claim — CMV2-A moved no schema — with a GLOBAL fact: nothing
+# has been added to the repo since. The two are not the same claim, and only
+# the first is CMV2-A's to make. scripts/migrate.py exists precisely to apply
+# NEW files ("only NEW migrations run", with a `pending` status), so the global
+# form was certain to fail one day on somebody else's migration while CMV2-A
+# itself remained exactly as innocent as the day it was written.
+CHECKPOINT_MIGRATIONS = frozenset({
+    "0001_consent_log.sql", "0002_stripe_subscription.sql",
+    "0003_per_user_notifications.sql", "0004_signal_snapshot_extra.sql",
+    "0005_notify_lifecycle.sql", "0006_enable_rls.sql",
+    "0007_rls_revoke_data_api.sql", "0008_signal_performance_times.sql",
+    "0009_resolution_provenance.sql", "0010_candidate_log_rls.sql",
+})
+
+# CMV2-A keeps the entire `cm_v2` namespace INSIDE coin_memory.tm_stats, an
+# already-existing JSON column. Creating, altering or dropping `coin_memory` is
+# therefore the exact move this checkpoint promised not to make — by whoever
+# makes it. A later checkpoint's unrelated table is not this test's business.
+GUARDED_TABLES = frozenset({"coin_memory"})
+
+_SQL_COMMENT = re.compile(r"--[^\n]*|/\*.*?\*/", re.S)
+_DDL_TABLE = re.compile(
+    r"\b(?:create|alter|drop)\s+table\s+(?:if\s+(?:not\s+)?exists\s+)?"
+    r'"?(?:public\.)?"?([a-z_][a-z0-9_]*)', re.I)
+
+
+def _ddl_targets(sql: str) -> set:
+    """Tables a migration CREATEs, ALTERs or DROPs.
+
+    Comments are stripped first — 0001 carries the words "ALTER TABLE" inside a
+    warning comment, and a guard that reads prose as DDL reports a schema move
+    that never happened.
+    """
+    return {m.group(1).lower()
+            for m in _DDL_TABLE.finditer(_SQL_COMMENT.sub(" ", sql))}
+
+
 def test_no_migration_file_was_added_for_this_checkpoint():
-    files = sorted(p.name for p in (BACKEND / "migrations").glob("*.sql"))
-    assert len(files) == 10, files
-    assert files[-1] == "0010_candidate_log_rls.sql"
-    for p in (BACKEND / "migrations").glob("*.sql"):
-        assert "cm_v2" not in p.read_text(encoding="utf-8").lower()
+    mig = BACKEND / "migrations"
+    present = {p.name for p in mig.glob("*.sql")}
+    # Nothing this checkpoint was written against was removed, renamed, or had
+    # a file renumbered into the middle of it.
+    assert {n for n in present if n[:4] <= "0010"} == CHECKPOINT_MIGRATIONS
+    for p in sorted(mig.glob("*.sql")):
+        sql = p.read_text(encoding="utf-8")
+        # The namespace is never schema, in any migration, ever.
+        assert "cm_v2" not in sql.lower(), p.name
+        if p.name in CHECKPOINT_MIGRATIONS:
+            continue
+        # And nothing added SINCE reaches the table CMV2-A rides inside.
+        assert not (_ddl_targets(sql) & GUARDED_TABLES), p.name
 
 
 # ══════════════════════════════════════════════════════════════════════════════

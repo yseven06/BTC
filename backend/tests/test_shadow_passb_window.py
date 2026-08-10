@@ -14,6 +14,7 @@ import ast
 import importlib.util
 import inspect
 import pathlib
+import re
 import sys
 import textwrap
 from datetime import datetime, timedelta, timezone
@@ -717,9 +718,55 @@ def test_no_geometry_is_ever_invented_for_a_hold_candidate():
     assert "stop_loss.isnot(None)" in src
 
 
+# The migration set this checkpoint was written against, pinned by NAME.
+#
+# This guard used to read `[-1] == "0010_candidate_log_rls.sql"`. That proved a
+# GLOBAL fact — that nothing has been added to the repo since — to support a
+# LOCAL claim, that THIS checkpoint added no migration. scripts/migrate.py
+# exists precisely to apply new files, so the old form had a guaranteed expiry
+# date, and CP-OHLCV-A1's 0011 is that date arriving.
+CHECKPOINT_MIGRATIONS = frozenset({
+    "0001_consent_log.sql", "0002_stripe_subscription.sql",
+    "0003_per_user_notifications.sql", "0004_signal_snapshot_extra.sql",
+    "0005_notify_lifecycle.sql", "0006_enable_rls.sql",
+    "0007_rls_revoke_data_api.sql", "0008_signal_performance_times.sql",
+    "0009_resolution_provenance.sql", "0010_candidate_log_rls.sql",
+})
+
+# The tables THIS checkpoint's claims actually rest on. A migration added later
+# by somebody else is not this test's business unless it moves one of these.
+GUARDED_TABLES = frozenset({"signal_decision_candidates"})
+
+_SQL_COMMENT = re.compile(r"--[^\n]*|/\*.*?\*/", re.S)
+_DDL_TABLE = re.compile(
+    r"\b(?:create|alter|drop)\s+table\s+(?:if\s+(?:not\s+)?exists\s+)?"
+    r'"?(?:public\.)?"?([a-z_][a-z0-9_]*)', re.I)
+
+
+def _ddl_targets(sql: str) -> set:
+    """Tables a migration CREATEs, ALTERs or DROPs.
+
+    Comments are stripped first — 0001 carries the words "ALTER TABLE" inside a
+    warning comment, and a guard that reads prose as DDL reports a schema move
+    that never happened.
+    """
+    return {m.group(1).lower()
+            for m in _DDL_TABLE.finditer(_SQL_COMMENT.sub(" ", sql))}
+
+
 def test_this_checkpoint_adds_no_migration():
-    migrations = sorted(p.name for p in (BACKEND / "migrations").glob("*.sql"))
-    assert migrations[-1] == "0010_candidate_log_rls.sql", migrations[-1]
+    mig = pathlib.Path(__file__).resolve().parent.parent / "migrations"
+    present = {p.name for p in mig.glob("*.sql")}
+    # Nothing this checkpoint was written against was removed, renamed, or had
+    # a file renumbered into the middle of it.
+    assert {n for n in present if n[:4] <= "0010"} == CHECKPOINT_MIGRATIONS, (
+        f"the migration set this checkpoint pinned moved; found {sorted(present)}")
+    # And no migration added SINCE touches the schema this checkpoint rests on.
+    for p in sorted(mig.glob("*.sql")):
+        if p.name in CHECKPOINT_MIGRATIONS:
+            continue
+        hit = _ddl_targets(p.read_text(encoding="utf-8")) & GUARDED_TABLES
+        assert not hit, f"{p.name} moves {sorted(hit)}, which this checkpoint depends on"
 
 
 def test_the_horizon_matches_the_signal_expiry_the_product_actually_stamps():

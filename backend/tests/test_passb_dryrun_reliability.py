@@ -42,6 +42,7 @@ import ast
 import asyncio
 import importlib.util
 import pathlib
+import re
 import subprocess
 import sys
 from collections import Counter
@@ -426,12 +427,73 @@ def test_T15_the_decision_path_is_untouched():
     for f in forbidden:
         assert f not in changed, f"{f} must not change in a reliability checkpoint"
     assert not [c for c in changed if c.startswith("frontend/")]
-    assert not [c for c in changed if "migrations/" in c]
+    # NO BLANKET MIGRATION CLAUSE HERE.
+    #
+    # This used to read `assert not [c for c in changed if "migrations/" in c]`.
+    # The diff it inspects is `main...HEAD`, so once this checkpoint MERGED the
+    # expression stopped describing this checkpoint at all and started
+    # describing whatever branch happens to be checked out. CP-OHLCV-A1 adds a
+    # migration legitimately, through its own gates, and this assertion failed —
+    # not because a reliability checkpoint had grown a schema change, but
+    # because a later, unrelated one had.
+    #
+    # The claim worth keeping is the LOCAL one, and it is asserted properly by
+    # `test_this_checkpoint_adds_no_migration` below: the migration set this
+    # checkpoint pinned is intact, and no migration added since performs DDL
+    # against `signal_decision_candidates` — the table Pass B actually depends
+    # on. That is strictly stronger than "the current diff mentions no
+    # migration", because it keeps biting long after this branch is history.
+
+
+# The migration set this checkpoint was written against, pinned by NAME.
+#
+# This guard used to read `[-1] == "0010_candidate_log_rls.sql"`. That proved a
+# GLOBAL fact — that nothing has been added to the repo since — to support a
+# LOCAL claim, that THIS checkpoint added no migration. scripts/migrate.py
+# exists precisely to apply new files, so the old form had a guaranteed expiry
+# date, and CP-OHLCV-A1's 0011 is that date arriving.
+CHECKPOINT_MIGRATIONS = frozenset({
+    "0001_consent_log.sql", "0002_stripe_subscription.sql",
+    "0003_per_user_notifications.sql", "0004_signal_snapshot_extra.sql",
+    "0005_notify_lifecycle.sql", "0006_enable_rls.sql",
+    "0007_rls_revoke_data_api.sql", "0008_signal_performance_times.sql",
+    "0009_resolution_provenance.sql", "0010_candidate_log_rls.sql",
+})
+
+# The tables THIS checkpoint's claims actually rest on. A migration added later
+# by somebody else is not this test's business unless it moves one of these.
+GUARDED_TABLES = frozenset({"signal_decision_candidates"})
+
+_SQL_COMMENT = re.compile(r"--[^\n]*|/\*.*?\*/", re.S)
+_DDL_TABLE = re.compile(
+    r"\b(?:create|alter|drop)\s+table\s+(?:if\s+(?:not\s+)?exists\s+)?"
+    r'"?(?:public\.)?"?([a-z_][a-z0-9_]*)', re.I)
+
+
+def _ddl_targets(sql: str) -> set:
+    """Tables a migration CREATEs, ALTERs or DROPs.
+
+    Comments are stripped first — 0001 carries the words "ALTER TABLE" inside a
+    warning comment, and a guard that reads prose as DDL reports a schema move
+    that never happened.
+    """
+    return {m.group(1).lower()
+            for m in _DDL_TABLE.finditer(_SQL_COMMENT.sub(" ", sql))}
 
 
 def test_this_checkpoint_adds_no_migration():
-    names = sorted(p.name for p in (BACKEND / "migrations").glob("*.sql"))
-    assert names[-1] == "0010_candidate_log_rls.sql", names
+    mig = pathlib.Path(__file__).resolve().parent.parent / "migrations"
+    present = {p.name for p in mig.glob("*.sql")}
+    # Nothing this checkpoint was written against was removed, renamed, or had
+    # a file renumbered into the middle of it.
+    assert {n for n in present if n[:4] <= "0010"} == CHECKPOINT_MIGRATIONS, (
+        f"the migration set this checkpoint pinned moved; found {sorted(present)}")
+    # And no migration added SINCE touches the schema this checkpoint rests on.
+    for p in sorted(mig.glob("*.sql")):
+        if p.name in CHECKPOINT_MIGRATIONS:
+            continue
+        hit = _ddl_targets(p.read_text(encoding="utf-8")) & GUARDED_TABLES
+        assert not hit, f"{p.name} moves {sorted(hit)}, which this checkpoint depends on"
 
 
 # ── T17 · the run deadline actually exists in the loop ───────────────────────

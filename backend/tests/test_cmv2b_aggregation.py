@@ -1273,13 +1273,64 @@ def _safe_src(obj):
         return ""
 
 
+# The migration set this checkpoint was written against, pinned by NAME.
+#
+# This guard used to close with `len(files) == 10 and files[-1] == "0010_..."`.
+# That proved a LOCAL claim — CMV2-B moved no schema — with a GLOBAL fact:
+# nothing has been added to the repo since. Only the first is CMV2-B's to make.
+# scripts/migrate.py is built to apply NEW files ("only NEW migrations run"),
+# so the global form was guaranteed to fail one day on a migration belonging to
+# some other checkpoint entirely, saying nothing about this one.
+CHECKPOINT_MIGRATIONS = frozenset({
+    "0001_consent_log.sql", "0002_stripe_subscription.sql",
+    "0003_per_user_notifications.sql", "0004_signal_snapshot_extra.sql",
+    "0005_notify_lifecycle.sql", "0006_enable_rls.sql",
+    "0007_rls_revoke_data_api.sql", "0008_signal_performance_times.sql",
+    "0009_resolution_provenance.sql", "0010_candidate_log_rls.sql",
+})
+
+# The forward aggregates live inside the CMV2-A namespace in
+# coin_memory.tm_stats — an existing JSON column. Reaching `coin_memory` with
+# DDL is the move this checkpoint promised not to make.
+GUARDED_TABLES = frozenset({"coin_memory"})
+
+# The aggregate is a JSON key, never a schema object. Both spellings are
+# checked because either would mean the same promise was broken.
+GUARDED_MARKERS = ("cm_v2", "forward_aggregate")
+
+_SQL_COMMENT = re.compile(r"--[^\n]*|/\*.*?\*/", re.S)
+_DDL_TABLE = re.compile(
+    r"\b(?:create|alter|drop)\s+table\s+(?:if\s+(?:not\s+)?exists\s+)?"
+    r'"?(?:public\.)?"?([a-z_][a-z0-9_]*)', re.I)
+
+
+def _ddl_targets(sql: str) -> set:
+    """Tables a migration CREATEs, ALTERs or DROPs.
+
+    Comments are stripped first — 0001 carries the words "ALTER TABLE" inside a
+    warning comment, and a guard that reads prose as DDL reports a schema move
+    that never happened.
+    """
+    return {m.group(1).lower()
+            for m in _DDL_TABLE.finditer(_SQL_COMMENT.sub(" ", sql))}
+
+
 def test_no_new_column_and_no_new_migration():
     from app.models.intelligence import CoinMemory
     assert len(CoinMemory.__table__.columns) == 15
     assert not any("cm_v2" in c.name or "aggregate" in c.name
                    for c in CoinMemory.__table__.columns)
-    files = sorted(p.name for p in (BACKEND / "migrations").glob("*.sql"))
-    assert len(files) == 10 and files[-1] == "0010_candidate_log_rls.sql"
+    mig = BACKEND / "migrations"
+    present = {p.name for p in mig.glob("*.sql")}
+    # Nothing this checkpoint was written against was removed, renamed, or had
+    # a file renumbered into the middle of it.
+    assert {n for n in present if n[:4] <= "0010"} == CHECKPOINT_MIGRATIONS
+    for p in sorted(mig.glob("*.sql")):
+        sql = p.read_text(encoding="utf-8").lower()
+        assert not any(m in sql for m in GUARDED_MARKERS), p.name
+        if p.name in CHECKPOINT_MIGRATIONS:
+            continue
+        assert not (_ddl_targets(sql) & GUARDED_TABLES), p.name
 
 
 # ══════════════════════════════════════════════════════════════════════════════
