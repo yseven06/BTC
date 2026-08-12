@@ -93,6 +93,7 @@ class WriteResult:
     duplicate: int = 0
     invalid: int = 0
     forming_or_not_closed: int = 0
+    fetch_success: int = 0
     fetch_timeout: int = 0
     fetch_error: int = 0
     retry_recovered: int = 0
@@ -358,6 +359,18 @@ async def fetch_bars_bounded(
     `timeout=10.0` bounds each I/O operation but has no total-request dimension,
     so without this a stalled fetch has no ceiling at all.
     """
+    # RETRY CONTRACT: retries is the number of ADDITIONAL attempts and must be a
+    # non-negative integer. A negative value made `range(1, retries + 2)` empty,
+    # so the loop never ran and the function fell through to a `last` that was
+    # never bound — an UnboundLocalError raised instead of a classified result.
+    # Rejected here, loudly and BEFORE any network or database activity, rather
+    # than coerced to 0: silently treating -1 as "no retries" would hide a
+    # caller bug that the caller should fix.
+    if isinstance(retries, bool) or not isinstance(retries, int):
+        raise ValueError(f"retries must be an int, got {type(retries).__name__}")
+    if retries < 0:
+        raise ValueError(f"retries must be >= 0, got {retries}")
+
     res = result if result is not None else WriteResult()
     sym, tf = normalise_symbol(symbol), normalise_timeframe(timeframe)
     for attempt in range(1, retries + 2):
@@ -366,6 +379,7 @@ async def fetch_bars_bounded(
             df = await asyncio.wait_for(
                 collector.fetch_ohlcv(sym, tf, limit=limit, end_time_ms=end_time_ms),
                 timeout=timeout)
+            res.fetch_success += 1
             if attempt > 1:
                 res.retry_recovered += 1
             return df, "fetch_success"
@@ -443,17 +457,32 @@ async def collect_and_persist(
     across a network fetch is exactly how a session gets terminated mid-batch.
     Every network and CPU step above completes before the first `db.` call.
     """
+    # ONE result object for the whole call. It used to be discarded and replaced
+    # on the failure path, which threw away everything `fetch_bars_bounded` had
+    # counted — attempts, per-attempt timeouts, per-attempt errors, whether a
+    # retry had recovered — and reported a single synthetic flag instead. A
+    # caller could then see `fetch_timeout=1` for a run that had actually
+    # timed out three times, and `fetch_attempts=0` for a run that made three.
+    res = WriteResult()
+
     df, kind = await fetch_bars_bounded(
         collector, symbol, timeframe, limit=limit, end_time_ms=end_time_ms,
-        timeout=timeout, retries=retries)
+        timeout=timeout, retries=retries, result=res)
     if kind != "fetch_success":
-        res = WriteResult()
-        # Re-run of the counters is avoided by fetching with a shared result in
-        # the common path; here the failure kind is all there is to report.
-        setattr(res, kind, 1)
-        res.retry_exhausted = 1
+        # `fetch_bars_bounded` has already recorded the real per-attempt counts
+        # and set retry_exhausted. Nothing is synthesised here.
         return res
 
-    candidates, res = eligible_bars(df, symbol, timeframe, now=now, margin=margin)
+    # eligible_bars builds its own counters; fold them into the shared result so
+    # the fetch phase's numbers survive into what the caller sees.
+    candidates, elig = eligible_bars(df, symbol, timeframe, now=now, margin=margin)
+    res.fetched += elig.fetched
+    res.eligible += elig.eligible
+    res.forming_or_not_closed += elig.forming_or_not_closed
+    res.malformed_response += elig.malformed_response
+    res.invalid += elig.invalid
+    for reason, n in elig.invalid_reasons.items():
+        res.invalid_reasons[reason] = res.invalid_reasons.get(reason, 0) + n
+
     # FIRST session contact happens only now.
     return await persist_bars(db, candidates, result=res)
