@@ -68,6 +68,7 @@ class WmSession:
         self.registry = registry if registry is not None else []
         self.queries = []
         self.params = []
+        self.inserted = []
         self.savepoints = 0
         self.commits = 0
         self.rollbacks = 0
@@ -99,6 +100,11 @@ class WmSession:
             self.params.append(dict(stmt.compile().params))
         except Exception:                      # noqa: BLE001 — non-Core stmt
             self.params.append({})
+        if "INSERT INTO ohlcv_bars" in text:
+            try:
+                self.inserted.append(stmt.compile().params.get("source"))
+            except Exception:                  # noqa: BLE001 — non-Core stmt
+                self.inserted.append("<uncompilable>")
         rows = self.rows if "wm_pairs" in text else []
 
         class _R:
@@ -138,6 +144,16 @@ class Collector:
 
     async def close(self):
         self.closed += 1
+
+
+
+# A watermark that is legitimately CAUGHT UP: `Collector(n=6)` returns bars
+# T0..T0+5*step and withholds T0+5 as the forming candle, so T0+4 is the newest
+# bar that could ever have been persisted. Nothing is strictly greater than it,
+# which is what "quiet series" means — as opposed to a mark BEYOND anything the
+# exchange has, which is corruption and is asserted separately in section 14.
+def caught_up(symbols, tfs=STORAGE_TIMEFRAMES):
+    return [(s, tf, T0 + 4 * STEP[tf]) for s in symbols for tf in tfs]
 
 
 # ══ 1 · STRICTLY GREATER, never >= ══════════════════════════════════════════
@@ -384,8 +400,7 @@ async def test_a_series_with_nothing_new_opens_no_session_at_all():
     """The whole point: no new bars must cost no pool checkout, no BEGIN, no
     COMMIT. Opening a session "just in case" would put 228 round trips back."""
     reg = []
-    rows = [(s, tf, T0 + 500 * STEP[tf])
-            for s in ("BTCUSDT", "ETHUSDT") for tf in STORAGE_TIMEFRAMES]
+    rows = caught_up(("BTCUSDT", "ETHUSDT"))
     await collect_once(factory(reg, rows), Collector(n=6),
                        symbols=["BTCUSDT", "ETHUSDT"])
     assert [s for s in reg if s.savepoints] == [], "nothing new, yet a row was written"
@@ -414,8 +429,7 @@ async def test_only_the_genuinely_new_bars_reach_the_writer():
 @pytest.mark.asyncio
 async def test_skipped_means_zero_new_bars_and_nothing_else():
     reg = []
-    rows = [(s, tf, T0 + 500 * STEP[tf])
-            for s in ("AUSDT", "BUSDT") for tf in STORAGE_TIMEFRAMES]
+    rows = caught_up(("AUSDT", "BUSDT"))
     res = await collect_once(factory(reg, rows), Collector(n=6),
                              symbols=["AUSDT", "BUSDT"])
     assert res.symbols_skipped == 2
@@ -451,7 +465,7 @@ async def test_a_db_failure_is_a_failure_NOT_a_skip():
 
 @pytest.mark.asyncio
 async def test_succeeded_plus_failed_partitions_attempted():
-    rows = [("AUSDT", tf, T0 + 500 * STEP[tf]) for tf in STORAGE_TIMEFRAMES]
+    rows = caught_up(("AUSDT",))
     res = await collect_once(factory([], rows), Collector(n=6),
                              symbols=["AUSDT", "BUSDT"])
     assert res.symbols_succeeded + res.symbols_failed == res.symbols_attempted
@@ -748,3 +762,227 @@ async def test_a_healthy_run_reports_watermark_failed_false():
     res = await collect_once(factory([], [("BTCUSDT", "15m", T0)]), Collector(n=6),
                              symbols=["BTCUSDT"], timeframes=["15m"])
     assert res.watermark_failed is False and res.healthy is True
+
+
+# ══ 13 · SOURCE IS ONE VALUE PER ITEM, READ AND WRITTEN ════════════════════
+def _sources_of(reg):
+    """(watermark-read source binds, distinct row-write source values)."""
+    read, write = [], []
+    for s in reg:
+        for q, params in zip(s.queries, s.params):
+            if "wm_pairs" in q:
+                read += [v for k, v in params.items() if k.startswith("source")]
+        write += s.inserted
+    return read, sorted(set(write))
+
+
+@pytest.mark.asyncio
+async def test_binance_source_is_read_and_written_unchanged():
+    reg = []
+    await collect_once(factory(reg), Collector(n=6), symbols=["BTCUSDT"],
+                       timeframes=["15m"], source=SOURCE_BINANCE)
+    read, write = _sources_of(reg)
+    assert read == [SOURCE_BINANCE] and write == [SOURCE_BINANCE]
+
+
+@pytest.mark.asyncio
+async def test_a_non_binance_source_is_never_silently_rewritten_to_binance():
+    """The defect this pins: `source` reached the watermark READ but not the
+    WRITE, so a caller asking for one provider got rows stamped with another —
+    and the run still reported healthy. Two providers would then share one
+    namespace while each believed it owned its own."""
+    reg = []
+    res = await collect_once(factory(reg), Collector(n=6), symbols=["BTCUSDT"],
+                             timeframes=["15m"], source="kraken")
+    read, write = _sources_of(reg)
+    assert read == ["kraken"], f"watermark read used {read}"
+    assert write == ["kraken"], f"rows were stamped {write}, not 'kraken'"
+    assert SOURCE_BINANCE not in write, "silently fell back to binance"
+    assert res.bars_persisted > 0, "vacuous if nothing was written at all"
+
+
+@pytest.mark.asyncio
+async def test_read_source_equals_write_source_for_every_source_tried():
+    for src in (SOURCE_BINANCE, "kraken", "coinbase", "SOURCE-WITH-DASH"):
+        reg = []
+        await collect_once(factory(reg), Collector(n=6), symbols=["BTCUSDT"],
+                           timeframes=["15m"], source=src)
+        read, write = _sources_of(reg)
+        assert read == [src] == write, f"{src}: read={read} write={write}"
+
+
+def test_source_participates_in_the_natural_key_identity():
+    """Same symbol/timeframe/open_time under two sources are DIFFERENT rows."""
+    now = T0 + 99 * STEP["15m"]
+    a, _ = eligible_bars(frame(4), "BTCUSDT", "15m", now=now, source=SOURCE_BINANCE)
+    b, _ = eligible_bars(frame(4), "BTCUSDT", "15m", now=now, source="kraken")
+    assert [x.open_time for x in a] == [x.open_time for x in b]
+    ka = {(x.source, x.symbol, x.timeframe, x.open_time) for x in a}
+    kb = {(x.source, x.symbol, x.timeframe, x.open_time) for x in b}
+    assert ka and ka.isdisjoint(kb), "two sources collapsed into one namespace"
+    assert W.CONFLICT_TARGET[0] == "source", "source must lead the conflict target"
+
+
+@pytest.mark.asyncio
+async def test_two_sources_in_sequence_do_not_cross_contaminate():
+    regs = {}
+    for src in ("kraken", SOURCE_BINANCE):
+        regs[src] = []
+        await collect_once(factory(regs[src]), Collector(n=6), symbols=["BTCUSDT"],
+                           timeframes=["15m"], source=src)
+    for src, reg in regs.items():
+        read, write = _sources_of(reg)
+        assert read == [src] == write, f"{src} leaked: read={read} write={write}"
+
+
+@pytest.mark.asyncio
+async def test_an_empty_source_is_refused_rather_than_stamping_a_nameless_row():
+    for bad in ("", "   ", None, 7):
+        with pytest.raises(ValueError, match="source"):
+            await collect_once(factory([]), Collector(), symbols=["A"], source=bad)
+
+
+def test_collect_and_persist_forwards_source_rather_than_re_deriving_it():
+    """Structural: one item has exactly ONE authoritative source, the caller's."""
+    src = inspect.getsource(W.collect_and_persist)
+    tree = ast.parse(src.lstrip())
+    call = next(n for n in ast.walk(tree)
+                if isinstance(n, ast.Call)
+                and getattr(n.func, "id", "") == "eligible_bars")
+    kw = {k.arg for k in call.keywords}
+    assert "source" in kw, "eligible_bars called without source; it will default"
+    passed = next(k for k in call.keywords if k.arg == "source")
+    assert isinstance(passed.value, ast.Name) and passed.value.id == "source", \
+        "source must be forwarded verbatim, not re-derived or hard-coded"
+
+
+# ══ 14 · A FUTURE WATERMARK IS AN ANOMALY, NOT A QUIET SERIES ══════════════
+FUTURE = T0 + timedelta(days=3650)
+
+
+def _future_rows(symbols, tfs=("15m",)):
+    return [(s, tf, FUTURE) for s in symbols for tf in tfs]
+
+
+@pytest.mark.asyncio
+async def test_a_future_watermark_is_reported_as_a_distinct_anomaly():
+    """Without this the lower bound silently removes every candidate, the item
+    persists nothing, and the run reports healthy forever while the series is
+    frozen — indistinguishable from a market that simply had no new bars."""
+    reg = []
+    res = await collect_once(factory(reg, _future_rows(["BTCUSDT"])), Collector(n=6),
+                             symbols=["BTCUSDT"], timeframes=["15m"])
+    assert res.watermark_anomalies == 1
+    assert res.healthy is False, "a frozen series must never report healthy"
+    assert res.symbols_skipped == 0, "an anomaly must not be laundered into a skip"
+    assert any("WATERMARK ANOMALY" in f for f in res.failures)
+    assert res.bars_persisted == 0, "progress must not be faked"
+    assert sum(s.savepoints for s in reg) == 0, "no row may be written"
+
+
+@pytest.mark.asyncio
+async def test_the_anomaly_neither_resets_rewinds_nor_backfills():
+    reg = []
+    await collect_once(factory(reg, _future_rows(["BTCUSDT"])), Collector(n=6),
+                       symbols=["BTCUSDT"], timeframes=["15m"])
+    stmts = " ".join(q.upper() for s in reg for q in s.queries)
+    for forbidden in ("DELETE", "UPDATE", "TRUNCATE", "DROP", "INSERT"):
+        assert forbidden not in stmts, f"anomaly path issued a {forbidden}"
+
+
+@pytest.mark.asyncio
+async def test_the_anomaly_does_not_trigger_historical_seeking():
+    col = Collector(n=6)
+    await collect_once(factory([], _future_rows(["BTCUSDT"])), col,
+                       symbols=["BTCUSDT"], timeframes=["15m"])
+    assert all(end is None for _, _, _, end in col.calls), "anomaly started a backfill"
+    assert len(col.calls) == 1, "anomaly caused extra fetches (paging)"
+
+
+@pytest.mark.asyncio
+async def test_siblings_continue_past_an_anomalous_series():
+    rows = _future_rows(["AAAUSDT"]) + [("BBBUSDT", "15m", T0)]
+    res = await collect_once(factory([], rows), Collector(n=6),
+                             symbols=["AAAUSDT", "BBBUSDT"], timeframes=["15m"])
+    assert res.watermark_anomalies == 1
+    assert res.symbols_attempted == 2
+    assert res.bars_persisted > 0, "the healthy sibling must still be collected"
+    assert res.symbols_failed == 0, "an anomaly is not a failure of another symbol"
+    assert res.healthy is False
+
+
+@pytest.mark.asyncio
+async def test_the_anomalous_symbol_is_not_counted_as_failed():
+    """The fetch worked and the database worked. Calling it a failure would send
+    an operator hunting for an outage that never happened."""
+    res = await collect_once(factory([], _future_rows(["BTCUSDT"])), Collector(n=6),
+                             symbols=["BTCUSDT"], timeframes=["15m"])
+    assert res.symbols_failed == 0
+    assert res.symbols_succeeded + res.symbols_failed == res.symbols_attempted
+    assert res.db_error == 0 and res.retry_exhausted == 0
+
+
+@pytest.mark.asyncio
+async def test_a_current_or_past_watermark_stays_healthy():
+    """Guard against the anomaly gate firing on ordinary marks."""
+    for mark in (T0, T0 + 3 * STEP["15m"], T0 + 4 * STEP["15m"]):
+        res = await collect_once(factory([], [("BTCUSDT", "15m", mark)]),
+                                 Collector(n=6), symbols=["BTCUSDT"],
+                                 timeframes=["15m"])
+        assert res.watermark_anomalies == 0, f"false positive at mark {mark}"
+        assert res.healthy is True
+
+
+@pytest.mark.asyncio
+async def test_a_watermark_equal_to_the_forming_bar_is_not_flagged():
+    """Equality is deliberately not an anomaly: the newest element of a response
+    is the forming candle, which the closure rule already withholds, so only a
+    STRICTLY greater watermark is provably impossible."""
+    newest = frame(6).index[-1].to_pydatetime()
+    res = await collect_once(factory([], [("BTCUSDT", "15m", newest)]),
+                             Collector(n=6), symbols=["BTCUSDT"], timeframes=["15m"])
+    assert res.watermark_anomalies == 0 and res.healthy is True
+
+
+def test_the_anomaly_authority_is_the_response_not_the_clock():
+    """No tolerance is applied and none is needed: both sides of the comparison
+    come from the SAME fetch, so clock skew cannot manufacture a false positive.
+    A margin here would be a second clock rule."""
+    df = frame(6)
+    assert W._newest_open_time(df) == df.index[-1].to_pydatetime()
+    assert W._newest_open_time(df.iloc[0:0]) is None
+    assert W._newest_open_time(None) is None
+    src = inspect.getsource(W.collect_and_persist)
+    tail = src[src.index("newest = _newest_open_time"):src.index("watermark_in_future")]
+    assert "now" not in tail, "the anomaly comparison must not consult the clock"
+    assert ">" in tail and ">=" not in tail, "must be STRICTLY greater"
+
+
+@pytest.mark.asyncio
+async def test_a_watermark_READ_FAILURE_stays_separate_from_a_FUTURE_watermark():
+    """Two different worlds: 'we could not read it' vs 'we read it and it is
+    impossible'. Conflating them hides a corrupt series behind a transient
+    database story, and the degrade paths are opposite — one bootstraps, the
+    other must write nothing at all."""
+    broken = await collect_once(lambda: _WmBroken(), Collector(n=6),
+                                symbols=["BTCUSDT"], timeframes=["15m"])
+    assert broken.watermark_failed is True and broken.watermark_anomalies == 0
+    assert broken.bars_persisted > 0, "a read failure still collects (bootstrap)"
+
+    future = await collect_once(factory([], _future_rows(["BTCUSDT"])), Collector(n=6),
+                                symbols=["BTCUSDT"], timeframes=["15m"])
+    assert future.watermark_anomalies == 1 and future.watermark_failed is False
+    assert future.bars_persisted == 0, "an impossible mark must write nothing"
+    assert broken.healthy is False and future.healthy is False
+
+
+@pytest.mark.asyncio
+async def test_the_anomaly_run_stays_bounded():
+    col = Collector(n=6)
+    syms = [f"S{i}USDT" for i in range(6)]
+    res = await collect_once(factory([], _future_rows(syms, STORAGE_TIMEFRAMES)), col,
+                             symbols=syms)
+    n = 6 * len(STORAGE_TIMEFRAMES)
+    assert len(col.calls) == n, "one fetch per item, no retry storm"
+    assert res.watermark_anomalies == n
+    assert res.bars_persisted == 0 and res.healthy is False

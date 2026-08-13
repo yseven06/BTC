@@ -469,3 +469,85 @@ def test_this_checkpoint_adds_no_migration():
 def test_the_backfill_script_was_not_resurrected():
     assert not (BACKEND / "scripts" / "ohlcv_backfill.py").exists(), (
         "backfill is A3 scope and its --write path is known dead code")
+
+
+# ══ DE-DUPLICATION: the duplicate must be where drop_newest CANNOT mask it ══
+#
+# The pre-existing guard above places its duplicate on the NEWEST bar, which the
+# forming-candle rule removes anyway — so one of the pair disappears for an
+# unrelated reason and the assertion still holds with de-duplication deleted.
+# Measured against a de-dup-removed mutant:
+#     duplicate at newest : n=5 unique=5  -> assertion PASSES (guard blind)
+#     duplicate in middle : n=5 unique=4  -> assertion FAILS  (defect visible)
+# These tests put the duplicate in the middle. The newest-bar tests above are
+# untouched and still cover the forming-candle rule on their own.
+
+
+def _mid_duplicate_frame():
+    """5 bars T0..T0+4, with T0+2 (a CLOSED, non-newest bar) sent twice."""
+    base = frame(5)
+    return pd.concat([base, base.iloc[2:3]])
+
+
+def test_a_duplicate_middle_closed_bar_is_collapsed_to_one_copy():
+    got, res = eligible_bars(_mid_duplicate_frame(), "BTCUSDT", "15m",
+                             now=T0 + 100 * STEP)
+    times = [c.open_time for c in got]
+    dup_time = T0 + 2 * STEP
+
+    assert times.count(dup_time) == 1, \
+        f"the duplicated middle bar was emitted {times.count(dup_time)} times"
+    assert len(times) == len(set(times)), f"duplicates survived: {times}"
+    # 6 rows in, one is a duplicate, one is the newest/forming bar -> 4 out.
+    assert len(got) == 4, f"expected 4 candidates, got {len(got)}"
+    assert times == sorted(times), "ordering must stay deterministic"
+
+
+def test_the_middle_duplicate_survives_de_dup_removal_and_would_be_caught():
+    """The guard's own falsification: with `duplicated(keep='last')` deleted the
+    middle duplicate reaches the candidate list, so this fixture — unlike the
+    newest-bar one — can actually observe the defect."""
+    src = (BACKEND / "app" / "services" / "ohlcv_writer.py").read_text(encoding="utf-8")
+    anchor = 'work = work[~work.index.duplicated(keep="last")].sort_index()'
+    assert src.count(anchor) == 1, "de-dup anchor moved; this guard needs updating"
+
+    import importlib.util
+    import sys
+    import tempfile
+    mut_path = pathlib.Path(tempfile.mkdtemp()) / "ohlcv_writer_nodedup.py"
+    mut_path.write_text(src.replace(anchor, "work = work.sort_index()"),
+                        encoding="utf-8")
+    spec = importlib.util.spec_from_file_location("ohlcv_writer_nodedup", mut_path)
+    mut = importlib.util.module_from_spec(spec)
+    sys.modules["ohlcv_writer_nodedup"] = mut
+    try:
+        spec.loader.exec_module(mut)
+        got, _ = mut.eligible_bars(_mid_duplicate_frame(), "BTCUSDT", "15m",
+                                   now=T0 + 100 * STEP)
+        times = [c.open_time for c in got]
+        assert len(times) != len(set(times)), \
+            "de-dup removal was NOT observable — this fixture cannot guard it"
+        assert times.count(T0 + 2 * STEP) == 2
+    finally:
+        sys.modules.pop("ohlcv_writer_nodedup", None)
+
+
+def test_the_middle_duplicate_guard_does_not_depend_on_the_newest_bar_rule():
+    """If drop_newest were what made the assertion hold, disabling it would not
+    change the duplicate count. It must not: the duplicate is in the middle."""
+    got, _ = eligible_bars(_mid_duplicate_frame(), "BTCUSDT", "15m",
+                           now=T0 + 100 * STEP, drop_newest=False)
+    times = [c.open_time for c in got]
+    assert times.count(T0 + 2 * STEP) == 1, "de-dup, not drop_newest, must do this"
+    assert len(times) == len(set(times))
+    assert len(got) == 5, "with the newest bar admitted, 6 rows minus 1 dup = 5"
+
+
+def test_repeated_and_out_of_order_middle_duplicates_still_collapse():
+    base = frame(6)
+    noisy = pd.concat([base, base.iloc[2:3], base.iloc[4:5], base.iloc[2:3]])
+    got, _ = eligible_bars(noisy.iloc[::-1], "BTCUSDT", "15m", now=T0 + 100 * STEP)
+    times = [c.open_time for c in got]
+    assert len(times) == len(set(times)), f"duplicates survived: {times}"
+    assert times == sorted(times), "reverse-order input must still come out sorted"
+    assert len(got) == 5, "6 distinct bars minus the newest/forming one"

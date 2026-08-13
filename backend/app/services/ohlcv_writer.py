@@ -115,6 +115,13 @@ class WriteResult:
     below_watermark: int = 0
     bootstrap_trimmed: int = 0
 
+    # The stored watermark is newer than anything the exchange returned, i.e.
+    # the store claims a bar that does not exist. Counted SEPARATELY from a
+    # watermark-read failure: that is "we could not read it", this is "we read
+    # it and it is impossible". Conflating them would hide a corrupt series
+    # behind a transient-database story.
+    watermark_in_future: int = 0
+
     invalid_reasons: Dict[str, int] = field(default_factory=dict)
     error: Optional[str] = None
 
@@ -325,6 +332,30 @@ def eligible_bars(
     return out, res
 
 
+def _newest_open_time(df) -> Optional[datetime]:
+    """The newest open_time the exchange actually returned, normalised to UTC.
+
+    Includes the still-forming candle on purpose: the question this answers is
+    "what is the furthest bar the exchange admits exists", which is the widest
+    possible upper bound a stored watermark could legitimately hold. Using the
+    newest CLOSED bar instead would flag a store that is merely one candle ahead
+    of the closure rule, which is not corruption.
+
+    Same tz normalisation as `eligible_bars`, so the two cannot disagree about
+    what a timestamp means.
+    """
+    if df is None or len(df) == 0:
+        return None
+    try:
+        idx = pd.DatetimeIndex(df.index)
+        idx = idx.tz_localize("UTC") if idx.tz is None else idx.tz_convert("UTC")
+    except (TypeError, ValueError):
+        # A malformed index is eligible_bars' problem to classify, not ours; a
+        # sanity check must never be the thing that raises.
+        return None
+    return max(idx).to_pydatetime()
+
+
 def _close_times(df: pd.DataFrame, *, timeframe: str) -> pd.DatetimeIndex:
     """Exchange close_time when present AND complete, derived otherwise."""
     if CLOSE_TIME_COLUMN in df.columns:
@@ -532,6 +563,7 @@ async def collect_and_persist(
     margin: timedelta = DEFAULT_CLOSED_MARGIN,
     after: Optional[datetime] = None,
     max_bars: Optional[int] = None,
+    source: str = SOURCE_BINANCE,
 ) -> WriteResult:
     """Fetch, decide closure, validate — THEN touch the session.
 
@@ -558,7 +590,14 @@ async def collect_and_persist(
 
     # eligible_bars builds its own counters; fold them into the shared result so
     # the fetch phase's numbers survive into what the caller sees.
-    candidates, elig = eligible_bars(df, symbol, timeframe, now=now, margin=margin)
+    #
+    # `source` is FORWARDED, never re-derived. It used to be omitted here, so
+    # eligible_bars fell back to its SOURCE_BINANCE default: a caller that asked
+    # for one provider's watermark got rows stamped with another provider's
+    # name, and the run still reported healthy. One item has exactly one
+    # authoritative source, and it is the caller's.
+    candidates, elig = eligible_bars(df, symbol, timeframe, now=now,
+                                     margin=margin, source=source)
     res.fetched += elig.fetched
     res.eligible += elig.eligible
     res.forming_or_not_closed += elig.forming_or_not_closed
@@ -566,6 +605,35 @@ async def collect_and_persist(
     res.invalid += elig.invalid
     for reason, n in elig.invalid_reasons.items():
         res.invalid_reasons[reason] = res.invalid_reasons.get(reason, 0) + n
+
+    # WATERMARK SANITY — the exchange refutes its own watermark.
+    #
+    # A stored watermark can only ever be a bar the exchange has already
+    # published. If it is STRICTLY NEWER than the newest bar in the response we
+    # just received, the store is claiming a candle the exchange does not have.
+    # That is corruption, not quiet market: without this gate the lower bound
+    # silently removes every candidate, the item persists nothing, and the run
+    # reports healthy forever while the series is frozen.
+    #
+    # AUTHORITY: the response itself, NOT the local clock. This is the same
+    # authority the closure rule's second gate already uses — "never the newest
+    # bar of a response" — chosen there precisely because it needs no trusted
+    # clock. NO TOLERANCE IS APPLIED, AND NONE IS NEEDED: both sides of the
+    # comparison come from the same fetch, so clock skew cannot manufacture a
+    # false positive, and inventing a margin here would be inventing a second
+    # clock rule. Equality is deliberately NOT flagged — the newest element of a
+    # response is the forming candle, which the closure rule already withholds,
+    # so only a strictly greater watermark is provably impossible.
+    #
+    # This detects; it never repairs. No reset, no rewind, no backfill — those
+    # are A4's, and silently "fixing" a watermark would destroy the evidence.
+    newest = _newest_open_time(df)
+    if after is not None and newest is not None and after > newest:
+        res.watermark_in_future += 1
+        res.error = (f"watermark {after.isoformat()} is newer than the newest bar "
+                     f"{newest.isoformat()} returned by the exchange for "
+                     f"{normalise_symbol(symbol)}/{normalise_timeframe(timeframe)}")
+        return res              # persist NOTHING; progress must not be faked
 
     candidates = apply_lower_bound(
         candidates, after=after, max_bars=max_bars, result=res)

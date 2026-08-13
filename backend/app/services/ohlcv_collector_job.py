@@ -150,7 +150,8 @@ class CollectionResult:
     fetch_ip_banned: int = 0
 
     # watermark phase
-    watermark_failed: bool = False     # the read failed; run degraded to bootstrap
+    watermark_failed: bool = False     # the read FAILED; run degraded to bootstrap
+    watermark_anomalies: int = 0       # the read SUCCEEDED and returned a future mark
     watermark_series_known: int = 0    # series that already had a stored bar
     series_bootstrapped: int = 0       # series seeded this run (no watermark)
     bars_below_watermark: int = 0      # already stored — never offered to the DB
@@ -177,13 +178,18 @@ class CollectionResult:
 
         `universe_overflow` counts as unhealthy on purpose — a truncated run that
         reports success is exactly the silent-coverage-loss failure this module
-        was designed to avoid. `watermark_failed` likewise: that run still
+        was designed to avoid. `watermark_anomalies` likewise, and for a sharper
+        reason: a series whose stored watermark is newer than anything the
+        exchange has can never advance again, and without this term the run
+        would report perfect health forever while that series stayed frozen.
+        `watermark_failed` likewise: that run still
         collected, but it did so on the degraded bootstrap path, and a run that
         reports full health while re-offering seeds every cadence would hide a
         persistent database problem behind a working-looking result.
         """
         return (not self.universe_overflow
                 and not self.watermark_failed
+                and self.watermark_anomalies == 0
                 and self.symbols_failed == 0
                 and self.db_error == 0
                 and self.retry_exhausted == 0)
@@ -200,6 +206,7 @@ class CollectionResult:
         self.fetch_rate_limited += r.fetch_rate_limited
         self.fetch_ip_banned += r.fetch_ip_banned
         self.bars_below_watermark += r.below_watermark
+        self.watermark_anomalies += r.watermark_in_future
         self.bars_bootstrap_trimmed += r.bootstrap_trimmed
         self.bars_fetched += r.fetched
         self.bars_eligible += r.eligible
@@ -382,6 +389,11 @@ async def collect_once(
         raise ValueError(f"bootstrap must be >= 1, got {bootstrap}")
     if spacing < 0:
         raise ValueError(f"spacing must be >= 0, got {spacing}")
+    if not isinstance(source, str) or not source.strip():
+        # An empty source would key the watermark under one name and, once
+        # forwarded, stamp rows with the same empty name — a namespace that no
+        # reader could ever ask for.
+        raise ValueError(f"source must be a non-empty string, got {source!r}")
 
     tfs = [normalise_timeframe(t) for t in timeframes]   # raises on unknown
     if not tfs:
@@ -434,6 +446,7 @@ async def collect_once(
         res.symbols_attempted += 1
         sym = normalise_symbol(symbol)
         symbol_ok = True
+        symbol_anomaly = False
         symbol_new_bars = 0
         for tf in tfs:
             res.timeframes_attempted += 1
@@ -457,11 +470,20 @@ async def collect_once(
                         limit=limit, end_time_ms=None,      # LIVE window only
                         timeout=timeout, retries=retries,
                         after=mark,                          # STRICTLY GREATER
-                        max_bars=None if mark is not None else bootstrap)
+                        max_bars=None if mark is not None else bootstrap,
+                        source=source)      # read source == write source
                     await db.commit()
                 res.absorb(r)
                 symbol_new_bars += r.persisted + r.duplicate + r.db_rejected
-                if r.retry_exhausted or r.db_error:
+                if r.watermark_in_future:
+                    # NOT a failure — the fetch and the database both worked.
+                    # It is a data-integrity anomaly, reported under its own
+                    # name so it can never be read as a transient outage, and
+                    # never silently absorbed into `symbols_skipped`.
+                    symbol_anomaly = True
+                    res.failures.append(f"{symbol}/{tf}: WATERMARK ANOMALY: {r.error}")
+                    log.error("OHLCV watermark anomaly for %s/%s: %s", symbol, tf, r.error)
+                elif r.retry_exhausted or r.db_error:
                     symbol_ok = False
                     res.failures.append(f"{symbol}/{tf}: {r.error or 'fetch failed'}")
             except Exception as exc:      # noqa: BLE001 — isolation is the point
@@ -479,7 +501,7 @@ async def collect_once(
             # those are failures and are counted as failures. Note that skipped
             # is a SUBSET of succeeded, deliberately: such a symbol did succeed.
             # `succeeded + failed == attempted` remains the partition.
-            if symbol_new_bars == 0:
+            if symbol_new_bars == 0 and not symbol_anomaly:
                 res.symbols_skipped += 1
         else:
             res.symbols_failed += 1
