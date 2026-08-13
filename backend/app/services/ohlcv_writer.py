@@ -102,6 +102,19 @@ class WriteResult:
     db_error: int = 0
     malformed_response: int = 0
     fetch_attempts: int = 0
+
+    # HTTP classification. These were previously indistinguishable inside
+    # `fetch_error`, which meant a rate limit and a malformed URL produced the
+    # same number and the same immediate retry.
+    fetch_rate_limited: int = 0      # HTTP 429 — backed off, then retried
+    fetch_ip_banned: int = 0         # HTTP 418 — retries ABANDONED, see below
+
+    # WATERMARK ACCOUNTING. Bars the caller's lower bound removed before the
+    # session was touched. These are NOT duplicates: a duplicate is a row the
+    # database rejected, these never reached it.
+    below_watermark: int = 0
+    bootstrap_trimmed: int = 0
+
     invalid_reasons: Dict[str, int] = field(default_factory=dict)
     error: Optional[str] = None
 
@@ -339,6 +352,51 @@ def _opt_int(row, key):
 
 
 # ── bounded network phase ────────────────────────────────────────────────────
+# ── HTTP CLASSIFICATION HELPERS ──────────────────────────────────────────────
+# Deliberately duck-typed rather than `except httpx.HTTPStatusError`. The writer
+# takes ANY object with `fetch_ohlcv`, so it must not assume the collector is
+# built on httpx; a fake, a ccxt client or a future replacement raising its own
+# exception type still classifies correctly if it carries a status code.
+BACKOFF_BASE_SECONDS = 1.0
+BACKOFF_MAX_SECONDS = 5.0
+
+
+def _http_status(exc: Exception) -> Optional[int]:
+    """Best-effort HTTP status for an arbitrary exception. None if not HTTP."""
+    resp = getattr(exc, "response", None)
+    code = getattr(resp, "status_code", None) if resp is not None else None
+    if code is None:
+        code = getattr(exc, "status_code", None)
+    return code if isinstance(code, int) else None
+
+
+def _retry_after_seconds(exc: Exception) -> Optional[float]:
+    """Honour a Retry-After header, CLAMPED.
+
+    An unclamped Retry-After is a remote party handing us an arbitrary sleep
+    inside a budgeted job. Binance may legitimately answer with minutes; obeying
+    that literally would blow the job budget, so it is capped and the cap — not
+    the exchange — decides the worst case.
+    """
+    resp = getattr(exc, "response", None)
+    headers = getattr(resp, "headers", None) if resp is not None else None
+    if not headers:
+        return None
+    try:
+        raw = headers.get("Retry-After") or headers.get("retry-after")
+        if raw is None:
+            return None
+        return max(0.0, min(float(raw), BACKOFF_MAX_SECONDS))
+    except (TypeError, ValueError):
+        # A date-form Retry-After, or junk. Fall back to the local schedule.
+        return None
+
+
+def _backoff_seconds(attempt: int) -> float:
+    """Bounded exponential: 1s, 2s, 4s … capped at BACKOFF_MAX_SECONDS."""
+    return min(BACKOFF_BASE_SECONDS * (2 ** (attempt - 1)), BACKOFF_MAX_SECONDS)
+
+
 async def fetch_bars_bounded(
     collector,
     symbol: str,
@@ -389,9 +447,32 @@ async def fetch_bars_bounded(
             # 429, and the whole point is that it stays visible.
             res.fetch_timeout += 1
             last = "fetch_timeout"
-        except Exception:  # noqa: BLE001
-            res.fetch_error += 1
-            last = "fetch_error"
+            backoff = _backoff_seconds(attempt)
+        except Exception as exc:  # noqa: BLE001
+            status = _http_status(exc)
+            if status == 418:
+                # Binance returns 418 when an IP has been BANNED for ignoring
+                # 429s. Every further request extends the ban, so retrying is
+                # not merely useless, it is the thing that deepens the hole.
+                # Abandon the retry budget immediately.
+                res.fetch_ip_banned += 1
+                res.retry_exhausted += 1
+                res.error = "HTTP 418: IP banned by exchange; retries abandoned"
+                return None, "fetch_ip_banned"
+            if status == 429:
+                res.fetch_rate_limited += 1
+                last = "fetch_rate_limited"
+                backoff = _retry_after_seconds(exc) or _backoff_seconds(attempt)
+            else:
+                res.fetch_error += 1
+                last = "fetch_error"
+                backoff = _backoff_seconds(attempt)
+
+        # Wait only if another attempt is actually coming. Sleeping after the
+        # final attempt buys nothing and spends job budget.
+        if attempt <= retries and backoff > 0:
+            await asyncio.sleep(backoff)
+
     res.retry_exhausted += 1
     return None, last
 
@@ -449,6 +530,8 @@ async def collect_and_persist(
     timeout: float = DEFAULT_FETCH_TIMEOUT,
     retries: int = DEFAULT_FETCH_RETRIES,
     margin: timedelta = DEFAULT_CLOSED_MARGIN,
+    after: Optional[datetime] = None,
+    max_bars: Optional[int] = None,
 ) -> WriteResult:
     """Fetch, decide closure, validate — THEN touch the session.
 
@@ -484,5 +567,48 @@ async def collect_and_persist(
     for reason, n in elig.invalid_reasons.items():
         res.invalid_reasons[reason] = res.invalid_reasons.get(reason, 0) + n
 
+    candidates = apply_lower_bound(
+        candidates, after=after, max_bars=max_bars, result=res)
+
     # FIRST session contact happens only now.
     return await persist_bars(db, candidates, result=res)
+
+
+def apply_lower_bound(
+    candidates: List[BarCandidate],
+    *,
+    after: Optional[datetime],
+    max_bars: Optional[int],
+    result: WriteResult,
+) -> List[BarCandidate]:
+    """Drop bars at or below `after`, then cap an unbounded first load.
+
+    THE WRITER NEVER READS A WATERMARK. `after` is supplied by the caller, which
+    is what keeps the watermark a caller-owned optimisation instead of a claim
+    this module makes about the store. Passing None is always safe and always
+    correct — it simply offers everything, exactly as before.
+
+    STRICTLY GREATER, NEVER >=. `after` is a persisted `open_time`, and
+    (source, symbol, timeframe, open_time) is the natural key, so a bar whose
+    open_time EQUALS the watermark is by definition the row already stored.
+    `>=` would re-offer that one row on every single run of every series
+    forever — one guaranteed wasted savepoint round trip per series per run,
+    which is precisely the cost this gate exists to remove.
+
+    WHAT THIS IS NOT: `after` is an optimisation boundary, not an assertion that
+    the series is complete below it. Gaps before `after` are entirely possible
+    and detecting or repairing them is A4's job. Nothing here may be read as
+    "there is no hole before W".
+    """
+    if after is not None:
+        kept = [c for c in candidates if c.open_time > after]
+        result.below_watermark += len(candidates) - len(kept)
+        candidates = kept
+    elif max_bars is not None and len(candidates) > max_bars:
+        # NO WATERMARK — this series has never been written. Without a cap the
+        # first run would offer the entire fetch window for every series at
+        # once, which is the one-off stampede that made activation unaffordable.
+        # `eligible_bars` returns ascending, so the tail is the newest.
+        result.bootstrap_trimmed += len(candidates) - max_bars
+        candidates = candidates[-max_bars:]
+    return candidates

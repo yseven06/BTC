@@ -119,6 +119,12 @@ class FakeSession:
 
         class _R:
             rowcount = 1
+
+            def all(self_):
+                # An EMPTY store: no watermark for any series. Every series
+                # therefore bootstraps, which is the state these A3a/A3b tests
+                # were written against and must keep exercising.
+                return []
         return _R()
 
     async def commit(self):
@@ -386,9 +392,12 @@ async def test_A3b_each_item_gets_its_own_session_and_commit():
     reg = []
     await collect_once(factory(reg), Collector("ok"), symbols=["AAA", "BBB"])
     per_item = 2 * len(STORAGE_TIMEFRAMES)
-    assert len(reg) == per_item, "one session per (symbol, timeframe)"
+    # reg[0] is A3c's watermark session, which is read-only and rolls back.
+    wm, items = reg[0], reg[1:]
+    assert wm.commits == 0, "the watermark read must never commit"
+    assert len(items) == per_item, "one session per (symbol, timeframe)"
     assert all(s.closed for s in reg), "every session closed"
-    assert all(s.commits == 1 for s in reg), "the CALLER commits, once per item"
+    assert all(s.commits == 1 for s in items), "the CALLER commits, once per item"
 
 
 # ══ A3b · failure isolation ═════════════════════════════════════════════════
@@ -414,12 +423,15 @@ async def test_A3b_one_symbol_db_outage_does_not_stop_the_others():
 
         def __call__(self):
             self.n += 1
-            bad = self.n <= len(STORAGE_TIMEFRAMES)      # first symbol's items
+            # n == 1 is A3c's watermark session; it must stay healthy so this
+            # test keeps measuring PER-ITEM isolation and not watermark fallback.
+            bad = 1 < self.n <= 1 + len(STORAGE_TIMEFRAMES)   # first symbol's items
             return FakeSession(reg, fail_on=(lambda s: bad))
 
     res = await collect_once(F(), Collector("ok"), symbols=["AAA", "BBB"])
     assert res.symbols_failed == 1 and res.symbols_succeeded == 1
     assert res.db_error > 0
+    assert not res.watermark_failed, "the watermark read was not the failure here"
 
 
 @pytest.mark.asyncio
