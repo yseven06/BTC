@@ -620,10 +620,7 @@ async def test_the_collector_is_closed_even_when_the_run_raises():
         async def fetch_ohlcv(self, *a, **k):
             raise RuntimeError("boom")
 
-    def fake_ctor(include_extended=False):
-        # mirrors the real BinanceCollector signature: the OHLCV path asks for
-        # the extended frame, every other consumer keeps the default.
-        assert include_extended is True, "the OHLCV path must request extended klines"
+    def fake_ctor():
         c = Exploding()
         made.append(c)
         return c
@@ -643,10 +640,6 @@ async def test_the_collector_is_closed_even_when_the_run_raises():
 @pytest.mark.asyncio
 async def test_a_failure_to_close_does_not_mask_the_real_outcome():
     class Stubborn(Collector):
-        def __init__(self, include_extended=False):
-            super().__init__()
-            self.include_extended = include_extended
-
         async def close(self):
             raise RuntimeError("close failed")
 

@@ -407,7 +407,12 @@ async def test_A3b_one_symbol_timeout_does_not_stop_the_others():
     res = await collect_once(factory([]), col, symbols=["AAA", "BBB", "CCC"],
                              timeout=0.02, retries=0)
     assert res.symbols_succeeded == 2 and res.symbols_failed == 1
-    assert res.fetch_timeout == len(STORAGE_TIMEFRAMES)
+    # A3c-repair-v2: a terminal item failure ABANDONS the rest of that symbol's
+    # timeframes for this run, so the sick symbol costs ONE item budget instead
+    # of four. The isolation contract that matters — other symbols continue — is
+    # asserted below and is unchanged.
+    assert res.fetch_timeout == 1
+    assert res.timeframes_skipped_after_failure == len(STORAGE_TIMEFRAMES) - 1
     assert res.bars_persisted > 0, "healthy symbols still stored"
     assert any("BBB" in f for f in res.failures)
 
@@ -424,8 +429,11 @@ async def test_A3b_one_symbol_db_outage_does_not_stop_the_others():
         def __call__(self):
             self.n += 1
             # n == 1 is A3c's watermark session; it must stay healthy so this
-            # test keeps measuring PER-ITEM isolation and not watermark fallback.
-            bad = 1 < self.n <= 1 + len(STORAGE_TIMEFRAMES)   # first symbol's items
+            # test keeps measuring isolation and not watermark fallback.
+            # A3c-repair-v2: only the FIRST item of the first symbol may fail —
+            # the symbol is then abandoned, so session 3 already belongs to the
+            # second symbol.
+            bad = self.n == 2
             return FakeSession(reg, fail_on=(lambda s: bad))
 
     res = await collect_once(F(), Collector("ok"), symbols=["AAA", "BBB"])
@@ -448,7 +456,10 @@ async def test_A3b_an_exception_escaping_the_writer_isolates_to_that_item():
 
     def exploding_factory():
         calls["n"] += 1
-        if calls["n"] in (2, 3):        # two items of the first symbol
+        # A3c-repair-v2: the first symbol is ABANDONED after one terminal
+        # failure, so only its first item may raise — targeting call 3 as well
+        # would land on the SECOND symbol and destroy what this test measures.
+        if calls["n"] == 2:             # the first item of the first symbol
             raise RuntimeError("pool exhausted")
         return FakeSession([])
 
@@ -456,7 +467,9 @@ async def test_A3b_an_exception_escaping_the_writer_isolates_to_that_item():
                              symbols=["AAA", "BBB"])
     assert res.symbols_attempted == 2
     assert res.symbols_failed == 1 and res.symbols_succeeded == 1
-    assert res.db_error == 2
+    # one raise, because the symbol is abandoned after it. The isolation
+    # contract is the two assertions above and the two below, not this count.
+    assert res.db_error == 1
     assert any("pool exhausted" in f for f in res.failures)
     assert res.bars_persisted > 0, "the healthy symbol still stored bars"
     assert res.healthy is False
@@ -482,8 +495,12 @@ async def test_A3b_retries_are_bounded_and_exhaustion_is_reported():
     col = Collector("err")
     res = await collect_once(factory([]), col, symbols=["AAA"], retries=2)
     per_tf = 3
-    assert len(col.calls) == per_tf * len(STORAGE_TIMEFRAMES)
-    assert res.retry_exhausted == len(STORAGE_TIMEFRAMES)
+    # A3c-repair-v2: retries stay bounded per item (3 attempts), and the symbol
+    # is abandoned after the first terminal exhaustion rather than repeating it
+    # on every timeframe.
+    assert len(col.calls) == per_tf
+    assert res.retry_exhausted == 1
+    assert res.timeframes_skipped_after_failure == len(STORAGE_TIMEFRAMES) - 1
     assert res.symbols_failed == 1 and res.healthy is False
 
 

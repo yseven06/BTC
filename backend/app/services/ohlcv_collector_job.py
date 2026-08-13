@@ -132,6 +132,41 @@ REQUEST_SPACING_SECONDS = 0.2
 # what still guarantees the cadence.
 ITEM_BUDGET_SECONDS = 25.0
 
+# THE INTENDED CADENCE, used ONLY as the fairness clock. Declaring it here does
+# not schedule anything; the activation checkpoint still owns registration.
+DEFAULT_CADENCE_SECONDS = 1800.0
+
+# ROTATION — the fairness mechanism, and the reason 600 s is survivable.
+#
+# THE PROBLEM IT SOLVES. The universe is a TOTAL order (Asset.symbol is unique),
+# every run started at index 0, and the outer budget admits only about
+# 600/25 = 24 items. Measured over four consecutive runs, three pathological
+# low-order symbols consumed the entire budget every time and the SAME 17-symbol
+# suffix was never attempted once. Deterministic starvation is worse than random
+# starvation: the same symbols lose forever.
+#
+# THE MECHANISM. Rotate the starting symbol by a cadence-bucket index derived
+# from wall-clock time:
+#
+#     bucket = floor(now / cadence);  offset = bucket mod len(symbols)
+#     order  = symbols[offset:] + symbols[:offset]
+#
+# It is deterministic (same bucket, same order), stateless (no cursor, no DB, no
+# process memory), and therefore untouched by restart or redeploy — the clock is
+# the only input. Over any len(symbols) consecutive buckets every offset occurs
+# exactly once, so a symbol at position p is reached in exactly as many runs as
+# any other: if a run reaches k symbols, every symbol is reached k times per
+# full rotation. No fixed suffix can starve while k >= 1.
+#
+# THE CLOCK IS A FAIRNESS INPUT ONLY. It never decides whether a candle is
+# closed: closure remains the exchange response's job (the two gates in
+# eligible_bars), and the watermark remains the persistence boundary. Rotation
+# changes only the ORDER items are visited in.
+#
+# Idempotency is what makes reordering free: the natural key plus
+# ON CONFLICT DO NOTHING means visiting a series in a different order can never
+# duplicate a row.
+
 # Bounds on what a single run may accumulate in memory before it is serialised.
 MAX_FAILURES_RETAINED = 50
 MAX_INVALID_REASONS = 25
@@ -189,6 +224,12 @@ class CollectionResult:
     bars_staged_rolled_back: int = 0
     failures_dropped: int = 0
 
+    # fairness / coverage accounting
+    rotation_offset: int = 0           # where this run started in the total order
+    symbols_unattempted: int = 0       # selected but never reached (budget expired)
+    symbols_abandoned: int = 0         # remaining timeframes dropped after a terminal failure
+    timeframes_skipped_after_failure: int = 0
+
     watermark_failed: bool = False     # the read FAILED; run degraded to bootstrap
     watermark_anomalies: int = 0       # the read SUCCEEDED and returned a future mark
     watermark_series_known: int = 0    # series that already had a stored bar
@@ -235,6 +276,15 @@ class CollectionResult:
                 and self.symbols_failed == 0
                 and self.db_error == 0
                 and self.retry_exhausted == 0)
+
+    def finalize_coverage(self) -> None:
+        """Record what the run never reached. Safe to call more than once.
+
+        Without this, a budget-truncated run is indistinguishable from a
+        complete one: `symbols_skipped` deliberately means "reached, nothing
+        new", so an unreached symbol would appear nowhere at all.
+        """
+        self.symbols_unattempted = max(0, self.symbols_selected - self.symbols_attempted)
 
     def as_dict(self) -> Dict[str, object]:
         """JSON-safe, bounded, stable-keyed witness.
@@ -430,6 +480,22 @@ async def load_watermarks(db, symbols: Sequence[str],
     return WatermarkSnapshot(source=source, marks=marks, series_known=len(marks))
 
 
+def rotation_offset(count: int, *, now: Optional[datetime] = None,
+                     cadence_seconds: float = DEFAULT_CADENCE_SECONDS) -> int:
+    """Deterministic, stateless starting index for this cadence bucket.
+
+    Derived from the clock alone, so it survives a restart or a redeploy: there
+    is no cursor to lose. `cadence_seconds` only buckets time; it is never a
+    statement about candles.
+    """
+    if count <= 0:
+        return 0
+    if cadence_seconds <= 0:
+        raise ValueError(f"cadence_seconds must be > 0, got {cadence_seconds}")
+    moment = now or datetime.now(timezone.utc)
+    return int(moment.timestamp() // cadence_seconds) % count
+
+
 async def collect_once(
     session_factory,
     collector,
@@ -444,6 +510,8 @@ async def collect_once(
     bootstrap: int = BOOTSTRAP_MAX_BARS,
     spacing: float = REQUEST_SPACING_SECONDS,
     item_budget: float = ITEM_BUDGET_SECONDS,
+    cadence_seconds: float = DEFAULT_CADENCE_SECONDS,
+    now: Optional[datetime] = None,
     result: Optional["CollectionResult"] = None,
 ) -> CollectionResult:
     """One serial pass over the storage universe. DORMANT — nothing calls this.
@@ -507,6 +575,12 @@ async def collect_once(
         res.symbols_discovered = len(selected)
     res.symbols_selected = len(selected)
 
+    # FAIRNESS ROTATION. Applied after selection so the cap and the overflow
+    # signal still describe the whole universe, and before any network call.
+    off = rotation_offset(len(selected), now=now, cadence_seconds=cadence_seconds)
+    res.rotation_offset = off
+    selected = list(selected[off:]) + list(selected[:off])
+
     # WATERMARK READ — one query, in its own session, closed before any network
     # call, exactly like the universe read above.
     #
@@ -542,9 +616,18 @@ async def collect_once(
         symbol_ok = True
         symbol_anomaly = False
         symbol_new_bars = 0
+        symbol_dead = False
         for tf in tfs:
             if res.aborted:
                 break
+            if symbol_dead:
+                # BOUNDED BLAST RADIUS. This symbol already burned a full item
+                # budget on a terminal failure; its other timeframes hit the
+                # same venue and would burn the same 25 s each. Dropping them
+                # keeps one sick symbol at ~25 s instead of ~100 s, which is
+                # what lets the rotation reach the rest of the universe.
+                res.timeframes_skipped_after_failure += 1
+                continue
             res.timeframes_attempted += 1
             mark = snapshot.get(source, sym, tf)
             if mark is None:
@@ -589,6 +672,7 @@ async def collect_once(
                     log.error("OHLCV watermark anomaly for %s/%s: %s", symbol, tf, r.error)
                 elif r.retry_exhausted or r.db_error:
                     symbol_ok = False
+                    symbol_dead = True      # the venue is unhealthy for this symbol
                     res.note_failure(f"{symbol}/{tf}: {r.error or 'fetch failed'}")
             except asyncio.CancelledError:
                 # THE OUTER JOB DEADLINE. Never swallowed and never relabelled:
@@ -597,16 +681,21 @@ async def collect_once(
                 # to propagate so job_guard still sees a cancelled task.
                 res.cancelled = True
                 res.note_failure(f"{symbol}/{tf}: run cancelled at outer deadline")
+                # Record coverage BEFORE unwinding: a cancelled run is exactly
+                # the case where "which symbols were never reached" matters.
+                res.finalize_coverage()
                 raise
             except (asyncio.TimeoutError, TimeoutError):
                 # This item burned its whole slice. Blast radius is one item.
                 res.items_deadline_exceeded += 1
                 symbol_ok = False
+                symbol_dead = True
                 res.note_failure(
                     f"{symbol}/{tf}: item deadline exceeded after {item_budget}s")
                 log.warning("OHLCV item deadline exceeded for %s/%s", symbol, tf)
             except Exception as exc:      # noqa: BLE001 — isolation is the point
                 symbol_ok = False
+                symbol_dead = True
                 res.db_error += 1
                 res.note_failure(f"{symbol}/{tf}: {type(exc).__name__}: {exc}")
                 log.warning("OHLCV collect failed for %s/%s: %s",
@@ -625,7 +714,10 @@ async def collect_once(
                 res.symbols_skipped += 1
         else:
             res.symbols_failed += 1
+            if symbol_dead:
+                res.symbols_abandoned += 1
 
+    res.finalize_coverage()
     return res
 
 
@@ -681,15 +773,20 @@ async def run_collection_once(session_factory, **kwargs) -> CollectionResult:
     accounted for. The cancellation itself is re-raised untouched: job_guard
     must still see a cancelled task, and a deadline must never read as success.
 
-    `include_extended=True` is the ONLY place the wider kline frame is
-    requested; every other consumer of BinanceCollector keeps the six-column
-    default.
+    THE SHARED COLLECTOR IS USED AS-IS. An earlier draft widened it to carry
+    quote_volume / trade_count / taker_buy_*, which the OHLCV schema has
+    nullable columns for. That was reverted: the four fields are nullable, carry
+    no CHECK constraint and are not validated, so they are not part of the first
+    activation contract — and Pass-B's T14 guard exists precisely to keep the
+    collector shared with the live scheduler out of a shadow store's reach.
+    Those columns simply stay NULL until a checkpoint that actually needs them
+    argues for the change on its own merits.
     """
     res = CollectionResult()
     res.run_id = uuid.uuid4().hex[:16]
     res.started_at = datetime.now(timezone.utc).isoformat()
     started = time.monotonic()
-    collector = BinanceCollector(include_extended=True)
+    collector = BinanceCollector()
     try:
         return await collect_once(session_factory, collector, result=res, **kwargs)
     except asyncio.CancelledError:

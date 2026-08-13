@@ -541,22 +541,33 @@ def test_collection_stays_strictly_serial():
     assert fan == [], "collection grew a fan-out"
 
 
-# ══ 9 · SHARED COLLECTOR BACKWARDS COMPATIBILITY ═══════════════════════════
-def test_binance_collector_default_is_unchanged_for_every_existing_consumer():
-    from app.collectors.binance_collector import BinanceCollector
-    assert BinanceCollector().include_extended is False
-    src = inspect.getsource(BinanceCollector.fetch_ohlcv)
-    assert 'keep = ["open", "high", "low", "close", "volume", "close_time"]' in src, \
-        "the default six-column projection changed"
+# ══ 9 · THE SHARED COLLECTOR MUST STAY UNTOUCHED ══════════════════════════
+def test_the_shared_binance_collector_is_byte_identical_to_production():
+    """Pass-B's T14 encodes a real boundary: the collector is shared with the
+    live signal sweeps, the tracker, the price/signal routes, the backtesting
+    engine and the AI decision engine. A shadow store must not reach into it.
+
+    An earlier draft added an opt-in `include_extended` constructor flag to
+    carry quote_volume / trade_count / taker_buy_*. It was reverted: those four
+    columns are nullable, unconstrained and unvalidated, so they are not part of
+    the first activation contract. They stay NULL.
+    """
+    import subprocess
+    out = subprocess.run(["git", "show",
+                          "7e156ffc72121f4cbfc838164dc03158e7ffc87c:backend/app/collectors/binance_collector.py"],
+                         cwd=BACKEND.parent, capture_output=True, check=True).stdout
+    live = (BACKEND / "app" / "collectors" / "binance_collector.py").read_bytes()
+    # git may materialise CRLF on checkout; compare content, not line endings.
+    def norm(b: bytes) -> bytes:
+        return b.replace(bytes([13, 10]), bytes([10]))
+
+    assert norm(live) == norm(out), "the shared production BinanceCollector was modified"
 
 
-def test_extended_columns_are_opt_in_only():
-    from app.collectors.binance_collector import BinanceCollector
-    sig = inspect.signature(BinanceCollector.__init__)
-    assert sig.parameters["include_extended"].default is False
-    assert "include_extended" not in inspect.signature(
-        BinanceCollector.fetch_ohlcv).parameters, \
-        "fetch_ohlcv's signature must stay untouched for duck-typed callers"
+def test_no_ohlcv_module_asks_the_collector_for_extra_columns():
+    for rel in ("app/services/ohlcv_collector_job.py", "app/services/ohlcv_writer.py"):
+        src = (BACKEND / rel).read_text(encoding="utf-8")
+        assert "include_extended" not in src, f"{rel} still requests a widened frame"
 
 
 def test_bar_candidate_can_carry_the_optional_fields():
@@ -591,81 +602,6 @@ def test_health_terms_are_individually_load_bearing():
         assert res.healthy is True, "a fresh result must be healthy"
         setattr(res, field, value)
         assert res.healthy is False, f"healthy ignored {field}={value!r}"
-
-
-@pytest.mark.asyncio
-async def test_extended_klines_are_actually_parsed_when_requested():
-    """Exercise the real parser, not just the projection source text."""
-    from app.collectors.binance_collector import BinanceCollector
-
-    row = [1754006400000, "1.0", "2.0", "0.5", "1.5", "10.0", 1754007299999,
-           "15.5", 42, "6.0", "9.0", "0"]
-
-    class _R:
-        status_code = 200
-
-        def raise_for_status(self):
-            return None
-
-        def json(self):
-            return [row, list(row)]
-
-    class _Client:
-        async def get(self, *a, **k):
-            return _R()
-
-        async def aclose(self):
-            return None
-
-    plain = BinanceCollector()
-    plain.client = _Client()
-    df_plain = await plain.fetch_ohlcv("BTCUSDT", "15m", limit=2)
-    assert list(df_plain.columns) == ["open", "high", "low", "close", "volume",
-                                      "close_time"], \
-        "the default frame changed shape for existing consumers"
-
-    ext = BinanceCollector(include_extended=True)
-    ext.client = _Client()
-    df_ext = await ext.fetch_ohlcv("BTCUSDT", "15m", limit=2)
-    for col in ("quote_volume", "trade_count",
-                "taker_buy_base_volume", "taker_buy_quote_volume"):
-        assert col in df_ext.columns, f"{col} was dropped despite include_extended"
-    assert float(df_ext["quote_volume"].iloc[0]) == 15.5
-    assert int(df_ext["trade_count"].iloc[0]) == 42
-    assert float(df_ext["taker_buy_base_volume"].iloc[0]) == 6.0
-    assert float(df_ext["taker_buy_quote_volume"].iloc[0]) == 9.0
-    # the six required columns must be byte-identical between the two modes
-    for col in ("open", "high", "low", "close", "volume", "close_time"):
-        assert df_ext[col].tolist() == df_plain[col].tolist()
-
-
-@pytest.mark.asyncio
-async def test_a_malformed_optional_field_becomes_null_not_a_lost_bar():
-    from app.collectors.binance_collector import BinanceCollector
-    row = [1754006400000, "1.0", "2.0", "0.5", "1.5", "10.0", 1754007299999,
-           "not-a-number", "also-bad", "6.0", "9.0", "0"]
-
-    class _R:
-        status_code = 200
-
-        def raise_for_status(self):
-            return None
-
-        def json(self):
-            return [row]
-
-    class _Client:
-        async def get(self, *a, **k):
-            return _R()
-
-    ext = BinanceCollector(include_extended=True)
-    ext.client = _Client()
-    df = await ext.fetch_ohlcv("BTCUSDT", "15m", limit=1)
-    assert len(df) == 1, "a malformed optional field discarded the whole bar"
-    assert pd.isna(df["quote_volume"].iloc[0])
-    assert pd.isna(df["trade_count"].iloc[0])
-    assert float(df["taker_buy_base_volume"].iloc[0]) == 6.0, \
-        "one bad field discarded its healthy siblings"
 
 
 def test_no_concurrency_primitive_is_even_referenced():
