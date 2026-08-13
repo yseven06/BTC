@@ -20,9 +20,22 @@ logger = logging.getLogger(__name__)
 class BinanceCollector(BaseCollector):
     """Binance Spot API Collector for Crypto Assets."""
 
-    def __init__(self) -> None:
+    def __init__(self, include_extended: bool = False) -> None:
+        """`include_extended` keeps the four optional kline fields.
+
+        DEFAULT FALSE, AND THAT DEFAULT IS THE SAFETY ARGUMENT. This collector is
+        shared by the signal sweeps, the tracker, the price and signal routes,
+        the backtesting engine and the AI decision engine. Every one of them
+        constructs `BinanceCollector()` with no arguments, so every one of them
+        keeps a byte-identical six-column frame. Only a caller that explicitly
+        asks — currently just the dormant OHLCV collector — sees the wider frame.
+
+        The alternative, widening `fetch_ohlcv` for everybody, would have put a
+        schema-shaped change in the live trading path to benefit a shadow store.
+        """
         self.base_url = "https://api.binance.com/api/v3"
         # Shared client for connection pooling
+        self.include_extended = include_extended
         self.client = httpx.AsyncClient(timeout=10.0)
 
     async def fetch_ohlcv(
@@ -97,7 +110,24 @@ class BinanceCollector(BaseCollector):
             # The forming candle is deliberately NOT removed here. The chart
             # (prices.py) and the tracker (tracker.py:294-311) both want it; only
             # the decision path needs it excluded, and that is its own concern.
-            df = df[["open", "high", "low", "close", "volume", "close_time"]]
+            keep = ["open", "high", "low", "close", "volume", "close_time"]
+            if self.include_extended:
+                # Binance supplies these on every kline; they are optional in the
+                # OHLCV schema, so a malformed value becomes NULL rather than
+                # failing the bar. Coerced individually: one bad field must not
+                # discard the other three, nor the bar itself.
+                for src_col, out_col, caster in (
+                    ("quote_asset_volume", "quote_volume", "float64"),
+                    ("number_of_trades", "trade_count", "Int64"),
+                    ("taker_buy_base_asset_volume", "taker_buy_base_volume", "float64"),
+                    ("taker_buy_quote_asset_volume", "taker_buy_quote_volume", "float64"),
+                ):
+                    if src_col in df.columns:
+                        df[out_col] = pd.to_numeric(df[src_col], errors="coerce")
+                        if caster == "Int64":
+                            df[out_col] = df[out_col].astype("Int64")
+                        keep.append(out_col)
+            df = df[keep]
             return df
 
         except Exception as e:

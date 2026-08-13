@@ -122,6 +122,12 @@ class WriteResult:
     # behind a transient-database story.
     watermark_in_future: int = 0
 
+    # HARD STOP for the whole run, not just this item. Currently set only by an
+    # HTTP 418 (the exchange has banned this IP): every further request extends
+    # the ban, so the caller must stop issuing them entirely.
+    abort_run: bool = False
+    abort_reason: Optional[str] = None
+
     invalid_reasons: Dict[str, int] = field(default_factory=dict)
     error: Optional[str] = None
 
@@ -489,6 +495,11 @@ async def fetch_bars_bounded(
                 res.fetch_ip_banned += 1
                 res.retry_exhausted += 1
                 res.error = "HTTP 418: IP banned by exchange; retries abandoned"
+                # Abandoning THIS item's retries is not enough: the ban is on the
+                # IP, so the remaining ~200 requests of the run would each extend
+                # it. Tell the caller to stop the run.
+                res.abort_run = True
+                res.abort_reason = "http_418_ip_banned"
                 return None, "fetch_ip_banned"
             if status == 429:
                 res.fetch_rate_limited += 1

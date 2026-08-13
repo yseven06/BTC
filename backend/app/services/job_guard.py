@@ -73,6 +73,24 @@ class JobSpec:
     cadence_seconds: Optional[float]
     critical: bool
 
+    # SHADOW TIER. A shadow job is observed exactly like any other — running,
+    # duration, stale, overrun and deadline counters all appear in snapshot() —
+    # but it is EXCLUDED from the global `degraded` aggregate.
+    #
+    # Why a third flag rather than reusing `critical`: `critical` already means
+    # "this job's staleness is a trading-path problem", and every existing spec
+    # sets it deliberately. Overloading it would silently change what `degraded`
+    # means for the six production jobs. `shadow` defaults to False, so every
+    # spec written before this field existed keeps byte-identical behaviour —
+    # that is the property that makes this safe to add.
+    #
+    # The point is asymmetric: a shadow job that overruns must never make
+    # /health say the trading service is degraded, because a shadow store is not
+    # a trading dependency. Infrastructure-level failures (orphaned tasks) are
+    # deliberately NOT scoped away — those are a property of the scheduler
+    # itself, not of any one job.
+    shadow: bool = False
+
 
 # The per-asset bound inside a sweep. Measured cost is ~4.6-5.6s per asset
 # (259-320s / 57); 45s is ~9x that and well under the 130s an all-timeouts asset
@@ -352,17 +370,22 @@ def snapshot() -> Dict[str, Any]:
     jobs: Dict[str, Any] = {}
     stale_jobs = []
     overrunning = []
+    shadow_stale: list = []
+    shadow_overrunning: list = []
     for job_id, spec in JOB_SPECS.items():
         e = _STATE.get(job_id, _Liveness())
         running_s = _running_seconds(e)
         stale = _is_stale(job_id, e)
         over = running_s is not None and running_s > spec.budget_seconds
+        # A shadow job's stale/overrun state is still REPORTED per job below; it
+        # is only kept out of the aggregates that drive /health.
         if stale:
-            stale_jobs.append(job_id)
+            (shadow_stale if spec.shadow else stale_jobs).append(job_id)
         if over:
-            overrunning.append(job_id)
+            (shadow_overrunning if spec.shadow else overrunning).append(job_id)
         jobs[job_id] = {
             "critical": spec.critical,
+            "shadow": spec.shadow,
             "budget_seconds": spec.budget_seconds,
             "cadence_seconds": spec.cadence_seconds,
             "cleanup_grace_seconds": CLEANUP_GRACE_SECONDS,
@@ -396,10 +419,16 @@ def snapshot() -> Dict[str, Any]:
             "last_cleanup_error": e.last_cleanup_error,
         }
     return {
+        # `_ORPHANS` stays in the aggregate on purpose: an orphaned task is a
+        # scheduler-infrastructure fault, not a shadow job's own health.
         "degraded": bool(stale_jobs or overrunning or _ORPHANS),
         "critical_job_stale": bool(stale_jobs),
         "stale_jobs": stale_jobs,
         "overrunning_jobs": overrunning,
+        # Observable, but deliberately outside `degraded`.
+        "shadow_degraded": bool(shadow_stale or shadow_overrunning),
+        "shadow_stale_jobs": shadow_stale,
+        "shadow_overrunning_jobs": shadow_overrunning,
         "cleanup_grace_seconds": CLEANUP_GRACE_SECONDS,
         "orphan_task_count": len(_ORPHANS),
         "jobs": jobs,

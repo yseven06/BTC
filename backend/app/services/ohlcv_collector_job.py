@@ -41,8 +41,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
-from datetime import timezone
+import time
+import uuid
+from dataclasses import dataclass, field, fields
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from sqlalchemy import String, column, select, true, values
@@ -115,6 +117,25 @@ WATERMARK_CHUNK = 250
 # sweep's 1.0 s would add 228 s for no measured benefit at this weight.
 REQUEST_SPACING_SECONDS = 0.2
 
+# HARD WALL-CLOCK BOUND PER (symbol, timeframe) ITEM.
+#
+# The outer job deadline alone is not enough. One item's worst case is measured
+# from the deployed constants: 3 attempts x DEFAULT_FETCH_TIMEOUT(20s) plus
+# backoff 1s + 2s = 63s, or 70s when a clamped Retry-After replaces the local
+# schedule. Against a 600 s run budget that is 9.5 pathological items out of 228
+# — and because the universe is ordered by a UNIQUE symbol, the truncation would
+# always fall on the SAME alphabetical tail, every run. The signals sweep solved
+# the identical problem with PER_ASSET_BUDGET_SECONDS; this is its counterpart.
+#
+# 25 s = one fetch timeout (20 s) + 5 s for backoff, parse, watermark filtering
+# and the per-row savepoints. It bounds blast radius; the outer job budget is
+# what still guarantees the cadence.
+ITEM_BUDGET_SECONDS = 25.0
+
+# Bounds on what a single run may accumulate in memory before it is serialised.
+MAX_FAILURES_RETAINED = 50
+MAX_INVALID_REASONS = 25
+
 
 @dataclass
 class CollectionResult:
@@ -150,6 +171,24 @@ class CollectionResult:
     fetch_ip_banned: int = 0
 
     # watermark phase
+    # run identity / timing (telemetry, never a decision input)
+    run_id: str = ""
+    started_at: str = ""
+    completed_at: str = ""
+    duration_seconds: float = 0.0
+
+    # terminal disposition
+    cancelled: bool = False            # outer job deadline cancelled the run
+    aborted: bool = False              # run stopped itself (e.g. HTTP 418)
+    abort_reason: str = ""
+    items_deadline_exceeded: int = 0   # per-item wall-clock bound fired
+
+    # staged-but-not-committed: rows the savepoints accepted and a failing
+    # commit then discarded. Kept apart from bars_persisted so a committed count
+    # can never be inflated by work that was rolled back.
+    bars_staged_rolled_back: int = 0
+    failures_dropped: int = 0
+
     watermark_failed: bool = False     # the read FAILED; run degraded to bootstrap
     watermark_anomalies: int = 0       # the read SUCCEEDED and returned a future mark
     watermark_series_known: int = 0    # series that already had a stored bar
@@ -188,14 +227,49 @@ class CollectionResult:
         persistent database problem behind a working-looking result.
         """
         return (not self.universe_overflow
+                and not self.cancelled
+                and not self.aborted
+                and self.items_deadline_exceeded == 0
                 and not self.watermark_failed
                 and self.watermark_anomalies == 0
                 and self.symbols_failed == 0
                 and self.db_error == 0
                 and self.retry_exhausted == 0)
 
+    def as_dict(self) -> Dict[str, object]:
+        """JSON-safe, bounded, stable-keyed witness.
+
+        The scheduler's status surface does `result if isinstance(result, dict)
+        else str(result)`, so a dataclass would be stored as a repr that nothing
+        downstream can parse. Returning a real dict keeps the witness
+        structured. Everything here is a primitive: no exception objects, no
+        DataFrames, no raw exchange payloads, and both variable-length fields
+        are capped at their source.
+        """
+        d = {f.name: getattr(self, f.name) for f in fields(self)}
+        d["failures"] = list(self.failures)          # already capped on append
+        d["invalid_reasons"] = dict(self.invalid_reasons)
+        d["healthy"] = self.healthy
+        return d
+
+    def note_failure(self, msg: str) -> None:
+        """Record a failure string under a hard cap.
+
+        A single watermark-read failure can stringify a 2000-parameter statement
+        into ~28 KB. Unbounded, one bad cadence would put megabytes into an
+        in-memory list that only exists to be read by an operator.
+        """
+        if len(self.failures) < MAX_FAILURES_RETAINED:
+            self.failures.append(msg[:500])
+        else:
+            self.failures_dropped += 1
+
     def absorb(self, r: WriteResult) -> None:
-        """Fold one (symbol, timeframe) WriteResult into the aggregate."""
+        """Fold one (symbol, timeframe) WriteResult into the aggregate.
+
+        ATTEMPT accounting only. `bars_persisted` is added separately by the
+        caller once the commit has succeeded.
+        """
         self.fetch_attempts += r.fetch_attempts
         self.fetch_success += r.fetch_success
         self.fetch_timeout += r.fetch_timeout
@@ -210,14 +284,18 @@ class CollectionResult:
         self.bars_bootstrap_trimmed += r.bootstrap_trimmed
         self.bars_fetched += r.fetched
         self.bars_eligible += r.eligible
-        self.bars_persisted += r.persisted
+        # NOTE: bars_persisted is folded by the CALLER, only after the commit
+        # that made those rows durable actually succeeded. absorb() deliberately
+        # does not touch it — see _absorb_attempt/_absorb_committed at the call
+        # site. Counting it here would report rows a failed commit discarded.
         self.bars_duplicate += r.duplicate
         self.bars_invalid += r.invalid
         self.bars_forming_or_not_closed += r.forming_or_not_closed
         self.db_rejected += r.db_rejected
         self.db_error += r.db_error
         for reason, n in r.invalid_reasons.items():
-            self.invalid_reasons[reason] = self.invalid_reasons.get(reason, 0) + n
+            if reason in self.invalid_reasons or len(self.invalid_reasons) < MAX_INVALID_REASONS:
+                self.invalid_reasons[reason] = self.invalid_reasons.get(reason, 0) + n
 
 
 async def load_universe(db, *, cap: int = UNIVERSE_CAP) -> Tuple[List[str], int, bool]:
@@ -365,6 +443,8 @@ async def collect_once(
     source: str = SOURCE_BINANCE,
     bootstrap: int = BOOTSTRAP_MAX_BARS,
     spacing: float = REQUEST_SPACING_SECONDS,
+    item_budget: float = ITEM_BUDGET_SECONDS,
+    result: Optional["CollectionResult"] = None,
 ) -> CollectionResult:
     """One serial pass over the storage universe. DORMANT — nothing calls this.
 
@@ -389,6 +469,8 @@ async def collect_once(
         raise ValueError(f"bootstrap must be >= 1, got {bootstrap}")
     if spacing < 0:
         raise ValueError(f"spacing must be >= 0, got {spacing}")
+    if item_budget <= 0:
+        raise ValueError(f"item_budget must be > 0, got {item_budget}")
     if not isinstance(source, str) or not source.strip():
         # An empty source would key the watermark under one name and, once
         # forwarded, stamp rows with the same empty name — a namespace that no
@@ -399,7 +481,14 @@ async def collect_once(
     if not tfs:
         raise ValueError("at least one timeframe is required")
 
-    res = CollectionResult(universe_cap=cap)
+    # CANCELLATION-SAFE OWNERSHIP. When the caller supplies `result`, it holds a
+    # reference to the very object this run mutates. An outer deadline cancels
+    # the task and CancelledError — a BaseException — unwinds past every
+    # `except Exception`, so nothing can be RETURNED. The caller reading its own
+    # object is the only mechanism that survives that, which is why ownership is
+    # inverted rather than the exception being caught.
+    res = result if result is not None else CollectionResult(universe_cap=cap)
+    res.universe_cap = cap
 
     # UNIVERSE READ — its own session, closed before any network call.
     if symbols is None:
@@ -436,19 +525,26 @@ async def collect_once(
     except Exception as exc:      # noqa: BLE001
         snapshot = WatermarkSnapshot(source=source, marks={}, series_known=0)
         res.watermark_failed = True
-        res.failures.append(f"watermark read failed: {type(exc).__name__}: {exc}")
+        res.note_failure(f"watermark read failed: {type(exc).__name__}: {exc}")
         log.error("OHLCV watermark read failed; degrading to bounded bootstrap "
                   "for all %d symbols", len(selected), exc_info=True)
     res.watermark_series_known = snapshot.series_known
 
     first_request = True
     for symbol in selected:
+        if res.aborted:
+            # A run-level abort (HTTP 418) stops the sweep. Symbols not reached
+            # are simply not attempted — they are NOT counted as failures,
+            # because nothing was tried on their behalf.
+            break
         res.symbols_attempted += 1
         sym = normalise_symbol(symbol)
         symbol_ok = True
         symbol_anomaly = False
         symbol_new_bars = 0
         for tf in tfs:
+            if res.aborted:
+                break
             res.timeframes_attempted += 1
             mark = snapshot.get(source, sym, tf)
             if mark is None:
@@ -461,35 +557,58 @@ async def collect_once(
                     await asyncio.sleep(spacing)
                 first_request = False
 
-                # A FRESH session per item. Created here, but the writer touches
-                # it only after the fetch returns, so no connection is checked
-                # out while the network call is in flight.
-                async with session_factory() as db:
-                    r = await collect_and_persist(
-                        db, collector, symbol, tf,
-                        limit=limit, end_time_ms=None,      # LIVE window only
-                        timeout=timeout, retries=retries,
-                        after=mark,                          # STRICTLY GREATER
-                        max_bars=None if mark is not None else bootstrap,
-                        source=source)      # read source == write source
-                    await db.commit()
-                res.absorb(r)
+                # PER-ITEM HARD BOUND. `asyncio.wait_for` converts an inner
+                # overrun into TimeoutError and cancels the inner coroutine, so
+                # a stalled item cannot outlive its slice. An OUTER cancellation
+                # still propagates as CancelledError and is handled below — the
+                # outer job deadline always wins over this one.
+                r = await asyncio.wait_for(
+                    _collect_item(session_factory, collector, symbol, tf,
+                                  limit=limit, timeout=timeout, retries=retries,
+                                  after=mark,
+                                  max_bars=None if mark is not None else bootstrap,
+                                  source=source, result=res),
+                    timeout=item_budget)
+
                 symbol_new_bars += r.persisted + r.duplicate + r.db_rejected
-                if r.watermark_in_future:
+                if r.abort_run:
+                    # The exchange banned this IP. Every further request would
+                    # extend the ban, so the run stops here rather than issuing
+                    # the remaining ~200. Rows already committed stay committed.
+                    res.aborted = True
+                    res.abort_reason = r.abort_reason or "abort_requested"
+                    res.note_failure(f"{symbol}/{tf}: RUN ABORTED: {r.error}")
+                    log.error("OHLCV run aborted at %s/%s: %s", symbol, tf, r.error)
+                elif r.watermark_in_future:
                     # NOT a failure — the fetch and the database both worked.
                     # It is a data-integrity anomaly, reported under its own
                     # name so it can never be read as a transient outage, and
                     # never silently absorbed into `symbols_skipped`.
                     symbol_anomaly = True
-                    res.failures.append(f"{symbol}/{tf}: WATERMARK ANOMALY: {r.error}")
+                    res.note_failure(f"{symbol}/{tf}: WATERMARK ANOMALY: {r.error}")
                     log.error("OHLCV watermark anomaly for %s/%s: %s", symbol, tf, r.error)
                 elif r.retry_exhausted or r.db_error:
                     symbol_ok = False
-                    res.failures.append(f"{symbol}/{tf}: {r.error or 'fetch failed'}")
+                    res.note_failure(f"{symbol}/{tf}: {r.error or 'fetch failed'}")
+            except asyncio.CancelledError:
+                # THE OUTER JOB DEADLINE. Never swallowed and never relabelled:
+                # the run is marked cancelled so the partial result the caller
+                # already owns tells the truth, and the cancellation continues
+                # to propagate so job_guard still sees a cancelled task.
+                res.cancelled = True
+                res.note_failure(f"{symbol}/{tf}: run cancelled at outer deadline")
+                raise
+            except (asyncio.TimeoutError, TimeoutError):
+                # This item burned its whole slice. Blast radius is one item.
+                res.items_deadline_exceeded += 1
+                symbol_ok = False
+                res.note_failure(
+                    f"{symbol}/{tf}: item deadline exceeded after {item_budget}s")
+                log.warning("OHLCV item deadline exceeded for %s/%s", symbol, tf)
             except Exception as exc:      # noqa: BLE001 — isolation is the point
                 symbol_ok = False
                 res.db_error += 1
-                res.failures.append(f"{symbol}/{tf}: {type(exc).__name__}: {exc}")
+                res.note_failure(f"{symbol}/{tf}: {type(exc).__name__}: {exc}")
                 log.warning("OHLCV collect failed for %s/%s: %s",
                             symbol, tf, type(exc).__name__)
         if symbol_ok:
@@ -497,10 +616,11 @@ async def collect_once(
             # SKIPPED means "nothing new was there", NOT "something went wrong".
             # Only a symbol whose every timeframe completed successfully and
             # yielded zero NEW bars counts. A fetch failure, a DB failure, a
-            # malformed response or a capped universe can never land here —
-            # those are failures and are counted as failures. Note that skipped
-            # is a SUBSET of succeeded, deliberately: such a symbol did succeed.
-            # `succeeded + failed == attempted` remains the partition.
+            # malformed response, an item deadline or a capped universe can
+            # never land here — those are failures and are counted as failures.
+            # Note that skipped is a SUBSET of succeeded, deliberately: such a
+            # symbol did succeed. `succeeded + failed == attempted` is the
+            # partition.
             if symbol_new_bars == 0 and not symbol_anomaly:
                 res.symbols_skipped += 1
         else:
@@ -509,25 +629,78 @@ async def collect_once(
     return res
 
 
-async def run_collection_once(session_factory, **kwargs) -> CollectionResult:
-    """Own a collector for exactly one run, then close it. STILL DORMANT.
+async def _collect_item(session_factory, collector, symbol, tf, *, limit, timeout,
+                        retries, after, max_bars, source, result):
+    """One (symbol, timeframe) item: fetch, filter, persist, commit.
 
-    Nothing calls this. It exists because collector OWNERSHIP is a correctness
-    property that has to live somewhere, and leaving it to a future caller is
-    how an `httpx.AsyncClient` per run gets leaked: `BinanceCollector.__init__`
-    constructs one and only `close()` releases it.
+    ACCOUNTING ORDER IS THE POINT. `absorb` folds the ATTEMPT counters as soon
+    as the writer returns, so a later commit failure can never erase the fact
+    that the work was attempted. `bars_persisted` is folded ONLY after the
+    commit that made those rows durable succeeded; if the commit raises, the
+    same rows are recorded as `bars_staged_rolled_back` instead. A committed
+    count is therefore never inflated by work the database discarded.
 
-    Constructed inside the function, never at module level — importing this
-    module must not open a socket, and a module-level client would.
-
-    `finally`, not a trailing call: `collect_once` is long, serial and network
-    bound, so the realistic exits are a cancellation at the job budget deadline
-    or an unexpected raise. Both must still close the client.
+    A FRESH session per item, created here but first touched by the writer only
+    after the fetch returns, so no connection is held across the network call.
     """
-    collector = BinanceCollector()
+    async with session_factory() as db:
+        r = await collect_and_persist(
+            db, collector, symbol, tf,
+            limit=limit, end_time_ms=None,      # LIVE window only
+            timeout=timeout, retries=retries,
+            after=after,                        # STRICTLY GREATER
+            max_bars=max_bars,
+            source=source)                      # read source == write source
+        result.absorb(r)                        # attempt accounting, commit-independent
+        try:
+            await db.commit()
+        except Exception:
+            result.bars_staged_rolled_back += r.persisted
+            raise
+        result.bars_persisted += r.persisted    # durable: only now
+    return r
+
+
+async def run_collection_once(session_factory, **kwargs) -> CollectionResult:
+    """Own a collector AND the result for exactly one run. STILL DORMANT.
+
+    Nothing calls this. It exists because two ownership properties have to live
+    somewhere, and leaving either to a future caller is how they get lost.
+
+    COLLECTOR OWNERSHIP. `BinanceCollector.__init__` builds an
+    `httpx.AsyncClient` and only `close()` releases it. Constructed inside the
+    function — never at module level, so importing opens no socket — and closed
+    in a `finally` that also runs on cancellation.
+
+    RESULT OWNERSHIP. The result is created HERE and passed down, so it survives
+    an outer-deadline cancellation. `job_guard.run_with_deadline` cancels the
+    task; `CancelledError` derives from BaseException and unwinds past every
+    `except Exception`, so a result that `collect_once` merely RETURNS is lost
+    the moment the deadline fires — while the rows committed before it are
+    still committed. Owning the object up here is what keeps those rows
+    accounted for. The cancellation itself is re-raised untouched: job_guard
+    must still see a cancelled task, and a deadline must never read as success.
+
+    `include_extended=True` is the ONLY place the wider kline frame is
+    requested; every other consumer of BinanceCollector keeps the six-column
+    default.
+    """
+    res = CollectionResult()
+    res.run_id = uuid.uuid4().hex[:16]
+    res.started_at = datetime.now(timezone.utc).isoformat()
+    started = time.monotonic()
+    collector = BinanceCollector(include_extended=True)
     try:
-        return await collect_once(session_factory, collector, **kwargs)
+        return await collect_once(session_factory, collector, result=res, **kwargs)
+    except asyncio.CancelledError:
+        res.cancelled = True
+        raise
     finally:
+        res.completed_at = datetime.now(timezone.utc).isoformat()
+        res.duration_seconds = round(time.monotonic() - started, 3)
+        # One structured line is the whole witness. Emitted from `finally` so a
+        # cancelled or aborted run reports exactly like a completed one.
+        log.info("OHLCV collection run: %s", res.as_dict())
         try:
             await collector.close()
         except Exception:      # noqa: BLE001
