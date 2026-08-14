@@ -20,6 +20,7 @@ from app.models.consent_log import ConsentLog
 from app.models.intelligence import SignalSnapshot, CoinMemory, SignalStatusHistory, SignalTradePath
 from app.models.decision_candidate import SignalDecisionCandidate
 from app.models.ohlcv_bar import OhlcvBar
+from app.models.ohlcv_progress import OhlcvCollectionProgress
 
 __all__ = [
     "User",
@@ -43,4 +44,5 @@ __all__ = [
     "SignalTradePath",
     "SignalDecisionCandidate",
     "OhlcvBar",
+    "OhlcvCollectionProgress",
 ]

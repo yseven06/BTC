@@ -565,7 +565,11 @@ def test_A3b_nothing_in_production_calls_the_collector():
     hits = []
     for root in ("app", "scripts"):
         for p in (BACKEND / root).rglob("*.py"):
-            if p.name == "ohlcv_collector_job.py" or "__pycache__" in str(p):
+            # ohlcv_progression.py joined the dormant subsystem in 0012: it holds
+            # the fairness counter and is imported only by the collector, so it is
+            # part of what must stay dormant — not something that wires it up.
+            if p.name in ("ohlcv_collector_job.py",
+                          "ohlcv_progression.py") or "__pycache__" in str(p):
                 continue
             if re.search(r"ohlcv_collector_job|collect_once", p.read_text(encoding="utf-8", errors="ignore")):
                 hits.append(str(p.relative_to(BACKEND)))
@@ -608,8 +612,23 @@ def test_A3b_the_collector_imports_no_decision_module():
 
 
 def test_A3b_adds_no_migration():
+    """A3b shipped no migration of its own, and nothing added later may reshape
+    the table it depends on.
+
+    This used to assert `names[-1] == "0011_ohlcv_shadow.sql"` — a LOCAL claim
+    ("this checkpoint added no migration") proved by a GLOBAL fact ("nothing has
+    been added to the repo since"). The first legitimate later migration breaks
+    that, which is precisely what 0012 did. The repair is the one already applied
+    to six sibling guards: pin the set A3b was written against BY NAME, and assert
+    separately that no later migration touches `ohlcv_bars`."""
     names = sorted(p.name for p in (BACKEND / "migrations").glob("*.sql"))
-    assert names[-1] == "0011_ohlcv_shadow.sql", names
+    assert "0011_ohlcv_shadow.sql" in names
+    assert [n for n in names if n <= "0011_ohlcv_shadow.sql"][-1] == "0011_ohlcv_shadow.sql"
+    for later in [n for n in names if n > "0011_ohlcv_shadow.sql"]:
+        body = (BACKEND / "migrations" / later).read_text(encoding="utf-8").lower()
+        body = " ".join(l for l in body.splitlines()
+                        if not l.strip().startswith("--"))
+        assert "ohlcv_bars" not in body, f"{later} reshapes ohlcv_bars"
 
 
 # ══ telemetry must not become a trading input ═══════════════════════════════

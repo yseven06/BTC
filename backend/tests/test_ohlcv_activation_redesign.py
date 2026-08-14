@@ -40,27 +40,12 @@ from app.services.ohlcv_collector_job import (ITEM_BUDGET_SECONDS,
 BACKEND = pathlib.Path(__file__).resolve().parent.parent
 
 
-def _bucket_starting_at_index_zero(count: int) -> datetime:
-    """A `now` whose rotation offset is 0, so the traversal is S0U, S1U, ...
-
-    WHY THIS IS NEEDED. The rotation start is CLOCK-DERIVED. A test that stalls
-    on one symbol and then asserts that EARLIER symbols already committed is
-    therefore order-dependent, and without pinning the bucket it passes or fails
-    according to the wall-clock half-hour it happens to run in. That latent flake
-    arrived with the rotation itself; the v4 change to the offset formula merely
-    re-phased which buckets trigger it. Pinning removes the dependency instead of
-    hiding it — and the assert below fails loudly if the pin ever stops holding.
-    """
-    base = datetime(2026, 8, 14, tzinfo=timezone.utc)
-    for i in range(J.SYMBOL_ROTATION_PERIOD * 2):
-        t = base + timedelta(seconds=J.DEFAULT_CADENCE_SECONDS * i)
-        if J.rotation_offset(count, now=t) == 0:
-            return t
-    raise AssertionError(f"no bucket gives offset 0 for count={count}")
-
-
-PINNED_12 = _bucket_starting_at_index_zero(12)
-assert J.rotation_offset(12, now=PINNED_12) == 0
+# Rotation now starts from the DURABLE executed-run sequence, so pinning the
+# traversal is simply choosing that sequence: run_seq 0 puts S0U first. The old
+# helper searched wall-clock buckets for an offset of 0 and had to assert the pin
+# still held; with the clock gone there is nothing left to drift.
+PINNED_SEQ = 0
+assert J.rotation_offset(12, PINNED_SEQ) == 0
 UTC = timezone.utc
 T0 = datetime(2026, 8, 1, tzinfo=UTC)
 STEP = timedelta(minutes=15)
@@ -178,7 +163,7 @@ async def test_outer_cancellation_preserves_the_partial_result():
     res = CollectionResult()
     task = asyncio.create_task(collect_once(
         factory(), col, symbols=[f"S{i}U" for i in range(12)],
-        timeframes=["15m"], spacing=0, result=res, now=PINNED_12))
+        timeframes=["15m"], spacing=0, result=res, run_seq=PINNED_SEQ))
     await asyncio.sleep(0.4)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
@@ -211,7 +196,7 @@ async def test_no_work_continues_after_cancellation():
     res = CollectionResult()
     task = asyncio.create_task(collect_once(
         factory(), col, symbols=[f"S{i}U" for i in range(12)],
-        timeframes=["15m"], spacing=0, result=res, now=PINNED_12))
+        timeframes=["15m"], spacing=0, result=res, run_seq=PINNED_SEQ))
     await asyncio.sleep(0.4)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
@@ -545,7 +530,10 @@ def test_no_ohlcv_scheduler_registration_and_no_caller():
 
     hits = []
     for p in list((BACKEND / "app").rglob("*.py")) + list((BACKEND / "scripts").rglob("*.py")):
-        if p.name in ("ohlcv_writer.py", "ohlcv_collector_job.py") or "__pycache__" in str(p):
+        # ohlcv_progression.py joined the dormant subsystem in 0012: it holds the
+        # fairness counter and is imported only by the collector.
+        if p.name in ("ohlcv_writer.py", "ohlcv_collector_job.py",
+                      "ohlcv_progression.py") or "__pycache__" in str(p):
             continue
         t = p.read_text(encoding="utf-8", errors="ignore")
         if any(n in t for n in ("ohlcv_collector_job", "collect_once",

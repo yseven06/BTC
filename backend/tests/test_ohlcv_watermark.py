@@ -627,10 +627,10 @@ async def test_the_collector_is_closed_even_when_the_run_raises():
 
     J.BinanceCollector, real = fake_ctor, J.BinanceCollector
     try:
-        await run_collection_once(factory([]), symbols=["BTCUSDT"],
+        await run_collection_once(run_seq=0, session_factory=factory([]), symbols=["BTCUSDT"],
                                   timeframes=["15m"], retries=0, spacing=0)
         with pytest.raises(ValueError):
-            await run_collection_once(factory([]), symbols=["BTCUSDT"], limit=1)
+            await run_collection_once(run_seq=0, session_factory=factory([]), symbols=["BTCUSDT"], limit=1)
     finally:
         J.BinanceCollector = real
     assert len(made) == 2 and all(c.closed == 1 for c in made), \
@@ -645,7 +645,7 @@ async def test_a_failure_to_close_does_not_mask_the_real_outcome():
 
     J.BinanceCollector, real = Stubborn, J.BinanceCollector
     try:
-        res = await run_collection_once(factory([]), symbols=["BTCUSDT"],
+        res = await run_collection_once(run_seq=0, session_factory=factory([]), symbols=["BTCUSDT"],
                                         timeframes=["15m"], spacing=0)
     finally:
         J.BinanceCollector = real
@@ -690,7 +690,11 @@ def test_conflict_target_is_still_the_portable_column_list():
 def test_A3c_added_no_production_caller():
     hits = []
     for p in list((BACKEND / "app").rglob("*.py")) + list((BACKEND / "scripts").rglob("*.py")):
-        if p.name in ("ohlcv_collector_job.py", "ohlcv_writer.py"):
+        # The dormant subsystem's OWN files. ohlcv_progression.py joined it in
+        # 0012: it holds the fairness counter and is imported only by the
+        # collector, so it is part of what must stay dormant — not a caller of it.
+        if p.name in ("ohlcv_collector_job.py", "ohlcv_writer.py",
+                      "ohlcv_progression.py"):
             continue
         t = p.read_text(encoding="utf-8", errors="ignore")
         if any(k in t for k in ("ohlcv_collector_job", "collect_once",
@@ -713,7 +717,11 @@ def test_no_decision_surface_reads_the_new_counters():
     names = ("bars_below_watermark", "series_bootstrapped", "watermark_series_known",
              "fetch_rate_limited", "fetch_ip_banned", "bars_bootstrap_trimmed")
     for p in (BACKEND / "app").rglob("*.py"):
-        if p.name in ("ohlcv_collector_job.py", "ohlcv_writer.py"):
+        # The dormant subsystem's OWN files. ohlcv_progression.py joined it in
+        # 0012: it holds the fairness counter and is imported only by the
+        # collector, so it is part of what must stay dormant — not a caller of it.
+        if p.name in ("ohlcv_collector_job.py", "ohlcv_writer.py",
+                      "ohlcv_progression.py"):
             continue
         t = p.read_text(encoding="utf-8", errors="ignore")
         for n in names:

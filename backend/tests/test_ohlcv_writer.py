@@ -461,7 +461,15 @@ def test_the_writer_depends_on_no_decision_module():
 
 def test_this_checkpoint_adds_no_migration():
     names = sorted(p.name for p in (BACKEND / "migrations").glob("*.sql"))
-    assert names[-1] == "0011_ohlcv_shadow.sql", names
+    # Was `names[-1] == "0011_ohlcv_shadow.sql"`: a LOCAL claim ("this checkpoint
+    # added no migration") proved by a GLOBAL fact ("nothing was added since"). The
+    # first legitimate later migration breaks it — 0012 did. Pin the set this
+    # checkpoint was written against, and assert no later migration reshapes its table.
+    assert "0011_ohlcv_shadow.sql" in names
+    for later in [n for n in names if n > "0011_ohlcv_shadow.sql"]:
+        body = (BACKEND / "migrations" / later).read_text(encoding="utf-8").lower()
+        body = " ".join(l for l in body.splitlines() if not l.strip().startswith("--"))
+        assert "ohlcv_bars" not in body, f"{later} reshapes ohlcv_bars"
     sql = (BACKEND / "migrations" / "0011_ohlcv_shadow.sql").read_text(encoding="utf-8")
     assert "ohlcv_bars" in sql          # untouched by A2
 

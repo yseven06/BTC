@@ -128,71 +128,55 @@ async def _sweep(symbols, bad, runs, *, db_fail=(), start=0):
     return reached
 
 
-# ══ ROTATION ALGEBRA ═══════════════════════════════════════════════════════
-def test_same_bucket_is_deterministic():
+# ══ ROTATION ALGEBRA — now over the DURABLE EXECUTED-RUN SEQUENCE ══════════
+# These used to be stated over a cadence bucket, and one of them asserted the
+# prime-period bound. Both the clock and the prime are gone: an architecture
+# review proved no function of absolute time can carry a fairness bound, because
+# the environment chooses which buckets execute. The exhaustive size x pattern
+# matrix lives in test_ohlcv_fairness_v4.py; what remains here is the algebra the
+# adversarial sweeps below depend on.
+def test_same_sequence_is_deterministic():
     for _ in range(5):
-        assert rotation_offset(57, now=BUCKET0) == rotation_offset(57, now=BUCKET0)
+        assert rotation_offset(57, 12345) == rotation_offset(57, 12345)
 
 
-def test_offset_advances_one_symbol_per_cadence_bucket_between_wraps():
-    """Consecutive buckets advance the start by exactly one — the responsive
-    behaviour the rotation was introduced for. The ONE discontinuity is the
-    prime wrap, pinned by its own test below; it is what buys stride immunity."""
-    n, P = 57, J.SYMBOL_ROTATION_PERIOD
-    base = BUCKET0 + timedelta(seconds=1800 * 3)
-    b0 = int(base.timestamp() // 1800)
-    assert (b0 % P) + 10 < P, "fixture must not straddle the wrap"
-    offs = [rotation_offset(n, now=base + timedelta(seconds=1800 * i))
-            for i in range(10)]
+def test_offset_advances_one_symbol_per_executed_run():
+    """Consecutive EXECUTED runs advance the start by exactly one — with no wrap
+    discontinuity, because there is no second modulus any more."""
+    n = 57
+    offs = [rotation_offset(n, 40 + i) for i in range(10)]
     assert offs == [(offs[0] + i) % n for i in range(10)]
 
 
-def test_every_offset_occurs_at_least_once_per_period():
-    """THE BOUND. Not `n` runs — `SYMBOL_ROTATION_PERIOD` runs. The prime wrap
-    means a window of n consecutive buckets may miss a few offsets; the period
-    is what the proof actually guarantees."""
-    P = J.SYMBOL_ROTATION_PERIOD
+def test_every_offset_occurs_at_least_once_per_count_executed_runs():
+    """THE BOUND: `count` executed runs, not a period, and not conditional on any
+    uptime assumption."""
     for n in (4, 56, 57, 60, 64, 250):
-        offs = {rotation_offset(n, now=BUCKET0 + timedelta(seconds=1800 * i))
-                for i in range(P)}
-        assert offs == set(range(n)), f"n={n} never visited every start position"
-
-
-def test_the_period_is_prime_and_exceeds_the_universe_cap():
-    """Both halves of the proof are load-bearing: primality gives
-    gcd(stride, period) = 1 for every stride below it, and period > cap makes
-    `x % count` onto 0..count-1. Either one alone is not enough."""
-    P = J.SYMBOL_ROTATION_PERIOD
-    assert P > J.UNIVERSE_CAP, "reducing mod count would not be surjective"
-    assert all(P % d for d in range(2, int(P ** 0.5) + 1)), f"{P} is not prime"
+        assert {rotation_offset(n, i) for i in range(n)} == set(range(n))
 
 
 def test_rotation_is_restart_and_redeploy_independent():
-    """The offset comes from the clock alone — there is no cursor to lose."""
-    t = BUCKET0 + timedelta(seconds=1800 * 12345)
-    before = rotation_offset(57, now=t)
-    # simulate a process restart: brand-new module state, same wall clock
+    """The sequence lives in the database, so a restart cannot lose it; the offset
+    is a pure function of the value that survives."""
     import importlib
+    before = rotation_offset(57, 12345)
     importlib.reload(J)
-    after = J.rotation_offset(57, now=t)
-    assert before == after
-    assert after != 0 or True   # value itself is irrelevant; identity is the point
+    assert J.rotation_offset(57, 12345) == before
 
 
 def test_rotation_survives_universe_size_changes():
     for n in (1, 2, 56, 57, 58, 250):
-        off = rotation_offset(n, now=BUCKET0)
-        assert 0 <= off < n
-    assert rotation_offset(0, now=BUCKET0) == 0, "an empty universe must not crash"
+        assert 0 <= rotation_offset(n, 999) < n
+    assert rotation_offset(0, 999) == 0, "an empty universe must not crash"
 
 
-def test_cadence_must_be_positive():
-    with pytest.raises(ValueError, match="cadence_seconds"):
-        rotation_offset(10, now=BUCKET0, cadence_seconds=0)
+def test_a_negative_sequence_is_refused():
+    with pytest.raises(ValueError, match="run_seq"):
+        rotation_offset(10, -1)
 
 
 def test_rotation_is_not_a_candle_authority():
-    """The clock buckets the ORDER; closure stays the exchange's job."""
+    """The sequence orders the sweep; closure stays the exchange's job."""
     import inspect
     src = inspect.getsource(J.rotation_offset)
     assert "close" not in src and "watermark" not in src
@@ -289,10 +273,9 @@ def test_I_simulated_process_restart_does_not_reset_fairness():
     not visit order, and so measured nothing.)
     """
     import importlib
-    buckets = [BUCKET0 + timedelta(seconds=1800 * i) for i in range(12)]
-    before = [J.rotation_offset(len(SYMS), now=b) for b in buckets]
+    before = [J.rotation_offset(len(SYMS), i) for i in range(12)]
     importlib.reload(J)                       # brand-new module state
-    after = [J.rotation_offset(len(SYMS), now=b) for b in buckets]
+    after = [J.rotation_offset(len(SYMS), i) for i in range(12)]
 
     assert before == after, "a reload changed the rotation"
     assert len(set(after)) == 12, f"the rotation did not advance: {after}"
