@@ -38,6 +38,29 @@ from app.services.ohlcv_collector_job import (ITEM_BUDGET_SECONDS,
                                               CollectionResult, collect_once)
 
 BACKEND = pathlib.Path(__file__).resolve().parent.parent
+
+
+def _bucket_starting_at_index_zero(count: int) -> datetime:
+    """A `now` whose rotation offset is 0, so the traversal is S0U, S1U, ...
+
+    WHY THIS IS NEEDED. The rotation start is CLOCK-DERIVED. A test that stalls
+    on one symbol and then asserts that EARLIER symbols already committed is
+    therefore order-dependent, and without pinning the bucket it passes or fails
+    according to the wall-clock half-hour it happens to run in. That latent flake
+    arrived with the rotation itself; the v4 change to the offset formula merely
+    re-phased which buckets trigger it. Pinning removes the dependency instead of
+    hiding it — and the assert below fails loudly if the pin ever stops holding.
+    """
+    base = datetime(2026, 8, 14, tzinfo=timezone.utc)
+    for i in range(J.SYMBOL_ROTATION_PERIOD * 2):
+        t = base + timedelta(seconds=J.DEFAULT_CADENCE_SECONDS * i)
+        if J.rotation_offset(count, now=t) == 0:
+            return t
+    raise AssertionError(f"no bucket gives offset 0 for count={count}")
+
+
+PINNED_12 = _bucket_starting_at_index_zero(12)
+assert J.rotation_offset(12, now=PINNED_12) == 0
 UTC = timezone.utc
 T0 = datetime(2026, 8, 1, tzinfo=UTC)
 STEP = timedelta(minutes=15)
@@ -155,7 +178,7 @@ async def test_outer_cancellation_preserves_the_partial_result():
     res = CollectionResult()
     task = asyncio.create_task(collect_once(
         factory(), col, symbols=[f"S{i}U" for i in range(12)],
-        timeframes=["15m"], spacing=0, result=res))
+        timeframes=["15m"], spacing=0, result=res, now=PINNED_12))
     await asyncio.sleep(0.4)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
@@ -188,7 +211,7 @@ async def test_no_work_continues_after_cancellation():
     res = CollectionResult()
     task = asyncio.create_task(collect_once(
         factory(), col, symbols=[f"S{i}U" for i in range(12)],
-        timeframes=["15m"], spacing=0, result=res))
+        timeframes=["15m"], spacing=0, result=res, now=PINNED_12))
     await asyncio.sleep(0.4)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
