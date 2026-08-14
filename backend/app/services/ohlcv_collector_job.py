@@ -43,6 +43,7 @@ import asyncio
 import logging
 import time
 import uuid
+import zlib
 from dataclasses import dataclass, field, fields
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -480,6 +481,47 @@ async def load_watermarks(db, symbols: Sequence[str],
     return WatermarkSnapshot(source=source, marks=marks, series_known=len(marks))
 
 
+def timeframe_offset(symbol: str, count: int, *, now: Optional[datetime] = None,
+                     cadence_seconds: float = DEFAULT_CADENCE_SECONDS) -> int:
+    """Deterministic starting timeframe for THIS symbol in THIS cadence bucket.
+
+    WHY THIS EXISTS. Rotating symbols alone was not enough. The timeframe loop
+    ran a FIXED ("15m","1h","4h","1d") for every symbol on every run, and a
+    terminal item failure abandons the symbol's remaining timeframes — so a
+    permanently broken 15m put every healthy sibling behind it forever. Measured
+    on the previous commit over 24 cadence buckets: a broken 15m starved 1h/4h/1d
+    permanently, and with all symbols broken on 15m, 18 of 18 healthy pairs were
+    never collected once. That is not budget pressure; the runs finished.
+
+    THE MECHANISM. offset = (bucket + crc32(symbol)) mod n, so the order becomes
+    tfs[offset:] + tfs[:offset].
+
+    THE BOUND. For a fixed symbol crc32 is constant, so as the bucket advances
+    the offset takes every value in 0..n-1 across n consecutive buckets. In the
+    bucket where offset == index(H), timeframe H is FIRST, so nothing can precede
+    it and no abandon can hide it — whatever else is broken on that symbol.
+    Therefore every healthy timeframe gets an unobstructed attempt within
+    n = len(STORAGE_TIMEFRAMES) = 4 cadence buckets in which the symbol is
+    reached. The bound holds independently of HOW MANY siblings are failing.
+
+    WHY crc32 AND NOT hash(). Python's builtin hash() is salted per process
+    (PYTHONHASHSEED), so it would make the order restart-dependent — exactly the
+    property the fairness design must not have. crc32 is stable across processes,
+    restarts and redeploys.
+
+    The symbol term only de-correlates symbols so a single run does not put every
+    symbol on the same first timeframe; the bound above comes from the bucket
+    term alone.
+    """
+    if count <= 0:
+        return 0
+    if cadence_seconds <= 0:
+        raise ValueError(f"cadence_seconds must be > 0, got {cadence_seconds}")
+    moment = now or datetime.now(timezone.utc)
+    bucket = int(moment.timestamp() // cadence_seconds)
+    return (bucket + zlib.crc32(symbol.encode("utf-8"))) % count
+
+
 def rotation_offset(count: int, *, now: Optional[datetime] = None,
                      cadence_seconds: float = DEFAULT_CADENCE_SECONDS) -> int:
     """Deterministic, stateless starting index for this cadence bucket.
@@ -617,7 +659,10 @@ async def collect_once(
         symbol_anomaly = False
         symbol_new_bars = 0
         symbol_dead = False
-        for tf in tfs:
+        # TIMEFRAME ROTATION. Per symbol, per cadence bucket, so a permanently
+        # failing timeframe cannot sit in front of its healthy siblings forever.
+        tf_off = timeframe_offset(sym, len(tfs), now=now, cadence_seconds=cadence_seconds)
+        for tf in list(tfs[tf_off:]) + list(tfs[:tf_off]):
             if res.aborted:
                 break
             if symbol_dead:
