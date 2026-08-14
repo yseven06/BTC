@@ -23,6 +23,7 @@ import pytest
 
 from app.services import ohlcv_collector_job as J
 from app.services.ohlcv_collector_job import (DEFAULT_CADENCE_SECONDS,
+                                              STORAGE_TIMEFRAMES,
                                               CollectionResult, collect_once,
                                               rotation_offset)
 
@@ -133,17 +134,37 @@ def test_same_bucket_is_deterministic():
         assert rotation_offset(57, now=BUCKET0) == rotation_offset(57, now=BUCKET0)
 
 
-def test_offset_advances_one_symbol_per_cadence_bucket():
-    offs = [rotation_offset(57, now=BUCKET0 + timedelta(seconds=1800 * i))
+def test_offset_advances_one_symbol_per_cadence_bucket_between_wraps():
+    """Consecutive buckets advance the start by exactly one — the responsive
+    behaviour the rotation was introduced for. The ONE discontinuity is the
+    prime wrap, pinned by its own test below; it is what buys stride immunity."""
+    n, P = 57, J.SYMBOL_ROTATION_PERIOD
+    base = BUCKET0 + timedelta(seconds=1800 * 3)
+    b0 = int(base.timestamp() // 1800)
+    assert (b0 % P) + 10 < P, "fixture must not straddle the wrap"
+    offs = [rotation_offset(n, now=base + timedelta(seconds=1800 * i))
             for i in range(10)]
-    assert offs == [(offs[0] + i) % 57 for i in range(10)]
+    assert offs == [(offs[0] + i) % n for i in range(10)]
 
 
-def test_every_offset_occurs_once_per_full_rotation():
-    n = 57
-    offs = {rotation_offset(n, now=BUCKET0 + timedelta(seconds=1800 * i))
-            for i in range(n)}
-    assert offs == set(range(n)), "a full rotation must visit every start position"
+def test_every_offset_occurs_at_least_once_per_period():
+    """THE BOUND. Not `n` runs — `SYMBOL_ROTATION_PERIOD` runs. The prime wrap
+    means a window of n consecutive buckets may miss a few offsets; the period
+    is what the proof actually guarantees."""
+    P = J.SYMBOL_ROTATION_PERIOD
+    for n in (4, 56, 57, 60, 64, 250):
+        offs = {rotation_offset(n, now=BUCKET0 + timedelta(seconds=1800 * i))
+                for i in range(P)}
+        assert offs == set(range(n)), f"n={n} never visited every start position"
+
+
+def test_the_period_is_prime_and_exceeds_the_universe_cap():
+    """Both halves of the proof are load-bearing: primality gives
+    gcd(stride, period) = 1 for every stride below it, and period > cap makes
+    `x % count` onto 0..count-1. Either one alone is not enough."""
+    P = J.SYMBOL_ROTATION_PERIOD
+    assert P > J.UNIVERSE_CAP, "reducing mod count would not be surjective"
+    assert all(P % d for d in range(2, int(P ** 0.5) + 1)), f"{P} is not prime"
 
 
 def test_rotation_is_restart_and_redeploy_independent():
@@ -212,13 +233,23 @@ async def test_D_pathological_at_both_ends():
 
 @pytest.mark.asyncio
 async def test_E_every_timeframe_of_a_symbol_times_out():
-    """Blast radius: a dead symbol must cost ONE item, not one per timeframe."""
+    """Blast radius WITHOUT starvation.
+
+    This test used to assert the OPPOSITE — that a failing symbol was fetched
+    exactly ONCE, because its remaining timeframes were abandoned. That bound was
+    real, but it let timeframe ORDER decide REACHABILITY, and an independent
+    review proved a healthy sibling could then stay unattempted forever. The
+    contract is now: every timeframe is still ATTEMPTED, and the cost is held
+    down by degrading the per-item BUDGET rather than by dropping coverage.
+    """
     col = Col(bad={"S00U"})
     res = await _one_run(SYMS, BUCKET0, col)
-    assert res.timeframes_skipped_after_failure >= 3, \
-        "remaining timeframes of a dead symbol were still attempted"
-    assert res.symbols_abandoned >= 1
-    assert col.seen.count("S00U") == 1, "the dead symbol was fetched more than once"
+    n = len(STORAGE_TIMEFRAMES)
+    assert col.seen.count("S00U") == n, \
+        "a timeframe of the failing symbol was never attempted — starvation is back"
+    assert res.timeframes_degraded_after_failure == n - 1, \
+        "siblings of a failed timeframe must run on the REDUCED budget"
+    assert res.symbols_degraded == 1
 
 
 @pytest.mark.asyncio
@@ -335,8 +366,8 @@ async def test_a_quiet_symbol_is_skipped_not_unattempted():
 
 def test_coverage_fields_are_in_the_witness():
     d = CollectionResult().as_dict()
-    for k in ("rotation_offset", "symbols_unattempted", "symbols_abandoned",
-              "timeframes_skipped_after_failure"):
+    for k in ("rotation_offset", "symbols_unattempted", "symbols_degraded",
+              "timeframes_degraded_after_failure"):
         assert k in d, f"witness is missing {k}"
 
 
@@ -363,5 +394,5 @@ async def test_418_is_not_demoted_to_an_ordinary_symbol_failure():
                        spacing=0, item_budget=5.0, now=BUCKET0, result=res)
     assert res.aborted is True and res.abort_reason == "http_418_ip_banned"
     assert len(col.seen) == 1, "requests continued at a banned IP"
-    assert res.symbols_abandoned <= 1
+    assert res.symbols_degraded <= 1
     assert res.healthy is False

@@ -407,12 +407,17 @@ async def test_A3b_one_symbol_timeout_does_not_stop_the_others():
     res = await collect_once(factory([]), col, symbols=["AAA", "BBB", "CCC"],
                              timeout=0.02, retries=0)
     assert res.symbols_succeeded == 2 and res.symbols_failed == 1
-    # A3c-repair-v2: a terminal item failure ABANDONS the rest of that symbol's
-    # timeframes for this run, so the sick symbol costs ONE item budget instead
-    # of four. The isolation contract that matters — other symbols continue — is
-    # asserted below and is unchanged.
-    assert res.fetch_timeout == 1
-    assert res.timeframes_skipped_after_failure == len(STORAGE_TIMEFRAMES) - 1
+    # A3c-repair-v4: a terminal item failure no longer ABANDONS the rest of that
+    # symbol's timeframes — v2 did that, and a review proved it let timeframe
+    # ORDER decide REACHABILITY. All four are attempted now (hence four
+    # timeouts, not one); what bounds the cost is the REDUCED per-item budget the
+    # siblings run under. The isolation contract that matters — other symbols
+    # continue — is unchanged and asserted below.
+    n_tf = len(STORAGE_TIMEFRAMES)
+    assert res.fetch_timeout == n_tf, \
+        "a timeframe of the sick symbol was never attempted — starvation is back"
+    assert res.timeframes_degraded_after_failure == n_tf - 1
+    assert res.timeframes_attempted == 3 * n_tf, "one timeframe went unattempted"
     assert res.bars_persisted > 0, "healthy symbols still stored"
     assert any("BBB" in f for f in res.failures)
 
@@ -495,12 +500,18 @@ async def test_A3b_retries_are_bounded_and_exhaustion_is_reported():
     col = Collector("err")
     res = await collect_once(factory([]), col, symbols=["AAA"], retries=2)
     per_tf = 3
-    # A3c-repair-v2: retries stay bounded per item (3 attempts), and the symbol
-    # is abandoned after the first terminal exhaustion rather than repeating it
-    # on every timeframe.
-    assert len(col.calls) == per_tf
-    assert res.retry_exhausted == 1
-    assert res.timeframes_skipped_after_failure == len(STORAGE_TIMEFRAMES) - 1
+    n_tf = len(STORAGE_TIMEFRAMES)
+    # A3c-repair-v4: retries stay bounded PER ITEM (3 attempts). The symbol is no
+    # longer abandoned after the first exhaustion — every timeframe is attempted,
+    # so the call count is per_tf on each of the four. This fixture fails
+    # instantly; a sibling that actually STALLED would instead be cut by the
+    # reduced budget long before its third 20 s attempt, which is what keeps the
+    # cost bounded without dropping coverage.
+    assert len(col.calls) == per_tf * n_tf, \
+        "a timeframe was never attempted — starvation is back"
+    assert res.retry_exhausted == n_tf
+    assert res.timeframes_degraded_after_failure == n_tf - 1
+    assert res.timeframes_attempted == n_tf
     assert res.symbols_failed == 1 and res.healthy is False
 
 
