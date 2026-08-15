@@ -1011,13 +1011,6 @@ def start_scheduler() -> AsyncIOScheduler:
     # 150s is an INITIAL budget, not a calibrated one: job_guard derives budgets
     # from an observed healthy maximum, and this job has never run. The first
     # controlled executions must re-derive it.
-    _scheduler.add_job(
-        _job_ohlcv_collect,
-        CronTrigger(minute="28,58"),
-        id="ohlcv_collect",
-        replace_existing=True,
-        name="OHLCV shadow collection",
-    )
 
     # A trigger APScheduler refuses is the symptom that went unread for 45
     # minutes on 2026-07-28 — it only ever reached the log. Counting it makes
