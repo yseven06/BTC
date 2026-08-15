@@ -50,7 +50,17 @@
 CREATE TABLE IF NOT EXISTS ohlcv_collection_progress (
     -- Logical key. Matches the `source` used by the watermark read and the row
     -- write, so a second venue can never advance binance's fairness sequence.
-    source      TEXT        NOT NULL,
+    --
+    -- VARCHAR, NOT TEXT, and the difference is not cosmetic. `create_all` runs
+    -- BEFORE this file, so on a fresh database the MODEL builds the table and its
+    -- `Column(String)` emits VARCHAR; this statement is then a no-op. Declaring
+    -- TEXT here produced a table whose catalog type depended on which path built
+    -- it — measured in PostgreSQL 17: `character varying` vs `text`, and the
+    -- source CHECK rendered as `length(btrim((source)::text))` in one and
+    -- `length(btrim(source))` in the other. Functionally equivalent, but not the
+    -- same catalog object, and invisible to any test comparing constraint NAMES.
+    -- The model is the authority precisely because it runs first.
+    source      VARCHAR     NOT NULL,
 
     -- The progression itself. Monotonic, advanced by exactly one per executed run.
     run_seq     BIGINT      NOT NULL DEFAULT 0,
