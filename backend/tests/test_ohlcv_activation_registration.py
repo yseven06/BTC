@@ -15,9 +15,11 @@ exists so that fact cannot quietly disappear.
 from __future__ import annotations
 
 import ast
+import asyncio
 import inspect
 import pathlib
 
+import pytest
 from apscheduler.triggers.cron import CronTrigger
 
 from app.services import scheduler as sched
@@ -144,6 +146,52 @@ def test_the_job_is_shadow_and_cannot_degrade_the_trading_surface():
     for other, spec in JOB_SPECS.items():
         if other != JOB_ID:
             assert spec.shadow is False, f"{other} unexpectedly became shadow"
+
+
+# ══ THE ADMIN MANUAL TRIGGER IS FAIL-CLOSED ════════════════════════════════
+# `trigger_job_now` is reachable from POST /admin/system/jobs/{job_id}/trigger.
+# It does NOT consult the APScheduler registry — it dispatches through a literal
+# `job_map`, and it fires `asyncio.create_task`, which (as tracker.py records) is
+# NOT covered by APScheduler's max_instances=1. So an OHLCV entry in that map
+# would be a SECOND execution path: admin-triggerable, off-slot, and able to run
+# concurrently with the cron run — two progression claims and two sweeps at once.
+#
+# The map excludes it today. Nothing asserted that, and the sibling guard
+# `test_no_second_execution_path_for_ohlcv` cannot: it skips scheduler.py by
+# design, because scheduler.py is where the ONE legitimate call lives.
+def test_the_admin_run_now_map_does_not_expose_ohlcv():
+    """Read the literal, not the behaviour, so a dispatch refactor is visible."""
+    tree = ast.parse((BACKEND / "app/services/scheduler.py").read_text(encoding="utf-8"))
+    maps = [n.value for n in ast.walk(tree)
+            if isinstance(n, ast.AnnAssign)
+            and getattr(n.target, "id", None) == "job_map"
+            and isinstance(n.value, ast.Dict)]
+    assert len(maps) == 1, f"expected exactly one job_map literal, found {len(maps)}"
+    keys = {k.value for k in maps[0].keys if isinstance(k, ast.Constant)}
+    assert JOB_ID not in keys, \
+        f"{JOB_ID} is admin-triggerable — that is a second, unbudgeted execution path"
+    # Pinned positively too: emptying the map would satisfy the line above while
+    # silently breaking every operator button.
+    assert keys == {"signals_1h", "signals_4h", "signals_15m", "signals_1d",
+                    "perf_tracking", "price_alerts", "startup_check"}, keys
+
+
+@pytest.mark.asyncio
+# `trigger_job_now` builds its map by CALLING the seven job coroutines, so a
+# refused dispatch leaves seven un-awaited coroutine objects. That is the
+# function's own pre-existing shape, not something this test introduces, and it
+# is inert — the warning is silenced here rather than left to litter the suite.
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
+async def test_an_admin_run_now_request_for_ohlcv_fails_closed():
+    """Behavioural half: call the real dispatcher. It must refuse BEFORE it
+    spawns anything, so no task exists and the route answers 404."""
+    before = len(asyncio.all_tasks())
+    started = await sched.trigger_job_now(JOB_ID)
+    assert started is False, "the admin trigger accepted an OHLCV run"
+    assert len(asyncio.all_tasks()) == before, "a task was spawned despite refusal"
+    # The route turns that False into 404 rather than reporting a started job.
+    admin_src = (BACKEND / "app/api/routes/admin.py").read_text(encoding="utf-8")
+    assert "if not started:" in admin_src and "404" in admin_src
 
 
 def test_the_seven_existing_specs_are_untouched():
