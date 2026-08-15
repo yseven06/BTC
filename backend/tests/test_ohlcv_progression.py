@@ -12,6 +12,8 @@ import ast
 import asyncio
 import inspect
 import pathlib
+import re
+from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy import func
@@ -57,20 +59,48 @@ def test_the_migration_number_is_next_and_0011_is_untouched():
 
 
 # ══ THE STATEMENT: ATOMIC, NOT READ-MODIFY-WRITE ═══════════════════════════
-def test_the_advance_compiles_to_a_single_upsert_with_returning():
-    """A SELECT-then-UPDATE would be a lost-update race the moment two runs
-    overlap. One statement makes the read, the increment and the write atomic and
-    lets the row lock serialise concurrent callers."""
-    stmt = (pg_insert(M).values(source="binance", run_seq=1)
-            .on_conflict_do_update(index_elements=[M.source],
-                                   set_={"run_seq": M.run_seq + 1,
-                                         "updated_at": func.now()})
-            .returning(M.run_seq))
-    sql = str(stmt.compile(dialect=postgresql.dialect())).lower()
+@pytest.mark.asyncio
+async def test_the_advance_emits_a_single_upsert_with_returning():
+    """THE SQL THE IMPLEMENTATION ACTUALLY EMITS — not a look-alike.
+
+    This test used to build its own statement and assert things about that, which
+    proved only that SQLAlchemy works. It never called `acquire_run_sequence`, so
+    the production statement could be anything. It is now captured from the real
+    call, which is what makes the assertions below bite.
+    """
+    captured: list = []
+
+    class _Capture:
+        async def __aenter__(s):
+            return s
+
+        async def __aexit__(s, *e):
+            return False
+
+        async def execute(s, stmt, *a, **k):
+            captured.append(stmt.compile(dialect=postgresql.dialect()))
+
+            class _R:
+                def scalar_one(x):
+                    return 1
+            return _R()
+
+        async def commit(s):
+            return None
+
+        async def rollback(s):
+            return None
+
+    await acquire_run_sequence(lambda: _Capture(), "binance")
+    assert len(captured) == 1, "the advance must be exactly ONE statement"
+    sql = str(captured[0]).lower()
     assert "insert into ohlcv_collection_progress" in sql
-    assert "on conflict (source) do update" in sql
-    assert "run_seq = (ohlcv_collection_progress.run_seq +" in sql
-    assert "returning ohlcv_collection_progress.run_seq" in sql
+    assert "on conflict (source) do update" in sql, "conflict target is not `source`"
+    assert "run_seq = (ohlcv_collection_progress.run_seq +" in sql, \
+        "the increment is not derived from the stored value — lost-update race"
+    assert "returning ohlcv_collection_progress.run_seq" in sql, \
+        "RETURNING must yield the durable run_seq, not another column"
+    assert "select" not in sql.split("insert into", 1)[1], "read-modify-write"
 
 
 def test_the_implementation_does_not_read_then_write():
@@ -107,12 +137,27 @@ def test_the_advance_holds_no_transaction_across_network_io():
 
 # ══ THE ADVANCE POINT — LOAD-BEARING ═══════════════════════════════════════
 class _Rec:
-    """Records the order of progression vs first item, and can fail on demand."""
+    """A STATEMENT-SENSITIVE fake PostgreSQL.
+
+    WHY IT IS BUILT THIS WAY. The previous version ignored the statement entirely
+    and returned its own counter, so the production SQL could be arbitrarily wrong
+    while every test stayed green — a sabotage review proved exactly that by
+    replacing `run_seq + 1` with the constant `1`, swapping the RETURNING column,
+    and re-pointing the source bind, all three of which survived.
+
+    So this fake does not guess. It compiles the statement the implementation
+    actually emitted, reads the source bind, the ON CONFLICT increment and the
+    RETURNING column out of that SQL, and applies them to a tiny in-memory table.
+    Break any of those three and the values these tests observe change.
+    """
 
     def __init__(self, fail=False, start=0):
         self.fail = fail
         self.events: list = []
-        self.seq = start
+        self.rows: dict = {}          # source -> run_seq, i.e. the "table"
+        self.sources: list = []       # every source bind the implementation used
+        self.returning: list = []     # every RETURNING column it asked for
+        self.conflict_targets: list = []
 
     def factory(self):
         rec = self
@@ -128,11 +173,39 @@ class _Rec:
                 rec.events.append("progression_execute")
                 if rec.fail:
                     raise RuntimeError("database unavailable")
-                rec.seq += 1
+
+                compiled = stmt.compile(dialect=postgresql.dialect())
+                sql = str(compiled)
+                params = compiled.params
+                src = params.get("source")
+                rec.sources.append(src)
+
+                m = re.search(r"RETURNING ohlcv_collection_progress\.(\w+)", sql)
+                col = m.group(1) if m else None
+                rec.returning.append(col)
+                ct = re.search(r"ON CONFLICT \((\w+)\) DO UPDATE", sql)
+                rec.conflict_targets.append(ct.group(1) if ct else None)
+
+                do_update = sql.split("DO UPDATE SET", 1)[1] if "DO UPDATE SET" in sql else ""
+                inc = re.search(
+                    r"run_seq\s*=\s*\(ohlcv_collection_progress\.run_seq \+ %\((\w+)\)s\)",
+                    do_update)
+                const = re.search(r"run_seq\s*=\s*%\((\w+)\)s", do_update)
+
+                if src not in rec.rows:                       # the INSERT branch
+                    rec.rows[src] = params.get("run_seq")
+                elif inc:                                     # run_seq = run_seq + N
+                    rec.rows[src] = rec.rows[src] + params[inc.group(1)]
+                elif const:                                   # run_seq = <constant>
+                    rec.rows[src] = params[const.group(1)]
+                else:
+                    rec.rows[src] = rec.rows[src]             # no update at all
+
+                value = rec.rows[src] if col == "run_seq" else _SENTINEL_TS
 
                 class _R:
                     def scalar_one(x):
-                        return rec.seq
+                        return value
                 return _R()
 
             async def commit(s):
@@ -141,6 +214,9 @@ class _Rec:
             async def rollback(s):
                 return None
         return _S()
+
+
+_SENTINEL_TS = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
 
 @pytest.mark.asyncio
@@ -154,9 +230,59 @@ async def test_the_sequence_is_durable_before_it_is_returned():
 
 @pytest.mark.asyncio
 async def test_consecutive_runs_receive_consecutive_values():
+    """The values come from applying the EMITTED SQL to a table, so a constant
+    increment or a swapped RETURNING column changes what this observes."""
     rec = _Rec()
     got = [await acquire_run_sequence(rec.factory, "binance") for _ in range(5)]
-    assert got == [1, 2, 3, 4, 5]
+    assert got == [1, 2, 3, 4, 5], f"sequence is not monotonic by one: {got}"
+    assert all(isinstance(v, int) for v in got), \
+        "a non-integer came back — RETURNING is not run_seq"
+
+
+@pytest.mark.asyncio
+async def test_the_returned_value_is_the_persisted_value():
+    rec = _Rec()
+    got = [await acquire_run_sequence(rec.factory, "binance") for _ in range(4)]
+    assert got[-1] == rec.rows["binance"], \
+        "the caller received something other than the stored run_seq"
+    assert rec.returning == ["run_seq"] * 4
+    assert rec.conflict_targets == ["source"] * 4
+
+
+@pytest.mark.asyncio
+async def test_each_source_keeps_its_own_row():
+    rec = _Rec()
+    a = [await acquire_run_sequence(rec.factory, "binance") for _ in range(3)]
+    b = [await acquire_run_sequence(rec.factory, "kraken") for _ in range(2)]
+    assert a == [1, 2, 3] and b == [1, 2], "sources shared a sequence"
+    assert rec.rows == {"binance": 3, "kraken": 2}
+
+
+@pytest.mark.asyncio
+async def test_the_run_acquires_under_ITS_OWN_source():
+    """S11: a kraken run must not advance binance's progression. The source the
+    run collects for and the source it claims progression under are the same
+    value, and this asserts it end to end through `run_collection_once`."""
+    rec = _Rec()
+
+    class _Col:
+        async def fetch_ohlcv(self, *a, **k):
+            raise RuntimeError("no network in this test")
+
+        async def close(self):
+            return None
+
+    import app.services.ohlcv_collector_job as mod
+    real = mod.BinanceCollector
+    mod.BinanceCollector = _Col
+    try:
+        await J.run_collection_once(rec.factory, symbols=[], timeframes=["15m"],
+                                    source="kraken")
+    finally:
+        mod.BinanceCollector = real
+    assert rec.sources == ["kraken"], \
+        f"progression was claimed under {rec.sources}, not the run's source"
+    assert "binance" not in rec.rows
 
 
 @pytest.mark.asyncio
@@ -305,6 +431,26 @@ def test_the_counter_carries_no_coverage_information():
 
 def test_progression_is_per_source_not_global():
     assert list(M.__table__.primary_key.columns.keys()) == ["source"]
+
+
+def test_the_source_key_is_not_nullable_in_the_emitted_ddl():
+    """S16: declaring the key column nullable changes the DDL create_all emits.
+    Asserted against the compiled DDL rather than the attribute, because the DDL
+    is what actually reaches the database."""
+    col = M.__table__.c.source
+    assert col.primary_key is True
+    assert col.nullable is False, "the progression key became nullable"
+    ddl = str(CreateTable(M.__table__).compile(dialect=postgresql.dialect()))
+    src_line = [ln for ln in ddl.splitlines() if ln.strip().startswith("source ")]
+    assert src_line, ddl
+    assert "NOT NULL" in src_line[0], f"source is not NOT NULL in DDL: {src_line[0]}"
+
+
+def test_the_migration_declares_the_same_key_shape():
+    sql = MIGRATION.read_text(encoding="utf-8").lower()
+    body = " ".join(l for l in sql.splitlines() if not l.strip().startswith("--"))
+    assert "source" in body and "not null" in body
+    assert "primary key (source)" in body, "migration lost the source primary key"
 
 
 @pytest.mark.asyncio
