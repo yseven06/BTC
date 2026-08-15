@@ -407,25 +407,113 @@ def test_T14_the_production_collector_is_untouched():
     assert "wait_for" not in src
 
 
+# The modules Pass B's claims actually rest on. Touching one of these is not by
+# itself a violation — introducing COUPLING between them and the collection
+# subsystem is.
+DECISION_MODULES = (
+    "app/services/shadow_eval.py",
+    "app/backtesting/resolution_core.py",
+    "app/backtesting/tracker.py",
+    "app/backtesting/lifecycle.py",
+    "app/services/entry_activation.py",
+    "app/services/entry_flags.py",
+    "app/services/publication.py",
+    "app/services/lifecycle_log.py",
+    "app/models/decision_candidate.py",
+)
+
+# Collection telemetry and entry points. A decision module naming any of these is
+# reading a network copy as if it were a market opinion.
+COLLECTION_SYMBOLS = (
+    "CollectionResult", "WriteResult", "collect_once", "collect_and_persist",
+    "run_collection_once", "acquire_run_sequence", "bars_persisted",
+    "universe_overflow", "ohlcv_collector_job", "ohlcv_writer",
+    "ohlcv_progression", "OhlcvCollectionProgress",
+)
+
+# Decision surfaces the collection path must never reach into.
+DECISION_SYMBOLS = (
+    "shadow_eval", "resolution_core", "tracker", "publication",
+    "entry_activation", "entry_flags", "lifecycle_log", "decision_candidate",
+    "signal_generator", "coin_memory",
+)
+
+
 def test_T15_the_decision_path_is_untouched():
+    """Pass B's claims must not become entangled with OHLCV collection.
+
+    THIS USED TO READ A GLOBAL FACT TO PROVE A LOCAL CLAIM, exactly like the
+    migration clause repaired below it. It asserted that
+    `git diff --name-only main...HEAD` mentioned none of a forbidden file list.
+    That diff describes whatever branch happens to be checked out, not this
+    checkpoint, so once Pass B merged it stopped describing Pass B at all —
+    and the ratified A3c activation, which legitimately adds ONE scheduler
+    registration, is that expiry date arriving.
+
+    Worse, a file-name check could never see the thing actually worth
+    forbidding: coupling introduced INSIDE a file that was always allowed to
+    change. The replacement is semantic and bidirectional, so it keeps biting
+    long after this branch is history:
+
+      * no decision module may name a collection symbol, and
+      * the collection path may not reach into a decision surface.
+    """
+    for rel in DECISION_MODULES:
+        path = BACKEND / rel
+        if not path.exists():                     # module retired since Pass B
+            continue
+        text = path.read_text(encoding="utf-8")
+        for token in COLLECTION_SYMBOLS:
+            assert token not in text, \
+                f"{rel} reads collection telemetry ({token}) — Pass B is coupled"
+
+    # The OHLCV job is allowed to live in scheduler.py. What it may NOT do is
+    # reach a decision surface: its body may only await the tracked wrapper
+    # around the ratified collector entry point.
+    sched_src = (BACKEND / "app/services/scheduler.py").read_text(encoding="utf-8")
+    tree = ast.parse(sched_src)
+    ohlcv_fn = [n for n in ast.walk(tree)
+                if isinstance(n, ast.AsyncFunctionDef) and "ohlcv" in n.name.lower()]
+    for fn in ohlcv_fn:
+        names = set()
+        for node in ast.walk(fn):
+            names |= {getattr(node, "id", None), getattr(node, "attr", None),
+                      getattr(node, "module", None)}
+            if isinstance(node, ast.ImportFrom):
+                # BOTH halves: `from app.services import entry_activation` hides
+                # the decision module in the ALIAS, not the module path.
+                names.add(node.module)
+                names |= {al.name for al in node.names}
+            if isinstance(node, ast.Import):
+                names |= {al.name for al in node.names}
+        for token in DECISION_SYMBOLS:
+            assert not any(token in (n or "") for n in names), \
+                f"{fn.name} reaches the decision surface ({token})"
+
+    # …and the collection subsystem itself must not import one either.
+    for rel in ("app/services/ohlcv_collector_job.py", "app/services/ohlcv_writer.py",
+                "app/services/ohlcv_progression.py"):
+        path = BACKEND / rel
+        if not path.exists():
+            continue
+        sub = ast.parse(path.read_text(encoding="utf-8"))
+        imported = set()
+        for n in ast.walk(sub):
+            if isinstance(n, ast.ImportFrom):
+                imported.add(n.module or "")
+                imported |= {al.name for al in n.names}   # `from pkg import mod`
+            elif isinstance(n, ast.Import):
+                imported |= {al.name for al in n.names}
+        for token in DECISION_SYMBOLS:
+            assert not any(token in m for m in imported), \
+                f"{rel} imports a decision module ({token})"
+
+    # The frontend clause stays diff-based because Pass B is a backend-only
+    # checkpoint and no branch since has had cause to weaken that; it carries the
+    # same latent global/local shape and should be revisited if it ever fires.
     changed = subprocess.run(
         ["git", "diff", "--name-only", "main...HEAD"],
         cwd=BACKEND.parent, capture_output=True, text=True, check=True).stdout.split()
-    forbidden = (
-        "backend/app/services/shadow_eval.py",
-        "backend/app/backtesting/resolution_core.py",
-        "backend/app/backtesting/tracker.py",
-        "backend/app/backtesting/lifecycle.py",
-        "backend/app/services/scheduler.py",
-        "backend/app/services/entry_activation.py",
-        "backend/app/services/entry_flags.py",
-        "backend/app/services/publication.py",
-        "backend/app/services/lifecycle_log.py",
-        "backend/app/models/decision_candidate.py",
-        "backend/app/database.py",
-    )
-    for f in forbidden:
-        assert f not in changed, f"{f} must not change in a reliability checkpoint"
     assert not [c for c in changed if c.startswith("frontend/")]
     # NO BLANKET MIGRATION CLAUSE HERE.
     #
