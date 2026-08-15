@@ -109,10 +109,15 @@ def pytest_configure(config: pytest.Config) -> None:  # noqa: ARG001
     # The OHLCV progression integration gate is opt-in and marked; registering
     # the marker here keeps the ordinary suite free of PytestUnknownMarkWarning
     # without adding a pytest.ini the repo does not otherwise have.
-    config.addinivalue_line(
-        "markers",
-        "integration: needs a real PostgreSQL; runs only when OHLCV_TEST_DSN is set",
-    )
+    # `config` was previously unused (hence the noqa), and three DSN-guard tests
+    # call this hook with None to exercise the classification logic alone. Guard
+    # the access rather than change those callers: the DSN rule below is the
+    # safety-critical part of this hook and must stay reachable either way.
+    if config is not None:
+        config.addinivalue_line(
+            "markers",
+            "integration: needs a real PostgreSQL; runs only when OHLCV_TEST_DSN is set",
+        )
     dsn = _setting("DATABASE_URL")
     safe, rule = classify_dsn(dsn, _setting("ENVIRONMENT"))
 
