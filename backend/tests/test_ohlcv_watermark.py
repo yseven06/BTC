@@ -694,7 +694,7 @@ def test_A3c_added_no_production_caller():
         # 0012: it holds the fairness counter and is imported only by the
         # collector, so it is part of what must stay dormant — not a caller of it.
         if p.name in ("ohlcv_collector_job.py", "ohlcv_writer.py",
-                      "ohlcv_progression.py"):
+                      "ohlcv_progression.py", "scheduler.py"):
             continue
         t = p.read_text(encoding="utf-8", errors="ignore")
         if any(k in t for k in ("ohlcv_collector_job", "collect_once",
@@ -707,8 +707,9 @@ def test_A3c_registered_no_scheduler_job():
     src = (BACKEND / "app/services/scheduler.py").read_text(encoding="utf-8")
     # NB: the scheduler legitimately calls `collector.fetch_ohlcv` for signals.
     # What must be absent is any reference to THIS module or its entry points.
-    for name in ("ohlcv_collector_job", "collect_once", "run_collection_once",
-                 "load_watermarks", "ohlcv_writer"):
+    # A3c IS NOW ACTIVATED: scheduler.py is the ONE allowed caller, via
+    # run_collection_once only. See tests/test_ohlcv_activation_registration.py.
+    for name in ("collect_once", "load_watermarks", "ohlcv_writer"):
         assert name not in src, f"scheduler references {name}"
 
 

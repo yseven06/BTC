@@ -473,12 +473,16 @@ def test_witness_carries_the_activation_facing_fields():
 
 # ══ 7 · SHADOW HEALTH SCOPING ══════════════════════════════════════════════
 def test_all_seven_existing_jobs_keep_their_semantics():
-    assert set(job_guard.JOB_SPECS) == {
-        "signals_15m", "signals_1h", "signals_4h", "signals_1d",
-        "perf_tracking", "price_alerts", "startup_check"}
-    for job_id, spec in job_guard.JOB_SPECS.items():
-        assert spec.shadow is False, f"{job_id} silently became a shadow job"
-    assert {j: s.critical for j, s in job_guard.JOB_SPECS.items()} == {
+    # A3c IS NOW ACTIVATED. This guard used to assert the subsystem was
+    # unreachable; that fact is obsolete. What must still hold is that there is
+    # exactly ONE intended path and no second one — see
+    # tests/test_ohlcv_activation_registration.py for the strong form.
+    seven = {"signals_15m", "signals_1h", "signals_4h", "signals_1d",
+             "perf_tracking", "price_alerts", "startup_check"}
+    assert set(job_guard.JOB_SPECS) == seven | {"ohlcv_collect"}
+    for job_id in seven:
+        assert job_guard.JOB_SPECS[job_id].shadow is False,             f"{job_id} silently became a shadow job"
+    assert {j: job_guard.JOB_SPECS[j].critical for j in seven} == {
         "signals_15m": True, "signals_1h": True, "signals_4h": False,
         "signals_1d": False, "perf_tracking": True, "price_alerts": True,
         "startup_check": False}
@@ -522,11 +526,17 @@ def test_a_non_shadow_overrun_still_degrades_global_health(monkeypatch):
 
 # ══ 8 · STILL DORMANT ══════════════════════════════════════════════════════
 def test_no_ohlcv_scheduler_registration_and_no_caller():
+    # A3c IS NOW ACTIVATED. This guard used to assert the subsystem was
+    # unreachable; that fact is obsolete. What must still hold is that there is
+    # exactly ONE intended path and no second one — see
+    # tests/test_ohlcv_activation_registration.py for the strong form.
     sched = (BACKEND / "app/services/scheduler.py").read_text(encoding="utf-8")
-    for name in ("ohlcv_collector_job", "collect_once", "run_collection_once",
-                 "ohlcv_writer", "collect_and_persist"):
+    # The scheduler may reference ONLY the activation entry point, and only from
+    # inside the job function (lazy import keeps app.main free of OHLCV work).
+    for name in ("collect_once", "ohlcv_writer", "collect_and_persist"):
         assert name not in sched, f"scheduler references {name}"
-    assert "ohlcv" not in {j.lower() for j in job_guard.JOB_SPECS}
+    assert "run_collection_once" in sched, "the ratified entry point is gone"
+    assert [j for j in job_guard.JOB_SPECS if "ohlcv" in j.lower()] == ["ohlcv_collect"]
 
     hits = []
     for p in list((BACKEND / "app").rglob("*.py")) + list((BACKEND / "scripts").rglob("*.py")):
@@ -538,8 +548,12 @@ def test_no_ohlcv_scheduler_registration_and_no_caller():
         t = p.read_text(encoding="utf-8", errors="ignore")
         if any(n in t for n in ("ohlcv_collector_job", "collect_once",
                                 "run_collection_once", "collect_and_persist")):
-            hits.append(str(p.relative_to(BACKEND)))
-    assert hits == [], f"an OHLCV production caller appeared: {hits}"
+            hits.append(p.relative_to(BACKEND).as_posix())
+    # Activated: the scheduler is the ONE sanctioned caller. Pinning the exact
+    # file is stronger than the old `hits == []`, because it fails both on a lost
+    # registration and on any second path appearing anywhere else.
+    assert hits == ["app/services/scheduler.py"], \
+        f"expected exactly one OHLCV caller (the scheduler), found {hits}"
 
 
 def test_collection_stays_strictly_serial():

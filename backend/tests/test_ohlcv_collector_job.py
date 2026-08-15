@@ -572,12 +572,33 @@ def test_A3b_nothing_in_production_calls_the_collector():
                           "ohlcv_progression.py") or "__pycache__" in str(p):
                 continue
             if re.search(r"ohlcv_collector_job|collect_once", p.read_text(encoding="utf-8", errors="ignore")):
-                hits.append(str(p.relative_to(BACKEND)))
-    assert hits == [], f"A3b must stay dormant; wired by {hits}"
+                hits.append(p.relative_to(BACKEND).as_posix())
+    # A3c IS NOW ACTIVATED, so "nothing wires it" is obsolete. The invariant that
+    # survives is stronger than the old empty-list check: EXACTLY ONE file may
+    # reach the collector, it must be the scheduler, and it must do so only
+    # through the ratified entry point.
+    assert hits == ["app/services/scheduler.py"], \
+        f"expected exactly one OHLCV caller (the scheduler), found {hits}"
+    sched = (BACKEND / "app/services/scheduler.py").read_text(encoding="utf-8")
+    assert "collect_once" not in sched, "scheduler bypasses run_collection_once"
+    assert "collect_and_persist" not in sched and "ohlcv_writer" not in sched, \
+        "scheduler reaches into the writer directly"
+    # Structural, not a raw count: the docstring legitimately names the entry
+    # point, so counting text would make this guard depend on prose.
+    tree = ast.parse(sched)
+    imports = [n for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)
+               and n.module == "app.services.ohlcv_collector_job"]
+    assert len(imports) == 1, f"expected exactly one lazy import, got {len(imports)}"
+    assert [a.name for a in imports[0].names] == ["run_collection_once"]
+    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call)
+             and getattr(n.func, "id", None) == "run_collection_once"]
+    assert len(calls) == 1, f"expected exactly one call, got {len(calls)}"
 
 
 def test_A3b_scheduler_and_main_do_not_reference_it():
-    for rel in ("app/services/scheduler.py", "app/main.py",
+    # A3c IS NOW ACTIVATED: scheduler.py is the ONE allowed caller, via
+    # run_collection_once only. See tests/test_ohlcv_activation_registration.py.
+    for rel in ("app/main.py",
                 "app/api/routes/signals.py"):
         code = (BACKEND / rel).read_text(encoding="utf-8")
         code = re.sub(r"#[^\n]*", " ", code)
@@ -590,10 +611,12 @@ def test_A3b_scheduler_and_main_do_not_reference_it():
 def test_A3b_no_ohlcv_job_is_registered():
     src = (BACKEND / "app" / "services" / "scheduler.py").read_text(encoding="utf-8")
     ids = re.findall(r'id="([^"]+)"', src)
-    assert not [i for i in ids if "ohlcv" in i.lower()], ids
-    assert sorted(ids) == ["perf_tracking", "price_alerts", "signals_15m",
-                           "signals_1d", "signals_1h", "signals_4h",
-                           "startup_check"], ids
+    # A3c IS NOW ACTIVATED: scheduler.py is the ONE allowed caller, via
+    # run_collection_once only. See tests/test_ohlcv_activation_registration.py.
+    assert [i for i in ids if "ohlcv" in i.lower()] == ["ohlcv_collect"], ids
+    assert sorted(ids) == ["ohlcv_collect", "perf_tracking", "price_alerts",
+                           "signals_15m", "signals_1d", "signals_1h",
+                           "signals_4h", "startup_check"], ids
 
 
 def test_A3b_the_collector_imports_no_decision_module():

@@ -135,6 +135,11 @@ JOB_SPECS: Dict[str, JobSpec] = {
     "perf_tracking": JobSpec(90.0, 120.0, critical=True),
     "price_alerts":  JobSpec(30.0, 60.0, critical=True),
     "startup_check": JobSpec(900.0, None, critical=False),
+    # SHADOW: observable via shadow_* keys, excluded from the global `degraded`
+    # aggregate so a research store can never mark the trading service unhealthy.
+    # 150s is an INITIAL activation budget — see scheduler.py; it is NOT yet
+    # 1.9x an observed healthy maximum, because no run has happened yet.
+    "ohlcv_collect":  JobSpec(150.0, 1800.0, critical=False, shadow=True),
 }
 
 # Fallback for a job id with no spec — bounded rather than unbounded, which is

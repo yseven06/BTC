@@ -71,6 +71,7 @@ _JOB_LABELS: Dict[str, str] = {
     "perf_tracking": "Performans Takibi",
     "price_alerts": "Fiyat Alarmları Kontrolü",
     "startup_check": "Başlangıç Kontrolü",
+    "ohlcv_collect": "OHLCV Gölge Toplama",
 }
 _JOB_STATUS: Dict[str, Dict[str, Any]] = {}
 
@@ -157,6 +158,25 @@ async def _job_perf_tracking() -> None:
 
 async def _job_price_alerts() -> None:
     await _run_tracked("price_alerts", _check_price_alerts())
+
+
+async def _job_ohlcv_collect() -> None:
+    """The OHLCV shadow collector. SHADOW: never a trading input.
+
+    Routed through `_run_tracked` like every other job, so the whole run is
+    bounded by its JobSpec budget and a degraded run is cancelled rather than
+    left to outlive its cadence. `run_collection_once` owns the collector and
+    the result object, claims the durable run sequence before the first item,
+    and re-raises cancellation untouched so job_guard still sees a cancelled
+    task.
+
+    Imported INSIDE the function on purpose: module-level import would pull the
+    collector into every process that imports the scheduler, and the dormancy
+    guards assert that importing app.main performs no OHLCV work.
+    """
+    from app.services.ohlcv_collector_job import run_collection_once
+
+    await _run_tracked("ohlcv_collect", run_collection_once(async_session_factory))
 
 
 async def _job_startup_check() -> None:
@@ -979,6 +999,24 @@ def start_scheduler() -> AsyncIOScheduler:
         id="startup_check",
         replace_existing=True,
         name="Startup signal check",
+    )
+
+    # OHLCV SHADOW COLLECTION — the only OHLCV execution path in production.
+    #
+    # minute="28,58" places both runs inside measured-free windows: signals_15m
+    # holds :02-:12:05, :17-:27:05, :32-:42:05, :47-:57:05 (600s budget + 5s
+    # cleanup grace) and signals_1h holds :01-:16:05. A :28 run ends by 30:35 and
+    # a :58 run by 00:35, clearing the next signals start by 85s and 25s.
+    #
+    # 150s is an INITIAL budget, not a calibrated one: job_guard derives budgets
+    # from an observed healthy maximum, and this job has never run. The first
+    # controlled executions must re-derive it.
+    _scheduler.add_job(
+        _job_ohlcv_collect,
+        CronTrigger(minute="28,58"),
+        id="ohlcv_collect",
+        replace_existing=True,
+        name="OHLCV shadow collection",
     )
 
     # A trigger APScheduler refuses is the symptom that went unread for 45
