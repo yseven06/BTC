@@ -21,6 +21,7 @@ from app.models.intelligence import SignalSnapshot, CoinMemory, SignalStatusHist
 from app.models.decision_candidate import SignalDecisionCandidate
 from app.models.ohlcv_bar import OhlcvBar
 from app.models.ohlcv_progress import OhlcvCollectionProgress
+from app.models.ohlcv_symbol_progress import OhlcvSymbolProgress
 
 __all__ = [
     "User",
@@ -45,4 +46,5 @@ __all__ = [
     "SignalDecisionCandidate",
     "OhlcvBar",
     "OhlcvCollectionProgress",
+    "OhlcvSymbolProgress",
 ]

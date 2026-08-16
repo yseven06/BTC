@@ -53,7 +53,7 @@ from sqlalchemy import String, column, select, true, values
 from app.collectors.binance_collector import BinanceCollector
 from app.models.asset import Asset, AssetType
 from app.models.ohlcv_bar import OhlcvBar
-from app.services.ohlcv_progression import acquire_run_sequence
+from app.services.ohlcv_progression import acquire_run_sequence, select_partition
 from app.services.ohlcv_writer import (DEFAULT_FETCH_RETRIES,
                                        DEFAULT_FETCH_TIMEOUT, SOURCE_BINANCE,
                                        WriteResult, collect_and_persist,
@@ -124,6 +124,20 @@ BOOTSTRAP_MAX_BARS = 4
 # under-seeding is self-healing anyway (the watermark simply advances from
 # wherever it lands), so a third spare would buy nothing.
 BOOTSTRAP_FETCH_LIMIT = BOOTSTRAP_MAX_BARS + 2
+
+# SYMBOLS PER EXECUTED RUN — the partition size.
+#
+# DORMANT. Nothing registers an OHLCV job, so this value is a code-shape default
+# and a test fixture, NOT an activation decision. The measured cost is 2.964 s
+# per (symbol, timeframe) item and the frozen calibration gate is 78.947 s, so
+# 4 symbols x 4 timeframes = 16 items models to ~47 s. The ACTIVATION checkpoint
+# must re-derive this against its own measurement and choose the final value.
+#
+# K IS NOT PART OF THE DURABLE IDENTITY. Fairness lives in ohlcv_symbol_progress
+# keyed by (source, symbol); changing K changes how many symbols a run claims and
+# nothing about who is owed a turn, so it can be retuned without a migration and
+# without invalidating any existing token.
+SYMBOLS_PER_RUN = 4
 
 
 def bootstrap_fetch_limit(bootstrap: int) -> int:
@@ -297,7 +311,9 @@ class CollectionResult:
     failures_dropped: int = 0
 
     # fairness / coverage accounting
-    rotation_offset: int = 0   # where this run started in the total order
+    rotation_offset: int = 0   # SUPERSEDED by the symbol-space partition; kept 0
+    symbols_partition_size: int = 0    # K requested for this run
+    symbols_partitioned: int = 0       # symbols actually claimed (<= K)
     run_seq: int = -1          # durable executed-run sequence; -1 = never claimed
     symbols_unattempted: int = 0       # selected but never reached (budget expired)
     symbols_degraded: int = 0          # had a terminal failure; rest of its timeframes ran on the reduced budget
@@ -357,7 +373,13 @@ class CollectionResult:
         complete one: `symbols_skipped` deliberately means "reached, nothing
         new", so an unreached symbol would appear nowhere at all.
         """
-        self.symbols_unattempted = max(0, self.symbols_selected - self.symbols_attempted)
+        # AGAINST THE PARTITION, NOT THE UNIVERSE. `symbols_selected` is the
+        # whole eligible population (so cap/overflow still describe reality),
+        # but a partitioned run only ever intended to reach the claimed subset.
+        # Measuring against the universe would report 53 of 57 symbols as
+        # "unattempted" on a perfectly healthy 4-symbol run.
+        intended = self.symbols_partitioned or self.symbols_selected
+        self.symbols_unattempted = max(0, intended - self.symbols_attempted)
 
     def as_dict(self) -> Dict[str, object]:
         """JSON-safe, bounded, stable-keyed witness.
@@ -600,6 +622,7 @@ async def collect_once(
     source: str = SOURCE_BINANCE,
     bootstrap: int = BOOTSTRAP_MAX_BARS,
     spacing: float = REQUEST_SPACING_SECONDS,
+    symbols_per_run: int = SYMBOLS_PER_RUN,
     item_budget: float = ITEM_BUDGET_SECONDS,
     item_budget_degraded: float = DEGRADED_ITEM_BUDGET_SECONDS,
     cadence_seconds: float = DEFAULT_CADENCE_SECONDS,
@@ -623,6 +646,10 @@ async def collect_once(
         # withholds it as possibly-forming, and the run persists nothing —
         # forever, silently. Refuse rather than run a guaranteed no-op.
         raise ValueError(f"limit must be >= {MIN_FETCH_LIMIT}, got {limit}")
+    if symbols_per_run < 1:
+        # A zero partition would claim nothing, attempt nothing, and still
+        # consume a run sequence - a silent no-op run, forever.
+        raise ValueError(f"symbols_per_run must be >= 1, got {symbols_per_run}")
     if bootstrap < 1:
         # A zero bootstrap would leave every never-written series permanently
         # empty: no rows means no watermark, no watermark means bootstrap, and
@@ -686,9 +713,29 @@ async def collect_once(
     # A failure to claim is NOT swallowed: without a durable sequence there is no
     # fairness progression to speak of, so the run does not start.
     res.run_seq = run_seq
-    off = rotation_offset(len(selected), run_seq)
-    res.rotation_offset = off
-    selected = list(selected[off:]) + list(selected[:off])
+    # SYMBOL-SPACE PARTITION (A3F). `selected` above is the whole eligible
+    # universe, and `symbols_selected` deliberately keeps meaning that, so the
+    # cap and overflow signals still describe the real population. What this run
+    # will ATTEMPT is a K-sized partition of it.
+    #
+    # The old `rotation_offset(len(selected), run_seq)` rotated the whole list
+    # and attempted every symbol, so the offset decided ORDER only. Bounding the
+    # run makes the selector decide REACHABILITY instead, and an index-space
+    # selector cannot carry that: `run_seq mod ceil(N/K)` reaches only
+    # ceil(N/K)/gcd(period, ceil(N/K)) blocks when N is periodic in run_seq —
+    # measured at 25 of 50 blocks, 95 of 250 symbols never selected. The claim
+    # is durable, per symbol, and committed before the first network call.
+    # ONLY THE DISCOVERED UNIVERSE IS PARTITIONED. An explicit `symbols=` list is
+    # an explicit instruction — a caller naming three symbols means those three,
+    # and silently collecting a K-sized slice of them would be wrong. The durable
+    # partition governs the universe this module DISCOVERS for itself, which is
+    # the production path (`symbols is None`) and the only one whose size makes a
+    # run unaffordable.
+    if symbols is None:
+        res.symbols_partition_size = symbols_per_run
+        selected = await select_partition(
+            session_factory, source, selected, symbols_per_run, run_seq)
+        res.symbols_partitioned = len(selected)
 
     # WATERMARK READ — one query, in its own session, closed before any network
     # call, exactly like the universe read above.

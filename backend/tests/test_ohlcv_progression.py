@@ -54,7 +54,12 @@ def test_the_migration_is_additive_and_touches_no_ohlcv_data():
 
 def test_the_migration_number_is_next_and_0011_is_untouched():
     names = sorted(p.name for p in (BACKEND / "migrations").glob("*.sql"))
-    assert names[-1].startswith("0012_"), names[-1]
+    # A3F adds 0013 (the per-symbol ledger). 0012 must still be present and
+    # 0013 must be the newest — the guard pins ORDER and non-destruction, not a
+    # frozen highest number, which is what made it expire the moment a
+    # legitimate migration landed.
+    assert names[-1].startswith("0013_"), names[-1]
+    assert any(n.startswith("0012_") for n in names), "0012 must still exist"
     assert any(n.startswith("0011_") for n in names), "0011 must still exist"
 
 
@@ -373,7 +378,14 @@ async def test_the_run_entry_point_claims_the_sequence_before_the_first_item():
     assert order[0] == ("progression",), \
         f"the first database work was not the progression claim: {order[0]}"
     assert res.run_seq == 7
-    assert res.rotation_offset == 7 % 2
+    # rotation_offset is SUPERSEDED by the symbol-space partition (A3F) and is no
+    # longer the traversal selector, so it stays 0. The claim-before-first-item
+    # ordering asserted above is what this test was actually written to protect,
+    # and that is unchanged.
+    assert res.rotation_offset == 0
+    # An explicit `symbols=` list is an instruction, not a universe, so it is
+    # never partitioned - the durable partition governs discovery only.
+    assert res.symbols_partitioned == 0
 
 
 @pytest.mark.asyncio
