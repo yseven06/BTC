@@ -147,6 +147,44 @@ async def select_partition(session_factory, source: str,
     ORDERING IS TOTAL: (last_attempt_run_seq ASC, symbol ASC). The tie-break is
     the symbol itself - Asset.symbol is unique=True - so equal tokens never
     resolve by plan order, arrival order, hash or clock.
+
+    THE CONTRACT, STATED AS SEPARATE CLAIMS
+    ---------------------------------------
+    1. DUPLICATE-CLAIM SAFETY. Eligibility requires
+       `last_attempt_run_seq < run_seq`, so a stale or equal run cannot reclaim
+       rows whose durable token has already reached its sequence. Without it,
+       reproduced from a clean ledger at r+1 -> r -> r+2: r+1 seeds every row
+       at r, the stale r wrote r onto rows already at r - a claim that advanced
+       nothing - and r+2 handed out the same five symbols again.
+
+    2. TOKEN MONOTONICITY. A successful claim never decreases a stored token.
+
+    3. SERIAL FAIRNESS. With monotonically increasing run_seq over a stable,
+       continuously-active universe, coverage completes within ceil(N/K)
+       successful executions. Measured exactly at N=20/K=5, 57/5 and 57/4.
+
+    4. OUT-OF-ORDER FAIRNESS - a DIFFERENT and weaker bound. Runs take a
+       monotonic run_seq but may COMPLETE out of order. Measured:
+       coverage <= ceil(N/K) + stale_runs_before_completion, confirmed over
+       r+1,r,r+2 / r+2,r,r+1,r+3 / r+3,r+1,r+2,r,r+4 and sustained
+       fresh/stale alternation (57/57 covered, no starvation). ceil(N/K) is
+       NOT claimed for arbitrary invocation ordering.
+
+    5. STALE RUNS. A run whose sequence is not above the stored tokens finds
+       nothing eligible and returns []. That is normal ordering behaviour, not
+       degradation or failure: it is what bounds (4) to one extra execution per
+       stale run instead of corrupting the queue.
+
+    6. NEWCOMER ADMISSION is unaffected. seed = max(run_seq - 1, 0) < run_seq,
+       so a freshly materialised symbol is eligible on the very run that
+       created it. This is why the operator is `<` and never `<=`: with `<=` a
+       run would re-select rows it had already claimed itself.
+
+    7. max_instances=1 IS NOT LOAD-BEARING FOR CORRECTNESS. Duplicate-claim
+       safety and token monotonicity come from the predicate and the durable
+       token, and are proven against real PostgreSQL with concurrent claimants.
+       APScheduler's max_instances=1 only reduces how often runs overlap at
+       all; it is an operational convenience, not part of this contract.
     """
     src = (source or "").strip()
     if not src:
@@ -182,7 +220,25 @@ async def select_partition(session_factory, source: str,
         selected = list((await db.execute(
             select(OhlcvSymbolProgress.symbol)
             .where(OhlcvSymbolProgress.source == src,
-                   OhlcvSymbolProgress.symbol.in_(active))
+                   OhlcvSymbolProgress.symbol.in_(active),
+                   # ELIGIBILITY, AND IT IS NOT COSMETIC.
+                   #
+                   # Runs take a monotonic run_seq but can COMPLETE out of order.
+                   # Reproduced from a clean ledger with the real code at
+                   # r+1 -> r -> r+2: r+1 seeds every row at r+1-1 = r, claims
+                   # five, and the stale r then wrote r onto rows ALREADY at r.
+                   # That claim made no ordering progress, so those rows stayed
+                   # tied with never-claimed rows and r+2 selected them again -
+                   # two runs handed the same partition.
+                   #
+                   # `< run_seq` makes a claim that cannot advance a row
+                   # impossible: a stale run finds nothing eligible and returns
+                   # an empty partition rather than backdating the queue.
+                   # Strictly `<`, never `<=`: the seed is run_seq-1, so `<`
+                   # keeps a freshly materialised symbol eligible on the very
+                   # run that created it, while `<=` would let a run re-claim
+                   # rows it had already claimed itself.
+                   OhlcvSymbolProgress.last_attempt_run_seq < run_seq)
             .order_by(OhlcvSymbolProgress.last_attempt_run_seq.asc(),
                       OhlcvSymbolProgress.symbol.asc())
             .limit(k)

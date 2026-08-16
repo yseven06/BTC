@@ -67,6 +67,18 @@ class _Session:
             # bindparam whose values are not in `compile().params`.
             items = [kv for kv in self.ledger.items()
                      if not self.active or kv[0] in self.active]
+            # HONOUR THE ELIGIBILITY PREDICATE. Serving rows the statement
+            # excluded would let a mutation that drops `last_attempt_run_seq <
+            # run_seq` pass unnoticed - the fake would hand back rows the real
+            # database would never return.
+            if "last_attempt_run_seq <" in sql:
+                bound = [v for v in stmt.compile().params.values()
+                         if isinstance(v, int)]
+                if bound:
+                    cutoff = max(bound)
+                    strict = "last_attempt_run_seq <=" not in sql
+                    items = [kv for kv in items
+                             if (kv[1] < cutoff if strict else kv[1] <= cutoff)]
             items.sort(key=lambda kv: ((kv[1] if asc_token else -kv[1]),
                                        kv[0] if asc_sym else ""))
             limit = getattr(stmt, "_limit", None)
@@ -186,3 +198,46 @@ async def test_invalid_inputs_are_refused(bad):
     with pytest.raises(ValueError):
         await select_partition(_factory({}, []), kw["source"], ["A"],
                                kw["k"], kw["run_seq"])
+
+
+# ══ THE ELIGIBILITY PREDICATE, AND WHY THE OPERATOR IS `<` ═════════════════
+@pytest.mark.asyncio
+async def test_the_ranking_excludes_rows_not_older_than_this_run():
+    """M1/M3/M4: without `last_attempt_run_seq < run_seq` a run whose sequence
+    is not above the stored tokens claims rows it cannot advance, leaving them
+    tied with never-claimed rows for the next run to take again."""
+    rec = []
+    await select_partition(_factory({"A": 1}, rec), "binance", ["A"], 1, 9)
+    sel = _sql(rec, "select")
+    assert "last_attempt_run_seq <" in sel, "the eligibility predicate is missing"
+    assert "last_attempt_run_seq <=" not in sel, "equality would let a run re-claim its own rows"
+    assert "last_attempt_run_seq >" not in sel, "the predicate is inverted"
+
+
+@pytest.mark.asyncio
+async def test_a_run_cannot_reclaim_rows_it_already_claimed_itself():
+    """M2, the `<` vs `<=` discriminator, proven semantically rather than by
+    comment. seed = run_seq - 1, so:
+        freshly materialised  token = run_seq-1  ->  < run_seq  -> ELIGIBLE
+        already claimed here  token = run_seq    ->  < run_seq  -> EXCLUDED
+    With `<=` the second line flips and a run re-selects its own claims."""
+    rec = []
+    # every row already carries THIS run's sequence
+    ledger = {f"S{i}": 50 for i in range(6)}
+    got = await select_partition(_factory(ledger, rec), "binance", list(ledger), 3, 50)
+    assert got == [], f"a run re-claimed rows already at its own run_seq: {got}"
+    # and a freshly seeded row (run_seq-1) is still eligible on that same run
+    rec2 = []
+    got2 = await select_partition(_factory({"S0": 49}, rec2), "binance", ["S0"], 1, 50)
+    assert got2 == ["S0"], "the newcomer seed run_seq-1 was wrongly excluded"
+
+
+@pytest.mark.asyncio
+async def test_the_predicate_binds_the_run_seq_not_the_seed():
+    """M5: comparing against the seed would re-admit rows this run just claimed."""
+    rec = []
+    await select_partition(_factory({"A": 1}, rec), "binance", ["A"], 1, 77)
+    params = next(r[2].compile().params for r in rec
+                  if r[0] == "sql" and r[1].startswith("select"))
+    assert 77 in params.values(), f"the predicate does not bind run_seq: {params}"
+    assert 76 not in params.values(), "the predicate binds the seed instead of run_seq"
