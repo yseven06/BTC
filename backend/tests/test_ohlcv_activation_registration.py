@@ -44,9 +44,18 @@ def test_exactly_one_ohlcv_add_job_exists():
         for kw in node.keywords:
             if kw.arg == "id" and isinstance(kw.value, ast.Constant):
                 ids.append(kw.value.value)
-    assert ids.count(JOB_ID) == 1, f"expected one {JOB_ID} registration, found {ids}"
+    # DISABLED AFTER CALIBRATION. The first genuine run (22:58:02Z, run_seq=1)
+    # was cancelled at 148.196 s against a 150 s budget, and the frozen gate is
+    # T <= 150/1.9 = 78.947 s — so the registration was removed in the same
+    # session. The invariant this guard carries is unchanged and is what still
+    # matters: there is NEVER more than one OHLCV registration. It now reads
+    # ZERO, and it will read one again only when a checkpoint re-activates on
+    # a re-derived budget/slot.
+    assert ids.count(JOB_ID) == 0, (
+        f"{JOB_ID} is registered again — re-activation must come with a "
+        f"re-derived budget, not a silent restore: {ids}")
     assert len(ids) == len(set(ids)), f"duplicate job ids: {ids}"
-    assert len(ids) == 8, f"expected 7 existing + 1 OHLCV, found {len(ids)}: {ids}"
+    assert len(ids) == 7, f"expected the 7 trading jobs, found {len(ids)}: {ids}"
 
 
 def test_no_second_execution_path_for_ohlcv():
@@ -94,9 +103,15 @@ def test_the_jobspec_is_exactly_the_ratified_contract():
     assert spec.shadow is True
 
 
-def test_the_cron_is_the_ratified_slot():
-    """minute='28,58' — both windows sit inside measured-free gaps between the
-    signals sweeps. Any other minute reopens the slot analysis."""
+def test_no_cron_slot_is_claimed_while_disabled():
+    """Was `test_the_cron_is_the_ratified_slot`, pinning minute='28,58'.
+
+    The measured first run makes that slot unusable as it stands: 148.196 s
+    reached only 13 of 57 symbols, so the full universe extrapolates to ~675 s
+    against the 175 s the :58 window allows before signals_1h. Re-asserting
+    '28,58' would pin a slot the evidence has already refuted, so this guard now
+    holds the weaker true statement — no OHLCV trigger is claimed at all — and
+    the slot must be re-derived by whichever checkpoint re-activates."""
     src = (BACKEND / "app/services/scheduler.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
     found = None
@@ -110,16 +125,20 @@ def test_the_cron_is_the_ratified_slot():
             if isinstance(arg, ast.Call) and getattr(arg.func, "id", "") == "CronTrigger":
                 found = {kw.arg: kw.value.value for kw in arg.keywords
                          if isinstance(kw.value, ast.Constant)}
-    assert found == {"minute": "28,58"}, f"cron is not the ratified slot: {found}"
+    assert found is None, f"an OHLCV cron trigger is registered while disabled: {found}"
 
 
-def test_the_slot_fits_between_the_signals_windows():
-    """Arithmetic, not assertion-by-comment: budget + CLEANUP_GRACE must land
-    before the next signals start in BOTH windows."""
+def test_the_retained_budget_would_still_fit_the_windows_it_was_sized_for():
+    """The JobSpec is deliberately RETAINED after the disable, so this arithmetic
+    still has to hold for it — otherwise a future re-activation could restore a
+    registration on top of a spec that no longer fits anything.
+
+    Note what this does NOT say: that 150 s is sufficient. The measured run
+    proves it is not — it is a truncation point, not a completion budget."""
     from app.services.job_guard import CLEANUP_GRACE_SECONDS as G
     end = JOB_SPECS[JOB_ID].budget_seconds + G
-    assert 28 * 60 + end < 32 * 60, "the :28 run reaches signals_15m at :32"
-    assert 58 * 60 + end < 61 * 60, "the :58 run reaches signals_1h at :01"
+    assert 28 * 60 + end < 32 * 60, "the :28 window would reach signals_15m at :32"
+    assert 58 * 60 + end < 61 * 60, "the :58 window would reach signals_1h at :01"
 
 
 def test_the_budget_is_flagged_as_uncalibrated():
