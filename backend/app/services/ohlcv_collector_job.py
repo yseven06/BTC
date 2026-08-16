@@ -103,6 +103,50 @@ MIN_FETCH_LIMIT = 2
 # emphatically not a backfill: A4 still owns every bar older than the seed.
 BOOTSTRAP_MAX_BARS = 4
 
+# HEADROOM OVER THE SEED, AND WHY IT IS EXACTLY TWO.
+#
+# A bootstrap request is trimmed to the newest BOOTSTRAP_MAX_BARS, so the old
+# behaviour — reusing the 500-bar catch-up window — fetched 125x what it kept.
+# Measured on the one genuine production run: 24500 fetched, 24255 trimmed,
+# 196 kept, i.e. every single request threw away 495 of 500 bars.
+#
+# But the naive repair (`limit = BOOTSTRAP_MAX_BARS`) is WRONG, and measurably
+# so: `eligible_bars` runs with `drop_newest=True`, which discards the newest
+# element of every response unconditionally, so a 4-bar request yields 3 usable
+# closed bars and the series is silently under-seeded on its very first run.
+#
+#   +1 pays for that guaranteed drop — it is structural, not probabilistic.
+#   +1 more is the spare: a duplicate collapsed by the de-duplicating index, a
+#      malformed final candle, or a second not-yet-closed bar each cost one more
+#      row, and with zero spare any one of them silently under-seeds again.
+#
+# Two is therefore the smallest headroom that survives one unexpected drop, and
+# under-seeding is self-healing anyway (the watermark simply advances from
+# wherever it lands), so a third spare would buy nothing.
+BOOTSTRAP_FETCH_LIMIT = BOOTSTRAP_MAX_BARS + 2
+
+
+def bootstrap_fetch_limit(bootstrap: int) -> int:
+    """Request size for a series that has never been written.
+
+    Derived from the caller's own bootstrap cap rather than read from the module
+    constant, so a caller that overrides `bootstrap` (every test does) gets a
+    request shaped for the value it actually passed.
+
+    NO MIN_FETCH_LIMIT CLAMP, DELIBERATELY. One was written here and removed:
+    `bootstrap >= 1` is enforced below, so the result is always >= 3, which is
+    already above MIN_FETCH_LIMIT (2). A `max(MIN_FETCH_LIMIT, ...)` was
+    therefore unreachable on every legal input — a mutation deleting it could
+    not be killed by any test, because it changed nothing. Dead defence that
+    cannot fail is worse than none: it implies a guard the reader will trust.
+    The real guard is the ValueError, which IS reachable.
+    """
+    if bootstrap < 1:
+        # limit=1 would return a single bar that is also the newest, which
+        # `drop_newest` withholds — the series could never seed at all.
+        raise ValueError(f"bootstrap must be >= 1, got {bootstrap}")
+    return bootstrap + 2
+
 # Symbols per watermark query. At the current cap of 250 this is ONE query for
 # the whole run (250 x 4 = 1000 VALUES rows, 2000 bind parameters, comfortably
 # under PostgreSQL's 65535 parameter ceiling). The chunk exists so that raising
@@ -717,9 +761,18 @@ async def collect_once(
                 # a stalled item cannot outlive its slice. An OUTER cancellation
                 # still propagates as CancelledError and is handled below — the
                 # outer job deadline always wins over this one.
+                # THE REQUEST SHAPE DEPENDS ON WHICH PATH THIS ITEM IS ON.
+                # A bootstrap item throws away everything but the newest
+                # `bootstrap` bars, so asking for the full catch-up window is
+                # pure waste — measured in the first production run: 24500 bars
+                # fetched, 24255 trimmed, 196 kept. An INCREMENTAL item still
+                # gets `limit`, because that window is what lets a series catch
+                # up after downtime (500 x 15m is ~5.2 days).
                 r = await asyncio.wait_for(
                     _collect_item(session_factory, collector, symbol, tf,
-                                  limit=limit, timeout=timeout, retries=retries,
+                                  limit=(bootstrap_fetch_limit(bootstrap)
+                                         if mark is None else limit),
+                                  timeout=timeout, retries=retries,
                                   after=mark,
                                   max_bars=None if mark is not None else bootstrap,
                                   source=source, result=res),
