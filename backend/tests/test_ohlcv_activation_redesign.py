@@ -60,6 +60,24 @@ def frame(n=6, start=T0):
     return df
 
 
+def _insert_sources(stmt):
+    """The `source` of every row an INSERT carries, in row order.
+
+    Reads both statement shapes: the batched healthy path compiles one bind per
+    row (`source_m0`, `source_m1`, ...), the per-row fallback compiles the bare
+    column name. Reading only the bare name returns None for every batched write.
+    """
+    try:
+        params = stmt.compile().params
+    except Exception:                          # noqa: BLE001
+        return []
+    if "source" in params:
+        return [params["source"]]
+    keys = [k for k in params if k.startswith("source_m")]
+    keys.sort(key=lambda k: int(k[len("source_m"):]))     # never lexicographic
+    return [params[k] for k in keys]
+
+
 class Sess:
     """Fake session. `fail_commit` reproduces a commit that raises."""
 
@@ -94,15 +112,18 @@ class Sess:
         self.queries.append(text)
         if self.fail_execute and "wm_pairs" not in text:
             raise RuntimeError("db unavailable")
+        written = 0
         if "INSERT INTO ohlcv_bars" in text:
-            try:
-                self.inserted.append(stmt.compile().params.get("source"))
-            except Exception:                      # noqa: BLE001
-                self.inserted.append("?")
+            srcs = _insert_sources(stmt)
+            self.inserted += srcs if srcs else ["?"]
+            written = len(srcs)
         rows = self.rows if "wm_pairs" in text else []
 
         class _R:
-            rowcount = 1
+            # DERIVED: the healthy path sends the whole page as ONE multi-row
+            # INSERT, so a hardcoded 1 would under-report `bars_persisted` and
+            # make the commit-accounting assertions below pass for free.
+            rowcount = written
 
             def all(s):
                 return rows

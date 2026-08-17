@@ -73,6 +73,25 @@ def cands(n, tf="15m", start=T0):
     return got
 
 
+def _insert_sources(stmt):
+    """The `source` of every row an INSERT carries, in row order.
+
+    Reads BOTH statement shapes the writer produces: the batch path compiles one
+    bind per row (`source_m0`, `source_m1`, ...), the per-row fallback compiles
+    the bare column name. Reading only the bare name — as this helper used to —
+    silently returned None for every batched write.
+    """
+    try:
+        params = stmt.compile().params
+    except Exception:                          # noqa: BLE001 — non-Core stmt
+        return []
+    if "source" in params:
+        return [params["source"]]
+    keys = [k for k in params if k.startswith("source_m")]
+    keys.sort(key=lambda k: int(k[len("source_m"):]))     # never lexicographic
+    return [params[k] for k in keys]
+
+
 class WmSession:
     """A session whose watermark query answers with a scripted row set."""
 
@@ -113,15 +132,19 @@ class WmSession:
             self.params.append(dict(stmt.compile().params))
         except Exception:                      # noqa: BLE001 — non-Core stmt
             self.params.append({})
+        written = 0
         if "INSERT INTO ohlcv_bars" in text:
-            try:
-                self.inserted.append(stmt.compile().params.get("source"))
-            except Exception:                  # noqa: BLE001 — non-Core stmt
-                self.inserted.append("<uncompilable>")
+            srcs = _insert_sources(stmt)
+            self.inserted += srcs if srcs else ["<uncompilable>"]
+            written = len(srcs)
         rows = self.rows if "wm_pairs" in text else []
 
         class _R:
-            rowcount = 1
+            # DERIVED, never a hardcoded 1: the writer sends the whole page as
+            # one multi-row INSERT on its healthy path, and a fake that always
+            # answered 1 would report `bars_persisted=1` for a 159-bar page while
+            # every assertion in this file kept passing.
+            rowcount = written
 
             def all(self_):
                 return rows
@@ -674,22 +697,55 @@ def test_no_client_is_constructed_at_import_time():
                 pytest.fail("a module-level collector opens a socket on import")
 
 
-# ══ 10 · THE PER-ROW SAVEPOINT IS UNTOUCHED ════════════════════════════════
-def test_persist_bars_still_uses_one_savepoint_per_row():
+# ══ 10 · THE PER-ROW SAVEPOINT IS STILL THERE, UNDER THE BATCH ═════════════
+def test_the_per_row_savepoint_fallback_still_exists_and_still_loops():
     """A2's measured contract: a single multi-row INSERT loses 6 of 7 valid bars
-    and poisons the caller's transaction. A3c must not have traded that away for
-    speed — the watermark is what makes per-row affordable, not a replacement."""
-    src = inspect.getsource(W.persist_bars)
+    and poisons the caller's transaction. A3K3 made the batch the FAST PATH, not
+    the only path — the loop underneath it is what keeps that measurement true,
+    so it must still exist and its savepoint must still be per row.
+
+    Structural, because the behavioural proof needs a real PostgreSQL: deleting
+    the fallback leaves every fake-session test green (a fake rejects nothing).
+    """
+    src = inspect.getsource(W._persist_bars_per_row)
     tree = ast.parse(src.lstrip())
     loops = [n for n in ast.walk(tree) if isinstance(n, (ast.For, ast.AsyncFor))]
-    assert loops, "persistence must still iterate row by row"
-    nested = [n for n in ast.walk(tree)
-              if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "begin_nested"]
-    assert nested, "the per-row savepoint is gone"
+    assert loops, "the fallback must still iterate row by row"
     inside = [n for n in ast.walk(loops[0])
               if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "begin_nested"]
     assert inside, "begin_nested must be INSIDE the per-row loop, not around it"
     assert "executemany" not in src and "add_all" not in src
+
+
+def test_the_batch_attempt_is_wrapped_in_its_own_savepoint():
+    """Without a SAVEPOINT around the batch, one rejected row aborts the
+    CALLER's transaction and there is nothing left to fall back INTO — every
+    later statement in the item, including the commit, is rejected."""
+    src = inspect.getsource(W.persist_bars)
+    tree = ast.parse(src.lstrip())
+    loops = [n for n in ast.walk(tree) if isinstance(n, (ast.For, ast.AsyncFor))]
+    nested = [n for n in ast.walk(tree)
+              if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "begin_nested"]
+    assert nested, "the batch attempt has no savepoint"
+    in_loop = {id(n) for lp in loops for n in ast.walk(lp)}
+    assert any(id(n) not in in_loop for n in nested), (
+        "the batch savepoint must wrap the whole page, not sit inside a loop")
+    assert "executemany" not in src and "add_all" not in src
+
+
+def test_persist_bars_delegates_to_the_fallback_rather_than_reimplementing_it():
+    """One per-row implementation, not two that can drift apart."""
+    src = inspect.getsource(W.persist_bars)
+    assert "_persist_bars_per_row" in src, "the batch path never reaches the fallback"
+
+
+def test_the_writer_never_chunks_the_page():
+    """500 rows was measured safe as ONE statement, and 500 is the largest page
+    `limit=500` can produce. A chunk size would add round trips for nothing and
+    would silently reintroduce per-N scaling."""
+    src = inspect.getsource(W.persist_bars)
+    for banned in ("CHUNK", "chunk", "batch_size", "islice"):
+        assert banned not in src, f"the writer must not chunk ({banned})"
 
 
 def test_conflict_target_is_still_the_portable_column_list():
@@ -774,7 +830,9 @@ async def test_the_degraded_path_is_bounded_by_the_bootstrap_cap():
                              symbols=["BTCUSDT"], timeframes=["15m"])
     assert res.bars_persisted == BOOTSTRAP_MAX_BARS
     assert res.bars_bootstrap_trimmed == 59 - BOOTSTRAP_MAX_BARS
-    assert sum(s.savepoints for s in reg) == BOOTSTRAP_MAX_BARS
+    # ONE savepoint for the page — the cap is what bounds the BARS, and it still
+    # does; the savepoint count no longer tracks the bar count.
+    assert sum(s.savepoints for s in reg) == 1
 
 
 @pytest.mark.asyncio

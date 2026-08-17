@@ -80,6 +80,23 @@ class Collector:
             self.concurrent -= 1
 
 
+def insert_row_count(stmt):
+    """How many rows an INSERT carries — 0 for anything that is not one.
+
+    The writer emits two shapes: `.values([row, ...])` for the batched healthy
+    path, which compiles one bind per row (`source_m0`, `source_m1`, ...), and
+    `.values(**row)` in the per-row fallback, which compiles the bare column
+    name. A fake must read both or its rowcount stops meaning anything.
+    """
+    try:
+        params = stmt.compile().params
+    except Exception:                          # noqa: BLE001 — non-Core stmt
+        return 0
+    if "source" in params:
+        return 1
+    return sum(1 for k in params if k.startswith("source_m"))
+
+
 class FakeSession:
     """Records lifecycle. Never claims to reproduce PostgreSQL semantics."""
 
@@ -116,9 +133,14 @@ class FakeSession:
         self.in_tx = True
         if self.fail_on(stmt):
             raise RuntimeError("db down")
+        written = insert_row_count(stmt)
 
         class _R:
-            rowcount = 1
+            # DERIVED from the statement, not a hardcoded 1. The writer sends a
+            # whole page as one multi-row INSERT on its healthy path, so a fixed
+            # 1 would report `bars_persisted=1` for a page of six and every
+            # counter assertion below would be measuring the fake, not the code.
+            rowcount = written
 
             def all(self_):
                 # An EMPTY store: no watermark for any series. Every series

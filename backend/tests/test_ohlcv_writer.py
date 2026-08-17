@@ -62,6 +62,34 @@ def cand(**kw):
     return BarCandidate(**base)
 
 
+def insert_sources(stmt):
+    """The `source` value of every row an INSERT carries, in row order.
+
+    The writer produces TWO statement shapes and this must read both: the batch
+    path builds `.values([row, row, ...])`, which compiles one bind per row
+    (`source_m0`, `source_m1`, ...), while the per-row fallback builds
+    `.values(**row)`, which compiles the column name bare. Returning the list —
+    rather than one value — is what lets a caller assert both HOW MANY rows a
+    statement carried and WHAT source each was stamped with.
+    """
+    try:
+        params = stmt.compile().params
+    except Exception:                      # noqa: BLE001 — non-Core stmt
+        return []
+    if "source" in params:
+        return [params["source"]]
+    # Sort by the numeric suffix, never lexicographically: `source_m10` must not
+    # sort before `source_m2`.
+    keys = [k for k in params if k.startswith("source_m")]
+    keys.sort(key=lambda k: int(k[len("source_m"):]))
+    return [params[k] for k in keys]
+
+
+def insert_row_count(stmt):
+    """How many rows this INSERT would write into an empty table."""
+    return len(insert_sources(stmt))
+
+
 # A session that records calls and can reject chosen rows, WITHOUT claiming to
 # reproduce PostgreSQL semantics.
 class FakeSession:
@@ -91,8 +119,15 @@ class FakeSession:
         if self._reject(stmt):
             raise _IntegrityError("CheckViolation")
 
+        # DEFAULT ROWCOUNT IS DERIVED FROM THE STATEMENT, never hardcoded to 1.
+        # A fixed 1 would report `persisted=1` for a 500-row batch, which makes
+        # every persisted/duplicate assertion in this file vacuous — the exact
+        # accounting the batch path has to get right. An explicit `rowcounts`
+        # script still wins, so a test can still stage a partial conflict.
+        n = insert_row_count(stmt)
+
         class _R:
-            rowcount = self._rowcounts.pop(0) if self._rowcounts else 1
+            rowcount = self._rowcounts.pop(0) if self._rowcounts else n
         return _R()
 
     async def commit(self):      # pragma: no cover — must never be reached
@@ -284,34 +319,118 @@ async def test_T27_a_malformed_response_is_classified_not_persisted():
 
 # ── T2/T16-T22/T28-T32 · persistence shape ───────────────────────────────────
 @pytest.mark.asyncio
-async def test_T18_every_insert_sits_in_its_own_savepoint():
+async def test_T18_a_healthy_page_is_ONE_batch_inside_ONE_savepoint():
+    """The healthy path must not scale with the number of bars.
+
+    Per-row savepoints cost three round trips per bar, which is free locally and
+    ruinous against a remote pooler: 159 bars measured 477 round trips / 120 s at
+    a real 129 ms RTT, against 3 round trips / 0.94 s for this shape. The
+    savepoint is still here — one, around the whole page, so a rejection cannot
+    reach the caller's transaction.
+    """
     db = FakeSession()
     res = await persist_bars(db, [cand(open_time=T0 + i * STEP) for i in range(4)])
-    assert db.savepoints == 4, "one savepoint per ROW, not per page"
+    assert db.savepoints == 1, "one savepoint per PAGE on the healthy path"
+    assert len(db.calls) == 1, "one INSERT, not one per row"
+    assert insert_row_count(db.calls[0]) == 4, "all four rows in that INSERT"
     assert res.persisted == 4 and db.open_savepoints == 0
 
 
 @pytest.mark.asyncio
+async def test_the_batch_is_never_chunked_however_large_the_page():
+    """500 is the largest page `limit=500` can produce and was measured safe as
+    one statement. Splitting it would add round trips to buy nothing."""
+    db = FakeSession()
+    res = await persist_bars(db, [cand(open_time=T0 + i * STEP) for i in range(500)])
+    assert len(db.calls) == 1 and db.savepoints == 1
+    assert insert_row_count(db.calls[0]) == 500
+    assert res.persisted == 500 and res.duplicate == 0
+
+
+@pytest.mark.asyncio
 async def test_T2_a_duplicate_is_an_explicit_no_op_not_an_insert():
-    db = FakeSession(rowcounts=[1, 0, 1])
+    """ON CONFLICT DO NOTHING reports only what it WROTE, so the duplicates are
+    the difference. Scripted here as 2 of 3 rows written."""
+    db = FakeSession(rowcounts=[2])
     res = await persist_bars(db, [cand(open_time=T0 + i * STEP) for i in range(3)])
     assert res.persisted == 2 and res.duplicate == 1 and res.db_rejected == 0
+
+
+@pytest.mark.asyncio
+async def test_a_page_that_is_entirely_duplicates_persists_nothing():
+    db = FakeSession(rowcounts=[0])
+    res = await persist_bars(db, [cand(open_time=T0 + i * STEP) for i in range(9)])
+    assert res.persisted == 0 and res.duplicate == 9
+    assert res.db_rejected == 0 and res.db_error == 0
 
 
 @pytest.mark.asyncio
 async def test_T16_T17_a_rejected_row_does_not_take_its_siblings():
     """Fake-session shape check. The REAL isolation was measured on PostgreSQL:
     per-row savepoints kept 7/7 where the single-batch INSERT kept 1/7 and
-    poisoned the transaction."""
+    poisoned the transaction. That is why the batch FALLS BACK here rather than
+    replacing the loop — the batch is rejected first, then rows 2 and 4 are.
+    """
     seen = []
 
     def reject(stmt):
         seen.append(stmt)
-        return len(seen) in (2, 4)              # two bad rows in one page
+        if insert_row_count(stmt) > 1:
+            return True                         # the batch attempt itself
+        per_row = [s for s in seen if insert_row_count(s) == 1]
+        return len(per_row) in (2, 4)           # two bad rows in one page
     db = FakeSession(reject_when=reject)
     res = await persist_bars(db, [cand(open_time=T0 + i * STEP) for i in range(5)])
     assert res.persisted == 3 and res.db_rejected == 2
-    assert db.savepoints == 5
+    assert db.savepoints == 6, "one for the batch attempt, then one per row"
+    assert db.open_savepoints == 0
+
+
+@pytest.mark.asyncio
+async def test_an_unexpected_db_failure_does_NOT_fall_back_to_per_row():
+    """The fallback is for a row the database JUDGED, never for a database that
+    failed. Re-issuing 500 statements at a database that just dropped a
+    connection turns one fault into 500, and would report `db_rejected` for rows
+    nothing ever judged."""
+    class Dropped(FakeSession):
+        async def execute(self, stmt, *a, **k):
+            self.calls.append(stmt)
+            raise RuntimeError("connection reset by peer")
+
+    db = Dropped()
+    res = await persist_bars(db, [cand(open_time=T0 + i * STEP) for i in range(9)])
+    assert len(db.calls) == 1, "the page was attempted once and NOT retried per row"
+    assert db.savepoints == 1
+    assert res.db_error == 1 and res.db_rejected == 0
+    assert res.persisted == 0 and res.duplicate == 0
+
+
+@pytest.mark.asyncio
+async def test_the_fallback_runs_only_for_a_row_level_rejection():
+    """Every exception family the module treats as a rejection must reach the
+    per-row loop, and nothing else may."""
+    for name, falls_back in (("IntegrityError", True), ("CheckViolation", True),
+                             ("DataError", True), ("OperationalError", False),
+                             ("InterfaceError", False), ("TimeoutError", False)):
+        exc = type(name, (Exception,), {})
+
+        class _S(FakeSession):
+            async def execute(self_, stmt, *a, **k):
+                self_.calls.append(stmt)
+                if insert_row_count(stmt) > 1:
+                    raise exc("boom")
+                class _R:
+                    rowcount = 1
+                return _R()
+
+        db = _S()
+        res = await persist_bars(db, [cand(open_time=T0 + i * STEP) for i in range(3)])
+        if falls_back:
+            assert len(db.calls) == 4, f"{name} must fall back to per-row"
+            assert res.persisted == 3 and res.db_error == 0
+        else:
+            assert len(db.calls) == 1, f"{name} must NOT fall back"
+            assert res.db_error == 1 and res.persisted == 0
 
 
 @pytest.mark.asyncio
@@ -380,7 +499,8 @@ async def test_T23_the_fetch_completes_before_the_session_is_touched():
     res = await W.collect_and_persist(StrictSession(), SlowCollector(),
                                       "BTCUSDT", "15m", now=T0 + 100 * STEP)
     assert order[0] == "fetch_start" and order[1] == "fetch_end"
-    assert order.count("db") == 3 and res.persisted == 3
+    # ONE statement for the page, carrying all three bars.
+    assert order.count("db") == 1 and res.persisted == 3
 
 
 def test_T23b_no_session_call_precedes_the_fetch_structurally():

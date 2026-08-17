@@ -10,8 +10,15 @@ The proof-of-concept persisted a page with ONE multi-row INSERT inside ONE
 savepoint. Measured against the exact production DDL, a single malformed bar in
 a page of seven then cost SIX valid bars and left the caller's transaction in
 `InFailedSQLTransactionError` — every later statement rejected. The same matrix
-run with one savepoint per row kept all six and left the session usable. That
-measurement, not taste, is why persistence here is per row.
+run with one savepoint per row kept all six and left the session usable.
+
+That measurement still stands, and it is why the per-row loop is still here and
+still the thing that decides the outcome whenever the database rejects a row.
+What it never justified was paying for the loop when nothing is wrong: three
+round trips per bar is free locally and ruinous against a remote pooler (159
+bars = 477 round trips = 120 s at a real 129 ms RTT). So the page is attempted
+as one batch first and falls back to the per-row loop on a rejection. See
+`persist_bars`.
 
 THE TWO INVARIANTS THAT MATTER
 ------------------------------
@@ -519,19 +526,104 @@ async def fetch_bars_bounded(
     return None, last
 
 
-# ── persistence phase: ONE SAVEPOINT PER ROW ─────────────────────────────────
+# ── persistence phase: ONE BATCH, WITH A PER-ROW FALLBACK ────────────────────
+# WHY THE SHAPE CHANGED, AND WHY THE OLD SHAPE IS STILL HERE
+# ---------------------------------------------------------
+# The per-row savepoint below was never wrong; it was UNCONDITIONAL, and that is
+# what made it unaffordable. Every row costs exactly three round trips —
+# SAVEPOINT, INSERT, RELEASE — measured, not estimated. Against a local database
+# that is free (159 rows in 0.64 s) and against production's remote pooler it is
+# linear in bars x latency: 159 rows = 477 round trips = 120 s measured at a real
+# 129 ms RTT, which is how a 25 s item budget was being blown by a healthy series
+# with nothing wrong with it.
+#
+# So the page is now attempted ONCE, inside ONE savepoint. When it succeeds —
+# which is the overwhelmingly common case, because `validate_bar` has already
+# mirrored every CHECK the schema declares — the whole page costs three round
+# trips regardless of whether it holds 1 bar or 500.
+#
+# When it FAILS on an expected rejection, the batch savepoint is rolled back and
+# the original per-row loop runs unchanged. The rewrite note at the top of this
+# module still holds in full: a single multi-row INSERT *alone* loses every valid
+# row in the page to one bad one and poisons the caller's transaction. That is
+# precisely why the batch is not alone. It is a fast path with the measured-safe
+# path underneath it, not a replacement for it.
+#
+# NO CHUNKING. 500 rows in one statement was measured safe and is the largest
+# page this writer can produce (`limit=500`), so splitting it would add round
+# trips to buy nothing.
 async def persist_bars(db, candidates: List[BarCandidate], *,
                        result: Optional[WriteResult] = None) -> WriteResult:
     """Persist validated candidates inside the CALLER's transaction.
 
-    One SAVEPOINT per row. That is the whole point: the measured alternative —
-    a single multi-row INSERT — loses every valid row in the page to one bad one
-    and leaves the session unusable. Here a rejected row rolls back only its own
-    savepoint and the next row still persists.
+    ONE multi-row INSERT inside ONE savepoint on the healthy path; the per-row
+    savepoint loop only when the database rejects that batch for a reason this
+    module already classifies as a rejection (Integrity / Check / Data).
+
+    An UNEXPECTED failure — a dropped connection, a pool error, anything that is
+    not a row-level rejection — must NOT be retried row by row. Re-issuing 500
+    statements against a database that just failed for an unknown reason turns
+    one fault into 500, and it would report `db_rejected` for rows the database
+    never even judged. Those keep the existing `db_error` semantics exactly.
 
     This function NEVER commits and never rolls back the caller's transaction.
+    Only the savepoints it opened itself are its to unwind.
     """
     res = result if result is not None else WriteResult()
+    if not candidates:
+        return res
+
+    stmt = (pg_insert(OhlcvBar.__table__)
+            .values([c.as_row() for c in candidates])
+            .on_conflict_do_nothing(index_elements=list(CONFLICT_TARGET)))
+    try:
+        async with db.begin_nested():
+            out = await db.execute(stmt)
+    except Exception as exc:  # noqa: BLE001
+        # The batch savepoint has already been rolled back by the context
+        # manager, so the caller's transaction is intact either way.
+        name = type(exc).__name__
+        if not _is_row_rejection(name):
+            res.db_error += 1
+            res.error = f"{name}: {exc}"
+            return res
+        # An expected rejection: at least one row in this page is unacceptable
+        # to the database, and the batch cannot say which. Nothing has been
+        # counted yet and nothing was persisted, so the per-row loop starts from
+        # exactly the state it would have started from had it run first.
+        return await _persist_bars_per_row(db, candidates, res)
+
+    written = out.rowcount if out.rowcount is not None and out.rowcount >= 0 else 0
+    res.persisted += written
+    # ON CONFLICT DO NOTHING skipped the rest. An explicit no-op, never an error,
+    # and never counted as an insert. Derived by subtraction rather than counted
+    # per row because the statement reports only how many rows it actually wrote.
+    res.duplicate += len(candidates) - written
+    return res
+
+
+def _is_row_rejection(exc_name: str) -> bool:
+    """Whether an exception NAME is the database judging a row, as opposed to
+    the database or the transport failing. Kept as one predicate so the batch
+    path and the per-row path can never drift apart about what "expected" means.
+
+    Name-based for the same reason the HTTP helpers are duck-typed: this module
+    must not assume which DBAPI raised, and SQLAlchemy wraps the driver's
+    exception in its own class of the same family either way.
+    """
+    return ("Integrity" in exc_name or "Check" in exc_name
+            or "DataError" in exc_name)
+
+
+async def _persist_bars_per_row(db, candidates: List[BarCandidate],
+                                res: WriteResult) -> WriteResult:
+    """THE ORIGINAL WRITER, unchanged in behaviour.
+
+    One SAVEPOINT per row: a rejected row rolls back only its own savepoint and
+    the next row still persists. Measured against the exact production DDL, this
+    kept 6 of 7 valid bars where one shared savepoint kept 0 and left the session
+    in `InFailedSQLTransactionError`.
+    """
     for cand in candidates:
         stmt = (pg_insert(OhlcvBar.__table__)
                 .values(**cand.as_row())
@@ -551,7 +643,7 @@ async def persist_bars(db, candidates: List[BarCandidate], *,
             # been rolled back by the context manager, so the caller's
             # transaction is intact and the loop continues.
             name = type(exc).__name__
-            if "Integrity" in name or "Check" in name or "DataError" in name:
+            if _is_row_rejection(name):
                 res.db_rejected += 1
             else:
                 res.db_error += 1
