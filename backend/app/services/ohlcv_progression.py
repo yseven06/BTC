@@ -10,14 +10,193 @@ to accommodate it.
 from __future__ import annotations
 
 import logging
+import zlib
+from contextlib import asynccontextmanager
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.models.ohlcv_progress import OhlcvCollectionProgress
 from app.models.ohlcv_symbol_progress import OhlcvSymbolProgress
 
 log = logging.getLogger(__name__)
+
+# --- ADVISORY LOCK NAMESPACES (A3H8) ----------------------------------------
+#
+# TWO lock classes with two DIFFERENT lifetimes coordinate this module, and they
+# must never be able to conflict with each other:
+#
+#   RUN   - session-scoped, held on a DEDICATED connection for the whole
+#           collection run, so "this source is busy" outlives the claim.
+#   CLAIM - transaction-scoped, held on whichever POOLED connection is running
+#           `select_partition`, released by that transaction's COMMIT.
+#
+# A3H8 measured what happens if they share a key: the run's own CLAIM lock
+# BLOCKS against its own RUN lock, because advisory locks belong to a session
+# and these two live on different connections. So the two classes get explicitly
+# separated namespaces via PostgreSQL's two-key advisory API, never an accidental
+# integer difference. (Measured: same key -> BLOCKED; separated -> acquired.)
+#
+# The values are arbitrary but FIXED - 'OHC1'/'OHC2' as int4 - and must never be
+# recomputed from anything environmental.
+RUN_OWNERSHIP_LOCK_NAMESPACE = 0x4F484331
+CLAIM_LOCK_NAMESPACE = 0x4F484332
+
+# `pg_locks` distinguishes the two advisory key spaces ONLY by objsubid: the
+# single-bigint form reports 1, the two-key form reports 2. Measured directly on
+# PostgreSQL 17 rather than assumed — both forms decompose to the same
+# classid/objid pair, so the first draft of this constant was inverted and it is
+# easy to invert again by inspection. It is used only to VERIFY ownership, so a
+# wrong value fails CLOSED: the run refuses to start rather than believing it
+# owns a source it does not.
+_TWO_KEY_OBJSUBID = 2
+
+
+def source_lock_key(source: str) -> int:
+    """Deterministic int4 advisory key for a source. NEVER Python `hash()`.
+
+    `hash()` is salted per process (PYTHONHASHSEED), so two backend processes
+    would derive DIFFERENT keys and neither would exclude the other - the exact
+    failure this lock exists to prevent, and the same trap that already cost this
+    track a rewrite when it was used for timeframe rotation. `zlib.crc32` is
+    fixed by the algorithm: stable across processes, restarts and versions.
+
+    The result is masked to 31 bits so it is a positive int4. PostgreSQL's
+    two-key advisory API takes int4, and keeping the key positive means it can be
+    compared directly against `pg_locks.objid` without two's-complement games.
+
+    COLLISION BEHAVIOUR, STATED RATHER THAN IGNORED. Two source names sharing a
+    31-bit CRC would share a run lock, so one would decline while the other
+    collects. That is OVER-exclusion: a liveness cost, never a correctness
+    violation, and it can never cause two runs to overlap. Sources are a
+    hand-maintained set of a few venue names, so the probability is negligible;
+    if a venue is ever added the constant-key guard test will still hold and only
+    throughput would suffer.
+    """
+    src = (source or "").strip()
+    if not src:
+        raise ValueError("source must be a non-empty string")
+    return zlib.crc32(src.encode("utf-8")) & 0x7FFFFFFF
+
+
+async def _ownership_visible(conn, key: int) -> bool:
+    """Is the run lock actually held by THIS backend, seen from a LATER statement?
+
+    Not paranoia. Production reaches PostgreSQL through Supavisor in SESSION
+    mode, where one client connection maps to one server backend for its whole
+    life, which is what makes a session-scoped advisory lock mean anything. Under
+    a TRANSACTION-mode pooler the next statement can land on a different backend,
+    the lock would be invisible, and this module would happily "own" a source it
+    does not own. So ownership is confirmed from a second statement on the same
+    connection before any work is allowed to start.
+    """
+    return bool((await conn.execute(
+        text("SELECT count(*) FROM pg_locks"
+             " WHERE locktype = 'advisory' AND granted"
+             "   AND classid = :ns AND objid = :key AND objsubid = :sub"
+             "   AND pid = pg_backend_pid()"),
+        {"ns": RUN_OWNERSHIP_LOCK_NAMESPACE, "key": key,
+         "sub": _TWO_KEY_OBJSUBID})).scalar())
+
+
+@asynccontextmanager
+async def source_run_ownership(bind, source: str):
+    """Own a source for a WHOLE collection run. Yields True if this run may run.
+
+    WHY THIS EXISTS AT ALL. A3H7 classified the concurrency defect as L2, an
+    OWNERSHIP-LIFETIME GAP: `select_partition`'s row locks are real and behave
+    exactly as documented, but they end at its COMMIT while the work they are
+    meant to protect - Binance fetches, per-item persistence - runs for the rest
+    of the collection. Reproduced with ZERO transaction concurrency: one full
+    ceil(N/K) cycle after a run claims its partition, a later claim is handed the
+    same symbols while the first run is provably still in flight. No lock placed
+    INSIDE the claim transaction can close that, because the gap is after it.
+
+    NON-BLOCKING BY CONSTRUCTION. `pg_try_advisory_lock` returns immediately.
+    A second run must DECLINE, not queue: queuing would pile runs up behind a
+    slow one and deliver them all at once against the same cadence and the same
+    exchange rate limit. Declining costs one cadence of data; queuing costs a
+    stampede.
+
+    SESSION-SCOPED, ON A DEDICATED CONNECTION. The lock is owned by a PostgreSQL
+    session, so it lives exactly as long as the connection holding it. That
+    connection is checked out for the whole run and never handed back mid-run -
+    returning it to the pool would leave a pooled connection silently owning the
+    source. It costs one connection out of the engine's ceiling for the run's
+    bounded duration (<= the job budget).
+
+    AND YET NO TRANSACTION STAYS OPEN. The acquire commits immediately. A session
+    advisory lock SURVIVES that commit, which is the whole reason this shape was
+    chosen over holding a transaction open across the network - the shape that
+    has already produced idle-in-transaction incidents against the pooler here.
+
+    CRASH RECOVERY IS POSTGRESQL'S, NOT OURS. Lose the connection - process
+    death, restart, deploy, network drop - and the server releases the lock. No
+    lease column, no expiry, no reaper, and above all NO CLOCK in the correctness
+    path. That is the decisive advantage over a durable lease row.
+
+    RELEASE IS UNCONDITIONAL. On the way out the lock is released explicitly; if
+    that fails for ANY reason, including a cancellation arriving during cleanup,
+    the connection is INVALIDATED rather than returned to the pool, so the server
+    releases it by closing the session. A `finally` that merely awaits an unlock
+    is not enough - the await itself can be interrupted.
+    """
+    src = (source or "").strip()
+    if not src:
+        raise ValueError("source must be a non-empty string")
+    key = source_lock_key(src)
+
+    conn = await bind.connect()
+    acquired = False
+    try:
+        acquired = bool((await conn.execute(
+            text("SELECT pg_try_advisory_lock(:ns, :key)"),
+            {"ns": RUN_OWNERSHIP_LOCK_NAMESPACE, "key": key})).scalar())
+        confirmed = acquired and await _ownership_visible(conn, key)
+
+        # END THE TRANSACTION, AND END IT AFTER THE LAST STATEMENT. A session
+        # advisory lock is not transactional at all: it belongs to the session
+        # and neither COMMIT nor ROLLBACK releases it, so ROLLBACK is the honest
+        # verb for a read-only confirmation.
+        #
+        # THE ORDER HERE IS THE WHOLE POINT AND IT WAS WRONG ONCE. Committing
+        # straight after the acquire and only then running the confirmation left
+        # that confirmation opening a SECOND transaction which nothing closed —
+        # so the owner connection sat `idle in transaction` for the entire run,
+        # the precise failure this design was chosen to avoid. It was caught by
+        # asking PostgreSQL for the OWNER's state; asking from the owner itself
+        # always answers 'active', because that connection is busy running the
+        # question.
+        await conn.rollback()
+
+        if acquired and not confirmed:
+            # A misconfigured pooler must not read as "another run is busy".
+            raise RuntimeError(
+                "OHLCV run ownership could not be confirmed on the connection "
+                "that took it; a transaction-mode connection pooler cannot "
+                "carry a session advisory lock")
+
+        if not acquired:
+            log.info("OHLCV run declined: source=%s is already owned by a run "
+                     "in flight", src)
+        yield acquired
+    finally:
+        released = False
+        if acquired:
+            try:
+                released = bool((await conn.execute(
+                    text("SELECT pg_advisory_unlock(:ns, :key)"),
+                    {"ns": RUN_OWNERSHIP_LOCK_NAMESPACE, "key": key})).scalar())
+                # Same reasoning as the acquire: the unlock is not transactional,
+                # and the connection must not go back to the pool mid-transaction.
+                await conn.rollback()
+            except BaseException:      # noqa: BLE001 - cancellation included
+                released = False
+        if acquired and not released:
+            # Physically drop it. Returning a still-locked connection to the pool
+            # would hand the next borrower an unowned source it cannot release.
+            await conn.invalidate()
+        await conn.close()
 
 
 async def acquire_run_sequence(session_factory, source: str) -> int:
@@ -136,13 +315,21 @@ async def select_partition(session_factory, source: str,
     dies after two symbols must not replay the same two forever. The token means
     ATTEMPTED, never succeeded, persisted, or covered.
 
-    FOR UPDATE SKIP LOCKED, and it is not decoration. `acquire_run_sequence`
-    already refuses to depend on APScheduler's max_instances=1 for correctness,
-    and this primitive holds itself to the same standard: two overlapping runs
-    get distinct run_seq values but would otherwise read the same K oldest rows
-    and claim the same partition twice, wasting a cadence. Skipping locked rows
-    makes the second run take the NEXT K instead, so two concurrent claims cover
-    2K distinct symbols and never collide.
+    TWO LOCKS, AND THE SECOND ONE WAS NOT OPTIONAL. `FOR UPDATE SKIP LOCKED`
+    stops a claimant taking rows another claimant is HOLDING, and it does that
+    correctly - measured directly: with one transaction holding the oldest five,
+    a second gets the next five. What it does NOT do is stop a claimant whose
+    scan began before that holder committed, because the ranking came from its
+    own snapshot and the qual recheck still admits the row. Measured at roughly
+    5% of cold-pool invocations before the claim lock was added, 0 after. So the
+    transaction advisory lock above is what actually makes concurrent claimants
+    disjoint; SKIP LOCKED remains as the correct behaviour for genuinely
+    contended rows.
+
+    AN EARLIER VERSION OF THIS DOCSTRING CLAIMED DISJOINTNESS FROM SKIP LOCKED
+    ALONE. That claim was false and was measured false; it is recorded here
+    rather than quietly deleted, because the same reasoning would be reinvented
+    otherwise.
 
     ORDERING IS TOTAL: (last_attempt_run_seq ASC, symbol ASC). The tie-break is
     the symbol itself - Asset.symbol is unique=True - so equal tokens never
@@ -180,11 +367,21 @@ async def select_partition(session_factory, source: str,
        created it. This is why the operator is `<` and never `<=`: with `<=` a
        run would re-select rows it had already claimed itself.
 
-    7. max_instances=1 IS NOT LOAD-BEARING FOR CORRECTNESS. Duplicate-claim
-       safety and token monotonicity come from the predicate and the durable
-       token, and are proven against real PostgreSQL with concurrent claimants.
-       APScheduler's max_instances=1 only reduces how often runs overlap at
-       all; it is an operational convenience, not part of this contract.
+    7. max_instances=1 IS NOT LOAD-BEARING FOR CORRECTNESS, and this is now
+       true by construction rather than by assertion. Claim-level disjointness
+       comes from the transaction advisory lock plus the predicate; RUN-level
+       exclusivity comes from `source_run_ownership`, which is server-side and
+       therefore covers the admin run-now path, a second backend process and a
+       deploy overlap - none of which APScheduler's process-local
+       `max_instances` can see. It stays as an operational convenience.
+
+    8. WHAT THIS PRIMITIVE DOES NOT PROMISE. It claims symbols; it does not
+       own them for the duration of the WORK. `last_attempt_run_seq = R` means
+       "run R attempted this", past tense - it is not a lease, and contract (4)
+       deliberately lets a later run take a row whose token is below its own
+       sequence. In-flight exclusivity is `source_run_ownership`'s job, and a
+       caller that skips it gets fair claims with no protection against a
+       concurrent run fetching the same symbol.
     """
     src = (source or "").strip()
     if not src:
@@ -204,6 +401,29 @@ async def select_partition(session_factory, source: str,
     seed = max(run_seq - 1, 0)
 
     async with session_factory() as db:
+        # 0. SERIALISE THE CLAIM (B1). Transaction-scoped, released by the COMMIT
+        #    below, in its own namespace so it can never meet the run-ownership
+        #    lock (measured: sharing a key makes a run block against itself).
+        #
+        #    WHY IT IS NEEDED DESPITE `FOR UPDATE SKIP LOCKED`. Row locks are
+        #    taken by the LockRows node, which sits ABOVE the sort - so the
+        #    ranking is computed from the statement's snapshot. Measured on
+        #    PostgreSQL 17: a scan that starts before another claimant commits
+        #    sorts that claimant's rows as still-oldest, then locks them AFTER
+        #    the commit released them, and the row still satisfies
+        #    `last_attempt_run_seq < run_seq` because the other claim's token is
+        #    below this run's sequence. Both claimants returned the same five
+        #    symbols while twenty older rows sat untouched, so it is not
+        #    exhaustion and SKIP LOCKED is not at fault: nothing was locked by
+        #    the time the second scan reached them.
+        #
+        #    BLOCKING, NOT `try`, AND DELIBERATELY SO. This transaction holds no
+        #    network call and completes in milliseconds, so waiting is cheap and
+        #    correct - a claimant that skipped would silently claim nothing.
+        await db.execute(
+            text("SELECT pg_advisory_xact_lock(:ns, :key)"),
+            {"ns": CLAIM_LOCK_NAMESPACE, "key": source_lock_key(src)})
+
         # 1. MATERIALISE. Every active symbol becomes a durable queue member
         #    before ranking. Existing rows are untouched, so a relisted symbol
         #    keeps the history it had when it went inactive.

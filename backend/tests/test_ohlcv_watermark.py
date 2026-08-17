@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import ast
 import asyncio
+from contextlib import asynccontextmanager
 import inspect
 import pathlib
 from datetime import datetime, timedelta, timezone
@@ -42,6 +43,18 @@ UTC = timezone.utc
 T0 = datetime(2026, 8, 1, tzinfo=UTC)
 STEP = {"15m": timedelta(minutes=15), "1h": timedelta(hours=1),
         "4h": timedelta(hours=4), "1d": timedelta(days=1)}
+
+
+@asynccontextmanager
+async def _granted():
+    """Run-ownership stub. These are DB-free tests, and about something else.
+
+    `run_collection_once` refuses to collect without source ownership, and real
+    ownership needs a real connection. Injecting a granted stub keeps that
+    refusal intact for production while letting these tests go on asserting
+    exactly what they always asserted.
+    """
+    yield True
 
 
 def frame(n, tf="15m", start=T0):
@@ -627,10 +640,10 @@ async def test_the_collector_is_closed_even_when_the_run_raises():
 
     J.BinanceCollector, real = fake_ctor, J.BinanceCollector
     try:
-        await run_collection_once(run_seq=0, session_factory=factory([]), symbols=["BTCUSDT"],
+        await run_collection_once(ownership=_granted(), run_seq=0, session_factory=factory([]), symbols=["BTCUSDT"],
                                   timeframes=["15m"], retries=0, spacing=0)
         with pytest.raises(ValueError):
-            await run_collection_once(run_seq=0, session_factory=factory([]), symbols=["BTCUSDT"], limit=1)
+            await run_collection_once(ownership=_granted(), run_seq=0, session_factory=factory([]), symbols=["BTCUSDT"], limit=1)
     finally:
         J.BinanceCollector = real
     assert len(made) == 2 and all(c.closed == 1 for c in made), \
@@ -645,7 +658,7 @@ async def test_a_failure_to_close_does_not_mask_the_real_outcome():
 
     J.BinanceCollector, real = Stubborn, J.BinanceCollector
     try:
-        res = await run_collection_once(run_seq=0, session_factory=factory([]), symbols=["BTCUSDT"],
+        res = await run_collection_once(ownership=_granted(), run_seq=0, session_factory=factory([]), symbols=["BTCUSDT"],
                                         timeframes=["15m"], spacing=0)
     finally:
         J.BinanceCollector = real

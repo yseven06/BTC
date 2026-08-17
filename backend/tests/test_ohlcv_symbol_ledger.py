@@ -239,14 +239,36 @@ def test_the_claim_is_one_statement_and_commits_before_returning():
                 if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "execute"]
     commits = [n for n in ast.walk(fn)
                if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "commit"]
-    assert len(executes) == 3, "expected materialise + select + advance"
+    # FOUR since A3H8, and the count is deliberately exact rather than a bound:
+    # serialise + materialise + select + advance. The first is
+    # `pg_advisory_xact_lock`, which A3H8 measured to be what actually makes two
+    # concurrent claimants disjoint — SKIP LOCKED cannot, because the ranking
+    # comes from a snapshot taken before the other claimant committed. It is
+    # transaction-scoped, so this same COMMIT still releases everything, and the
+    # transaction is still short and still has no network in it.
+    assert len(executes) == 4, \
+        "expected serialise + materialise + select + advance"
     assert len(commits) == 1, "expected exactly one commit"
+    assert "pg_advisory_xact_lock" in src, \
+        "the claim no longer serialises; concurrent claimants can collide"
+    assert "CLAIM_LOCK_NAMESPACE" in src, \
+        "the claim lock must use its own namespace, or a run blocks against itself"
     assert any(isinstance(n, ast.Call)
                and getattr(n.func, "attr", "") == "with_for_update"
                for n in ast.walk(fn)), "the oldest-K read is not FOR UPDATE SKIP LOCKED"
     assert "skip_locked=True" in src, "concurrent claims can collide"
+    # IDENTIFIERS, NOT RAW TEXT. The original scan matched the whole source
+    # including docstrings, so it fired the moment the contract prose mentioned
+    # a concurrent run "fetching" a symbol — a comment cannot open a socket.
+    # Walking the AST is also strictly stronger in the other direction: a
+    # network call can no longer hide behind a renamed local or a comment that
+    # happens to avoid the word.
+    names = {getattr(n, "attr", "") or getattr(n, "id", "")
+             for n in ast.walk(fn)
+             if isinstance(n, (ast.Attribute, ast.Name))}
     for banned in ("sleep", "collector", "fetch", "http"):
-        assert banned not in src.lower(), f"network-shaped work ({banned}) inside the claim"
+        hit = sorted(x for x in names if banned in x.lower())
+        assert not hit, f"network-shaped work ({banned}) inside the claim: {hit}"
 
 
 def test_the_source_is_part_of_the_key_and_the_read():

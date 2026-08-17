@@ -98,9 +98,18 @@ class _Session:
 
 
 def _sql(rec, prefix):
-    """The first recorded statement of the given kind."""
+    """The first recorded statement of the given kind AGAINST THE LEDGER.
+
+    The prefix alone stopped being enough once the claim learned to serialise
+    itself: it now opens with `SELECT pg_advisory_xact_lock(...)`, which starts
+    with "select", touches no table and carries none of the ranking these guards
+    are about. Matching it would have let the real ranking be arbitrarily wrong
+    while every assertion below passed against a lock statement — the exact
+    shape of hollow guard this file was rewritten to eliminate.
+    """
     return next(r[1] for r in rec
-                if r[0] == "sql" and r[1].startswith(prefix))
+                if r[0] == "sql" and r[1].startswith(prefix)
+                and "ohlcv_symbol_progress" in r[1])
 
 
 def _factory(ledger, rec):
@@ -238,6 +247,9 @@ async def test_the_predicate_binds_the_run_seq_not_the_seed():
     rec = []
     await select_partition(_factory({"A": 1}, rec), "binance", ["A"], 1, 77)
     params = next(r[2].compile().params for r in rec
-                  if r[0] == "sql" and r[1].startswith("select"))
+                  # Same reason as `_sql`: the advisory-lock statement also
+                  # starts with "select" and binds none of the ranking.
+                  if r[0] == "sql" and r[1].startswith("select")
+                  and "ohlcv_symbol_progress" in r[1])
     assert 77 in params.values(), f"the predicate does not bind run_seq: {params}"
     assert 76 not in params.values(), "the predicate binds the seed instead of run_seq"

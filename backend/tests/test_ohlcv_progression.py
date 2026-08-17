@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 import asyncio
+from contextlib import asynccontextmanager
 import inspect
 import pathlib
 import re
@@ -30,6 +31,18 @@ MIGRATION = BACKEND / "migrations" / "0012_ohlcv_progression.sql"
 
 
 # ══ THE create_all TRAP ════════════════════════════════════════════════════
+@asynccontextmanager
+async def _granted():
+    """Run-ownership stub. These are DB-free tests, and about something else.
+
+    `run_collection_once` refuses to collect without source ownership, and real
+    ownership needs a real connection. Injecting a granted stub keeps that
+    refusal intact for production while letting these tests go on asserting
+    exactly what they always asserted.
+    """
+    yield True
+
+
 def test_model_ddl_and_migration_ddl_agree_on_every_correctness_constraint():
     """THE REPO-WIDE TRAP. `scripts/migrate.py` runs `Base.metadata.create_all`
     BEFORE the pending .sql files, so on a fresh database the MODEL creates this
@@ -281,7 +294,7 @@ async def test_the_run_acquires_under_ITS_OWN_source():
     real = mod.BinanceCollector
     mod.BinanceCollector = _Col
     try:
-        await J.run_collection_once(rec.factory, symbols=[], timeframes=["15m"],
+        await J.run_collection_once(rec.factory, ownership=_granted(), symbols=[], timeframes=["15m"],
                                     source="kraken")
     finally:
         mod.BinanceCollector = real
@@ -369,7 +382,7 @@ async def test_the_run_entry_point_claims_the_sequence_before_the_first_item():
     real = mod.BinanceCollector
     mod.BinanceCollector = Col                     # own-and-close path, no socket
     try:
-        res = await J.run_collection_once(lambda: Sess(), symbols=["AAA", "BBB"],
+        res = await J.run_collection_once(lambda: Sess(), ownership=_granted(), symbols=["AAA", "BBB"],
                                           timeframes=["15m"], spacing=0,
                                           item_budget=0.05)
     finally:

@@ -53,7 +53,9 @@ from sqlalchemy import String, column, select, true, values
 from app.collectors.binance_collector import BinanceCollector
 from app.models.asset import Asset, AssetType
 from app.models.ohlcv_bar import OhlcvBar
-from app.services.ohlcv_progression import acquire_run_sequence, select_partition
+from app.services.ohlcv_progression import (acquire_run_sequence,
+                                            select_partition,
+                                            source_run_ownership)
 from app.services.ohlcv_writer import (DEFAULT_FETCH_RETRIES,
                                        DEFAULT_FETCH_TIMEOUT, SOURCE_BINANCE,
                                        WriteResult, collect_and_persist,
@@ -315,6 +317,14 @@ class CollectionResult:
     symbols_partition_size: int = 0    # K requested for this run
     symbols_partitioned: int = 0       # symbols actually claimed (<= K)
     run_seq: int = -1          # durable executed-run sequence; -1 = never claimed
+    # ANOTHER RUN OWNED THE SOURCE, so this one did nothing at all. It is NOT a
+    # fetch failure, NOT a database failure and NOT a partial collection, so it
+    # deliberately leaves `healthy` alone and every counter at zero. Without this
+    # one flag a declined run would be indistinguishable from a run that found
+    # nothing to do, which is the misleading-success shape this module exists to
+    # avoid. `run_seq` stays -1 because the decline happens before the sequence
+    # is claimed.
+    ownership_declined: bool = False
     symbols_unattempted: int = 0       # selected but never reached (budget expired)
     symbols_degraded: int = 0          # had a terminal failure; rest of its timeframes ran on the reduced budget
     timeframes_degraded_after_failure: int = 0
@@ -925,7 +935,30 @@ async def _collect_item(session_factory, collector, symbol, tf, *, limit, timeou
     return r
 
 
-async def run_collection_once(session_factory, **kwargs) -> CollectionResult:
+def _bind_of(session_factory, explicit=None):
+    """The engine behind the session factory — the run lock needs a CONNECTION.
+
+    A session cannot hold run ownership: `Session.commit()` hands its connection
+    back to the pool, and a session-scoped advisory lock riding a pooled
+    connection is ownership nobody can account for. So the lock takes its own
+    connection straight from the engine.
+
+    IT REFUSES RATHER THAN DEGRADES. If no bind can be found the run does not
+    start. Falling through to "collect without ownership" would restore exactly
+    the defect this checkpoint closed, and it would do so silently.
+    """
+    if explicit is not None:
+        return explicit
+    bind = getattr(session_factory, "kw", {}).get("bind")
+    if bind is None:
+        raise RuntimeError(
+            "OHLCV run ownership needs the engine behind the session factory; "
+            "pass bind= explicitly. Refusing to collect without ownership.")
+    return bind
+
+
+async def run_collection_once(session_factory, *, bind=None, ownership=None,
+                              **kwargs) -> CollectionResult:
     """Own a collector AND the result for exactly one run. STILL DORMANT.
 
     Nothing calls this. It exists because two ownership properties have to live
@@ -956,31 +989,56 @@ async def run_collection_once(session_factory, **kwargs) -> CollectionResult:
     """
     res = CollectionResult()
     res.run_id = uuid.uuid4().hex[:16]
-    # DURABLE PROGRESSION IS CLAIMED HERE — the run boundary, before the collector
-    # is even constructed and therefore before any item. It commits in its own
-    # transaction, so a run that dies immediately afterwards has still consumed
-    # its sequence and the NEXT run starts elsewhere. Failure is not swallowed:
-    # without a durable sequence there is no fairness progression, so no run.
-    if "run_seq" not in kwargs:
-        kwargs["run_seq"] = await acquire_run_sequence(
-            session_factory, kwargs.get("source", SOURCE_BINANCE))
     res.started_at = datetime.now(timezone.utc).isoformat()
     started = time.monotonic()
-    collector = BinanceCollector()
-    try:
-        return await collect_once(session_factory, collector, result=res, **kwargs)
-    except asyncio.CancelledError:
-        res.cancelled = True
-        raise
-    finally:
-        res.completed_at = datetime.now(timezone.utc).isoformat()
-        res.duration_seconds = round(time.monotonic() - started, 3)
-        # One structured line is the whole witness. Emitted from `finally` so a
-        # cancelled or aborted run reports exactly like a completed one.
-        log.info("OHLCV collection run: %s", res.as_dict())
+    source = kwargs.get("source", SOURCE_BINANCE)
+
+    # RUN OWNERSHIP IS TAKEN FIRST — before the sequence, before the partition,
+    # before the collector, before any socket. A3H7 proved the claim transaction
+    # is too short a lifetime: it commits and releases while the fetches it was
+    # protecting are still running, so a second run is legally handed the same
+    # symbols. Ownership has to span the whole run or it protects nothing.
+    #
+    # ORDER MATTERS AND IS ASSERTED BY TESTS. Acquiring after
+    # `acquire_run_sequence` would let a run that is about to be turned away
+    # burn a fairness sequence, which is durable and can never be given back.
+    owner = (ownership if ownership is not None
+             else source_run_ownership(_bind_of(session_factory, bind), source))
+    async with owner as owned:
+        if not owned:
+            # Another run owns this source. Nothing was attempted, so nothing is
+            # reported as attempted, and this is NOT a failure — see
+            # CollectionResult.ownership_declined.
+            res.ownership_declined = True
+            res.completed_at = datetime.now(timezone.utc).isoformat()
+            res.duration_seconds = round(time.monotonic() - started, 3)
+            log.info("OHLCV collection run: %s", res.as_dict())
+            return res
+
+        # DURABLE PROGRESSION IS CLAIMED HERE — the run boundary, before the
+        # collector is even constructed and therefore before any item. It commits
+        # in its own transaction, so a run that dies immediately afterwards has
+        # still consumed its sequence and the NEXT run starts elsewhere. Failure
+        # is not swallowed: without a durable sequence there is no fairness
+        # progression, so no run.
+        if "run_seq" not in kwargs:
+            kwargs["run_seq"] = await acquire_run_sequence(session_factory, source)
+        collector = BinanceCollector()
         try:
-            await collector.close()
-        except Exception:      # noqa: BLE001
-            # A failure to close must not mask the real outcome — neither the
-            # result nor the original exception.
-            log.warning("OHLCV collector close failed", exc_info=True)
+            return await collect_once(session_factory, collector, result=res,
+                                      **kwargs)
+        except asyncio.CancelledError:
+            res.cancelled = True
+            raise
+        finally:
+            res.completed_at = datetime.now(timezone.utc).isoformat()
+            res.duration_seconds = round(time.monotonic() - started, 3)
+            # One structured line is the whole witness. Emitted from `finally` so
+            # a cancelled or aborted run reports exactly like a completed one.
+            log.info("OHLCV collection run: %s", res.as_dict())
+            try:
+                await collector.close()
+            except Exception:      # noqa: BLE001
+                # A failure to close must not mask the real outcome — neither the
+                # result nor the original exception.
+                log.warning("OHLCV collector close failed", exc_info=True)
