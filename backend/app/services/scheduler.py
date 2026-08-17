@@ -173,10 +173,24 @@ async def _job_ohlcv_collect() -> None:
     Imported INSIDE the function on purpose: module-level import would pull the
     collector into every process that imports the scheduler, and the dormancy
     guards assert that importing app.main performs no OHLCV work.
-    """
-    from app.services.ohlcv_collector_job import run_collection_once
 
-    await _run_tracked("ohlcv_collect", run_collection_once(async_session_factory))
+    K IS BOUND EXPLICITLY, and that is the point of this line. This call used to
+    pass the session factory alone, which let `symbols_per_run` fall through to
+    the collector's signature default — so the reviewed activation configuration
+    (K=5) and the configuration that actually ran (K=4, the constant's value at
+    the time) were different numbers, and nothing said so. A signature default is
+    bound at def-time and cannot be read here; naming the canonical constant at
+    the call site is what keeps planned K and executed K the same fact. It is the
+    NAME rather than a literal, so there is exactly one K in the runtime and it
+    cannot drift.
+    """
+    from app.services.ohlcv_collector_job import (SYMBOLS_PER_RUN,
+                                                  run_collection_once)
+
+    await _run_tracked(
+        "ohlcv_collect",
+        run_collection_once(async_session_factory,
+                            symbols_per_run=SYMBOLS_PER_RUN))
 
 
 async def _job_startup_check() -> None:

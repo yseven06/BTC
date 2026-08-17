@@ -127,19 +127,33 @@ BOOTSTRAP_MAX_BARS = 4
 # wherever it lands), so a third spare would buy nothing.
 BOOTSTRAP_FETCH_LIMIT = BOOTSTRAP_MAX_BARS + 2
 
-# SYMBOLS PER EXECUTED RUN — the partition size.
+# SYMBOLS PER EXECUTED RUN — the partition size. THE CANONICAL K.
 #
-# DORMANT. Nothing registers an OHLCV job, so this value is a code-shape default
-# and a test fixture, NOT an activation decision. The measured cost is 2.964 s
-# per (symbol, timeframe) item and the frozen calibration gate is 78.947 s, so
-# 4 symbols x 4 timeframes = 16 items models to ~47 s. The ACTIVATION checkpoint
-# must re-derive this against its own measurement and choose the final value.
+# THIS IS THE ACTIVATION DECISION, and it is declared exactly once. It used to be
+# described here as "a code-shape default and a test fixture, NOT an activation
+# decision", and that description is what made R1's second defect possible: the
+# reviewed configuration was K=5, while the registered job passed no
+# `symbols_per_run` at all and therefore ran on this constant's then-value of 4.
+# The cost matrix modelled one configuration and production executed another.
+#
+# So the registered job now binds this NAME explicitly (scheduler.py
+# `_job_ohlcv_collect`) instead of inheriting the signature default below. A
+# default is bound at def-time and is invisible at the call site; an explicit
+# binding is what makes the planned K and the executed K the same reviewable
+# fact. `test_ohlcv_activation_registration.py` pins both halves.
+#
+# ⚠️ THE COST OF A GIVEN K IS NOT THE OLD ESTIMATE. The 2.964 s per
+# (symbol, timeframe) item that once justified a number here predates A3K3, which
+# removed the per-bar round-trip term entirely (159 bars: 477 round trips / 120 s
+# -> 3 / 0.94 s at a real 129 ms RTT). Any budget or slot derived from this K must
+# be re-measured against the current persistence path; the pre-A3K3 figures are
+# not current truth.
 #
 # K IS NOT PART OF THE DURABLE IDENTITY. Fairness lives in ohlcv_symbol_progress
 # keyed by (source, symbol); changing K changes how many symbols a run claims and
 # nothing about who is owed a turn, so it can be retuned without a migration and
 # without invalidating any existing token.
-SYMBOLS_PER_RUN = 4
+SYMBOLS_PER_RUN = 5
 
 
 def bootstrap_fetch_limit(bootstrap: int) -> int:

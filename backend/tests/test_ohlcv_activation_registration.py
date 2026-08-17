@@ -82,8 +82,18 @@ def test_the_collector_is_imported_lazily_inside_the_job():
                     if ln.startswith("from app.services.ohlcv")
                     or ln.startswith("import app.services.ohlcv")]
     assert module_level == [], f"module-level OHLCV import: {module_level}"
-    body = inspect.getsource(sched._job_ohlcv_collect)
-    assert "from app.services.ohlcv_collector_job import run_collection_once" in body
+    # AST rather than a substring match: the invariant is that the import is a
+    # real statement INSIDE this function, which a string compare only
+    # approximates — it also breaks on formatting, e.g. importing a second name
+    # alongside it. Parsing states the property directly and is strictly
+    # stronger, since a mention in a comment or docstring cannot satisfy it.
+    fn = ast.parse(inspect.getsource(sched._job_ohlcv_collect)).body[0]
+    imported = {alias.name
+                for node in ast.walk(fn) if isinstance(node, ast.ImportFrom)
+                if node.module == "app.services.ohlcv_collector_job"
+                for alias in node.names}
+    assert "run_collection_once" in imported, (
+        f"the collector is not imported lazily inside the job: {imported}")
 
 
 def test_the_job_runs_through_run_tracked():
@@ -225,3 +235,219 @@ def test_the_seven_existing_specs_are_untouched():
         assert (spec.budget_seconds, spec.cadence_seconds, spec.critical) == (b, c, crit), \
             f"{job_id} changed"
     assert set(JOB_SPECS) == set(expected) | {JOB_ID}
+
+
+# â•â• CANONICAL K â€” PLANNED K AND EXECUTED K ARE THE SAME VALUE â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# R1's second root cause. The reviewed activation configuration was K=5; the
+# code path would have executed K=4, because `_job_ohlcv_collect` called
+# `run_collection_once(async_session_factory)` with no `symbols_per_run`, so the
+# value fell through to `collect_once`'s signature default. The K cost matrix
+# modelled one configuration and production ran another, and no test noticed,
+# because every existing K assertion is about the CONSTANT rather than about
+# what the registered job actually binds.
+#
+# WHY AN IMPLICIT DEFAULT IS NOT ENOUGH EVEN WHEN THE NUMBER IS RIGHT: a default
+# is bound at def-time and is invisible at the call site, so the value that will
+# run cannot be read where the run is configured. Explicit binding is what makes
+# planned K and executed K the same reviewable fact.
+K_SENTINEL = 97          # a value no configuration would ever choose
+
+
+class _NullCollector:
+    async def fetch_ohlcv(self, *a, **k):            # pragma: no cover
+        raise AssertionError("no item may be attempted with an empty partition")
+
+    async def close(self):
+        return None
+
+
+class _NullFactory:
+    """Session factory whose reads return nothing, so `collect_once` reaches the
+    partition call and then has no work left to do."""
+
+    def __call__(self):
+        return self
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *e):
+        return False
+
+    async def execute(self, *a, **k):
+        class _R:
+            rowcount = 0
+
+            def all(self_):
+                return []
+
+            def scalars(self_):
+                class _S:
+                    def all(x):
+                        return []
+                return _S()
+        return _R()
+
+    async def commit(self):
+        return None
+
+    async def rollback(self):
+        return None
+
+
+async def _k_passed_to_run_collection_once(default_override=None):
+    """What `_job_ohlcv_collect` actually hands to `run_collection_once`.
+
+    The job imports `run_collection_once` LAZILY inside its own body, so
+    patching the module attribute is picked up at call time exactly as the real
+    lookup would be.
+    """
+    import app.services.ohlcv_collector_job as J
+
+    seen = {}
+
+    async def spy(session_factory, **kwargs):
+        seen.update(kwargs)
+        return J.CollectionResult()
+
+    real_run = J.run_collection_once
+    real_default = J.collect_once.__kwdefaults__["symbols_per_run"]
+    J.run_collection_once = spy
+    if default_override is not None:
+        J.collect_once.__kwdefaults__["symbols_per_run"] = default_override
+    try:
+        await sched._job_ohlcv_collect()
+    finally:
+        J.run_collection_once = real_run
+        J.collect_once.__kwdefaults__["symbols_per_run"] = real_default
+    return seen
+
+
+@pytest.mark.asyncio
+async def test_the_registered_job_binds_K_explicitly():
+    """The call site must SAY the K it runs. Without the kwarg, K is whatever
+    the default happens to be â€” which is exactly how a reviewed K=5 became a
+    running K=4."""
+    import app.services.ohlcv_collector_job as J
+
+    seen = await _k_passed_to_run_collection_once()
+    assert "symbols_per_run" in seen, (
+        "the registered OHLCV job does not bind K explicitly â€” it inherits "
+        "collect_once's default, so reviewed K and executed K can differ")
+    assert seen["symbols_per_run"] == J.SYMBOLS_PER_RUN, (
+        f"registered K {seen['symbols_per_run']} != canonical {J.SYMBOLS_PER_RUN}")
+
+
+@pytest.mark.asyncio
+async def test_repointing_the_signature_default_cannot_move_the_registered_K():
+    """THE DISCRIMINATING TEST. It applies Python's own resolution rule instead
+    of asserting a shape: if the job omits the kwarg, the effective K IS the
+    signature default, so repointing that default moves production's K silently.
+
+    `collect_once`'s parameters are keyword-only, so the default lives in
+    `__kwdefaults__` and was bound at def-time â€” patching the module constant
+    would NOT move it, which is why this patches the real binding.
+    """
+    import app.services.ohlcv_collector_job as J
+
+    seen = await _k_passed_to_run_collection_once(default_override=K_SENTINEL)
+    effective = seen.get("symbols_per_run", K_SENTINEL)
+    assert effective != K_SENTINEL, (
+        "the registered job resolves K through collect_once's default, so "
+        "changing that default silently changes production's K")
+    assert effective == J.SYMBOLS_PER_RUN
+
+
+def test_there_is_exactly_one_canonical_K_literal_in_the_runtime():
+    """No second magic number. K is declared once, as a literal int, in the
+    collector module; every other consumer must reference the NAME."""
+    import app.services.ohlcv_collector_job as J
+
+    assigns = []
+    for p in (BACKEND / "app").rglob("*.py"):
+        tree = ast.parse(p.read_text(encoding="utf-8", errors="ignore"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign) and any(
+                    getattr(t, "id", "") == "SYMBOLS_PER_RUN" for t in node.targets):
+                assert isinstance(node.value, ast.Constant), \
+                    f"K is computed rather than declared in {p.name}"
+                assigns.append((p.name, node.value.value))
+    assert assigns == [("ohlcv_collector_job.py", J.SYMBOLS_PER_RUN)], \
+        f"K must be declared exactly once, in the collector module: {assigns}"
+
+
+def test_the_scheduler_passes_the_canonical_NAME_not_a_repeated_literal():
+    """A literal at the call site would be a second source of truth: it could
+    drift from the constant and nothing would notice."""
+    tree = ast.parse((BACKEND / "app/services/scheduler.py").read_text(encoding="utf-8"))
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.AsyncFunctionDef) and n.name == "_job_ohlcv_collect")
+    bound = [kw for call in ast.walk(fn) if isinstance(call, ast.Call)
+             for kw in call.keywords if kw.arg == "symbols_per_run"]
+    assert bound, "_job_ohlcv_collect binds no symbols_per_run"
+    for kw in bound:
+        assert isinstance(kw.value, ast.Name), (
+            "K is written as a literal at the call site â€” that is a second "
+            "canonical value that can drift from the constant")
+        assert kw.value.id == "SYMBOLS_PER_RUN", kw.value.id
+
+
+@pytest.mark.asyncio
+async def test_observability_reports_the_same_K_the_run_was_given():
+    """`symbols_partition_size` is what the witness line reports. If it could
+    differ from the K used to claim the partition, a run's own telemetry would
+    misreport the configuration under review."""
+    import app.services.ohlcv_collector_job as J
+
+    seen = {}
+
+    async def fake_partition(session_factory, source, selected, k, run_seq):
+        seen["k"] = k
+        return []
+
+    real = J.select_partition
+    J.select_partition = fake_partition
+    try:
+        res = await J.collect_once(_NullFactory(), _NullCollector(),
+                                   timeframes=["15m"],
+                                   symbols_per_run=J.SYMBOLS_PER_RUN, run_seq=1)
+    finally:
+        J.select_partition = real
+
+    assert seen["k"] == J.SYMBOLS_PER_RUN, "a different K reached the partition"
+    assert res.symbols_partition_size == J.SYMBOLS_PER_RUN, \
+        "the reported K is not the K that was used"
+
+
+@pytest.mark.asyncio
+async def test_an_explicit_caller_still_overrides_K():
+    """Direct and internal callers passing their own K must keep working â€” the
+    canonical value is the DEFAULT CONFIGURATION, not a hard ceiling."""
+    import app.services.ohlcv_collector_job as J
+
+    seen = {}
+
+    async def fake_partition(session_factory, source, selected, k, run_seq):
+        seen["k"] = k
+        return []
+
+    real = J.select_partition
+    J.select_partition = fake_partition
+    try:
+        res = await J.collect_once(_NullFactory(), _NullCollector(),
+                                   timeframes=["15m"], symbols_per_run=2,
+                                   run_seq=1)
+    finally:
+        J.select_partition = real
+
+    assert seen["k"] == 2 and res.symbols_partition_size == 2
+
+
+def test_the_canonical_K_is_the_reviewed_activation_value():
+    """K is now an ACTIVATION DECISION, not a code-shape default, so the value
+    is pinned by name. Changing it is a deliberate edit that lands here."""
+    import app.services.ohlcv_collector_job as J
+
+    assert J.SYMBOLS_PER_RUN == 5, (
+        "the reviewed activation configuration is K=5; changing it requires a "
+        "re-derived cost matrix, not a silent constant edit")

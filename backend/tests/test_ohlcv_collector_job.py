@@ -611,7 +611,16 @@ def test_A3b_nothing_in_production_calls_the_collector():
     imports = [n for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)
                and n.module == "app.services.ohlcv_collector_job"]
     assert len(imports) == 1, f"expected exactly one lazy import, got {len(imports)}"
-    assert [a.name for a in imports[0].names] == ["run_collection_once"]
+    # AN EXACT ALLOW-LIST, deliberately not "run_collection_once is among them":
+    # the entry point, plus the canonical K the job must bind explicitly. A
+    # CONSTANT is not an execution path — the execution-path invariant is carried
+    # by the three assertions above and by the single-call check below — but
+    # anything else appearing here still fails, which is the point. K is imported
+    # rather than repeated as a literal so there is exactly one K in the runtime;
+    # see test_ohlcv_activation_registration.py for the binding guards.
+    assert sorted(a.name for a in imports[0].names) == \
+        ["SYMBOLS_PER_RUN", "run_collection_once"], \
+        [a.name for a in imports[0].names]
     calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call)
              and getattr(n.func, "id", None) == "run_collection_once"]
     assert len(calls) == 1, f"expected exactly one call, got {len(calls)}"
