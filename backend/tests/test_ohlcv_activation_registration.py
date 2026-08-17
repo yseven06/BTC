@@ -44,18 +44,25 @@ def test_exactly_one_ohlcv_add_job_exists():
         for kw in node.keywords:
             if kw.arg == "id" and isinstance(kw.value, ast.Constant):
                 ids.append(kw.value.value)
-    # DISABLED AFTER CALIBRATION. The first genuine run (22:58:02Z, run_seq=1)
-    # was cancelled at 148.196 s against a 150 s budget, and the frozen gate is
-    # T <= 150/1.9 = 78.947 s — so the registration was removed in the same
-    # session. The invariant this guard carries is unchanged and is what still
-    # matters: there is NEVER more than one OHLCV registration. It now reads
-    # ZERO, and it will read one again only when a checkpoint re-activates on
-    # a re-derived budget/slot.
-    assert ids.count(JOB_ID) == 0, (
-        f"{JOB_ID} is registered again — re-activation must come with a "
-        f"re-derived budget, not a silent restore: {ids}")
+    # RE-ACTIVATED. This guard read ZERO between the cancelled first run and
+    # this checkpoint, and its own comment set the condition for reading one
+    # again: a re-derived budget and slot, never a silent restore. Both were
+    # re-derived — the run is now bounded by a K-sized partition instead of the
+    # whole universe, and the slot came from live scheduler timings measured on
+    # the day of activation.
+    #
+    # The invariant itself never changed and is the only thing that matters
+    # here: there is NEVER more than one OHLCV registration, because two would
+    # mean two concurrent runs and two progression claims per cadence.
+    assert ids.count(JOB_ID) == 1, \
+        f"expected exactly one {JOB_ID} registration, found {ids.count(JOB_ID)}: {ids}"
     assert len(ids) == len(set(ids)), f"duplicate job ids: {ids}"
-    assert len(ids) == 7, f"expected the 7 trading jobs, found {len(ids)}: {ids}"
+    assert len(ids) == 8, \
+        f"expected the 7 trading jobs plus OHLCV, found {len(ids)}: {ids}"
+    assert set(ids) - {JOB_ID} == {
+        "signals_1h", "signals_4h", "signals_15m", "signals_1d",
+        "perf_tracking", "price_alerts", "startup_check"}, \
+        f"the seven trading registrations changed: {sorted(ids)}"
 
 
 def test_no_second_execution_path_for_ohlcv():
@@ -103,15 +110,20 @@ def test_the_jobspec_is_exactly_the_ratified_contract():
     assert spec.shadow is True
 
 
-def test_no_cron_slot_is_claimed_while_disabled():
-    """Was `test_the_cron_is_the_ratified_slot`, pinning minute='28,58'.
+def test_the_cron_is_the_re_derived_slot():
+    """Was pinning minute='28,58'; then held "no trigger at all" while disabled.
 
-    The measured first run makes that slot unusable as it stands: 148.196 s
-    reached only 13 of 57 symbols, so the full universe extrapolates to ~675 s
-    against the 175 s the :58 window allows before signals_1h. Re-asserting
-    '28,58' would pin a slot the evidence has already refuted, so this guard now
-    holds the weaker true statement — no OHLCV trigger is claimed at all — and
-    the slot must be re-derived by whichever checkpoint re-activates."""
+    The old slot was refuted by measurement, not opinion: the first run needed
+    148.196 s to reach 13 of 57 symbols, so the whole universe extrapolated to
+    ~675 s against the 175 s :58 allows before signals_1h. What changed since is
+    not the slot but the WORKLOAD — a run now claims a K-sized partition and no
+    longer scales with the universe.
+
+    :10 and :40 were re-derived from live production timings on the day of
+    activation: signals_15m at :02/:17/:32/:47 running ~253 s, signals_1h at :01
+    ~245 s, signals_4h at :02 ~233 s, leaving :06-:17, :21-:32, :36-:47 and
+    :51-:01 clear. Both minutes sit inside such a window.
+    """
     src = (BACKEND / "app/services/scheduler.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
     found = None
@@ -125,7 +137,31 @@ def test_no_cron_slot_is_claimed_while_disabled():
             if isinstance(arg, ast.Call) and getattr(arg.func, "id", "") == "CronTrigger":
                 found = {kw.arg: kw.value.value for kw in arg.keywords
                          if isinstance(kw.value, ast.Constant)}
-    assert found is None, f"an OHLCV cron trigger is registered while disabled: {found}"
+    assert found == {"minute": "10,40"}, \
+        f"OHLCV is not on the re-derived slot: {found}"
+
+    # The slot must still be a slot: every chosen minute has to clear the
+    # windows the trading sweeps actually occupy, asserted rather than asserted
+    # once in prose. Occupancy is budget + cleanup grace.
+    from app.services.job_guard import CLEANUP_GRACE_SECONDS as G
+    occupancy = JOB_SPECS[JOB_ID].budget_seconds + G
+    windows = ((6, 17), (21, 32), (36, 47), (51, 61))
+    for minute in (int(m) for m in found["minute"].split(",")):
+        fits = any(start <= minute and minute * 60 + occupancy < end * 60
+                   for start, end in windows)
+        assert fits, (f"minute {minute} + {occupancy}s does not fit any "
+                      f"signals-free window {windows}")
+
+
+def test_the_registration_uses_the_production_entry_point_only():
+    """No ownership bypass, no bind override, no direct partition call — the
+    registered job must go through the same path every guard above pins."""
+    body = inspect.getsource(sched._job_ohlcv_collect)
+    assert "run_collection_once" in body
+    for banned in ("ownership=", "bind=", "select_partition", "collect_once(",
+                   "acquire_run_sequence"):
+        assert banned not in body, \
+            f"the registered OHLCV job takes an alternate path: {banned}"
 
 
 def test_the_retained_budget_would_still_fit_the_windows_it_was_sized_for():
