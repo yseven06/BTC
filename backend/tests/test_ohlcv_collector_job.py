@@ -608,24 +608,18 @@ def test_A3b_scheduler_and_main_do_not_reference_it():
             assert token not in code, f"{rel} references {token}"
 
 
-def test_A3b_exactly_one_ohlcv_job_is_registered():
+def test_A3b_no_ohlcv_job_is_registered():
     src = (BACKEND / "app" / "services" / "scheduler.py").read_text(encoding="utf-8")
     ids = re.findall(r'id="([^"]+)"', src)
-    # A3c was activated, DISABLED the same session (first genuine run cancelled
-    # at 148.196 s against the frozen 78.947 s gate), and re-activated by A3I
-    # once the run stopped scaling with the universe: it now claims a K-sized
-    # partition, and both the budget and the slot were re-derived from live
-    # measurements rather than restored.
-    #
-    # What this guard has always protected is the COUNT, not the direction. Two
-    # registrations would mean two runs and two progression claims per cadence,
-    # so it reads exactly one either side of an activation.
-    ohlcv = [i for i in ids if "ohlcv" in i.lower()]
-    assert ohlcv == ["ohlcv_collect"], ids
-    assert sorted(ids) == ["ohlcv_collect", "perf_tracking", "price_alerts",
+    # A3c was activated and then DISABLED in the same session: the first genuine
+    # run was cancelled at 148.196 s against the frozen 78.947 s gate. The
+    # registration is gone; scheduler.py still contains _job_ohlcv_collect and
+    # the JobSpec, which is why this guard checks the REGISTRATION and not the
+    # mere presence of the string. See tests/test_ohlcv_activation_registration.py.
+    assert [i for i in ids if "ohlcv" in i.lower()] == [], ids
+    assert sorted(ids) == ["perf_tracking", "price_alerts",
                            "signals_15m", "signals_1d", "signals_1h",
                            "signals_4h", "startup_check"], ids
-    assert len(ids) == len(set(ids)), f"duplicate registration ids: {ids}"
 
 
 def test_A3b_the_collector_imports_no_decision_module():

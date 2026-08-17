@@ -992,32 +992,6 @@ def start_scheduler() -> AsyncIOScheduler:
         name="Price alert check",
     )
 
-    # OHLCV shadow collection. RE-ACTIVATED on a re-derived slot and a
-    # re-derived partition, not on a restored one.
-    #
-    # WHY :10 AND :40 AND NOT THE OLD :28/:58. The first genuine run was
-    # cancelled at 148.196 s having reached 13 of 57 symbols, because it
-    # attempted the WHOLE universe. It no longer does: a run now claims a
-    # K-sized partition (SYMBOLS_PER_RUN), so its cost is bounded by K rather
-    # than by the universe. Re-measured against production on the current
-    # candidate, K=5 composes to ~35.8 s against the frozen 78.947 s gate.
-    #
-    # The slot was re-derived from live scheduler timings rather than inherited:
-    # signals_15m fires at :02/:17/:32/:47 and runs ~253 s, signals_1h at :01
-    # (~245 s), signals_4h at :02 (~233 s). That leaves clear windows at
-    # :06-:17, :21-:32, :36-:47 and :51-:01. :10 and :40 sit inside two of them
-    # with 420 s of clearance against an occupancy of budget + grace = 155 s.
-    #
-    # Twice an hour matches the 1800 s cadence the JobSpec already declares, so
-    # the guard's budget < cadence arithmetic is unchanged.
-    _scheduler.add_job(
-        _job_ohlcv_collect,
-        CronTrigger(minute="10,40"),
-        id="ohlcv_collect",
-        replace_existing=True,
-        name="OHLCV shadow collection",
-    )
-
     # Run startup check as a one-time job 5 seconds after start
     _scheduler.add_job(
         _job_startup_check,
