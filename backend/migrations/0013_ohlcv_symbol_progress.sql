@@ -44,6 +44,13 @@
 -- and the CREATE TABLE below is a no-op. Every constraint that carries
 -- correctness is therefore declared in app/models/ohlcv_symbol_progress.py as
 -- well, and the two paths are asserted to produce the same catalogue.
+--
+-- AMENDED BEFORE FIRST APPLICATION. This file had never been applied to any
+-- production database when the activation review measured a blank `source`
+-- being accepted, so the venue CHECK below was added here rather than shipped
+-- and then patched by an 0014. Nothing that has run anywhere changes meaning;
+-- an installation that already applied 0013 would need the constraint added
+-- separately, and none exists.
 
 CREATE TABLE IF NOT EXISTS ohlcv_symbol_progress (
     -- Venue. Same value the watermark read and the bar write use, so a second
@@ -84,6 +91,17 @@ CREATE TABLE IF NOT EXISTS ohlcv_symbol_progress (
     -- only checked a substring was present in both.
     PRIMARY KEY (source, symbol),
     CONSTRAINT ck_ohlcv_symbol_progress_seq CHECK (last_attempt_run_seq >= 0),
+    -- The venue guard, and it was MISSING until the activation review measured
+    -- it: a blank source was accepted by the database while the sibling table
+    -- ohlcv_collection_progress (0012) has carried exactly this constraint
+    -- since it was written. The asymmetry was an omission, not a decision.
+    --
+    -- What it protects: a row keyed under a blank venue can never be matched by
+    -- a watermark read or a bar write, both of which key on a real source, so
+    -- it would sit in the ledger competing for selection forever while
+    -- collecting nothing. Python already refuses a blank source at every entry
+    -- point; this is the same rule stated where it cannot be bypassed.
+    CONSTRAINT ck_ohlcv_symbol_progress_source CHECK (length(btrim(source)) > 0),
     CONSTRAINT ck_ohlcv_symbol_progress_symbol CHECK (length(btrim(symbol)) > 0)
 );
 

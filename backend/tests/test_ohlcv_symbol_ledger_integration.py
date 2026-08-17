@@ -162,19 +162,33 @@ async def test_reapplying_the_migration_is_idempotent(dsn):
 async def test_the_checks_reject_invalid_rows_in_the_real_database(dsn):
     """Declared in BOTH model and migration; only the database can prove they
     actually reject."""
-    engine = await _fresh(dsn, use_migration=True)
-    try:
-        for values, why in ((("binance", "   ", 0), "blank symbol"),
-                            (("binance", "BTCUSDT", -1), "negative run_seq")):
-            with pytest.raises(Exception):
-                async with engine.begin() as conn:
-                    await conn.execute(text(
-                        f"INSERT INTO {TABLE}(source,symbol,last_attempt_run_seq) "
-                        "VALUES (:s,:y,:n)"),
-                        {"s": values[0], "y": values[1], "n": values[2]})
-            assert why  # naming the case keeps a failure readable
-    finally:
-        await _drop(engine)
+    cases = ((("binance", "   ", 0), "blank symbol"),
+             (("binance", "BTCUSDT", -1), "negative run_seq"),
+             # Added by the activation review, which measured this row being
+             # ACCEPTED: the venue guard existed on the sibling table and had
+             # simply never been written here. Both construction paths are
+             # exercised because the model is what builds the table on a fresh
+             # database — a constraint present only in the .sql would pass the
+             # migration leg of this test and never reach production.
+             ((" ", "BTCUSDT", 0), "blank source"),
+             (("", "BTCUSDT", 0), "empty source"))
+    for use_migration in (True, False):
+        engine = await _fresh(dsn, use_migration=use_migration)
+        path = "migration" if use_migration else "create_all"
+        try:
+            for values, why in cases:
+                try:
+                    async with engine.begin() as conn:
+                        await conn.execute(text(
+                            f"INSERT INTO {TABLE}"
+                            "(source,symbol,last_attempt_run_seq) "
+                            "VALUES (:s,:y,:n)"),
+                            {"s": values[0], "y": values[1], "n": values[2]})
+                except Exception:
+                    continue
+                pytest.fail(f"{path} path accepted a row with {why}")
+        finally:
+            await _drop(engine)
 
 
 @pytest.mark.asyncio

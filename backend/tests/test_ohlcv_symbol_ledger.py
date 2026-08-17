@@ -327,10 +327,26 @@ def test_the_migration_and_the_model_declare_the_same_constraints():
     from app.models.ohlcv_symbol_progress import OhlcvSymbolProgress
     sql = MIGRATION.read_text(encoding="utf-8")
     names = {c.name for c in OhlcvSymbolProgress.__table__.constraints if c.name}
-    for expected in ("ck_ohlcv_symbol_progress_seq",
-                     "ck_ohlcv_symbol_progress_symbol"):
-        assert expected in names, f"{expected} missing from the model"
-        assert expected in sql, f"{expected} missing from 0013"
+    # THE SET, NOT A SUBSET. An earlier version of this test listed the names it
+    # expected and checked each was present, which says nothing about the ones
+    # it forgot to list — and it forgot `source`. The activation review found a
+    # blank venue being accepted by the database while the sibling table
+    # ohlcv_collection_progress had carried that constraint all along. Pinning
+    # the exact set is what makes the next omission fail here instead of in a
+    # migration review.
+    expected = {"ck_ohlcv_symbol_progress_seq",
+                "ck_ohlcv_symbol_progress_source",
+                "ck_ohlcv_symbol_progress_symbol"}
+    checks = {n for n in names if n.startswith("ck_")}
+    assert checks == expected, \
+        f"model CHECK set is {sorted(checks)}, expected {sorted(expected)}"
+    for name in expected:
+        assert name in sql, f"{name} missing from 0013"
+    # Every NOT NULL text-ish column must carry a blank guard, so adding a
+    # column cannot quietly reintroduce the same hole.
+    for col in ("source", "symbol"):
+        assert f"length(btrim({col})) > 0" in sql, \
+            f"0013 has no blank guard for {col}"
     # the PK must stay UNNAMED in the SQL so both paths emit the default name
     assert "PRIMARY KEY (source, symbol)" in sql
     assert "CONSTRAINT pk_" not in sql, "the PK is explicitly named in 0013"

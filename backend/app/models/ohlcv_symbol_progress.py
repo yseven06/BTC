@@ -40,11 +40,17 @@ THE create_all TRAP — WHY EVERY CONSTRAINT IS DECLARED HERE
 .sql files, so on a fresh database THIS MODEL creates the table and 0013's
 `CREATE TABLE IF NOT EXISTS` is a silent no-op. Anything declared only in SQL
 would never reach such a database while the ledger still recorded 0013 as
-applied. String (VARCHAR) rather than Text, an UNNAMED primary key, and both
-named CHECKs exist here for exactly that reason — 0012 measured a real
+applied. String (VARCHAR) rather than Text, an UNNAMED primary key, and all
+THREE named CHECKs exist here for exactly that reason — 0012 measured a real
 divergence (`character varying` vs `text`, and
 `length(btrim((col)::text))` vs `length(btrim(col))`) that a constraint-NAME
 comparison could not see.
+
+AND THE SET IS PINNED, NOT THE MEMBERS. The venue CHECK was absent from this
+model and from 0013 until the activation review put a blank source into a real
+database and watched it succeed. The guard that should have caught it listed the
+constraint names it expected and asserted each was present, which is silent
+about the one nobody listed. It now compares the whole set.
 """
 
 from __future__ import annotations
@@ -87,6 +93,14 @@ class OhlcvSymbolProgress(Base):
     __table_args__ = (
         CheckConstraint("last_attempt_run_seq >= 0",
                         name="ck_ohlcv_symbol_progress_seq"),
+        # The venue guard. MISSING from both this model and 0013 until the
+        # activation review measured a blank source being accepted by the
+        # database — while the sibling ohlcv_collection_progress has carried the
+        # identical constraint from the start. A row under a blank venue can
+        # never be matched by a watermark read or a bar write, so it would
+        # compete for selection forever and collect nothing.
+        CheckConstraint("length(btrim(source)) > 0",
+                        name="ck_ohlcv_symbol_progress_source"),
         CheckConstraint("length(btrim(symbol)) > 0",
                         name="ck_ohlcv_symbol_progress_symbol"),
         # Oldest-first read support: "the K active symbols with the smallest
