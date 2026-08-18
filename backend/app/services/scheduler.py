@@ -44,6 +44,7 @@ from app.services.lifecycle_log import birth_event, make_event
 from app.services.candidate_log import record_candidate
 from app.services.macro_shadow_wiring import build_candidate_macro_shadow
 from app.services.macro_shadow_fetch import get_shadow_macro_snapshot
+from app.services.shadow_exec_cost import build_shadow_exec_cost
 from app.models.decision_candidate import (
     REASON_CONFIDENCE_GATE,
     REASON_DUPLICATE_OR_EXISTING,
@@ -711,6 +712,7 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
             # This is the raw material every learning step downstream depends
             # on — wrapped defensively so a snapshot failure can never block
             # the actual signal from being saved.
+            snapshot = None
             try:
                 snapshot = build_snapshot(new_sig.id, decision, df, regime=regime_result,
                                           engine_weights=engine_weights, adaptive_active=adaptive_active,
@@ -718,6 +720,40 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                 db.add(snapshot)
             except Exception as snap_exc:
                 logger.warning("[Scheduler] Snapshot build failed for %s: %s", symbol, snap_exc)
+
+            # CP-F SHADOW EXECUTION-COST EVIDENCE — observation, never a gate.
+            #
+            # The decision above is FINAL before this runs: the signal is built,
+            # the birth event written and the candidate recorded as PUBLISHED.
+            # This only asks the exchange what the book looked like at that
+            # moment, because that is the one fact the cohort question turns on
+            # and the one this system can never reconstruct afterwards (it places
+            # no orders, so actual fills and fees do not exist).
+            #
+            # ITS OWN HANDLER, deliberately. Inside the block above, a raise here
+            # would skip `db.add(snapshot)` and cost the product the birth
+            # snapshot every learning step depends on — a far worse outcome than
+            # losing one shadow observation. `build_shadow_exec_cost` already
+            # promises never to raise; this is the second layer, not the first.
+            #
+            # The await is bounded at 2s with no retry inside the module. It does
+            # sit within the open transaction, which is acceptable only because
+            # it is bounded: 2s against a 180s idle_in_transaction ceiling and a
+            # 600s job budget, on the ~1 signal a sweep actually publishes.
+            if snapshot is not None:
+                try:
+                    snapshot.extra = {
+                        **(snapshot.extra or {}),
+                        "exec_cost": await build_shadow_exec_cost(
+                            collector=binance,
+                            symbol=symbol,
+                            signal=new_sig,
+                            atr_pct=(decision.get("birth_telemetry") or {}).get("atr_pct"),
+                        ),
+                    }
+                except Exception as obs_exc:         # noqa: BLE001 — evidence is never load-bearing
+                    logger.warning("[Scheduler] Shadow exec-cost capture failed for %s: %s",
+                                   symbol, obs_exc)
 
             await db.commit()
             logger.info("[Scheduler] Signal saved: %s → %s (conf=%.1f%%)",

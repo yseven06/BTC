@@ -268,8 +268,15 @@ def test_16_live_gates_and_thresholds_are_unchanged():
     # cannot fail this, and only real identifiers can.
     code = ast.unparse(ast.parse(textwrap.dedent(sch)))
     shadowish = {t for t in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", code) if "shadow" in t}
+    # `build_shadow_exec_cost` (CP-F) joined this list: it takes a market
+    # observation at publication and writes it to SignalSnapshot.extra["exec_cost"].
+    # It is admitted here for the same reason the macro-shadow pair is — additive
+    # telemetry that the decision never reads back. The list stays EXACT rather
+    # than becoming a "contains shadow" check, so a fourth name still fails; the
+    # guard's own tests (test_shadow_exec_cost_wiring.py) prove this particular
+    # one cannot reach a decision, and a sabotage mutant that made it do so dies.
     assert shadowish == {"macro_shadow", "build_candidate_macro_shadow",
-                         "get_shadow_macro_snapshot"}, shadowish
+                         "get_shadow_macro_snapshot", "build_shadow_exec_cost"}, shadowish
 
 
 def test_16b_classification_does_not_read_or_alter_the_decision():
