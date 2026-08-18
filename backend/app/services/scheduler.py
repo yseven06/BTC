@@ -742,16 +742,40 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
             # 600s job budget, on the ~1 signal a sweep actually publishes.
             if snapshot is not None:
                 try:
-                    snapshot.extra = {
-                        **(snapshot.extra or {}),
-                        "exec_cost": await build_shadow_exec_cost(
-                            collector=binance,
-                            symbol=symbol,
-                            signal=new_sig,
-                            atr_pct=(decision.get("birth_telemetry") or {}).get("atr_pct"),
-                        ),
-                    }
+                    # A SHORT-LIVED COLLECTOR, and the reason is measured rather
+                    # than stylistic. The canonical `binance` above is closed in a
+                    # finally eleven lines after it is built, ~424 lines before
+                    # this point, so passing it here produced "Cannot send a
+                    # request, as the client has been closed" on 100% of records
+                    # in production — evidence written, but no evidence gathered.
+                    #
+                    # Keeping it alive instead would mean guaranteeing exactly-once
+                    # close across SIX return statements spanning 455 lines, i.e.
+                    # wrapping the whole publication path in an outer try/finally.
+                    # That is a restructure of the most sensitive function in the
+                    # product to serve an observation, and the wrong trade.
+                    #
+                    # This is NOT a second market-data implementation: it is the
+                    # same canonical class and the same `fetch_orderbook`, built
+                    # once per PUBLISHED signal (~1 per sweep, not per symbol) and
+                    # closed in the finally below so an exchange error cannot leak
+                    # an httpx client.
+                    obs_collector = BinanceCollector()
+                    try:
+                        snapshot.extra = {
+                            **(snapshot.extra or {}),
+                            "exec_cost": await build_shadow_exec_cost(
+                                collector=obs_collector,
+                                symbol=symbol,
+                                signal=new_sig,
+                                atr_pct=(decision.get("birth_telemetry") or {}).get("atr_pct"),
+                            ),
+                        }
+                    finally:
+                        await obs_collector.close()
                 except Exception as obs_exc:         # noqa: BLE001 — evidence is never load-bearing
+                    # Catches the capture AND the close: a failure to release the
+                    # client must not escape into the publication transaction.
                     logger.warning("[Scheduler] Shadow exec-cost capture failed for %s: %s",
                                    symbol, obs_exc)
 

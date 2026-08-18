@@ -55,21 +55,42 @@ def test_the_shadow_call_is_awaited():
     assert len(awaited) == 1, "the shadow builder is not awaited"
 
 
-def test_it_reuses_the_collector_already_in_scope():
-    """A second BinanceCollector would be a second HTTP client, a second
-    connection pool, and a second thing to close. The function already owns one."""
+def test_the_shadow_call_gets_a_collector_built_at_the_call_site():
+    """REVISED after production evidence. This guard used to require the
+    canonical `binance` instance, on the reasoning that one client per function
+    is tidier. Production disproved it: that instance is closed ~424 lines
+    earlier, so 100% of exec_cost records read "client has been closed".
+
+    What the guard actually protects is unchanged — no duplicated market-data
+    logic, no foreign client. It now requires the collector to be a name bound
+    to a BinanceCollector constructed inside the shadow block, which is the only
+    arrangement that is alive at the call site without restructuring the whole
+    publication path. Liveness itself is asserted in
+    test_shadow_collector_lifetime.py.
+    """
+    fn = _fn_ast()
     call = _shadow_calls()[0]
     kw = {k.arg: k.value for k in call.keywords}
-    assert "collector" in kw, "collector is not passed explicitly"
-    assert isinstance(kw["collector"], ast.Name), \
-        "collector must be the in-scope instance, not a fresh construction"
-    assert kw["collector"].id == "binance", kw["collector"].id
+    assert "collector" in kw and isinstance(kw["collector"], ast.Name),         "collector must be passed explicitly as a bound name"
+    name = kw["collector"].id
+    built = [n for n in ast.walk(fn)
+             if isinstance(n, ast.Assign) and isinstance(n.value, ast.Call)
+             and getattr(n.value.func, "id", "") == "BinanceCollector"
+             and any(getattr(t, "id", "") == name for t in n.targets)]
+    assert built, f"{name} is not bound to a BinanceCollector construction"
+    assert max(b.lineno for b in built) < call.lineno,         "the collector is constructed after the call that uses it"
 
 
-def test_no_second_exchange_client_is_constructed_in_the_publication_path():
+def test_exactly_two_collectors_and_no_foreign_client():
+    """EXACT, not relaxed. Two constructions are expected and only two: the
+    canonical one for the kline fetch, and the short-lived observation one. A
+    third would mean somebody added another market-data path; any non-Binance
+    client would mean a second implementation. Both still fail here.
+    """
     src = inspect.getsource(sched._generate_signal)
-    assert src.count("BinanceCollector()") == 1, \
-        "the publication path constructs more than one collector"
+    assert src.count("BinanceCollector()") == 2,         f"expected exactly 2 collector constructions, found {src.count('BinanceCollector()')}"
+    for foreign in ("BybitCollector(", "httpx.AsyncClient(", "requests.", "aiohttp."):
+        assert foreign not in src, f"a foreign market-data client appeared: {foreign}"
 
 
 # ══ NON-INTERFERENCE ═══════════════════════════════════════════════════════
@@ -90,8 +111,12 @@ def test_the_shadow_call_has_its_own_exception_handler():
                          and getattr(c.func, "id", "") == "build_shadow_exec_cost"
                          for c in ast.walk(n))]
     assert enclosing, "the shadow call is in no try-block at all"
-    innermost = max(enclosing, key=lambda n: n.lineno)
-    assert innermost.handlers, "the shadow's own try has no handler"
+    # Nearest enclosing try *that has handlers*: the repair nests a
+    # try/finally (for collector close) inside the try/except, and a plain
+    # finally has no handlers to inspect.
+    handled = [n for n in enclosing if n.handlers]
+    assert handled, "the shadow call is inside no try that handles anything"
+    innermost = max(handled, key=lambda n: n.lineno)
     for h in innermost.handlers:
         raises = [x for x in ast.walk(ast.Module(body=h.body, type_ignores=[]))
                   if isinstance(x, ast.Raise)]
