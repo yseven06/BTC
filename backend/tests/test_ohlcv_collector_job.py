@@ -639,16 +639,14 @@ def test_A3b_scheduler_and_main_do_not_reference_it():
             assert token not in code, f"{rel} references {token}"
 
 
-def test_A3b_no_ohlcv_job_is_registered():
+def test_A3b_exactly_one_ohlcv_job_is_registered():
     src = (BACKEND / "app" / "services" / "scheduler.py").read_text(encoding="utf-8")
     ids = re.findall(r'id="([^"]+)"', src)
-    # A3c was activated and then DISABLED in the same session: the first genuine
-    # run was cancelled at 148.196 s against the frozen 78.947 s gate. The
-    # registration is gone; scheduler.py still contains _job_ohlcv_collect and
-    # the JobSpec, which is why this guard checks the REGISTRATION and not the
-    # mere presence of the string. See tests/test_ohlcv_activation_registration.py.
-    assert [i for i in ids if "ohlcv" in i.lower()] == [], ids
-    assert sorted(ids) == ["perf_tracking", "price_alerts",
+    # RE-ACTIVATED on a re-derived budget/slot after two prior disables. What
+    # this guard protects is the SET, not the direction: exactly one OHLCV
+    # registration alongside the seven trading jobs, and no second one.
+    assert [i for i in ids if "ohlcv" in i.lower()] == ["ohlcv_collect"], ids
+    assert sorted(ids) == ["ohlcv_collect", "perf_tracking", "price_alerts",
                            "signals_15m", "signals_1d", "signals_1h",
                            "signals_4h", "startup_check"], ids
 

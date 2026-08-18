@@ -1017,14 +1017,32 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # OHLCV SHADOW COLLECTION — the only OHLCV execution path in production.
     #
-    # minute="28,58" places both runs inside measured-free windows: signals_15m
-    # holds :02-:12:05, :17-:27:05, :32-:42:05, :47-:57:05 (600s budget + 5s
-    # cleanup grace) and signals_1h holds :01-:16:05. A :28 run ends by 30:35 and
-    # a :58 run by 00:35, clearing the next signals start by 85s and 25s.
+    # THE SLOT IS RE-DERIVED, not restored. The earlier :28/:58 slot was sized
+    # for a run whose cost scaled with BARS; A3K3 removed that term (a 159-bar
+    # page went from 477 round trips / ~120 s to 3 / ~1 s at a real 129 ms RTT),
+    # so a run is now bounded by K rather than by the universe.
     #
-    # 150s is an INITIAL budget, not a calibrated one: job_guard derives budgets
-    # from an observed healthy maximum, and this job has never run. The first
-    # controlled executions must re-derive it.
+    # minute="10,40" sits inside measured-free windows. Over 6 h of production
+    # logs signals_15m (:02,:17,:32,:47) ran p50 258.75 s and max 371.82 s, so
+    # the :02 sweep is finished by :08:12 even at its worst and the next starts
+    # at :17 — a 420 s clear window from :10. Budget + cleanup grace is 155 s,
+    # i.e. 36.9% occupancy; the measured worst case (53.61 s) is 14.0%.
+    # perf_tracking (*/2) and price_alerts (*) DO fire on this same tick, and
+    # that contention was measured rather than assumed: 0/2/4/8 rival sessions
+    # against the production pool shape produced no checkout failure.
+    #
+    # 150s is RETAINED and is still an INITIAL budget in job_guard's sense. The
+    # production-shaped worst case is 53.61 s, which the 1.9x rule would satisfy
+    # with 101.9 s; 150 s is kept because it clears that rule at 2.80x and
+    # because the preceding estimate was itself found to be 26% optimistic.
+    # Only real runs may justify reducing it.
+    _scheduler.add_job(
+        _job_ohlcv_collect,
+        CronTrigger(minute="10,40"),
+        id="ohlcv_collect",
+        replace_existing=True,
+        name="OHLCV shadow collection",
+    )
 
     # A trigger APScheduler refuses is the symptom that went unread for 45
     # minutes on 2026-07-28 — it only ever reached the log. Counting it makes

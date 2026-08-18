@@ -44,18 +44,16 @@ def test_exactly_one_ohlcv_add_job_exists():
         for kw in node.keywords:
             if kw.arg == "id" and isinstance(kw.value, ast.Constant):
                 ids.append(kw.value.value)
-    # DISABLED AFTER CALIBRATION. The first genuine run (22:58:02Z, run_seq=1)
-    # was cancelled at 148.196 s against a 150 s budget, and the frozen gate is
-    # T <= 150/1.9 = 78.947 s — so the registration was removed in the same
-    # session. The invariant this guard carries is unchanged and is what still
-    # matters: there is NEVER more than one OHLCV registration. It now reads
-    # ZERO, and it will read one again only when a checkpoint re-activates on
-    # a re-derived budget/slot.
-    assert ids.count(JOB_ID) == 0, (
-        f"{JOB_ID} is registered again — re-activation must come with a "
-        f"re-derived budget, not a silent restore: {ids}")
+    # RE-ACTIVATED on a re-derived budget and slot. This guard has read 0 twice
+    # (after the two disabling reverts) and 1 twice; what it actually protects is
+    # neither number but the CARDINALITY — there is never more than ONE OHLCV
+    # registration, because two would mean two concurrent runs and two
+    # progression claims per cadence.
+    assert ids.count(JOB_ID) == 1, (
+        f"expected exactly one {JOB_ID} registration, found "
+        f"{ids.count(JOB_ID)}: {ids}")
     assert len(ids) == len(set(ids)), f"duplicate job ids: {ids}"
-    assert len(ids) == 7, f"expected the 7 trading jobs, found {len(ids)}: {ids}"
+    assert len(ids) == 8, f"expected 7 trading jobs + OHLCV, found {len(ids)}: {ids}"
 
 
 def test_no_second_execution_path_for_ohlcv():
@@ -113,15 +111,18 @@ def test_the_jobspec_is_exactly_the_ratified_contract():
     assert spec.shadow is True
 
 
-def test_no_cron_slot_is_claimed_while_disabled():
-    """Was `test_the_cron_is_the_ratified_slot`, pinning minute='28,58'.
+def test_the_cron_is_the_re_derived_slot():
+    """Pins minute='10,40' — RE-DERIVED, never restored.
 
-    The measured first run makes that slot unusable as it stands: 148.196 s
-    reached only 13 of 57 symbols, so the full universe extrapolates to ~675 s
-    against the 175 s the :58 window allows before signals_1h. Re-asserting
-    '28,58' would pin a slot the evidence has already refuted, so this guard now
-    holds the weaker true statement — no OHLCV trigger is claimed at all — and
-    the slot must be re-derived by whichever checkpoint re-activates."""
+    The original '28,58' was sized for a run whose cost scaled with bars; A3K3
+    removed that term, so a run is now bounded by K. '10,40' comes from 6 h of
+    production logs: signals_15m (:02,:17,:32,:47) ran p50 258.75 s / max
+    371.82 s, so the :02 sweep is done by :08:12 at worst and the next starts at
+    :17, leaving a 420 s clear window from :10 against a 155 s budget+grace.
+
+    Asserting the exact minutes matters because a slot is only as good as the
+    geometry it was measured against: any future change to the signals cadence
+    has to come back through here."""
     src = (BACKEND / "app/services/scheduler.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
     found = None
@@ -135,20 +136,21 @@ def test_no_cron_slot_is_claimed_while_disabled():
             if isinstance(arg, ast.Call) and getattr(arg.func, "id", "") == "CronTrigger":
                 found = {kw.arg: kw.value.value for kw in arg.keywords
                          if isinstance(kw.value, ast.Constant)}
-    assert found is None, f"an OHLCV cron trigger is registered while disabled: {found}"
+    assert found == {"minute": "10,40"}, (
+        f"the OHLCV cron slot is not the re-derived one: {found}")
 
 
-def test_the_retained_budget_would_still_fit_the_windows_it_was_sized_for():
-    """The JobSpec is deliberately RETAINED after the disable, so this arithmetic
-    still has to hold for it — otherwise a future re-activation could restore a
-    registration on top of a spec that no longer fits anything.
+def test_the_retained_budget_fits_the_slot_it_is_registered_on():
+    """The arithmetic that makes ':10,:40 with a 150 s budget' safe, checked
+    against the slot ACTUALLY registered rather than the one it replaced.
 
-    Note what this does NOT say: that 150 s is sufficient. The measured run
-    proves it is not — it is a truncation point, not a completion budget."""
+    Note what this does NOT say: that 150 s is sufficient. It is a truncation
+    point, not a completion promise — the measured worst case is 53.61 s and the
+    budget exists to bound a degraded run, not to size a healthy one."""
     from app.services.job_guard import CLEANUP_GRACE_SECONDS as G
     end = JOB_SPECS[JOB_ID].budget_seconds + G
-    assert 28 * 60 + end < 32 * 60, "the :28 window would reach signals_15m at :32"
-    assert 58 * 60 + end < 61 * 60, "the :58 window would reach signals_1h at :01"
+    assert 10 * 60 + end < 17 * 60, "the :10 window would reach signals_15m at :17"
+    assert 40 * 60 + end < 47 * 60, "the :40 window would reach signals_15m at :47"
 
 
 def test_the_budget_is_flagged_as_uncalibrated():
