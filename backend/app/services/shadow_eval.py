@@ -187,6 +187,28 @@ def shadow_passb_provenance(
     }
 
 
+def _as_datetime(value: Any) -> Optional[datetime]:
+    """An aware datetime, or None — for values crossing into a DateTime column.
+
+    Every timestamp this evaluator handles originates from a UTC-aware frame
+    index, so a rendering that lost its offset is UTC and is read back as UTC. A
+    NAIVE datetime is the dangerous case rather than the loud one: asyncpg
+    accepts it against `DateTime(timezone=True)` and stores the wrong instant,
+    where a string at least fails immediately.
+    """
+    if value is None or isinstance(value, datetime):
+        if isinstance(value, datetime) and value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value)
+        except ValueError:
+            return None
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    return None
+
+
 def _first_touch(bars: Sequence[Tuple[float, float, float, float]],
                  level: float, from_below: bool) -> Optional[int]:
     """Index of the first bar whose range reaches `level`, else None.
@@ -309,7 +331,12 @@ def evaluate_candidate_shadow(
         return out
 
     out["shadow_entry_reached"] = tel.get("entry_reached")
-    out["shadow_entry_reached_at"] = tel.get("entry_reached_at")
+    # `build_entry_telemetry` returns this as an ISO STRING — that is its
+    # documented contract and the live path consumes it as one. The column it
+    # lands in is DateTime(timezone=True), so the conversion belongs HERE, at the
+    # boundary, rather than in the shared telemetry where it would change what
+    # every other caller receives.
+    out["shadow_entry_reached_at"] = _as_datetime(tel.get("entry_reached_at"))
     out["shadow_bars_to_entry"] = tel.get("bars_to_entry")
     out["shadow_never_entered"] = tel.get("never_entered")
     pen = tel.get("max_zone_penetration_pct")
