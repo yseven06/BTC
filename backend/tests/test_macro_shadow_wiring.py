@@ -896,7 +896,18 @@ def test_the_candidate_table_is_referenced_by_exactly_four_modules():
         "app/models/decision_candidate.py",
         "app/services/candidate_log.py",
         "app/services/coin_memory.py",
+        # CP-V1. shadow_observation.py NAMES the table inside the JSON record it
+        # builds, so an analyst reading a snapshot years later knows where to
+        # join — but it never imports the model and never queries it. The
+        # distinction is asserted below rather than assumed, so admitting this
+        # fifth entry does not quietly admit a fifth WRITER.
+        "app/services/shadow_observation.py",
     }, refs
+
+    obs = _code_of(BACKEND / "app" / "services" / "shadow_observation.py")
+    assert "SignalDecisionCandidate" not in obs, "the observation module imported the model"
+    for access in ("select(", "insert(", "update(", "delete(", ".execute(", "await "):
+        assert access not in obs, f"the observation module reached the database: {access}"
 
 
 def test_no_http_read_surface_returns_candidate_rows():

@@ -45,6 +45,7 @@ from app.services.candidate_log import record_candidate
 from app.services.macro_shadow_wiring import build_candidate_macro_shadow
 from app.services.macro_shadow_fetch import get_shadow_macro_snapshot
 from app.services.shadow_exec_cost import build_shadow_exec_cost
+from app.services.shadow_observation import build_shadow_observation
 from app.models.decision_candidate import (
     REASON_CONFIDENCE_GATE,
     REASON_DUPLICATE_OR_EXISTING,
@@ -778,6 +779,41 @@ async def _generate_signal(symbol: str, asset_type: str, timeframe: str = "1h") 
                     # client must not escape into the publication transaction.
                     logger.warning("[Scheduler] Shadow exec-cost capture failed for %s: %s",
                                    symbol, obs_exc)
+
+                # CP-V1 PUBLICATION-TIME OBSERVATION — the one thing that cannot
+                # be reconstructed faithfully afterwards.
+                #
+                # Everything else an analyst needs is already persisted: the
+                # candidate row carries the demotion reason and the whole score
+                # vector for EVERY evaluation, published or not, and the trade
+                # path resolves MAE/MFE and first touches. None of that is copied
+                # here. What no table holds is how far price had already run when
+                # this was published — recoverable only at close granularity by
+                # joining neighbouring candidate rows, whereas the analysis frame
+                # in memory right here carries the true intrabar extremes.
+                #
+                # A SEPARATE handler, deliberately: this must not be lost because
+                # the orderbook call above failed, and it must not take that
+                # capture down either. The builder is pure and synchronous — no
+                # client, no await, nothing to time out or leak — so `df_closed`
+                # is read rather than the full frame, whose last candle is still
+                # forming and would make the statistic irreproducible.
+                try:
+                    snapshot.extra = {
+                        **(snapshot.extra or {}),
+                        "shadow_observation_v1": build_shadow_observation(
+                            symbol=symbol,
+                            timeframe=timeframe,
+                            signal=new_sig,
+                            bars=df_closed,
+                            atr_pct=(decision.get("birth_telemetry") or {}).get("atr_pct"),
+                            atr_fallback_used=bool(
+                                (decision.get("birth_telemetry") or {}).get("atr_fallback_used")),
+                        ),
+                    }
+                except Exception as obs2_exc:        # noqa: BLE001 — evidence is never load-bearing
+                    logger.warning("[Scheduler] Shadow observation capture failed for %s: %s",
+                                   symbol, obs2_exc)
 
             await db.commit()
             logger.info("[Scheduler] Signal saved: %s → %s (conf=%.1f%%)",

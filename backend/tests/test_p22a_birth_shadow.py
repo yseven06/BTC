@@ -275,8 +275,17 @@ def test_16_live_gates_and_thresholds_are_unchanged():
     # than becoming a "contains shadow" check, so a fourth name still fails; the
     # guard's own tests (test_shadow_exec_cost_wiring.py) prove this particular
     # one cannot reach a decision, and a sabotage mutant that made it do so dies.
+    # `build_shadow_observation` / `shadow_observation_v1` (CP-V1) join on the
+    # same terms: a publication-time record written to SignalSnapshot.extra that
+    # the decision never reads back. It is admitted only as a PAIR — the builder
+    # and the key it writes — because the key is a string literal and ast.unparse
+    # renders strings, so omitting it would fail this on the literal alone. The
+    # list stays EXACT rather than becoming a "contains shadow" check, so a
+    # seventh name still fails; test_shadow_observation.py proves this one cannot
+    # reach a decision, and the sabotage mutant that makes it do so dies.
     assert shadowish == {"macro_shadow", "build_candidate_macro_shadow",
-                         "get_shadow_macro_snapshot", "build_shadow_exec_cost"}, shadowish
+                         "get_shadow_macro_snapshot", "build_shadow_exec_cost",
+                         "build_shadow_observation", "shadow_observation_v1"}, shadowish
 
 
 def test_16b_classification_does_not_read_or_alter_the_decision():
