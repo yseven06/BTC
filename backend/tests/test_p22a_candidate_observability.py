@@ -127,7 +127,11 @@ async def test_t1_published_candidate_is_recorded():
         db, **_kw(verdict=VERDICT_PUBLISHED, demotion_reason=REASON_PUBLISHED,
                   final_signal_type="BUY", final_direction="bullish", signal_id=SIG))
     assert wrote is True
-    assert db.execute.await_count == 1
+    # One INSERT. The lineage resolver (CP-J) adds a SELECT to this path, so the
+    # claim worth guarding is "exactly one write", not "exactly one statement".
+    inserted = [c.args[0] for c in db.execute.await_args_list
+                if "INSERT" in str(c.args[0]).upper()[:80]]
+    assert len(inserted) == 1, f"expected 1 INSERT, saw {len(inserted)}"
 
     values = candidate_log.build_candidate_values(
         **_kw(verdict=VERDICT_PUBLISHED, demotion_reason=REASON_PUBLISHED,

@@ -36,6 +36,8 @@ from typing import Any, Dict, Mapping, Optional
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from app.services.candidate_lineage import (LINEAGE_NAMESPACE,
+                                            resolve_lineage)
 from app.models.decision_candidate import (
     CANDIDATE_POLICY_VERSION,
     CANDIDATE_SCHEMA_VERSION,
@@ -461,6 +463,28 @@ async def record_candidate(db, **kwargs) -> bool:
         if values is None:
             logger.debug("[CandidateLog] no scored bar — nothing to key on, skipped")
             return False
+
+        # OPPORTUNITY LINEAGE (CP-J) — identity, resolved HERE rather than in
+        # `build_candidate_values`, which is pure by contract and must stay that
+        # way: this needs one indexed read of the preceding row, and purity is
+        # what lets the builder be tested without a database.
+        #
+        # Additive and fail-open. `resolve_lineage` never raises; on failure it
+        # returns an explicit `unresolved` state rather than a fabricated UUID,
+        # because a fabricated identity is indistinguishable from a real one and
+        # would silently join unrelated opportunities.
+        values["extra"] = merge_additive_namespace(
+            values.get("extra"), LINEAGE_NAMESPACE,
+            await resolve_lineage(
+                db,
+                asset_id=values.get("asset_id"),
+                timeframe=values.get("timeframe"),
+                direction=values.get("engine_direction"),
+                bar_time=values.get("evaluated_bar_time"),
+                eligible=all(values.get(k) is not None for k in
+                             ("entry_zone_low", "entry_zone_high", "stop_loss")),
+                signal_id=values.get("signal_id"),
+            ))
 
         # Omit None so column defaults apply (id, created_at, and the
         # server_default'ed version columns) — the same reason as

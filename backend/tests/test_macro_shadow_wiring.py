@@ -902,6 +902,12 @@ def test_the_candidate_table_is_referenced_by_exactly_four_modules():
         # distinction is asserted below rather than assumed, so admitting this
         # fifth entry does not quietly admit a fifth WRITER.
         "app/services/shadow_observation.py",
+        # CP-J. candidate_lineage.py READS the table — one indexed lookup of the
+        # preceding row — to resolve opportunity identity. It is admitted as a
+        # sixth entry rather than the guard being relaxed, and it is a reader in
+        # the logger's own domain: the assertions below pin that it writes
+        # nothing and cannot reach a decision.
+        "app/services/candidate_lineage.py",
     }, refs
 
     obs = _code_of(BACKEND / "app" / "services" / "shadow_observation.py")
@@ -1258,12 +1264,26 @@ def _inserted_extra(stmt):
     raise AssertionError("extra not found in the compiled INSERT")
 
 
+def _inserts(db):
+    """Only the INSERT statements a record_candidate call emitted.
+
+    CP-J gave the write path one indexed SELECT (the lineage predecessor lookup),
+    so "the only statement" is no longer the same claim as "the only write".
+    Filtering to inserts keeps what these guards were actually protecting — one
+    row per evaluation — and is strictly stronger than a positional index, which
+    would silently start asserting against whichever statement happened to run
+    first.
+    """
+    return [st for st in db.statements
+            if type(st).__name__ == "Insert" or "INSERT" in str(st).upper()[:80]]
+
+
 def test_the_namespace_reaches_the_actual_insert_statement():
     db = _CapturingDB()
     assert _record(db) is True
-    assert len(db.statements) == 1
+    assert len(_inserts(db)) == 1
     assert db.nested_entered == 1          # savepoint isolation kept
-    extra = _inserted_extra(db.statements[0])
+    extra = _inserted_extra(_inserts(db)[0])
     assert extra[NS_KEY]["version"] == "macro_shadow_v1"
     assert extra[NS_KEY]["executed"] is False
     assert extra["decision_input_version"] == "closed_candle_v1"
@@ -1273,7 +1293,7 @@ def test_the_namespace_reaches_the_actual_insert_statement():
 def test_one_record_candidate_call_issues_exactly_one_insert():
     db = _CapturingDB()
     _record(db)
-    assert len(db.statements) == 1
+    assert len(_inserts(db)) == 1
 
 
 def test_the_insert_still_uses_on_conflict_do_nothing():
@@ -1281,7 +1301,7 @@ def test_the_insert_still_uses_on_conflict_do_nothing():
     overlap between signals_15m and signals_1h."""
     db = _CapturingDB()
     _record(db)
-    sql = str(db.statements[0].compile(
+    sql = str(_inserts(db)[0].compile(
         dialect=__import__("sqlalchemy.dialects.postgresql",
                            fromlist=["dialect"]).dialect()))
     assert "ON CONFLICT" in sql and "DO NOTHING" in sql
@@ -1290,7 +1310,7 @@ def test_the_insert_still_uses_on_conflict_do_nothing():
 def test_a_second_identical_write_is_absorbed_by_the_conflict_clause():
     db = _CapturingDB(rid=None)            # the row already existed
     assert _record(db) is False
-    assert len(db.statements) == 1
+    assert len(_inserts(db)) == 1
 
 
 def test_a_failing_insert_still_does_not_raise_into_the_scheduler():
