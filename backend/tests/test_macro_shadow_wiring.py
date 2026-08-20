@@ -1282,7 +1282,10 @@ def test_the_namespace_reaches_the_actual_insert_statement():
     db = _CapturingDB()
     assert _record(db) is True
     assert len(_inserts(db)) == 1
-    assert db.nested_entered == 1          # savepoint isolation kept
+    # TWO savepoints since CP-K: the predecessor SELECT and the INSERT. Both are
+    # isolation, not duplication — the read runs on the caller's session in front
+    # of its staged writes, so it needs the same protection the insert has.
+    assert db.nested_entered == 2
     extra = _inserted_extra(_inserts(db)[0])
     assert extra[NS_KEY]["version"] == "macro_shadow_v1"
     assert extra[NS_KEY]["executed"] is False

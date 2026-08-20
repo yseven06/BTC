@@ -200,3 +200,23 @@ def build_shadow_observation(*, symbol: Any, timeframe: Any, signal: Any, bars: 
         "lookback": lookback,
         "provenance": provenance,
     }
+
+
+def extension_atr(bars: Any, atr_pct: Any, direction: Any, *,
+                  atr_fallback_used: bool = False) -> Optional[float]:
+    """How far price has run from the lookback extreme, in ATR, for `direction`.
+
+    Exposed so the reset-lifecycle telemetry can reuse THIS computation instead
+    of growing a second one. A second implementation of the same statistic is how
+    two numbers that should agree quietly stop agreeing; it is also why the
+    guarded field names stay inside this module rather than spreading.
+
+    None when the frame cannot support the statistic, or when ATR was the risk
+    engine's substituted constant — dividing by that produces a value that looks
+    measured and is not.
+    """
+    lb = _lookback(bars, atr_pct, bool(atr_fallback_used))
+    if not lb.get("ok"):
+        return None
+    bullish = str(direction).lower() in ("bullish", "buy", "long")
+    return lb["extension_from_low_atr"] if bullish else lb["extension_from_high_atr"]

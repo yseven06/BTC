@@ -36,8 +36,11 @@ from typing import Any, Dict, Mapping, Optional
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from app.services.candidate_lineage import (LINEAGE_NAMESPACE,
-                                            resolve_lineage)
+from app.services.candidate_lineage import (LINEAGE_NAMESPACE, load_predecessor,
+                                            resolve_lineage, unresolved_payload)
+from app.services.reset_lifecycle import (RESET_NAMESPACE, decide_reset_lifecycle,
+                                          unresolved_reset_payload)
+from app.services.shadow_observation import extension_atr
 from app.models.decision_candidate import (
     CANDIDATE_POLICY_VERSION,
     CANDIDATE_SCHEMA_VERSION,
@@ -473,18 +476,77 @@ async def record_candidate(db, **kwargs) -> bool:
         # returns an explicit `unresolved` state rather than a fabricated UUID,
         # because a fabricated identity is indistinguishable from a real one and
         # would silently join unrelated opportunities.
+        # ONE indexed read, shared by both namespaces below. Resolving them
+        # separately would double the only query this path adds.
+        prev_row = None
+        prev_failure = None
+        # SAVEPOINT-ISOLATED. This SELECT runs on the caller's session, which may
+        # already be holding a staged reversal close. Without a savepoint a
+        # server-side error (statement timeout, lock timeout, pool exhaustion)
+        # aborts the whole PostgreSQL transaction, the INSERT's own savepoint then
+        # fails, and the caller loses those staged writes at rollback — the exact
+        # fail-open-becomes-fail-closed trap this module's docstring names.
+        try:
+            async with db.begin_nested():
+                prev_row = await load_predecessor(
+                    db, asset_id=values.get("asset_id"),
+                    timeframe=values.get("timeframe"),
+                    bar_time=values.get("evaluated_bar_time"))
+        except Exception as exc:                     # noqa: BLE001 — telemetry only
+            # A FAILED lookup is not "no predecessor". Collapsing the two would
+            # mint a fresh identity for a lineage that already exists — the
+            # fabricated-identity failure mode the sentinel exists to prevent.
+            prev_failure = type(exc).__name__
+            logger.warning("[CandidateLog] predecessor lookup failed "
+                           "(fail-open, ignored): %s", exc)
+
+        direction = values.get("engine_direction")
+        eligible = all(values.get(k) is not None for k in
+                       ("entry_zone_low", "entry_zone_high", "stop_loss"))
+        lineage = unresolved_payload(prev_failure) if prev_failure else await resolve_lineage(
+            db,
+            asset_id=values.get("asset_id"),
+            timeframe=values.get("timeframe"),
+            direction=direction,
+            bar_time=values.get("evaluated_bar_time"),
+            eligible=eligible,
+            signal_id=values.get("signal_id"),
+            prefetched_prev=prev_row,
+        )
         values["extra"] = merge_additive_namespace(
-            values.get("extra"), LINEAGE_NAMESPACE,
-            await resolve_lineage(
-                db,
-                asset_id=values.get("asset_id"),
-                timeframe=values.get("timeframe"),
-                direction=values.get("engine_direction"),
+            values.get("extra"), LINEAGE_NAMESPACE, lineage)
+
+        # RESET LIFECYCLE (CP-K) — telemetry only, never a gate. Boundaries are
+        # not re-derived here: the lineage verdict above already owns direction
+        # flip, neutral, terminal anchor and the safety ceiling, and one owner is
+        # the point. The extension itself is computed by the single existing
+        # implementation rather than a second copy.
+        try:
+            if prev_failure:
+                raise RuntimeError(prev_failure)
+            reset = decide_reset_lifecycle(
+                extension_value=extension_atr(
+                    kwargs.get("df"), values.get("atr_pct_regime"), direction),
                 bar_time=values.get("evaluated_bar_time"),
-                eligible=all(values.get(k) is not None for k in
-                             ("entry_zone_low", "entry_zone_high", "stop_loss")),
-                signal_id=values.get("signal_id"),
-            ))
+                prev=((prev_row or {}).get("extra") or {}).get(RESET_NAMESPACE),
+                prev_bar_time=(prev_row or {}).get("evaluated_bar_time"),
+                lineage_state=lineage.get("state"),
+                atr_source="regime",
+                # THE AUTHORITATIVE FLAG. `atr_pct_regime is None` cannot detect
+                # substitution — the detector returns 0.0, never None, when ATR is
+                # NaN (detector.py:119), so that test fired only when detect_regime
+                # itself crashed and then mislabelled it as a substituted ATR. The
+                # real flag is computed at signal_generator.py:360 and travels in
+                # birth_telemetry. A degenerate frame there means the regime ATR is
+                # not trustworthy either, so the normalised value is withheld.
+                atr_fallback_used=bool(
+                    ((kwargs.get("decision") or {}).get("birth_telemetry") or {})
+                    .get("atr_fallback_used")),
+            )
+        except Exception as exc:                     # noqa: BLE001 — telemetry only
+            reset = unresolved_reset_payload(prev_failure or type(exc).__name__)
+        values["extra"] = merge_additive_namespace(
+            values.get("extra"), RESET_NAMESPACE, reset)
 
         # Omit None so column defaults apply (id, created_at, and the
         # server_default'ed version columns) — the same reason as

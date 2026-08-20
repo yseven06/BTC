@@ -46,6 +46,8 @@ from app.models.decision_candidate import SignalDecisionCandidate
 
 logger = logging.getLogger(__name__)
 
+_UNSET = object()
+
 LINEAGE_NAMESPACE = "opportunity_lineage_v1"
 LINEAGE_SCHEMA_VERSION = 1
 
@@ -162,6 +164,11 @@ async def load_predecessor(db, *, asset_id: Any, timeframe: Any,
     ns = extra.get(LINEAGE_NAMESPACE) if isinstance(extra, dict) else None
     ns = ns if isinstance(ns, dict) else {}
     return {
+        # The raw extra is surfaced so a sibling namespace can be resolved from
+        # the SAME read. Deliberately returned whole rather than parsed here:
+        # naming another module's namespace in this file would put it inside a
+        # guard that exists to keep evidence out of the decision path.
+        "extra": extra if isinstance(extra, dict) else None,
         "evaluated_bar_time": row[0],
         "engine_direction": row[1],
         "lineage_id": ns.get("lineage_id"),
@@ -189,7 +196,8 @@ async def _anchor_still_active(db, signal_id: Any) -> bool:
 
 async def resolve_lineage(db, *, asset_id: Any, timeframe: Any, direction: Any,
                           bar_time: Any, eligible: bool,
-                          signal_id: Any = None) -> Dict[str, Any]:
+                          signal_id: Any = None,
+                          prefetched_prev: Any = _UNSET) -> Dict[str, Any]:
     """Resolve identity for one candidate. Never raises; never blocks the write.
 
     Costs ONE indexed SELECT per candidate. The second lookup fires only when the
@@ -200,8 +208,11 @@ async def resolve_lineage(db, *, asset_id: Any, timeframe: Any, direction: Any,
         if direction not in DIRECTIONAL or not eligible:
             return _payload(STATE_TERMINATED, None)
 
-        prev = await load_predecessor(db, asset_id=asset_id, timeframe=timeframe,
-                                      bar_time=bar_time)
+        # `prefetched_prev` lets a caller that already performed the one indexed
+        # read share it, so resolving a sibling namespace costs no second query.
+        prev = (await load_predecessor(db, asset_id=asset_id, timeframe=timeframe,
+                                       bar_time=bar_time)
+                if prefetched_prev is _UNSET else prefetched_prev)
         anchor_ok = True
         if prev and prev.get("anchor_signal_id") and prev.get("lineage_id"):
             anchor_ok = await _anchor_still_active(db, prev["anchor_signal_id"])

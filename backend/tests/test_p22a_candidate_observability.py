@@ -332,7 +332,11 @@ async def test_t9b_insert_runs_inside_a_savepoint():
     fail-closed for the whole scan."""
     db = _db()
     await candidate_log.record_candidate(db, **_kw())
-    db.begin_nested.assert_called_once()
+    # The claim is "the INSERT is savepointed", not "there is exactly one
+    # savepoint". CP-K added a second for the predecessor read, which runs on the
+    # caller's session in front of its staged writes and needs the same
+    # protection; counting them pins that no THIRD appeared unnoticed.
+    assert db.begin_nested.call_count == 2
 
 
 @pytest.mark.asyncio
